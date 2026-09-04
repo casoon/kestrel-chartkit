@@ -78,3 +78,31 @@ fn test_all_indicators_warmup_contract() {
         }
     }
 }
+
+#[test]
+fn test_all_indicators_random_walk_fuzzing_no_panic() {
+    let entries = catalog();
+    // Test across multiple deterministic random walk seeds with varying drift and volatility
+    for seed in [1, 42, 101, 777, 9999] {
+        let bars = generate_random_walk_bars(seed, 120, 100.0, 0.05, 1.5, 1000.0);
+        for entry in &entries {
+            let mut indicator = build(entry.name, &entry.default_params)
+                .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
+            assert_no_panic(indicator.as_mut(), &bars);
+        }
+    }
+}
+
+#[test]
+fn test_all_indicators_trending_fuzzing_no_panic() {
+    let entries = catalog();
+    // Test across strong uptrends and downtrends with noise
+    for (trend_step, noise) in [(1.5, 0.3), (-1.5, 0.3)] {
+        let bars = generate_trending_bars(42, 120, 100.0, trend_step, noise, 1000.0);
+        for entry in &entries {
+            let mut indicator = build(entry.name, &entry.default_params)
+                .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
+            assert_no_panic(indicator.as_mut(), &bars);
+        }
+    }
+}

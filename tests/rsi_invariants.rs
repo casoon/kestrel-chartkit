@@ -75,3 +75,61 @@ fn test_rsi_flat_prices() {
         last_rsi
     );
 }
+
+#[test]
+fn test_rsi_bounds_across_synthetic_seeds() {
+    let mut rsi = Rsi::with_defaults();
+    // Verify bounds [0.0, 100.0] across 50 distinct random walk paths with volatility
+    for seed in 1..=50 {
+        let bars = generate_random_walk_bars(seed, 100, 100.0, 0.05, 2.5, 1000.0);
+        let outputs = run_indicator(&mut rsi, &bars);
+
+        for (i, out) in outputs.iter().enumerate() {
+            if let Some(out) = out {
+                assert!(
+                    (0.0..=100.0).contains(&out.value),
+                    "RSI out of bounds at bar {} on seed {}: {}",
+                    i,
+                    seed,
+                    out.value
+                );
+                assert!(
+                    !out.value.is_nan(),
+                    "RSI value is NaN at bar {} on seed {}",
+                    i,
+                    seed
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_rsi_synthetic_trending_direction() {
+    let mut rsi = Rsi::with_defaults();
+    // Strong synthetic uptrend with noise must produce high RSI (> 60)
+    let up_bars = generate_trending_bars(777, 80, 50.0, 1.0, 0.2, 1000.0);
+    let up_outputs: Vec<f64> = run_indicator(&mut rsi, &up_bars)
+        .into_iter()
+        .flatten()
+        .map(|o| o.value)
+        .collect();
+    let last_up = *up_outputs.last().unwrap();
+    assert!(
+        last_up > 60.0,
+        "Expected high RSI for synthetic uptrend, got {last_up}"
+    );
+
+    // Strong synthetic downtrend with noise must produce low RSI (< 40)
+    let down_bars = generate_trending_bars(777, 80, 200.0, -1.0, 0.2, 1000.0);
+    let down_outputs: Vec<f64> = run_indicator(&mut rsi, &down_bars)
+        .into_iter()
+        .flatten()
+        .map(|o| o.value)
+        .collect();
+    let last_down = *down_outputs.last().unwrap();
+    assert!(
+        last_down < 40.0,
+        "Expected low RSI for synthetic downtrend, got {last_down}"
+    );
+}

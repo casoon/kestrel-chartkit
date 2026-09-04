@@ -51,3 +51,38 @@ fn test_bollinger_zero_bandwidth_on_flat_price() {
         bandwidth
     );
 }
+
+#[test]
+fn test_bollinger_ordering_across_synthetic_seeds() {
+    let mut bb = BollingerBands::with_defaults();
+    // Invariant: upper >= basis >= lower must hold across 50 random walk seeds with volatility
+    for seed in 1..=50 {
+        let bars = generate_random_walk_bars(seed, 100, 100.0, 0.05, 2.0, 1000.0);
+        let outputs = run_indicator(&mut bb, &bars);
+
+        for (i, out) in outputs.iter().enumerate() {
+            if let Some(out) = out {
+                let basis = out.extra.get("basis").copied().expect("basis extra");
+                let upper = out.extra.get("upper").copied().expect("upper extra");
+                let lower = out.extra.get("lower").copied().expect("lower extra");
+
+                assert!(
+                    upper >= basis - 1e-6,
+                    "Bollinger upper ({}) < basis ({}) at bar {} on seed {}",
+                    upper,
+                    basis,
+                    i,
+                    seed
+                );
+                assert!(
+                    basis >= lower - 1e-6,
+                    "Bollinger basis ({}) < lower ({}) at bar {} on seed {}",
+                    basis,
+                    lower,
+                    i,
+                    seed
+                );
+            }
+        }
+    }
+}

@@ -393,7 +393,7 @@ pub fn bos_choch_swing_bars(
     let step_height = 3.0;
 
     for i in 0..window_bars {
-        let dist = (i as isize - len as isize).unsigned_abs() as f64;
+        let dist = i.abs_diff(len) as f64;
         let noise = rng.next_range(0.05, 0.2);
 
         let (open, high, low, close) = match direction {
