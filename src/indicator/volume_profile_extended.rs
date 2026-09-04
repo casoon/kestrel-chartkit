@@ -108,15 +108,32 @@ impl ExtendedVolumeProfileEngine {
                 (0.5, 0.5)
             };
 
-            let b_start = (((b.low - min_p) / step).floor() as usize).min(self.num_bins - 1);
-            let b_end = (((b.high - min_p) / step).floor() as usize).min(self.num_bins - 1);
+            let raw_start = ((b.low - min_p) / step).floor();
+            let b_start = if raw_start.is_finite() && raw_start >= 0.0 {
+                (raw_start as usize).min(self.num_bins.saturating_sub(1))
+            } else {
+                0
+            };
+            let raw_end = ((b.high - min_p) / step).floor();
+            let b_end = if raw_end.is_finite() && raw_end >= 0.0 {
+                (raw_end as usize).min(self.num_bins.saturating_sub(1))
+            } else {
+                0
+            };
+            let b_end = b_end.max(b_start);
             let bin_count = (b_end - b_start + 1) as f64;
             let vol_per_bin = bar_vol / bin_count;
 
             for bin_idx in b_start..=b_end {
-                volumes[bin_idx] += vol_per_bin;
-                buy_volumes[bin_idx] += vol_per_bin * buy_frac;
-                sell_volumes[bin_idx] += vol_per_bin * sell_frac;
+                if let Some(vol) = volumes.get_mut(bin_idx) {
+                    *vol += vol_per_bin;
+                }
+                if let Some(buy_vol) = buy_volumes.get_mut(bin_idx) {
+                    *buy_vol += vol_per_bin * buy_frac;
+                }
+                if let Some(sell_vol) = sell_volumes.get_mut(bin_idx) {
+                    *sell_vol += vol_per_bin * sell_frac;
+                }
             }
         }
 

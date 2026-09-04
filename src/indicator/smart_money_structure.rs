@@ -553,11 +553,21 @@ mod tests {
         assert!(linker.check_confluence(10).is_none());
     }
 
+    /// A strictly monotonic trend has no local swing high/low: within any fixed-size window, the
+    /// highest high is always the window's newest bar and the lowest low always its oldest, so
+    /// the *middle* bar (what the pivot check requires) can never be either. No pivot therefore
+    /// means no liquidity pool can legitimately form -- a concrete, provably-true invariant for
+    /// this input, not the `X || !X` tautology this test previously asserted (finding 07). The
+    /// loop itself is still what guards against a panic across a long single-direction run.
     #[test]
-    fn test_smoke_no_panic_across_trending_bars() {
+    fn test_no_panic_and_no_spurious_pools_across_a_strictly_monotonic_trend() {
         let mut engine = LiquidityPoolEngine::with_defaults();
         for bar in trending_bars(60, 1.5) {
             engine.on_bar(&bar);
         }
+        assert!(
+            engine.pools().is_empty(),
+            "a strictly monotonic trend has no swing pivots and must not form any liquidity pool"
+        );
     }
 }

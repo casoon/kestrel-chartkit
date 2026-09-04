@@ -169,8 +169,8 @@ pub struct WyckoffGeneratorConfig {
     pub center_price: f64,
     /// Number of bars used for the lookback window.
     ///
-    /// Internally clamped up to [`WYCKOFF_MIN_RANGE_LOOKBACK`] regardless of the value supplied
-    /// here — see [`WYCKOFF_MIN_RANGE_LOOKBACK`] for why.
+    /// Internally clamped up to `WYCKOFF_MIN_RANGE_LOOKBACK` regardless of the value supplied
+    /// here — see that (private) constant's doc comment in this module for why.
     pub range_lookback: usize,
     /// Price spread / half-width of the trading range.
     pub spread: f64,

@@ -42,18 +42,32 @@ pub fn rolling_quantile(slice: &[f64], quantile: f64) -> f64 {
     if finite.is_empty() {
         return 0.0;
     }
-    finite.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    finite.sort_by(f64::total_cmp);
 
     let q = quantile.clamp(0.0, 1.0);
-    let idx_f = q * (finite.len() - 1) as f64;
-    let idx_lower = idx_f.floor() as usize;
-    let idx_upper = idx_f.ceil() as usize;
+    let max_idx = finite.len().saturating_sub(1);
+    let idx_f = q * max_idx as f64;
+    let raw_lower = idx_f.floor();
+    let raw_upper = idx_f.ceil();
+    let idx_lower = if raw_lower.is_finite() && raw_lower >= 0.0 {
+        (raw_lower as usize).min(max_idx)
+    } else {
+        0
+    };
+    let idx_upper = if raw_upper.is_finite() && raw_upper >= 0.0 {
+        (raw_upper as usize).min(max_idx)
+    } else {
+        0
+    };
+
+    let v_lower = finite.get(idx_lower).copied().unwrap_or(0.0);
+    let v_upper = finite.get(idx_upper).copied().unwrap_or(0.0);
 
     if idx_lower == idx_upper {
-        finite[idx_lower]
+        v_lower
     } else {
         let weight = idx_f - idx_lower as f64;
-        finite[idx_lower] * (1.0 - weight) + finite[idx_upper] * weight
+        v_lower * (1.0 - weight) + v_upper * weight
     }
 }
 

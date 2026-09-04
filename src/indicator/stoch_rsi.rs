@@ -11,10 +11,6 @@ pub struct StochRsi {
     oversold: f64,
     overbought: f64,
     require_extreme_zone: bool,
-    #[allow(dead_code)]
-    ctx_rsi_len: usize,
-    #[allow(dead_code)]
-    ctx_stoch_len: usize,
 
     prev_close: Option<f64>,
     avg_gain: Rma,
@@ -73,8 +69,6 @@ impl StochRsi {
             oversold,
             overbought,
             require_extreme_zone,
-            ctx_rsi_len,
-            ctx_stoch_len,
             prev_close: None,
             avg_gain: Rma::new(rsi_len),
             avg_loss: Rma::new(rsi_len),

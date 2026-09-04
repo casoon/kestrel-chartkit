@@ -197,6 +197,102 @@ impl WyckoffStateMachine {
             strength,
         ));
     }
+
+    fn handle_phase_ab(&mut self, bar: &Bar, atr: f64, bias: WyckoffBias) {
+        self.phase = WyckoffPhase::B;
+        let near_high = bar.high >= self.range_high - atr * 0.25 && bar.high <= self.range_high;
+        let near_low = bar.low <= self.range_low + atr * 0.25 && bar.low >= self.range_low;
+
+        let spring = bar.low < self.range_low && bar.close > self.range_low;
+        let utad = bar.high > self.range_high && bar.close < self.range_high;
+
+        if bias == WyckoffBias::Accumulation && spring {
+            self.phase = WyckoffPhase::C;
+            self.push_event(
+                WyckoffEventKind::Spring,
+                bar.low,
+                bar.timestamp,
+                0.85,
+                "Wyckoff Spring: range low swept and reclaimed",
+            );
+        } else if bias == WyckoffBias::Distribution && utad {
+            self.phase = WyckoffPhase::C;
+            self.push_event(
+                WyckoffEventKind::Utad,
+                bar.high,
+                bar.timestamp,
+                0.85,
+                "Wyckoff UTAD: range high swept and reclaimed",
+            );
+        } else if near_high || near_low {
+            self.push_event(
+                WyckoffEventKind::SecondaryTest,
+                bar.close,
+                bar.timestamp,
+                0.4,
+                "Wyckoff Secondary Test of range boundary",
+            );
+        }
+    }
+
+    fn handle_phase_c(&mut self, bar: &Bar, bias: WyckoffBias) {
+        let sos = bias == WyckoffBias::Accumulation && bar.close > self.range_high;
+        let sow = bias == WyckoffBias::Distribution && bar.close < self.range_low;
+        if sos {
+            self.phase = WyckoffPhase::D;
+            self.push_event(
+                WyckoffEventKind::SignOfStrength,
+                bar.close,
+                bar.timestamp,
+                0.8,
+                "Wyckoff Sign of Strength: closed beyond range high",
+            );
+        } else if sow {
+            self.phase = WyckoffPhase::D;
+            self.push_event(
+                WyckoffEventKind::SignOfWeakness,
+                bar.close,
+                bar.timestamp,
+                0.8,
+                "Wyckoff Sign of Weakness: closed beyond range low",
+            );
+        }
+    }
+
+    fn handle_phase_d(&mut self, bar: &Bar, atr: f64, bias: WyckoffBias) {
+        let lps = bias == WyckoffBias::Accumulation
+            && bar.low >= self.range_high - atr * 0.5
+            && bar.close > self.range_high;
+        let lpsy = bias == WyckoffBias::Distribution
+            && bar.high <= self.range_low + atr * 0.5
+            && bar.close < self.range_low;
+        if lps {
+            self.phase = WyckoffPhase::E;
+            self.push_event(
+                WyckoffEventKind::LastPointOfSupport,
+                bar.close,
+                bar.timestamp,
+                0.9,
+                "Wyckoff Last Point of Support: pullback held, Markup confirmed",
+            );
+        } else if lpsy {
+            self.phase = WyckoffPhase::E;
+            self.push_event(
+                WyckoffEventKind::LastPointOfSupply,
+                bar.close,
+                bar.timestamp,
+                0.9,
+                "Wyckoff Last Point of Supply: pullback held, Markdown confirmed",
+            );
+        } else {
+            // Breakout failed to hold: back inside the range invalidates Phase D.
+            let failed = (bias == WyckoffBias::Accumulation && bar.close < self.range_high)
+                || (bias == WyckoffBias::Distribution && bar.close > self.range_low);
+            if failed {
+                self.phase = WyckoffPhase::B;
+            }
+        }
+    }
 }
 
 impl Indicator for WyckoffStateMachine {
@@ -272,107 +368,16 @@ impl Indicator for WyckoffStateMachine {
         // Range invalidated: price wandered far beyond both original boundaries without a clean
         // Phase D/E resolution.
         if width_in_atr > self.range_atr_max * 2.0
-            && self.bars_in_range > self.min_range_bars as u32 * 3
+            && (self.bars_in_range as usize) > self.min_range_bars * 3
         {
             self.unlock_range();
             return Some(IndicatorOutput::new(0.0));
         }
 
         match self.phase {
-            WyckoffPhase::A | WyckoffPhase::B => {
-                self.phase = WyckoffPhase::B;
-                let near_high =
-                    bar.high >= self.range_high - atr * 0.25 && bar.high <= self.range_high;
-                let near_low = bar.low <= self.range_low + atr * 0.25 && bar.low >= self.range_low;
-
-                let spring = bar.low < self.range_low && bar.close > self.range_low;
-                let utad = bar.high > self.range_high && bar.close < self.range_high;
-
-                if bias == WyckoffBias::Accumulation && spring {
-                    self.phase = WyckoffPhase::C;
-                    self.push_event(
-                        WyckoffEventKind::Spring,
-                        bar.low,
-                        bar.timestamp,
-                        0.85,
-                        "Wyckoff Spring: range low swept and reclaimed",
-                    );
-                } else if bias == WyckoffBias::Distribution && utad {
-                    self.phase = WyckoffPhase::C;
-                    self.push_event(
-                        WyckoffEventKind::Utad,
-                        bar.high,
-                        bar.timestamp,
-                        0.85,
-                        "Wyckoff UTAD: range high swept and reclaimed",
-                    );
-                } else if near_high || near_low {
-                    self.push_event(
-                        WyckoffEventKind::SecondaryTest,
-                        bar.close,
-                        bar.timestamp,
-                        0.4,
-                        "Wyckoff Secondary Test of range boundary",
-                    );
-                }
-            }
-            WyckoffPhase::C => {
-                let sos = bias == WyckoffBias::Accumulation && bar.close > self.range_high;
-                let sow = bias == WyckoffBias::Distribution && bar.close < self.range_low;
-                if sos {
-                    self.phase = WyckoffPhase::D;
-                    self.push_event(
-                        WyckoffEventKind::SignOfStrength,
-                        bar.close,
-                        bar.timestamp,
-                        0.8,
-                        "Wyckoff Sign of Strength: closed beyond range high",
-                    );
-                } else if sow {
-                    self.phase = WyckoffPhase::D;
-                    self.push_event(
-                        WyckoffEventKind::SignOfWeakness,
-                        bar.close,
-                        bar.timestamp,
-                        0.8,
-                        "Wyckoff Sign of Weakness: closed beyond range low",
-                    );
-                }
-            }
-            WyckoffPhase::D => {
-                let lps = bias == WyckoffBias::Accumulation
-                    && bar.low >= self.range_high - atr * 0.5
-                    && bar.close > self.range_high;
-                let lpsy = bias == WyckoffBias::Distribution
-                    && bar.high <= self.range_low + atr * 0.5
-                    && bar.close < self.range_low;
-                if lps {
-                    self.phase = WyckoffPhase::E;
-                    self.push_event(
-                        WyckoffEventKind::LastPointOfSupport,
-                        bar.close,
-                        bar.timestamp,
-                        0.9,
-                        "Wyckoff Last Point of Support: pullback held, Markup confirmed",
-                    );
-                } else if lpsy {
-                    self.phase = WyckoffPhase::E;
-                    self.push_event(
-                        WyckoffEventKind::LastPointOfSupply,
-                        bar.close,
-                        bar.timestamp,
-                        0.9,
-                        "Wyckoff Last Point of Supply: pullback held, Markdown confirmed",
-                    );
-                } else {
-                    // Breakout failed to hold: back inside the range invalidates Phase D.
-                    let failed = (bias == WyckoffBias::Accumulation && bar.close < self.range_high)
-                        || (bias == WyckoffBias::Distribution && bar.close > self.range_low);
-                    if failed {
-                        self.phase = WyckoffPhase::B;
-                    }
-                }
-            }
+            WyckoffPhase::A | WyckoffPhase::B => self.handle_phase_ab(bar, atr, bias),
+            WyckoffPhase::C => self.handle_phase_c(bar, bias),
+            WyckoffPhase::D => self.handle_phase_d(bar, atr, bias),
             WyckoffPhase::E | WyckoffPhase::Undefined => {}
         }
 
@@ -478,6 +483,13 @@ mod tests {
         assert!(score.cause_score > 0.0);
     }
 
+    /// Deliberately a robustness/no-panic check only (finding 07): this pseudo-random walk is not
+    /// a controlled schematic, so it makes no claim about which phase or event should result --
+    /// the previous `bars_in_range > 0 || phase() != Undefined` assertion was weak busywork that
+    /// didn't verify anything specific and gave a false impression of coverage. Concrete
+    /// phase/event-sequence assertions belong to the deterministic schematic scenario tests
+    /// (`test_full_sequence_scores_high_quality` above, and `test_scenario_wyckoff*` in
+    /// `tests/scenario_reference_structure.rs`), not here.
     #[test]
     fn test_smoke_no_panic_across_random_walk() {
         let mut machine = WyckoffStateMachine::with_defaults();
@@ -492,7 +504,7 @@ mod tests {
                 price,
                 100.0 + (i % 5) as f64 * 20.0,
             );
-            machine.on_bar(&bar);
+            machine.on_bar(&bar); // must not panic
         }
     }
 }

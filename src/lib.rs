@@ -93,7 +93,7 @@ pub use indicator::registry::{
 };
 pub use indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 pub use intrabar::{IntrabarGroup, IntrabarGrouper};
-pub use lifecycle::{BarLifecycle, LifecycleRunner};
+pub use lifecycle::{BarLifecycle, LifecycleError, LifecycleRunner};
 pub use model::{
     Bar, BarQuality, BarValidationError, InstrumentMeta, InstrumentMetaError, MarketRegime,
     QualifiedBar, Resolution, RiskPlan, Source, SupportResistanceZone, ZoneKind,

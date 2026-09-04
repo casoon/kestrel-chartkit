@@ -222,6 +222,44 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
+            name: "order_block",
+            description: "Order block detection from displacement candles (ATR-filtered)",
+            default_params: [
+                ("atr_len".to_string(), 14.0),
+                ("min_disp".to_string(), 1.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "liquidity_fvg",
+            description: "Fair value gap (imbalance) detection",
+            default_params: [("lookback".to_string(), 20.0)].into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_structure_breaks",
+            description: "Break of structure / change of character (BOS/CHoCH) detection",
+            default_params: [("lookback".to_string(), 5.0)].into(),
+        },
+        IndicatorCatalogEntry {
+            name: "pivots_structure",
+            description: "Swing pivot detection with a rolling structure score",
+            default_params: [
+                ("left_bars".to_string(), 5.0),
+                ("right_bars".to_string(), 5.0),
+                ("score_window".to_string(), 10.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "volume_profile",
+            description: "Price/volume distribution profile with point-of-control",
+            default_params: [
+                ("lookback".to_string(), 70.0),
+                ("num_bins".to_string(), 30.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
             name: "vwap",
             description: "Rolling Volume Weighted Average Price with sigma bands and slope",
             default_params: [
@@ -229,6 +267,26 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("slope_lookback".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "vix_fix",
+            description: "Williams Vix Fix volatility spike detector",
+            default_params: [
+                ("pd".to_string(), 22.0),
+                ("bband_len".to_string(), 20.0),
+                ("mult".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "candle_story",
+            description: "Single-candle narrative classification (e.g. pin bar, engulfing)",
+            default_params: HashMap::new(),
+        },
+        IndicatorCatalogEntry {
+            name: "efficiency",
+            description: "Kaufman-style leg efficiency ratio",
+            default_params: [("len".to_string(), 14.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "volume",
@@ -758,6 +816,35 @@ fn get_f64_p(
     }
 }
 
+/// Reads a `usize` parameter that has a canonical name and a deprecated legacy alias (finding
+/// 05): if both are present with different values, that is treated as an ambiguous configuration
+/// and rejected rather than silently preferring one; if only one is present, it is validated and
+/// used under the canonical name's semantics; if neither is present, `default` applies.
+fn get_usize_p_aliased(
+    params: &HashMap<String, f64>,
+    canonical: &str,
+    legacy_alias: &str,
+    default: usize,
+    min: usize,
+    max: usize,
+) -> Result<usize, RegistryError> {
+    match (params.get(canonical), params.get(legacy_alias)) {
+        (Some(&canonical_val), Some(&alias_val)) if canonical_val != alias_val => {
+            Err(RegistryError::InvalidParameter {
+                parameter: canonical.to_string(),
+                value: canonical_val,
+                reason: format!(
+                    "conflicting values for '{canonical}' ({canonical_val}) and legacy alias \
+                     '{legacy_alias}' ({alias_val}); set only one"
+                ),
+            })
+        }
+        (Some(_), _) => get_usize_p(params, canonical, default, min, max),
+        (None, Some(_)) => get_usize_p(params, legacy_alias, default, min, max),
+        (None, None) => Ok(default),
+    }
+}
+
 fn ensure_less(
     parameter: &str,
     value: f64,
@@ -976,10 +1063,12 @@ pub fn build_checked(
         "acc_dist" => Ok(Box::new(AccDistEngine::new())),
         "true_range" => Ok(Box::new(TrueRangeEngine::new())),
         "keltner" => {
-            let ma = get_usize_p(params, "ma_period", 20, 1, 10000)?;
+            // Canonical key is "ema_period" (matches the catalog contract and the EMA base the
+            // engine actually uses); "ma_period" is accepted as a legacy alias. See finding 05.
+            let ema = get_usize_p_aliased(params, "ema_period", "ma_period", 20, 1, 10000)?;
             let atr = get_usize_p(params, "atr_period", 10, 1, 10000)?;
             let mult = get_f64_p(params, "multiplier", 2.0, 0.01, 100.0)?;
-            Ok(Box::new(KeltnerChannelEngine::new(ma, atr, mult)))
+            Ok(Box::new(KeltnerChannelEngine::new(ema, atr, mult)))
         }
         "donchian" => {
             let p = get_usize_p(params, "period", 20, 1, 10000)?;
@@ -1643,9 +1732,183 @@ fn build_trend_relationship_typed(
 // bar (`update(bar, atr)`), while `RelativeStrengthEngine` requires dual-series input (`update(own_bar, bench_bar)`).
 // Both are exported directly from `kestrel_chartkit::indicator` for explicit use.
 
+/// Finding 04: every canonical indicator name `build_checked` can construct, kept as an explicit
+/// list (rather than derived from the match arms at runtime) so `catalog()` is checked against a
+/// concrete, reviewable contract instead of only a minimum count. Aliases (e.g. "vp", "ob", "wvf")
+/// are deliberately excluded: they must remain buildable but are not separate catalog entries.
+#[cfg(test)]
+const CANONICAL_INDICATOR_NAMES: &[&str] = &[
+    "rsi",
+    "macd",
+    "bollinger",
+    "adx",
+    "stoch_rsi",
+    "cci",
+    "mfi",
+    "atr",
+    "chandelier_exit",
+    "midas",
+    "trend_relationship",
+    "williams_r",
+    "tsi",
+    "fisher_transform",
+    "order_block",
+    "liquidity_fvg",
+    "market_structure_breaks",
+    "pivots_structure",
+    "volume_profile",
+    "extended_volume_profile",
+    "persistent_volume_profile",
+    "vwap",
+    "vix_fix",
+    "candle_story",
+    "efficiency",
+    "volume",
+    "rvol",
+    "obv",
+    "cmf",
+    "acc_dist",
+    "true_range",
+    "keltner",
+    "donchian",
+    "historical_volatility",
+    "garman_klass",
+    "sma",
+    "ema",
+    "wma",
+    "vwma",
+    "hma",
+    "dema",
+    "kama",
+    "dmi",
+    "aroon",
+    "parabolic_sar",
+    "supertrend",
+    "ichimoku",
+    "stochastic",
+    "roc",
+    "ultimate_oscillator",
+    "awesome_oscillator",
+    "ppo",
+    "wavetrend",
+    "cmo",
+    "elder_ray",
+    "anchored_vwap",
+    "cvd",
+    "hires_volume_flow",
+    "klinger",
+    "zigzag",
+    "zigzag_advanced",
+    "pivot_sets",
+    "tema",
+    "lsma",
+    "mcginley",
+    "envelope",
+    "choppiness",
+    "vortex",
+    "alligator",
+    "connors_rsi",
+    "coppock",
+    "dpo",
+    "kst",
+    "mass_index",
+    "rvi",
+    "bop",
+    "eom",
+    "nvi",
+    "pvi",
+    "chaikin_oscillator",
+    "bos_choch",
+    "liquidity_sweeps",
+    "liquidity_pools",
+    "wyckoff",
+    "trend_quality",
+    "buy_sell_pressure",
+    "volatility_regime",
+    "zscore",
+    "multi_factor",
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+
+    /// Finding 04: `catalog()` must expose exactly the 89 canonical, buildable indicator names —
+    /// no fewer (a name silently missing from discovery) and no more (a stray or alias-as-
+    /// canonical entry). This is the "buildable canonical name -> catalog entry" direction that a
+    /// simple `catalog().len() > N` check does not exercise.
+    #[test]
+    fn test_catalog_matches_canonical_indicator_names_exactly() {
+        let catalog_names: HashSet<&str> = catalog().iter().map(|e| e.name).collect();
+        let canonical: HashSet<&str> = CANONICAL_INDICATOR_NAMES.iter().copied().collect();
+
+        let missing_from_catalog: Vec<&&str> = canonical.difference(&catalog_names).collect();
+        assert!(
+            missing_from_catalog.is_empty(),
+            "buildable but not discoverable via catalog(): {missing_from_catalog:?}"
+        );
+
+        let extra_in_catalog: Vec<&&str> = catalog_names.difference(&canonical).collect();
+        assert!(
+            extra_in_catalog.is_empty(),
+            "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
+        );
+
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 89);
+        assert_eq!(catalog().len(), 89);
+    }
+
+    #[test]
+    fn test_catalog_has_no_duplicate_names() {
+        let names: Vec<&str> = catalog().iter().map(|e| e.name).collect();
+        let unique: HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(
+            names.len(),
+            unique.len(),
+            "catalog() contains a duplicate indicator name"
+        );
+    }
+
+    #[test]
+    fn test_every_catalog_entry_builds_with_its_default_params() {
+        for entry in catalog() {
+            let built = build_checked(entry.name, &entry.default_params);
+            assert!(
+                built.is_ok(),
+                "catalog entry '{}' failed to build with its own default params: {:?}",
+                entry.name,
+                built.err()
+            );
+        }
+    }
+
+    /// Negative test: a name that is only meant to be an alias must not have snuck in as a
+    /// second, separate catalog entry alongside its canonical name.
+    #[test]
+    fn test_catalog_does_not_contain_aliases() {
+        let catalog_names: HashSet<&str> = catalog().iter().map(|e| e.name).collect();
+        for alias in [
+            "vp",
+            "wvf",
+            "ob",
+            "fvg",
+            "smc",
+            "bos",
+            "choch",
+            "pivots",
+            "pinbar",
+            "leg_efficiency",
+            "er",
+            "vp_extended",
+            "vp_persistent",
+        ] {
+            assert!(
+                !catalog_names.contains(alias),
+                "'{alias}' is an alias, not a canonical name, and must not be its own catalog entry"
+            );
+        }
+    }
 
     #[test]
     fn test_build_checked_valid_and_invalid_params() {
@@ -1744,6 +2007,75 @@ mod tests {
             err,
             RegistryError::UnknownIndicator("non_existent_ind".to_string())
         );
+    }
+
+    #[test]
+    fn test_keltner_ema_period_is_the_canonical_catalog_key() {
+        // Finding 05: the catalog publishes "ema_period"; the builder must actually read it
+        // rather than silently ignoring it and falling back to the period-20 default.
+        // `warmup_period` is `max(ema_period, atr_period)`, so atr_period is pinned to 1 here to
+        // isolate what ema_period alone drove.
+        let ind = build_checked(
+            "keltner",
+            &HashMap::from([
+                ("ema_period".to_string(), 5.0),
+                ("atr_period".to_string(), 1.0),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(ind.warmup_period(), 5);
+
+        let default_ind =
+            build_checked("keltner", &HashMap::from([("atr_period".to_string(), 1.0)])).unwrap();
+        assert_eq!(default_ind.warmup_period(), 20);
+    }
+
+    #[test]
+    fn test_keltner_ma_period_legacy_alias_still_works() {
+        let ind = build_checked(
+            "keltner",
+            &HashMap::from([
+                ("ma_period".to_string(), 5.0),
+                ("atr_period".to_string(), 1.0),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(ind.warmup_period(), 5);
+    }
+
+    #[test]
+    fn test_keltner_ema_period_invalid_value_rejected() {
+        let err = match build_checked("keltner", &HashMap::from([("ema_period".to_string(), 0.0)]))
+        {
+            Err(e) => e,
+            Ok(_) => panic!("Expected error for zero ema_period"),
+        };
+        assert!(matches!(err, RegistryError::InvalidParameter { .. }));
+    }
+
+    #[test]
+    fn test_keltner_conflicting_canonical_and_alias_rejected() {
+        let err = match build_checked(
+            "keltner",
+            &HashMap::from([
+                ("ema_period".to_string(), 5.0),
+                ("ma_period".to_string(), 10.0),
+            ]),
+        ) {
+            Err(e) => e,
+            Ok(_) => panic!("Expected error for conflicting ema_period/ma_period"),
+        };
+        assert!(matches!(err, RegistryError::InvalidParameter { .. }));
+
+        // Identical values under both names is not a conflict.
+        assert!(build_checked(
+            "keltner",
+            &HashMap::from([
+                ("ema_period".to_string(), 5.0),
+                ("ma_period".to_string(), 5.0),
+            ]),
+        )
+        .is_ok());
     }
 
     #[test]

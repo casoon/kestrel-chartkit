@@ -106,7 +106,7 @@ impl SwingStructureEngine {
         // Legs between consecutive confirmed pivots: (size in ATR, is-up-leg, bar span).
         let mut legs: Vec<(f64, bool, usize)> = Vec::new();
         for w in self.pivots.windows(2) {
-            let (a, b) = (&w[0], &w[1]);
+            let [a, b] = w else { continue };
             let size = (b.price - a.price).abs() / atr;
             let is_up = b.price > a.price;
             let span = b.index.saturating_sub(a.index).max(1);
@@ -129,14 +129,17 @@ impl SwingStructureEngine {
             .filter(|p| !p.is_high)
             .map(|p| p.price)
             .collect();
+        let h_last = highs.last().copied();
+        let h_prev = highs.get(highs.len().saturating_sub(2)).copied();
+        let l_last = lows.last().copied();
+        let l_prev = lows.get(lows.len().saturating_sub(2)).copied();
+
         let bullish = highs.len() >= 2
             && lows.len() >= 2
-            && highs[highs.len() - 1] > highs[highs.len() - 2]
-            && lows[lows.len() - 1] > lows[lows.len() - 2];
+            && matches!((h_last, h_prev, l_last, l_prev), (Some(hl), Some(hp), Some(ll), Some(lp)) if hl > hp && ll > lp);
         let bearish = highs.len() >= 2
             && lows.len() >= 2
-            && highs[highs.len() - 1] < highs[highs.len() - 2]
-            && lows[lows.len() - 1] < lows[lows.len() - 2];
+            && matches!((h_last, h_prev, l_last, l_prev), (Some(hl), Some(hp), Some(ll), Some(lp)) if hl < hp && ll < lp);
         let trend_up = bullish || (!bearish && legs.last().map(|l| l.1).unwrap_or(true));
 
         let mut impulses: Vec<f64> = Vec::new();
@@ -165,8 +168,8 @@ impl SwingStructureEngine {
 
         let recent_corrections_atr: Vec<f64> = corrections.iter().rev().take(3).copied().collect();
         let trend_quality = if recent_corrections_atr.len() >= 2 {
-            let newest = recent_corrections_atr[0];
-            let oldest = recent_corrections_atr[recent_corrections_atr.len() - 1];
+            let newest = recent_corrections_atr.first().copied().unwrap_or(0.0);
+            let oldest = recent_corrections_atr.last().copied().unwrap_or(0.0);
             if newest < oldest {
                 TrendQuality::Strengthening
             } else if newest > oldest {
@@ -248,13 +251,18 @@ impl SwingStructureEngine {
 }
 
 fn median(values: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
     let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(f64::total_cmp);
     let mid = sorted.len() / 2;
     if sorted.len().is_multiple_of(2) {
-        (sorted[mid - 1] + sorted[mid]) / 2.0
+        let m1 = sorted.get(mid.saturating_sub(1)).copied().unwrap_or(0.0);
+        let m2 = sorted.get(mid).copied().unwrap_or(0.0);
+        (m1 + m2) / 2.0
     } else {
-        sorted[mid]
+        sorted.get(mid).copied().unwrap_or(0.0)
     }
 }
 

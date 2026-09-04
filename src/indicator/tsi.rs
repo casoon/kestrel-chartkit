@@ -11,10 +11,6 @@ pub struct Tsi {
     oversold: f64,
     overbought: f64,
     require_extreme_zone: bool,
-    #[allow(dead_code)]
-    ctx_long_len: usize,
-    #[allow(dead_code)]
-    ctx_short_len: usize,
     div_len: usize,
 
     prev_close: Option<f64>,
@@ -70,8 +66,6 @@ impl Tsi {
             oversold,
             overbought,
             require_extreme_zone,
-            ctx_long_len,
-            ctx_short_len,
             div_len,
             prev_close: None,
             mom_long: Ema::new(long_len),

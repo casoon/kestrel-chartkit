@@ -233,10 +233,12 @@ fn test_golden_historical_volatility_reference_values() {
 
 #[test]
 fn test_golden_keltner_reference_values() {
+    // "ema_period" is the published catalog contract (finding 05); this must be the key that
+    // actually drives the EMA base, not the "ma_period" the builder used to read instead.
     let out = run_vol(
         "keltner",
         &HashMap::from([
-            ("ma_period".to_string(), 5.0),
+            ("ema_period".to_string(), 5.0),
             ("atr_period".to_string(), 5.0),
             ("multiplier".to_string(), 2.0),
         ]),
@@ -255,6 +257,56 @@ fn test_golden_keltner_reference_values() {
         expected("keltner5_lower"),
         tol,
         "Keltner lower",
+    );
+}
+
+/// Finding 05: "ma_period" is accepted as a legacy alias for "ema_period" and must drive the same
+/// EMA base, producing the same reference values as the canonical key.
+#[test]
+fn test_golden_keltner_legacy_ma_period_alias_matches_canonical() {
+    let canonical = run_vol(
+        "keltner",
+        &HashMap::from([
+            ("ema_period".to_string(), 5.0),
+            ("atr_period".to_string(), 5.0),
+            ("multiplier".to_string(), 2.0),
+        ]),
+    )
+    .expect("Keltner produced no output");
+    let via_alias = run_vol(
+        "keltner",
+        &HashMap::from([
+            ("ma_period".to_string(), 5.0),
+            ("atr_period".to_string(), 5.0),
+            ("multiplier".to_string(), 2.0),
+        ]),
+    )
+    .expect("Keltner produced no output");
+
+    assert_eq!(canonical.value, via_alias.value);
+    assert_eq!(canonical.extra["upper"], via_alias.extra["upper"]);
+    assert_eq!(canonical.extra["lower"], via_alias.extra["lower"]);
+}
+
+/// A registry-built Keltner with a non-default `ema_period` must diverge from the catalog default
+/// (period 20): this is the direct reproduction from finding 05 of the parameter being silently
+/// ignored (previously `ema_period` had no effect because the builder read `ma_period`).
+#[test]
+fn test_golden_keltner_ema_period_actually_changes_output() {
+    let short = run_vol(
+        "keltner",
+        &HashMap::from([
+            ("ema_period".to_string(), 5.0),
+            ("atr_period".to_string(), 5.0),
+        ]),
+    )
+    .expect("Keltner produced no output");
+    let default_period = run_vol("keltner", &HashMap::from([("atr_period".to_string(), 5.0)]))
+        .expect("Keltner produced no output");
+
+    assert_ne!(
+        short.value, default_period.value,
+        "ema_period=5 must not silently fall back to the default period-20 basis"
     );
 }
 

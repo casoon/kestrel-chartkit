@@ -59,21 +59,24 @@ fn nearest_fib_distance(ratio: f64) -> f64 {
 /// shortest of waves 1/3/5, and wave 4 never enters wave 1's price territory. Returns `None` if
 /// `nodes` does not have exactly 6 alternating entries.
 pub fn validate_impulse(nodes: &[ZigZagNode]) -> Option<ImpulseValidation> {
-    if nodes.len() != 6 {
+    let [node0, node1, node2, node3, node4, node5] = nodes else {
         return None;
-    }
-    if nodes.windows(2).any(|p| p[0].is_high == p[1].is_high) {
+    };
+    if nodes.windows(2).any(|p| match p {
+        [a, b] => a.is_high == b.is_high,
+        _ => false,
+    }) {
         return None;
     }
 
-    let bullish = nodes[1].price > nodes[0].price;
+    let bullish = node1.price > node0.price;
     let (w0, w1, w2, w3, w4, w5) = (
-        nodes[0].price,
-        nodes[1].price,
-        nodes[2].price,
-        nodes[3].price,
-        nodes[4].price,
-        nodes[5].price,
+        node0.price,
+        node1.price,
+        node2.price,
+        node3.price,
+        node4.price,
+        node5.price,
     );
 
     let mut violations = Vec::new();
@@ -135,22 +138,20 @@ pub fn validate_impulse(nodes: &[ZigZagNode]) -> Option<ImpulseValidation> {
 /// Flat (B exceeds the start of the move that preceded A). Returns `None` if `nodes` does not
 /// have exactly 4 alternating entries.
 pub fn validate_correction(nodes: &[ZigZagNode]) -> Option<CorrectionValidation> {
-    if nodes.len() != 4 {
+    let [node0, node1, node2, node3] = nodes else {
         return None;
-    }
-    if nodes.windows(2).any(|p| p[0].is_high == p[1].is_high) {
+    };
+    if nodes.windows(2).any(|p| match p {
+        [a, b] => a.is_high == b.is_high,
+        _ => false,
+    }) {
         return None;
     }
 
-    let bearish_correction = nodes[1].price > nodes[0].price; // 0->A moves down within an uptrend correction, etc.; use magnitude only
+    let bearish_correction = node1.price > node0.price; // 0->A moves down within an uptrend correction, etc.; use magnitude only
     let _ = bearish_correction;
 
-    let (n0, a, b, c) = (
-        nodes[0].price,
-        nodes[1].price,
-        nodes[2].price,
-        nodes[3].price,
-    );
+    let (n0, a, b, c) = (node0.price, node1.price, node2.price, node3.price);
     let leg_a = (a - n0).abs();
     let leg_b_retrace = if leg_a > 0.0 {
         (b - a).abs() / leg_a

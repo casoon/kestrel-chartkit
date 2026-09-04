@@ -26,7 +26,7 @@ pub fn kmeans_1d(values: &[f64], k: usize, max_iterations: usize) -> Option<KMea
     }
 
     let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(f64::total_cmp);
     let mut centroids: Vec<f64> = (0..k)
         .map(|i| {
             let idx = if k == 1 {
@@ -34,7 +34,7 @@ pub fn kmeans_1d(values: &[f64], k: usize, max_iterations: usize) -> Option<KMea
             } else {
                 i * (sorted.len() - 1) / (k - 1)
             };
-            sorted[idx]
+            sorted.get(idx).copied().unwrap_or(0.0)
         })
         .collect();
 
@@ -55,21 +55,29 @@ pub fn kmeans_1d(values: &[f64], k: usize, max_iterations: usize) -> Option<KMea
                     best = c_idx;
                 }
             }
-            if assignments[i] != best {
-                changed = true;
+            if let Some(assign_ref) = assignments.get_mut(i) {
+                if *assign_ref != best {
+                    changed = true;
+                    *assign_ref = best;
+                }
             }
-            assignments[i] = best;
         }
 
         let mut sums = vec![0.0; k];
         let mut counts = vec![0usize; k];
         for (i, &v) in values.iter().enumerate() {
-            sums[assignments[i]] += v;
-            counts[assignments[i]] += 1;
+            let cluster_idx = assignments.get(i).copied().unwrap_or(0);
+            if let (Some(s), Some(cnt)) = (sums.get_mut(cluster_idx), counts.get_mut(cluster_idx)) {
+                *s += v;
+                *cnt += 1;
+            }
         }
         for c in 0..k {
-            if counts[c] > 0 {
-                centroids[c] = sums[c] / counts[c] as f64;
+            let cnt = counts.get(c).copied().unwrap_or(0);
+            if cnt > 0 {
+                if let (Some(centroid), Some(&sum)) = (centroids.get_mut(c), sums.get(c)) {
+                    *centroid = sum / cnt as f64;
+                }
             }
         }
 

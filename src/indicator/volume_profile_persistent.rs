@@ -166,7 +166,8 @@ impl PersistentVolumeProfileEngine {
         let buy_per_bin = vol_per_bin * buy_frac;
         let sell_per_bin = vol_per_bin * sell_frac;
 
-        let mut contribution = Vec::with_capacity((end_key - start_key + 1) as usize);
+        let cap = usize::try_from(end_key - start_key + 1).unwrap_or(0);
+        let mut contribution = Vec::with_capacity(cap);
         for key in start_key..=end_key {
             let entry = self.bins.entry(key).or_insert(BinLifecycle {
                 volume: 0.0,

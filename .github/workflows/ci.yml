@@ -41,3 +41,6 @@ jobs:
 
       - name: Verify Package Metadata
         run: cargo package --allow-dirty
+
+      - name: Strict Rustdoc Build
+        run: RUSTDOCFLAGS='-D warnings' cargo doc --all-features --no-deps

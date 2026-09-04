@@ -105,8 +105,8 @@ impl Timeframe {
                 let month_index = i64::from(year) * 12 + i64::from(month) - 1;
                 let width = i64::from(v);
                 let start_index = month_index.div_euclid(width) * width;
-                let start_year = start_index.div_euclid(12) as i32;
-                let start_month = start_index.rem_euclid(12) as u32 + 1;
+                let start_year = i32::try_from(start_index.div_euclid(12)).unwrap_or(1970);
+                let start_month = u32::try_from(start_index.rem_euclid(12)).unwrap_or(0) + 1;
                 days_from_civil(start_year, start_month, 1) * SECONDS_PER_DAY
             }
         };
@@ -130,7 +130,11 @@ fn civil_from_days(days: i64) -> (i32, u32, u32) {
     let day = doy - (153 * mp + 2) / 5 + 1;
     let month = mp + if mp < 10 { 3 } else { -9 };
     year += i64::from(month <= 2);
-    (year as i32, month as u32, day as u32)
+    (
+        i32::try_from(year).unwrap_or(1970),
+        u32::try_from(month).unwrap_or(1),
+        u32::try_from(day).unwrap_or(1),
+    )
 }
 
 fn days_from_civil(year: i32, month: u32, day: u32) -> i64 {

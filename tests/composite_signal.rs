@@ -23,8 +23,8 @@ fn test_composite_signal_generation() {
             price,
             1000.0,
         );
-        let _ = rsi.on_bar(&bar);
-        let _ = macd.on_bar(&bar);
+        rsi.on_bar(&bar);
+        macd.on_bar(&bar);
         bars.push(bar);
     }
 

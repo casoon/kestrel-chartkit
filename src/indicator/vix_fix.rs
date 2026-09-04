@@ -7,8 +7,6 @@ use crate::model::Bar;
 /// Williams VIX Fix Advanced indicator.
 /// Measures market synthetic fear/volatility spikes to identify market bottoms.
 pub struct WilliamsVixFix {
-    #[allow(dead_code)]
-    pd: usize,
     bband_len: usize,
     mult: f64,
 
@@ -21,7 +19,6 @@ pub struct WilliamsVixFix {
 impl WilliamsVixFix {
     pub fn new(pd: usize, bband_len: usize, mult: f64) -> Self {
         Self {
-            pd,
             bband_len,
             mult,
             close_window: ExtremeWindow::new(pd),
@@ -35,6 +32,14 @@ impl WilliamsVixFix {
 impl Indicator for WilliamsVixFix {
     fn name(&self) -> &str {
         "vix_fix"
+    }
+
+    fn warmup_period(&self) -> usize {
+        // Two nested `bband_len`-sized windows gate the first output: `self.sma` must fill
+        // first (bband_len calls), and only once it does does `wvf_window` start accumulating
+        // towards its own `bband_len` (see the two gates in `on_bar`) -- so the first non-`None`
+        // output only arrives after roughly twice `bband_len` bars, not after one.
+        self.bband_len.saturating_mul(2).saturating_sub(1)
     }
 
     fn reset(&mut self) {
@@ -105,4 +110,39 @@ pub fn build_vix_fix(params: &HashMap<String, f64>) -> WilliamsVixFix {
     let bband_len = params.get("bband_len").copied().unwrap_or(20.0) as usize;
     let mult = params.get("mult").copied().unwrap_or(2.0);
     WilliamsVixFix::new(pd, bband_len, mult)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Bar;
+
+    /// `warmup_period()` previously defaulted to 0 (never overridden), which was silently wrong:
+    /// two nested `bband_len`-sized windows (`sma`, then `wvf_window`) must each fill before the
+    /// first output, so the real warmup is close to `2 * bband_len`. This was only caught once
+    /// `vix_fix` became reachable from `catalog()` (finding 04) and the generic warmup-contract
+    /// robustness test exercised it.
+    #[test]
+    fn test_warmup_period_matches_first_non_none_output() {
+        let bband_len = 5;
+        let mut ind = WilliamsVixFix::new(3, bband_len, 2.0);
+        let declared_warmup = ind.warmup_period();
+
+        let mut first_some_index = None;
+        for i in 0..40 {
+            let price = 100.0 + (i as f64 * 0.37).sin() * 3.0;
+            let bar = Bar::new(i, price + 1.0, price + 1.5, price - 1.5, price, 100.0);
+            if ind.on_bar(&bar).is_some() && first_some_index.is_none() {
+                first_some_index = Some(i as usize);
+            }
+        }
+
+        let first_some_index = first_some_index.expect("expected an output within 40 bars");
+        assert!(
+            declared_warmup >= first_some_index,
+            "declared warmup_period {declared_warmup} understates the actual first output at bar {first_some_index}"
+        );
+        // The declared warmup should be a tight bound, not a wildly conservative one.
+        assert!(declared_warmup - first_some_index <= 1);
+    }
 }

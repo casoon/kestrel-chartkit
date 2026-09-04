@@ -224,9 +224,14 @@ pub fn golden_value(fixture_text: &str, key: &str) -> f64 {
 }
 
 /// Vergleicht zwei Werte auf eine feste Toleranz, mit sprechender Fehlermeldung.
+///
+/// Panics (via the internal `assert!`) on mismatch, so callers must not additionally wrap this in
+/// `assert!(...)`: doing so only ever observes `true`, since a `false` case already panicked here
+/// first (finding 07, problem B) -- that outer wrapper added ceremony without adding coverage.
 pub fn assert_close(actual: f64, expected: f64, tolerance: f64, label: &str) {
+    let ok = (actual - expected).abs() <= tolerance;
     assert!(
-        (actual - expected).abs() <= tolerance,
+        ok,
         "{label}: got {actual}, expected {expected} ± {tolerance}"
     );
 }

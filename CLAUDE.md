@@ -24,8 +24,6 @@
 - Golden-Reference-Fixtures werden nach Indikator-Gruppe aufgeteilt gepflegt
   (`tests/golden_reference_<gruppe>.rs` + `tests/fixtures/golden_<gruppe>.txt`), nicht als eine
   wachsende Sammeldatei.
-- Bestehende Indikatoren ohne Golden-/Szenario-Abdeckung sind ein aktives, in
-  `plan/golden-reference-backlog.md` geführtes Nachrüst-Ziel, nicht dauerhaft ausgenommen.
 - Diese Regel ist bis auf Weiteres eigenständig in `CLAUDE.md` maßgeblich; sobald
   `plan/review-prozess.md` Phase 3 angepasst wird, übernimmt sie diesen Wortlaut, statt ihn neu
   zu formulieren.
