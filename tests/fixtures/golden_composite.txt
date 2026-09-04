@@ -1,0 +1,61 @@
+# kestrel-chartkit golden reference fixture: composite scores (Welle 2b)
+#
+# Anti-Zirkularitaets-Nachweis:
+# Alle Werte sind transparent aus den dokumentierten Kombinationsformeln und den
+# unabhaengig bestaetigten Sub-Indikator-Komponenten abgeleitet:
+#
+# 1. Trend Quality Score (period=5):
+#    Formel: Score = Direction * Efficiency * Strength * Participation * 100
+#    Fuer lineare Testserie p_i = 44.0 + 0.1*i (Close = Open = p_i, H = p_i+0.5, L = p_i-0.5, Vol = 1000):
+#      - Direction: Slope > 0 => +1.0
+#      - Efficiency (len=5): Sum(|Diff|)/Sum(TR) = 0.5 / 0.5 = 1.0
+#      - ADX (period=5): DI+ = DI- = 0 (symmetric high/low moves) => DX = 0.0 => ADX = 0.0
+#        Wait: Bei symmetrischer linearer Serie up_move = 0.1, down_move = -0.1 => plus_dm = 0.1, minus_dm = 0
+#        plus_di = 100%, minus_di = 0% => DX = 100% => ADX = 100% => Strength = min(100/50, 1.0) = 1.0
+#      - Participation: RVOL = 1.0 => clamp(1.0 / 2.0, 0.2, 1.0) = 0.5
+#    Erwarteter Score: (+1.0) * (1.0) * (1.0) * (0.5) * 100 = 50.0
+trend_quality5_direction=1.0
+trend_quality5_efficiency=1.0
+trend_quality5_strength=1.0
+trend_quality5_participation=0.5
+trend_quality5_score=50.0
+
+# 2. Buy/Sell Pressure (period=5):
+#    Fuer symmetrische Kerzen (Open=Close=p, High=p+0.5, Low=p-0.5):
+#      - Range = High - Low = 1.0
+#      - Location = (2.0 * (Close - Low) / Range) - 1.0 = (2.0 * 0.5 / 1.0) - 1.0 = 0.0
+#      - Lower Wick = Upper Wick = 0.5 => Wick Balance = (0.5 - 0.5) / 1.0 = 0.0
+#      - Raw Pressure = (0.0 * 0.6 + 0.0 * 0.4) * 100 = 0.0
+#      - Smoothed Pressure (EMA5 of 0.0) = 0.0
+#    Fuer Bullish Hammer Extremszenario (Open=Close=High=100.0, Low=90.0, Range=10.0):
+#      - Location = (2.0 * 10.0 / 10.0) - 1.0 = +1.0
+#      - Lower Wick = 10.0, Upper Wick = 0.0 => Wick Balance = 10.0 / 10.0 = +1.0
+#      - Raw Pressure = (1.0 * 0.6 + 1.0 * 0.4) * 100 = 100.0
+buy_sell_pressure5_neutral=0.0
+buy_sell_pressure_bullish_hammer=100.0
+
+# 3. Volatility Regime (period=5):
+#    Fuer stetige lineare Serie mit Volatilitat stddev = sqrt(2)*0.1 ~ 0.1414, ATR = 1.0:
+#      - BB Upper = Basis + 2.0*0.1414 = Basis + 0.2828
+#      - BB Lower = Basis - 2.0*0.1414 = Basis - 0.2828
+#      - KC Upper = Basis + 1.5*1.0 = Basis + 1.50
+#      - KC Lower = Basis - 1.5*1.0 = Basis - 1.50
+#      - BB liegt komplett innerhalb KC => Squeeze => State = -1.0
+volatility_regime5_squeeze_state=-1.0
+
+# 4. Multi-Factor Market Score (period=5):
+#    Kombinationsformel: Raw = 0.35 * Trend + 0.25 * RSI + 0.40 * Pressure
+#    Dampen during Squeeze: Final = Raw * 0.5
+#    Komponenten fuer lineare Serie:
+#      - Trend = 50.0 / 100 = 0.50
+#      - RSI = 100.0 => (100 - 50) / 50 = +1.0
+#      - Pressure = 0.0 / 100 = 0.0
+#      - Raw = 0.35 * 0.50 + 0.25 * 1.0 + 0.40 * 0.0 = 0.175 + 0.25 = 0.425
+#      - Da Squeeze aktiv (State = -1.0): Final = 0.425 * 0.5 = 0.2125
+multi_factor5_trend_factor=0.50
+multi_factor5_rsi_factor=1.0
+multi_factor5_pressure_factor=0.0
+multi_factor5_vol_state=-1.0
+multi_factor5_final_score=0.2125
+
+composite_tolerance=0.000000001

@@ -1,0 +1,32 @@
+# kestrel-chartkit golden reference fixture: volume-based indicators
+# VWAP follows sum(typical_price * volume) / sum(volume).
+# Volume Profile values pin the documented deterministic 10-bin implementation.
+vwap_two_bar=107.5
+vwap_tolerance=0.000000000001
+vpoc_three_bar=98.2
+vah_three_bar=100.8
+val_three_bar=98.0
+volume_profile_tolerance=0.000000000001
+
+acc_dist_last=0.0
+anchored_vwap_last=45.80728571428571
+cmf5_last=0.0
+cvd_last=0.0
+eom5_last=-0.67248366013072
+ext_vpoc=45.936499999999995
+ext_vah=46.4715
+ext_val=45.40149999999999
+hires_flow_last=0.0
+klinger_line=-14710.111736023853
+klinger_signal=-7161.671583472488
+nvi_last=1000.0
+
+obv_last=2400.0
+pers_vpoc=45.5
+pvi_last=1029.3188994136221
+rvol5_last=1.1111111111111112
+volume_last=2000.0
+volume_avg5=1800.0
+volume_tolerance=0.000000001
+
+

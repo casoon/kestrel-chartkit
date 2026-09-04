@@ -1,0 +1,21 @@
+# kestrel-chartkit golden reference fixture: moving-average family
+# Reference values independently derived (Python re-implementation of the documented
+# recursion, not read off the crate's own output) for the 10-bar close series
+# [10, 11, 12, 11, 13, 14, 13, 15, 16, 15], period=5:
+#   SMA5 = mean of the last 5 closes.
+#   EMA5 = k=2/(period+1), seeded with the first close, recursed from bar 1 (this crate's
+#          convention: emission is withheld until `count >= period`, but the recursion itself
+#          starts at bar 1, not with an N-period SMA seed at bar N).
+#   WMA5 = linearly weighted over the current window, weight `period` on the most recent bar.
+sma5_last=14.6
+ema5_last=14.513387186912565
+wma5_last=14.933333333333334
+vwma5_last=14.6
+hma5_last=16.044444444444444
+dema5_last=15.43963487950685
+kama5_last=14.554043488814198
+tema5_last=15.569425392470656
+lsma5_last=15.6
+mcginley5_last=11.786474782982436
+ma_tolerance=0.000000001
+

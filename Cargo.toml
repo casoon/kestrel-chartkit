@@ -1,0 +1,23 @@
+[package]
+name = "kestrel-chartkit"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Rust technical analysis library for indicator math, market regime classification, composite scoring, and SVG visualization."
+license = "BUSL-1.1"
+repository = "https://github.com/casoon/kestrel-chartkit"
+keywords = ["trading", "technical-analysis", "indicators", "charting", "signals"]
+categories = ["finance", "visualization"]
+readme = "README.md"
+rust-version = "1.87"
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["std"], optional = true }
+chrono-tz = { version = "0.10.4", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+# IANA timezone/DST-aware exchange calendars (src/calendar.rs). Optional: the core crate has no
+# timezone-database dependency unless this is enabled.
+calendar = ["dep:chrono", "dep:chrono-tz"]

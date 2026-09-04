@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test & Verification Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cargo Format Check
+        run: cargo fmt --all -- --check
+
+      - name: Cargo Clippy Check
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run All Workspace Tests
+        run: cargo test --all-features
+
+      - name: Check Without Default Features
+        run: cargo check --no-default-features
+
+      - name: Run Golden Reference Fixture Tests
+        run: |
+          for f in tests/golden_reference_*.rs; do
+            cargo test --test "$(basename "$f" .rs)"
+          done
+
+      - name: Verify Package Metadata
+        run: cargo package --allow-dirty
