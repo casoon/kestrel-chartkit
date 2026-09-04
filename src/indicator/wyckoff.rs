@@ -96,7 +96,14 @@ impl WyckoffStateMachine {
             min_range_bars: min_range_bars.max(2),
             atr: Rma::new(14),
             prev_close: None,
-            volume_threshold: RollingRobustThreshold::new(range_lookback.max(20), 2.0),
+            // Must stay derived from the same `range_lookback` as the bar deque below: the deque
+            // gates when a range becomes lock-eligible (`bars.len() == self.range_lookback`), and
+            // the climax-driven bias assignment only fires if the volume-outlier window is warm
+            // by that same bar. A separately floored window here (e.g. a hardcoded minimum higher
+            // than `range_lookback`) would make the range lock-eligible before climax detection is
+            // armed, silently forcing every small-`range_lookback` configuration onto the
+            // non-climax fallback bias path regardless of actual volume behavior.
+            volume_threshold: RollingRobustThreshold::new(range_lookback, 2.0),
             bars: VecDeque::with_capacity(range_lookback),
             bars_in_range: 0,
             range_high: f64::MIN,

@@ -48,6 +48,80 @@ fn test_scenario_bos_choch() {
     );
 }
 
+#[test]
+fn test_scenario_bos_choch_synthetic_bearish() {
+    use kestrel_chartkit::synthetic::{bos_choch_swing_bars, SwingDirection};
+
+    let mut ind = build_checked(
+        "bos_choch",
+        &HashMap::from([("pivot_len".to_string(), 2.0)]),
+    )
+    .unwrap();
+
+    let bars = bos_choch_swing_bars(42, SwingDirection::Bearish, 2);
+    let mut event_codes = Vec::new();
+    let mut notes = Vec::new();
+
+    for qb in &bars {
+        if let Some(out) = ind.on_bar(&qb.bar) {
+            event_codes.push(out.value);
+            for a in ind.alerts() {
+                if a.kind == "structure_break" {
+                    notes.push(a.note);
+                }
+            }
+        }
+    }
+
+    assert!(
+        event_codes.contains(&-2.0),
+        "Synthetic Bearish swing sequence must trigger Bearish CHoCH (-2.0)"
+    );
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.contains("Bearish Change of Character (CHoCH)")),
+        "Must emit Bearish CHoCH alert"
+    );
+}
+
+#[test]
+fn test_scenario_bos_choch_synthetic_bullish() {
+    use kestrel_chartkit::synthetic::{bos_choch_swing_bars, SwingDirection};
+
+    let mut ind = build_checked(
+        "bos_choch",
+        &HashMap::from([("pivot_len".to_string(), 2.0)]),
+    )
+    .unwrap();
+
+    let bars = bos_choch_swing_bars(42, SwingDirection::Bullish, 2);
+    let mut event_codes = Vec::new();
+    let mut notes = Vec::new();
+
+    for qb in &bars {
+        if let Some(out) = ind.on_bar(&qb.bar) {
+            event_codes.push(out.value);
+            for a in ind.alerts() {
+                if a.kind == "structure_break" {
+                    notes.push(a.note);
+                }
+            }
+        }
+    }
+
+    assert!(
+        event_codes.contains(&2.0),
+        "Synthetic Bullish swing sequence must trigger Bullish CHoCH (2.0)"
+    );
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.contains("Bullish Change of Character (CHoCH)")),
+        "Must emit Bullish CHoCH alert"
+    );
+}
+
 // ============================================================================
 // 2. Candle Story (Pinbars, Kangaroo Tails, Engulfing Patterns)
 // ============================================================================
@@ -494,6 +568,90 @@ fn test_scenario_wyckoff() {
             .iter()
             .any(|k| k == "wyckoff_lastpointofsupply" || k == "wyckoff_lastpointofsupport"),
         "Must emit Wyckoff Phase E confirmation alert (LPS / LPSY)"
+    );
+}
+
+#[test]
+fn test_scenario_wyckoff_synthetic_accumulation() {
+    use kestrel_chartkit::indicator::wyckoff::WyckoffBias;
+    use kestrel_chartkit::synthetic::{wyckoff_schematic_bars, WyckoffGeneratorConfig};
+
+    let mut ind = build_checked(
+        "wyckoff",
+        &HashMap::from([
+            ("range_lookback".to_string(), 20.0),
+            ("range_atr_max".to_string(), 5.0),
+            ("min_range_bars".to_string(), 3.0),
+        ]),
+    )
+    .unwrap();
+
+    let bars = wyckoff_schematic_bars(
+        123,
+        WyckoffBias::Accumulation,
+        WyckoffGeneratorConfig::default(),
+    );
+
+    let mut final_phase = 0.0;
+    let mut alerts = Vec::new();
+    for qb in &bars {
+        if let Some(out) = ind.on_bar(&qb.bar) {
+            final_phase = out.value;
+            for a in ind.alerts() {
+                alerts.push(a.kind);
+            }
+        }
+    }
+
+    assert_eq!(
+        final_phase, 5.0,
+        "Wyckoff Accumulation sequence must reach Phase E (5.0)"
+    );
+    assert!(
+        alerts.iter().any(|k| k == "wyckoff_lastpointofsupport"),
+        "Must emit Last Point of Support alert"
+    );
+}
+
+#[test]
+fn test_scenario_wyckoff_synthetic_distribution() {
+    use kestrel_chartkit::indicator::wyckoff::WyckoffBias;
+    use kestrel_chartkit::synthetic::{wyckoff_schematic_bars, WyckoffGeneratorConfig};
+
+    let mut ind = build_checked(
+        "wyckoff",
+        &HashMap::from([
+            ("range_lookback".to_string(), 20.0),
+            ("range_atr_max".to_string(), 5.0),
+            ("min_range_bars".to_string(), 3.0),
+        ]),
+    )
+    .unwrap();
+
+    let bars = wyckoff_schematic_bars(
+        123,
+        WyckoffBias::Distribution,
+        WyckoffGeneratorConfig::default(),
+    );
+
+    let mut final_phase = 0.0;
+    let mut alerts = Vec::new();
+    for qb in &bars {
+        if let Some(out) = ind.on_bar(&qb.bar) {
+            final_phase = out.value;
+            for a in ind.alerts() {
+                alerts.push(a.kind);
+            }
+        }
+    }
+
+    assert_eq!(
+        final_phase, 5.0,
+        "Wyckoff Distribution sequence must reach Phase E (5.0)"
+    );
+    assert!(
+        alerts.iter().any(|k| k == "wyckoff_lastpointofsupply"),
+        "Must emit Last Point of Supply alert"
     );
 }
 

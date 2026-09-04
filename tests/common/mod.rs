@@ -120,6 +120,74 @@ pub fn generate_nan_bars(count: usize) -> Vec<Bar> {
         .collect()
 }
 
+/// Delegiert an [`kestrel_chartkit::synthetic::random_walk_bars`] und gibt unqualifizierte [`Bar`]s zurück.
+pub fn generate_random_walk_bars(
+    seed: u64,
+    count: usize,
+    start_price: f64,
+    drift: f64,
+    volatility: f64,
+    volume: f64,
+) -> Vec<Bar> {
+    kestrel_chartkit::synthetic::random_walk_bars(
+        seed,
+        count,
+        start_price,
+        drift,
+        volatility,
+        volume,
+    )
+    .into_iter()
+    .map(|qb| qb.bar)
+    .collect()
+}
+
+/// Delegiert an [`kestrel_chartkit::synthetic::trending_bars`] und gibt unqualifizierte [`Bar`]s zurück.
+pub fn generate_trending_bars(
+    seed: u64,
+    count: usize,
+    start_price: f64,
+    trend_per_bar: f64,
+    noise: f64,
+    volume: f64,
+) -> Vec<Bar> {
+    kestrel_chartkit::synthetic::trending_bars(
+        seed,
+        count,
+        start_price,
+        trend_per_bar,
+        noise,
+        volume,
+    )
+    .into_iter()
+    .map(|qb| qb.bar)
+    .collect()
+}
+
+/// Delegiert an [`kestrel_chartkit::synthetic::wyckoff_schematic_bars`] und gibt unqualifizierte [`Bar`]s zurück.
+pub fn generate_wyckoff_schematic_bars(
+    seed: u64,
+    bias: kestrel_chartkit::indicator::wyckoff::WyckoffBias,
+    config: kestrel_chartkit::synthetic::WyckoffGeneratorConfig,
+) -> Vec<Bar> {
+    kestrel_chartkit::synthetic::wyckoff_schematic_bars(seed, bias, config)
+        .into_iter()
+        .map(|qb| qb.bar)
+        .collect()
+}
+
+/// Delegiert an [`kestrel_chartkit::synthetic::bos_choch_swing_bars`] und gibt unqualifizierte [`Bar`]s zurück.
+pub fn generate_bos_choch_swing_bars(
+    seed: u64,
+    direction: kestrel_chartkit::synthetic::SwingDirection,
+    pivot_len: usize,
+) -> Vec<Bar> {
+    kestrel_chartkit::synthetic::bos_choch_swing_bars(seed, direction, pivot_len)
+        .into_iter()
+        .map(|qb| qb.bar)
+        .collect()
+}
+
 /// Führt einen Indikator über eine Bar-Serie aus und sammelt alle Outputs.
 pub fn run_indicator<I: Indicator + ?Sized>(
     indicator: &mut I,
@@ -190,5 +258,25 @@ mod tests {
         let mut ind = PanickingIndicator;
         let bars = vec![Bar::new(1000, 100.0, 101.0, 99.0, 100.0, 1000.0)];
         assert_no_panic(&mut ind, &bars);
+    }
+
+    #[test]
+    fn test_synthetic_common_wrappers() {
+        let rw = generate_random_walk_bars(1, 10, 100.0, 0.0, 1.0, 100.0);
+        assert_eq!(rw.len(), 10);
+        let tr = generate_trending_bars(1, 10, 100.0, 1.0, 0.1, 100.0);
+        assert_eq!(tr.len(), 10);
+        let wy = generate_wyckoff_schematic_bars(
+            1,
+            kestrel_chartkit::indicator::wyckoff::WyckoffBias::Accumulation,
+            kestrel_chartkit::synthetic::WyckoffGeneratorConfig::default(),
+        );
+        assert!(!wy.is_empty());
+        let bc = generate_bos_choch_swing_bars(
+            1,
+            kestrel_chartkit::synthetic::SwingDirection::Bullish,
+            2,
+        );
+        assert_eq!(bc.len(), 6);
     }
 }

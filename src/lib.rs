@@ -64,6 +64,8 @@ pub mod signal;
 pub mod stats;
 /// Support and resistance discovery and zone lifecycle.
 pub mod structure;
+/// Deterministic synthetic price series and market pattern generators.
+pub mod synthetic;
 /// Custom timeframe types and OHLCV bar resampling.
 pub mod timeframe;
 /// Chart DTOs and static SVG rendering.
@@ -118,4 +120,8 @@ pub use session::{SessionConfig, SessionConfigError, SessionTracker};
 pub use signal::{CompositeSignal, PermissionGrade, SignalDirection, SubScore};
 pub use stats::{correlation, linear_regression};
 pub use structure::{find_sr_zones, ManagedZone, ZoneRegistry, ZoneState};
+pub use synthetic::{
+    bos_choch_swing_bars, random_walk_bars, trending_bars, wyckoff_schematic_bars, SimpleRng,
+    SwingDirection, WyckoffGeneratorConfig,
+};
 pub use timeframe::{BarResampler, ConfirmedResampler, Timeframe, TimeframeError};

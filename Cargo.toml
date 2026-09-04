@@ -1,6 +1,6 @@
 [package]
 name = "kestrel-chartkit"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "High-performance Rust technical analysis library for indicator math, market regime classification, composite scoring, and SVG visualization."
 license = "BUSL-1.1"
