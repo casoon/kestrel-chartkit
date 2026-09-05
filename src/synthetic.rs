@@ -580,3 +580,310 @@ mod tests {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Pattern constructors
+// ---------------------------------------------------------------------------
+//
+// The generators above answer "what does a market series look like". These answer the inverse
+// question: "which series contains *this* pattern, at *this* place". Documentation and teaching
+// material needs the inverse — a pattern is constructed on purpose rather than hunted for.
+//
+// They are deliberately calculation, not drawing: a renderer that assembled its own bars would be
+// a second source of truth next to the detectors that are supposed to confirm them.
+
+/// A single candle described by scale-free ratios instead of absolute prices.
+///
+/// A twenty-point wick is large at an ATR of thirty and irrelevant at four hundred. Candle
+/// definitions are therefore stated as ratios, and this struct is that statement made explicit —
+/// which also makes it invertible: [`bar_from_shape`] turns the condition back into a bar that
+/// satisfies it.
+///
+/// The three ratios describe how the range is divided and are normalised to sum to one, so
+/// `CandleShape { body_ratio: 2.0, upper_wick_ratio: 1.0, lower_wick_ratio: 1.0, .. }` and
+/// `{ 0.5, 0.25, 0.25 }` describe the same candle.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CandleShape {
+    /// `|close - open| / (high - low)`.
+    pub body_ratio: f64,
+    /// `(high - max(open, close)) / (high - low)`.
+    pub upper_wick_ratio: f64,
+    /// `(min(open, close) - low) / (high - low)`.
+    pub lower_wick_ratio: f64,
+    /// `(high - low) / atr` — how large the candle is relative to recent volatility.
+    pub relative_range: f64,
+    /// `close > open`.
+    pub bullish: bool,
+}
+
+impl CandleShape {
+    /// A candle with the given body ratio, the remaining range split evenly between the wicks.
+    pub fn with_body(body_ratio: f64, relative_range: f64, bullish: bool) -> Self {
+        let rest = (1.0 - body_ratio.clamp(0.0, 1.0)) / 2.0;
+        Self {
+            body_ratio: body_ratio.clamp(0.0, 1.0),
+            upper_wick_ratio: rest,
+            lower_wick_ratio: rest,
+            relative_range,
+            bullish,
+        }
+    }
+
+    /// The three range shares, normalised to sum to one.
+    ///
+    /// Returns an even three-way split for a degenerate all-zero input rather than dividing by
+    /// zero — a candle with no range is not expressible as OHLC anyway.
+    fn normalised(&self) -> (f64, f64, f64) {
+        let body = self.body_ratio.max(0.0);
+        let upper = self.upper_wick_ratio.max(0.0);
+        let lower = self.lower_wick_ratio.max(0.0);
+        let sum = body + upper + lower;
+        if sum <= f64::EPSILON {
+            return (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0);
+        }
+        (body / sum, upper / sum, lower / sum)
+    }
+}
+
+/// Builds the bar that satisfies a [`CandleShape`], opening at `open_price`.
+///
+/// This is the normalisation of the candle metrics read backwards. A "hammer" stops being a bar
+/// that happens to look like one and becomes the condition itself, solved for OHLC — which is what
+/// makes a documentation figure reproducible instead of drawn.
+///
+/// The bar opens at `open_price` so it can be appended to a running series; `atr` sets its size.
+pub fn bar_from_shape(
+    timestamp: i64,
+    shape: &CandleShape,
+    open_price: f64,
+    atr: f64,
+    volume: f64,
+) -> QualifiedBar {
+    let (body_ratio, upper_ratio, lower_ratio) = shape.normalised();
+    let range = (shape.relative_range * atr).max(f64::EPSILON);
+    let body = body_ratio * range;
+    let upper = upper_ratio * range;
+    let lower = lower_ratio * range;
+
+    let (open, high, low, close) = if shape.bullish {
+        let open = open_price;
+        let close = open + body;
+        (open, close + upper, open - lower, close)
+    } else {
+        let open = open_price;
+        let close = open - body;
+        (open, open + upper, close - lower, close)
+    };
+
+    synthetic_bar(timestamp, open, high, low, close, volume.max(0.0))
+}
+
+/// A turning point of a constructed series: the bar index it falls on and its price.
+///
+/// Whether it is a peak or a trough follows from its neighbours and is not stated separately —
+/// a pivot list that disagreed with itself about direction would be the first thing to go wrong.
+pub type Pivot = (usize, f64);
+
+/// How much of the room between a bar and the pivot it heads towards may be spent on that bar.
+///
+/// Below one, a bar cannot reach past the pivot it is approaching. The remaining slack keeps the
+/// margin visible rather than hairline.
+const PIVOT_PATH_BUDGET: f64 = 0.9;
+
+/// Upper bound on a bar's excursion in units of the local per-bar step, regardless of headroom.
+///
+/// Without it a long leg would grow ever larger bars towards its middle. Two and a half steps is
+/// roughly the ratio between bar range and bar-to-bar drift that an ordinary series shows.
+const PIVOT_PATH_MAX_STEPS: f64 = 2.5;
+
+/// Builds a bar series that passes through the given pivots, in order.
+///
+/// A chart pattern is a condition on consecutive pivots, so a series containing a given pattern is
+/// a pivot list: a head and shoulders is five pivots, a double top is three, a flag is an impulse
+/// plus a narrow counter-channel. This turns the pattern definition into the series that satisfies
+/// it, rather than searching for one.
+///
+/// Two properties hold by construction, and they are what a detector needs:
+///
+/// - the extreme of each pivot bar equals the pivot price exactly — the high at a peak, the low at
+///   a trough, with the body sitting on the inside;
+/// - no other bar between two pivots reaches past either of them.
+///
+/// The second is bought by scaling each bar to **its own distance from the nearer pivot**: a bar
+/// one step away from a peak may only be small, one in the middle of a leg may be large. A single
+/// global bound would have to assume the tightest spot everywhere and would draw a ruler instead
+/// of a chart. Without the property the series would contain a different pattern than the one it
+/// was built from — the one failure mode that goes unnoticed, because the picture still looks
+/// right.
+///
+/// `liveliness` runs from 0 (a clean path) to 1 (as much movement as the bound allows) and is
+/// clamped to that range. Pivot indices must be strictly increasing; anything else yields an empty
+/// series rather than a silently wrong one.
+pub fn bars_from_pivots(
+    seed: u64,
+    pivots: &[Pivot],
+    liveliness: f64,
+    volume: f64,
+) -> Vec<QualifiedBar> {
+    if pivots.len() < 2 || pivots.windows(2).any(|w| w[0].0 >= w[1].0) {
+        return Vec::new();
+    }
+
+    let lively = liveliness.clamp(0.0, 1.0);
+    let mut rng = SimpleRng::new(seed);
+    let last = pivots[pivots.len() - 1].0;
+    let mut bars = Vec::with_capacity(last + 1);
+    let mut segment = 0usize;
+
+    for i in 0..=last {
+        while segment + 1 < pivots.len() && i > pivots[segment + 1].0 {
+            segment += 1;
+        }
+        let (from_i, from_p) = pivots[segment];
+        let (to_i, to_p) = pivots[segment + 1];
+        let span = (to_i - from_i) as f64;
+        let step = (to_p - from_p).abs() / span;
+        let t = (i - from_i) as f64 / span;
+        let path = from_p + (to_p - from_p) * t;
+        let rising = to_p > from_p;
+
+        // Distance to the nearer of the two pivots, in bars. That distance is the headroom.
+        let distance = (i - from_i).min(to_i - i) as f64;
+        let room = (PIVOT_PATH_BUDGET * distance * step).min(PIVOT_PATH_MAX_STEPS * step) * lively;
+
+        let jitter = rng.next_gaussian().clamp(-1.0, 1.0) * room * 0.35;
+        let half_body = rng.next_range(0.35, 1.0) * room * 0.30;
+        let upper_wick = rng.next_f64() * room * 0.30;
+        let lower_wick = rng.next_f64() * room * 0.30;
+        let bar_volume = (volume + rng.next_range(-0.05, 0.05) * volume).max(0.0);
+
+        // The pivot bar has no headroom but still needs a body. It gets the one a bar a single
+        // step away would have, laid entirely on the inside.
+        let pivot_body = PIVOT_PATH_BUDGET * step * 0.35;
+        let (open, high, low, close) = match pivot_is_peak(pivots, i) {
+            Some(true) => (
+                path - pivot_body,
+                path,
+                path - pivot_body - lower_wick,
+                path - pivot_body * 0.4,
+            ),
+            Some(false) => (
+                path + pivot_body,
+                path + pivot_body + upper_wick,
+                path,
+                path + pivot_body * 0.4,
+            ),
+            None => {
+                let center = path + jitter;
+                let (open, close) = if rising {
+                    (center - half_body, center + half_body)
+                } else {
+                    (center + half_body, center - half_body)
+                };
+                (
+                    open,
+                    open.max(close) + upper_wick,
+                    open.min(close) - lower_wick,
+                    close,
+                )
+            }
+        };
+
+        bars.push(synthetic_bar(
+            i as i64 * 60,
+            open,
+            high,
+            low,
+            close,
+            bar_volume,
+        ));
+    }
+
+    bars
+}
+
+/// `Some(true)` if bar `i` is a peak pivot, `Some(false)` for a trough, `None` if it is neither.
+///
+/// The first and last pivot have only one neighbour; their direction follows from that side alone.
+fn pivot_is_peak(pivots: &[Pivot], i: usize) -> Option<bool> {
+    let at = pivots.iter().position(|(index, _)| *index == i)?;
+    let price = pivots[at].1;
+    let neighbour = if at == 0 {
+        pivots[1].1
+    } else {
+        pivots[at - 1].1
+    };
+    Some(price > neighbour)
+}
+
+/// The three ratios that distinguish one harmonic pattern from another.
+///
+/// The patterns do not differ in shape — every one of them is a five-point zigzag. They differ in
+/// these numbers, which is why a figure for them is worth generating from the same table the
+/// documentation prints rather than drawing twice.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HarmonicRatios {
+    /// How far B retraces the XA leg.
+    pub b: f64,
+    /// How far C retraces the AB leg.
+    pub c: f64,
+    /// Where D sits relative to XA — below one it stays inside XA, above one it extends past X.
+    pub d: f64,
+}
+
+impl HarmonicRatios {
+    /// Gartley: B at 0.618 of XA, D at 0.786 — the retracement case, D stays inside XA.
+    pub const GARTLEY: Self = Self {
+        b: 0.618,
+        c: 0.5,
+        d: 0.786,
+    };
+    /// Bat: a shallower B and a deeper D than Gartley, still a retracement.
+    pub const BAT: Self = Self {
+        b: 0.5,
+        c: 0.5,
+        d: 0.886,
+    };
+    /// Butterfly: D extends past X — the extension case.
+    pub const BUTTERFLY: Self = Self {
+        b: 0.786,
+        c: 0.5,
+        d: 1.27,
+    };
+}
+
+/// The five prices X, A, B, C, D of a harmonic structure, from its ratio table.
+///
+/// ```text
+/// B = A − b · (A − X)
+/// C = B + c · (A − B)
+/// D = A − d · (A − X)
+/// ```
+///
+/// Works in both directions: a bullish structure has `A > X`, a bearish one `A < X`, and the
+/// signs carry through unchanged.
+pub fn xabcd_prices(x: f64, a: f64, ratios: &HarmonicRatios) -> [f64; 5] {
+    let xa = a - x;
+    let b = a - ratios.b * xa;
+    let c = b + ratios.c * (a - b);
+    let d = a - ratios.d * xa;
+    [x, a, b, c, d]
+}
+
+/// The same five points as a pivot list at regular spacing, ready for [`bars_from_pivots`].
+///
+/// `spacing` is the number of bars between consecutive points. `start` shifts the whole structure
+/// so it can be placed inside a longer series.
+pub fn xabcd_pivots(
+    start: usize,
+    spacing: usize,
+    x: f64,
+    a: f64,
+    ratios: &HarmonicRatios,
+) -> Vec<Pivot> {
+    xabcd_prices(x, a, ratios)
+        .into_iter()
+        .enumerate()
+        .map(|(i, price)| (start + i * spacing.max(1), price))
+        .collect()
+}
