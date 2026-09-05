@@ -15,6 +15,7 @@ use super::candle_story::CandleStoryEngine;
 use super::cci::Cci;
 use super::chaikin_osc::ChaikinOscillatorEngine;
 use super::chandelier_exit::ChandelierExitEngine;
+use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
@@ -37,6 +38,7 @@ use super::momentum_indicators::{
     AwesomeOscillatorEngine, CmoEngine, ElderRayEngine, PpoEngine, RocEngine, StochasticEngine,
     UltimateOscillatorEngine,
 };
+use super::money_flow_profile::MoneyFlowProfileEngine;
 use super::moving_averages::{
     DemaEngine, EmaEngine, HmaEngine, KamaEngine, SmaEngine, VwmaEngine, WmaEngine,
 };
@@ -167,6 +169,18 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             default_params: [("length".to_string(), 22.0), ("atr_mult".to_string(), 3.0)].into(),
         },
         IndicatorCatalogEntry {
+            name: "chandelier_flip_radar",
+            description: "Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak flips, and bull/bear trap detection (use ChandelierFlipRadarEngine::new directly for use_close_extremes=false or simple_adaptive=true; this f64-only entry uses the Pine defaults for both)",
+            default_params: [
+                ("length".to_string(), 30.0),
+                ("atr_mult".to_string(), 4.5),
+                ("body_filter_atr".to_string(), 0.80),
+                ("danger_dist_atr".to_string(), 0.35),
+                ("warn_dist_atr".to_string(), 0.75),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
             name: "midas",
             description: "MIDAS launch-anchored curve with Topfinder/Bottomfinder projection (build_typed with mode=topfinder|bottomfinder)",
             default_params: [("maturity_bars".to_string(), 20.0)].into(),
@@ -256,6 +270,16 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             default_params: [
                 ("lookback".to_string(), 70.0),
                 ("num_bins".to_string(), 30.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "money_flow_profile",
+            description: "Volume-by-price profile binned by dollar volume (volume x price) instead of raw volume, plus an aggregate bull/bear flow-bias percentage",
+            default_params: [
+                ("lookback".to_string(), 200.0),
+                ("rows".to_string(), 25.0),
+                ("va_pct".to_string(), 0.70),
             ]
             .into(),
         },
@@ -695,6 +719,113 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
     ]
 }
 
+/// Der Wertebereich, in dem die Ausgabe eines Indikators liegt.
+///
+/// Eine Eigenschaft des Indikators, keine Darstellungsvorliebe: Ein RSI ist per Konstruktion auf
+/// `0..=100` begrenzt, ein MACD schwankt unbegrenzt um null. Ein Konsument, der eine Achse
+/// auslegt, braucht diese Angabe — ohne sie bildet er die Achse aus den zufälligen Extrema des
+/// gerade verwendeten Datensatzes und beschriftet Werte, die nichts bedeuten.
+///
+/// [`OutputRange::Unbounded`] ist die ehrliche Voreinstellung: Sie sagt, dass über den Bereich
+/// hier nichts erklärt wird — nicht, dass er unbegrenzt wäre.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum OutputRange {
+    /// Fest begrenzt: Der Wert kann den Bereich konstruktionsbedingt nicht verlassen.
+    Bounded { min: f64, max: f64 },
+    /// Nach beiden Seiten offen, aber um eine ausgezeichnete Mitte schwankend. Die Mittellinie
+    /// trägt die Aussage — ein MACD über null bedeutet etwas anderes als einer darunter.
+    Centered { center: f64 },
+    /// Nie negativ, nach oben offen: Spannen, Mengen, Verhältnisse.
+    NonNegative,
+    /// Über den Bereich wird nichts erklärt.
+    Unbounded,
+}
+
+/// Der Wertebereich der Ausgabe von `name`.
+///
+/// Deklariert wird nur, was sich aus der Konstruktion des Indikators ergibt. Der Rest bleibt
+/// [`OutputRange::Unbounded`] — eine Deklaration auf Verdacht wäre schlechter als keine, weil ein
+/// Konsument sie für bare Münze nimmt. `tests/output_range_invariants.rs` prüft jede Angabe hier
+/// gegen tatsächliche Läufe, damit sie nicht still veralten kann.
+pub fn output_range(name: &str) -> OutputRange {
+    // Auf 0..100 normierte Anteilsmaße. `williams_r` gehört hierher und nicht nach -100..0: die
+    // Implementierung rechnet `100 * (close - lowest_low) / range`, also in der aufsteigenden
+    // Konvention — was auch die Voreinstellungen `oversold: 20` / `overbought: 80` erklärt.
+    const PROZENT: OutputRange = OutputRange::Bounded {
+        min: 0.0,
+        max: 100.0,
+    };
+
+    match name {
+        "adx" | "choppiness" | "connors_rsi" | "efficiency" | "mfi" | "rsi"
+        | "stoch_rsi" | "stochastic" | "ultimate_oscillator" | "williams_r" => PROZENT,
+
+        // Auf -100..100 normierte Differenzmaße. `dmi` gehört hierher und nicht zu den
+        // Prozentmaßen: seine Hauptreihe ist `plus_di - minus_di`, die Differenz zweier
+        // 0..100-Werte — die einzelnen DI liegen als Nebenreihen darin. `aroon` ebenso: die
+        // Hauptreihe ist der Oszillator `up - down`, nicht eine der beiden Linien.
+        "aroon" | "cmo" | "dmi" | "tsi" => OutputRange::Bounded {
+            min: -100.0,
+            max: 100.0,
+        },
+
+        // Anteilsmaße mit Vorzeichen.
+        "bop" | "cmf" => OutputRange::Bounded {
+            min: -1.0,
+            max: 1.0,
+        },
+
+        // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
+        "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "elder_ray"
+        | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc" | "wavetrend"
+        | "zscore" => OutputRange::Centered { center: 0.0 },
+
+        // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
+        "atr" | "garman_klass" | "historical_volatility" | "mass_index" | "rvol" | "true_range"
+        | "vix_fix" | "volume" | "vortex" => OutputRange::NonNegative,
+
+        _ => OutputRange::Unbounded,
+    }
+}
+
+/// Die Parameter von `name`, die eine Schwelle im Wertebereich der Ausgabe bezeichnen.
+///
+/// Als Parameternamen statt als Zahlen: Die Schwelle folgt damit dem, was der Aufrufer eingestellt
+/// hat, statt eine zweite Wahrheit daneben zu führen. Ein Konsument, der die Ausgabe zeichnet,
+/// findet so die Linien, ohne die Bedeutung einzelner Parameter kennen zu müssen.
+pub fn threshold_params(name: &str) -> &'static [&'static str] {
+    match name {
+        "cci" | "fisher_transform" | "mfi" | "rsi" | "stoch_rsi" | "williams_r" => {
+            &["oversold", "overbought"]
+        }
+        "adx" => &["level_weak"],
+        "wavetrend" => &["os_level", "ob_level"],
+        _ => &[],
+    }
+}
+
+impl IndicatorCatalogEntry {
+    /// Siehe [`output_range`].
+    pub fn output_range(&self) -> OutputRange {
+        output_range(self.name)
+    }
+
+    /// Die Schwellenwerte dieses Eintrags, aufgelöst über seine Voreinstellungen.
+    ///
+    /// Aufsteigend sortiert, damit ein Zeichner sie ohne weitere Annahme von unten nach oben
+    /// abarbeiten kann.
+    pub fn thresholds(&self) -> Vec<f64> {
+        let mut werte: Vec<f64> = threshold_params(self.name)
+            .iter()
+            .filter_map(|p| self.default_params.get(*p).copied())
+            .filter(|v| v.is_finite())
+            .collect();
+        werte.sort_by(|a, b| a.partial_cmp(b).expect("filtered to finite values"));
+        werte
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RegistryError {
@@ -937,6 +1068,25 @@ pub fn build_checked(
             let atr_mult = get_f64_p(params, "atr_mult", 3.0, 0.01, 100.0)?;
             Ok(Box::new(ChandelierExitEngine::new(length, atr_mult)))
         }
+        "chandelier_flip_radar" | "chfr" => {
+            let length = get_usize_p(params, "length", 30, 1, 10000)?;
+            let atr_mult = get_f64_p(params, "atr_mult", 4.5, 0.01, 100.0)?;
+            let body_filter_atr = get_f64_p(params, "body_filter_atr", 0.80, 0.0, 100.0)?;
+            let danger_dist_atr = get_f64_p(params, "danger_dist_atr", 0.35, 0.0, 100.0)?;
+            let warn_dist_atr = get_f64_p(params, "warn_dist_atr", 0.75, 0.0, 100.0)?;
+            // `use_close_extremes`/`simple_adaptive` are Pine-default-fixed here (true/false) —
+            // this f64-only registry surface has no boolean parameter type; use
+            // `ChandelierFlipRadarEngine::new` directly to override them.
+            Ok(Box::new(ChandelierFlipRadarEngine::new(
+                length,
+                atr_mult,
+                true,
+                false,
+                body_filter_atr,
+                danger_dist_atr,
+                warn_dist_atr,
+            )))
+        }
         "midas" => {
             // Fixed Topfinder/Hlc3 via this f64-only entry point; use `build_typed` with `mode`
             // (ParamValue::Enum) and `source` to select Bottomfinder or another price source.
@@ -1016,6 +1166,14 @@ pub fn build_checked(
             let lookback = get_usize_p(params, "lookback", 70, 1, 10000)?;
             let num_bins = get_usize_p(params, "num_bins", 30, 1, 1000)?;
             Ok(Box::new(VolumeProfileEngine::new(lookback, num_bins)))
+        }
+        "money_flow_profile" | "mfp" => {
+            let lookback = get_usize_p(params, "lookback", 200, 1, 10000)?;
+            let rows = get_usize_p(params, "rows", 25, 1, 1000)?;
+            let va_pct = get_f64_p(params, "va_pct", 0.70, 0.0, 1.0)?;
+            Ok(Box::new(MoneyFlowProfileEngine::new(
+                lookback, rows, va_pct,
+            )))
         }
         "extended_volume_profile" | "vp_extended" => {
             let lookback = get_usize_p(params, "lookback", 70, 1, 10000)?;
@@ -1372,9 +1530,13 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "adx",
     "dmi",
     "chandelier_exit",
+    "chandelier_flip_radar",
+    "chfr",
     "wyckoff",
     "volume_profile",
     "vp",
+    "money_flow_profile",
+    "mfp",
     "extended_volume_profile",
     "vp_extended",
     "persistent_volume_profile",
@@ -1736,8 +1898,11 @@ fn build_trend_relationship_typed(
 /// list (rather than derived from the match arms at runtime) so `catalog()` is checked against a
 /// concrete, reviewable contract instead of only a minimum count. Aliases (e.g. "vp", "ob", "wvf")
 /// are deliberately excluded: they must remain buildable but are not separate catalog entries.
-#[cfg(test)]
-const CANONICAL_INDICATOR_NAMES: &[&str] = &[
+///
+/// Public (not `#[cfg(test)]`-gated) so tooling outside this crate's test suite — e.g.
+/// `examples/export_applicability.rs` — can iterate the same canonical name list rather than
+/// maintaining a second one.
+pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "rsi",
     "macd",
     "bollinger",
@@ -1747,6 +1912,7 @@ const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "mfi",
     "atr",
     "chandelier_exit",
+    "chandelier_flip_radar",
     "midas",
     "trend_relationship",
     "williams_r",
@@ -1757,6 +1923,7 @@ const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "market_structure_breaks",
     "pivots_structure",
     "volume_profile",
+    "money_flow_profile",
     "extended_volume_profile",
     "persistent_volume_profile",
     "vwap",
@@ -1855,8 +2022,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 89);
-        assert_eq!(catalog().len(), 89);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 91);
+        assert_eq!(catalog().len(), 91);
     }
 
     #[test]

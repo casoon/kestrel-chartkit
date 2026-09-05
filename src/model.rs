@@ -213,6 +213,153 @@ impl QualifiedBar {
     }
 }
 
+/// What a bar's `volume` field actually measures.
+///
+/// Volume-based indicators (VWAP, volume profile, CVD, ...) assume traded turnover. Many feeds
+/// cannot provide that: a CFD/FX broker's `volume` is typically tick/update count (activity, not
+/// turnover), and a cash index has no volume at all (it is a computed value, not a traded
+/// instrument). Declaring which kind a series has lets [`crate::applicability`] tell these cases
+/// apart instead of silently computing a profile/VWAP over the wrong quantity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum VolumeKind {
+    /// No volume data at all (e.g. a cash index).
+    None,
+    /// Update/tick count, not traded turnover (typical of CFD/FX broker feeds).
+    Tick,
+    /// Real traded turnover (shares, contracts, lots) as reported by an exchange.
+    RealTurnover,
+}
+
+/// Which part of the trading day a bar series covers.
+///
+/// Session-anchored indicators (VWAP anchors, opening-range pivots, ...) need to know whether a
+/// series is cut to the regular session, includes extended hours, or is a continuous (e.g. 24h
+/// FX/crypto) feed — anchors and session extremes land in different places depending on this.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum SessionKind {
+    /// Regular trading hours only.
+    Regular,
+    /// Includes pre-/post-market or overnight extensions.
+    Extended,
+    /// No session boundary at all (continuous trading, e.g. FX/crypto).
+    Continuous,
+}
+
+/// How a bar series was assembled across instrument/contract boundaries.
+///
+/// Futures contracts expire; a "continuous" series is stitched from consecutive contracts. Roll-
+/// sensitive indicators (structure/extreme detectors, seasonality) behave differently depending
+/// on whether the series is a single, never-rolled contract, or stitched — and if stitched,
+/// whether historical prices were shifted (back-adjusted) to remove roll gaps or left as-traded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum ContinuityKind {
+    /// A cash/spot instrument with no contract expiry at all.
+    Spot,
+    /// A single futures contract, never rolled.
+    SingleContract,
+    /// Stitched across contract rolls, left as-traded (roll gaps visible in the series).
+    StitchedUnadjusted,
+    /// Stitched across contract rolls, back-adjusted to remove roll gaps — historical price
+    /// levels are shifted and no longer the levels that were actually traded.
+    StitchedBackAdjusted,
+}
+
+/// Whether and how a price series was adjusted for corporate actions.
+///
+/// Structure/extreme detectors that reference historical price levels (pivots, Elliott rule
+/// checks, ...) assume those levels are the ones that were actually traded. Split/dividend
+/// adjustment shifts historical marks to different numbers than what traded at the time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum PriceAdjustment {
+    /// As-traded, unadjusted prices.
+    Raw,
+    /// Adjusted for stock splits only.
+    Split,
+    /// Adjusted for both splits and dividends.
+    SplitAndDividend,
+}
+
+/// Where a bar series originates.
+///
+/// `Synthetic` is a deliberate, distinct origin (not lumped in with `Broker`) so
+/// deterministically generated series (e.g. this crate's own synthetic-bar generator, or a public
+/// learning-path project built entirely on synthetic data) are recognizable as such rather than
+/// mistaken for a real feed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum Provenance {
+    /// Directly from an exchange feed.
+    Exchange,
+    /// From a broker (e.g. CFD/FX market maker) rather than the exchange itself.
+    Broker,
+    /// Deterministically generated, not observed from any real market.
+    Synthetic,
+}
+
+/// Coarse liquidity classification of a series.
+///
+/// Indicators that need market depth to be meaningful (e.g. liquidity-pool detection) degrade on
+/// thin markets: the same calculation runs, but the result carries less information.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum LiquidityTier {
+    Deep,
+    Normal,
+    Thin,
+    /// Not classified/estimated.
+    Unknown,
+}
+
+/// Describes what a bar series *is* and where it came from, for the plausibility check in
+/// [`crate::applicability`]. Accompanies a series as metadata (not per-[`Bar`], to avoid
+/// per-bar storage/cache cost) — see that module's `check_applicability` for how this is matched
+/// against an indicator's [`crate::applicability::DataRequirements`].
+///
+/// Deliberately has no `Default` impl: every field materially changes the applicability verdict,
+/// and there is no single "neutral" combination that would not silently misrepresent a real
+/// series. Construct it explicitly for the series at hand.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SeriesCapabilities {
+    pub volume: VolumeKind,
+    /// Whether classified individual trades (buy/sell direction) are available, as opposed to
+    /// only aggregate OHLCV bars.
+    pub trade_direction: bool,
+    pub session: SessionKind,
+    pub continuity: ContinuityKind,
+    pub price_adjustment: PriceAdjustment,
+    pub provenance: Provenance,
+    pub liquidity_tier: LiquidityTier,
+}
+
 /// Generic OHLCV Bar data point.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

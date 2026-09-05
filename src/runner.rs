@@ -8,7 +8,7 @@
 //! function of the indicator + bar slice, safe to call repeatedly for replay).
 
 use crate::indicator::{Indicator, IndicatorOutput};
-use crate::model::{Bar, BarValidationError};
+use crate::model::{Bar, BarValidationError, SeriesCapabilities};
 
 /// One entry of a batch/replay output series: the source bar's timestamp paired with the
 /// indicator's output for that bar (`None` while still inside the warmup period).
@@ -50,6 +50,41 @@ pub fn run_batch_checked<I: Indicator + ?Sized>(
         }
     }
     Ok(series)
+}
+
+/// Result of [`run_batch_with_applicability`]: the batch output series plus the applicability
+/// verdict for the indicator/series-capabilities pair it was computed for.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BatchResult {
+    pub series: Vec<TimestampedOutput>,
+    pub applicability: crate::applicability::Applicability,
+}
+
+/// Like [`run_batch`], but also attaches an [`crate::applicability::Applicability`] verdict for
+/// the named indicator against `capabilities`.
+///
+/// `run_batch`/`run_batch_checked` are generic over `I: Indicator` and never see the indicator's
+/// registry name, so they cannot look up its [`crate::applicability::DataRequirements`]
+/// themselves — hence this separate function that takes `name` explicitly, rather than a change
+/// to either existing function's signature.
+///
+/// The series is always computed, even when the verdict is
+/// [`crate::applicability::Applicability::Unsuitable`] — callers may legitimately want to see a
+/// `Degraded` result, and a batch caller can still act on `Unsuitable` since it is always present
+/// on [`BatchResult`], not silently dropped. This is what avoids the "computes and hides the
+/// warning" failure mode the applicability check exists to prevent.
+pub fn run_batch_with_applicability<I: Indicator + ?Sized>(
+    name: &str,
+    indicator: &mut I,
+    bars: &[Bar],
+    capabilities: &SeriesCapabilities,
+) -> BatchResult {
+    let requirements = crate::applicability::data_requirements(name);
+    let applicability = crate::applicability::check_applicability(&requirements, capabilities);
+    BatchResult {
+        series: run_batch(indicator, bars),
+        applicability,
+    }
 }
 
 #[cfg(test)]
@@ -109,5 +144,51 @@ mod tests {
         let (partial, err) = result.unwrap_err();
         assert_eq!(partial.len(), 2);
         assert_eq!(err, BarValidationError::NonFiniteValue);
+    }
+
+    fn real_volume_capabilities(volume: crate::model::VolumeKind) -> SeriesCapabilities {
+        use crate::model::{
+            ContinuityKind, LiquidityTier, PriceAdjustment, Provenance, SessionKind,
+        };
+        SeriesCapabilities {
+            volume,
+            trade_direction: false,
+            session: SessionKind::Regular,
+            continuity: ContinuityKind::SingleContract,
+            price_adjustment: PriceAdjustment::Raw,
+            provenance: Provenance::Exchange,
+            liquidity_tier: LiquidityTier::Deep,
+        }
+    }
+
+    #[test]
+    fn test_run_batch_with_applicability_is_applicable_with_real_volume() {
+        let bars = sample_bars(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut sma = SmaEngine::new(3);
+        let capabilities = real_volume_capabilities(crate::model::VolumeKind::RealTurnover);
+
+        let result = run_batch_with_applicability("vwap", &mut sma, &bars, &capabilities);
+
+        assert_eq!(result.series.len(), bars.len());
+        assert_eq!(
+            result.applicability,
+            crate::applicability::Applicability::Applicable
+        );
+    }
+
+    #[test]
+    fn test_run_batch_with_applicability_flags_unsuitable_but_still_computes() {
+        let bars = sample_bars(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut sma = SmaEngine::new(3);
+        let capabilities = real_volume_capabilities(crate::model::VolumeKind::Tick);
+
+        let result = run_batch_with_applicability("vwap", &mut sma, &bars, &capabilities);
+
+        // The series is still computed even though the verdict is Unsuitable.
+        assert_eq!(result.series.len(), bars.len());
+        assert!(matches!(
+            result.applicability,
+            crate::applicability::Applicability::Unsuitable { .. }
+        ));
     }
 }

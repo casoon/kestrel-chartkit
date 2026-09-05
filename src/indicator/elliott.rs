@@ -9,6 +9,7 @@
 //! Fibonacci-clean the retracements are — a rule checker and quality scorer, not a wave counter
 //! that discovers labelings on its own.
 
+use crate::model::SeriesCapabilities;
 use crate::stats::rolling_median;
 
 use super::price_levels::{swing_fibonacci_levels, PriceLevel};
@@ -36,6 +37,22 @@ pub struct ImpulseValidation {
     /// ratios (0.382/0.5/0.618): `1.0` = both land close to a standard ratio, decaying with
     /// distance from the nearest one.
     pub pullback_quality: f64,
+    /// Which series this validation was computed on, if the caller attached one via
+    /// [`ImpulseValidation::with_capabilities`]. `None` by default: a validation is only
+    /// meaningful for the series it was computed on (session cut, roll/adjustment, provenance —
+    /// see `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
+    /// mitführen"), so a stored/exported result should carry this rather than be re-checked
+    /// against a different series later without knowing it no longer applies.
+    pub series_capabilities: Option<SeriesCapabilities>,
+}
+
+impl ImpulseValidation {
+    /// Tags this validation with the series it was computed on. See
+    /// [`ImpulseValidation::series_capabilities`] for why this matters.
+    pub fn with_capabilities(mut self, capabilities: SeriesCapabilities) -> Self {
+        self.series_capabilities = Some(capabilities);
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -44,6 +61,17 @@ pub struct CorrectionValidation {
     pub valid: bool,
     pub violations: Vec<RuleViolation>,
     pub pullback_quality: f64,
+    /// See [`ImpulseValidation::series_capabilities`].
+    pub series_capabilities: Option<SeriesCapabilities>,
+}
+
+impl CorrectionValidation {
+    /// Tags this validation with the series it was computed on. See
+    /// [`ImpulseValidation::series_capabilities`] for why this matters.
+    pub fn with_capabilities(mut self, capabilities: SeriesCapabilities) -> Self {
+        self.series_capabilities = Some(capabilities);
+        self
+    }
 }
 
 fn nearest_fib_distance(ratio: f64) -> f64 {
@@ -130,6 +158,7 @@ pub fn validate_impulse(nodes: &[ZigZagNode]) -> Option<ImpulseValidation> {
         valid: violations.is_empty(),
         violations,
         pullback_quality,
+        series_capabilities: None,
     })
 }
 
@@ -205,6 +234,7 @@ pub fn validate_correction(nodes: &[ZigZagNode]) -> Option<CorrectionValidation>
         valid: violations.is_empty(),
         violations,
         pullback_quality,
+        series_capabilities: None,
     })
 }
 
@@ -426,5 +456,49 @@ mod tests {
         let median = memory.median_reaction(0.618).unwrap();
         assert!((median - 1.6).abs() < 0.2);
         assert_eq!(memory.observation_count(0.236), 1);
+    }
+
+    fn sample_capabilities() -> SeriesCapabilities {
+        SeriesCapabilities {
+            volume: crate::model::VolumeKind::RealTurnover,
+            trade_direction: false,
+            session: crate::model::SessionKind::Regular,
+            continuity: crate::model::ContinuityKind::SingleContract,
+            price_adjustment: crate::model::PriceAdjustment::Raw,
+            provenance: crate::model::Provenance::Exchange,
+            liquidity_tier: crate::model::LiquidityTier::Deep,
+        }
+    }
+
+    #[test]
+    fn test_impulse_validation_defaults_to_no_capabilities_and_can_be_tagged() {
+        let nodes = vec![
+            node(0, 100.0, false),
+            node(1, 120.0, true),
+            node(2, 110.0, false),
+            node(3, 140.0, true),
+            node(4, 130.0, false),
+            node(5, 150.0, true),
+        ];
+        let result = validate_impulse(&nodes).unwrap();
+        assert_eq!(result.series_capabilities, None);
+
+        let tagged = result.with_capabilities(sample_capabilities());
+        assert_eq!(tagged.series_capabilities, Some(sample_capabilities()));
+    }
+
+    #[test]
+    fn test_correction_validation_defaults_to_no_capabilities_and_can_be_tagged() {
+        let nodes = vec![
+            node(0, 150.0, true),
+            node(1, 130.0, false),
+            node(2, 141.0, true),
+            node(3, 100.0, false),
+        ];
+        let result = validate_correction(&nodes).unwrap();
+        assert_eq!(result.series_capabilities, None);
+
+        let tagged = result.with_capabilities(sample_capabilities());
+        assert_eq!(tagged.series_capabilities, Some(sample_capabilities()));
     }
 }

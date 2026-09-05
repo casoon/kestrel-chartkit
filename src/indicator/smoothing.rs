@@ -199,12 +199,15 @@ pub enum SmootherKind {
     Rma,
     Alma,
     Jma,
+    SuperSmoother,
+    Kama,
 }
 
 impl SmootherKind {
     /// Builds a boxed [`Smoother`] of this kind with `len` bars of lookback/decay, using common
-    /// Pine defaults for `Alma` (`offset = 0.85`, `sigma = 6.0`) and `Jma` (`phase = 0.0`,
-    /// `power = 2.0`). Use the concrete constructors directly to override those.
+    /// Pine defaults for `Alma` (`offset = 0.85`, `sigma = 6.0`), `Jma` (`phase = 0.0`,
+    /// `power = 2.0`) and `Kama` (Kaufman's own `fast_period = 2`, `slow_period = 30`). Use the
+    /// concrete constructors directly to override those.
     pub fn build(self, len: usize) -> Box<dyn Smoother> {
         match self {
             SmootherKind::Ema => Box::new(Ema::new(len)),
@@ -212,6 +215,8 @@ impl SmootherKind {
             SmootherKind::Rma => Box::new(Rma::new(len)),
             SmootherKind::Alma => Box::new(Alma::new(len, 0.85, 6.0)),
             SmootherKind::Jma => Box::new(Jma::new(len, 0.0, 2.0)),
+            SmootherKind::SuperSmoother => Box::new(SuperSmoother::new(len)),
+            SmootherKind::Kama => Box::new(Kama::with_defaults(len)),
         }
     }
 }
@@ -292,6 +297,27 @@ impl Smoother for Jma {
     }
     fn reset(&mut self) {
         Jma::reset(self)
+    }
+}
+
+impl Smoother for SuperSmoother {
+    fn update(&mut self, src: f64) -> Option<f64> {
+        Some(SuperSmoother::update(self, src))
+    }
+    fn reset(&mut self) {
+        SuperSmoother::reset(self)
+    }
+}
+
+impl Smoother for Kama {
+    fn update(&mut self, src: f64) -> Option<f64> {
+        Kama::update(self, src)
+    }
+    fn reset(&mut self) {
+        Kama::reset(self)
+    }
+    fn warmup_period(&self) -> usize {
+        self.period + 1
     }
 }
 
@@ -472,6 +498,129 @@ impl Jma {
     }
 }
 
+/// Ehlers' SuperSmoother (2-pole Butterworth low-pass filter) — ported from the sibling `kestrel`
+/// repo (`crates/core/src/indicators/smoothing.rs`, itself transcribed from
+/// `roc_advanced.pine`/`cci_advanced.pine`; see `kestrel/plan/kestrel-chartkit-migration.md` for
+/// the comparison that identified this as worth porting). Valid from the first sample: the
+/// missing `src[1]`/`ss[1]`/`ss[2]` terms on the first bars default to `0`, exactly like Pine's
+/// `nz(...)`, producing a short transient rather than a `None` warmup.
+#[derive(Debug, Clone)]
+pub struct SuperSmoother {
+    c1: f64,
+    c2: f64,
+    c3: f64,
+    prev_src: f64,
+    prev1: f64,
+    prev2: f64,
+}
+
+impl SuperSmoother {
+    pub fn new(len: usize) -> Self {
+        let len = len.max(1) as f64;
+        let a1 = (-1.414 * std::f64::consts::PI / len).exp();
+        let b1 = 2.0 * a1 * (1.414 * std::f64::consts::PI / len).cos();
+        let c2 = b1;
+        let c3 = -(a1 * a1);
+        let c1 = 1.0 - c2 - c3;
+        Self {
+            c1,
+            c2,
+            c3,
+            prev_src: 0.0,
+            prev1: 0.0,
+            prev2: 0.0,
+        }
+    }
+
+    pub fn update(&mut self, src: f64) -> f64 {
+        let ss =
+            self.c1 * (src + self.prev_src) / 2.0 + self.c2 * self.prev1 + self.c3 * self.prev2;
+        self.prev2 = self.prev1;
+        self.prev1 = ss;
+        self.prev_src = src;
+        ss
+    }
+
+    pub fn reset(&mut self) {
+        self.prev_src = 0.0;
+        self.prev1 = 0.0;
+        self.prev2 = 0.0;
+    }
+}
+
+/// Kaufman's Adaptive Moving Average as a scalar-stream [`Smoother`] stage — same
+/// efficiency-ratio-derived adaptive-alpha formula as
+/// [`KamaEngine`](super::moving_averages::KamaEngine), decoupled from [`crate::model::Bar`] so it
+/// can be one stage of a [`Smoother`]/[`SmootherChain`] pipeline instead of only a stand-alone bar
+/// indicator. Deliberately not a new formula port: `KamaEngine`'s math (configurable
+/// `fast_period`/`slow_period`) is reused as-is rather than kestrel's simpler hardcoded-2/30
+/// variant, since it is already the more general of the two — see the "smoothing" comparison in
+/// `kestrel/plan/kestrel-chartkit-migration.md`.
+#[derive(Debug, Clone)]
+pub struct Kama {
+    period: usize,
+    fast_period: usize,
+    slow_period: usize,
+    window: VecDeque<f64>,
+    state: Option<f64>,
+}
+
+impl Kama {
+    pub fn new(period: usize, fast_period: usize, slow_period: usize) -> Self {
+        let period = period.max(1);
+        Self {
+            period,
+            fast_period,
+            slow_period,
+            window: VecDeque::with_capacity(period + 1),
+            state: None,
+        }
+    }
+
+    /// Kaufman's own defaults (`fast_period = 2`, `slow_period = 30`), matching
+    /// [`KamaEngine`](super::moving_averages::KamaEngine)'s catalog defaults.
+    pub fn with_defaults(period: usize) -> Self {
+        Self::new(period, 2, 30)
+    }
+
+    pub fn update(&mut self, src: f64) -> Option<f64> {
+        self.window.push_back(src);
+        if self.window.len() > self.period + 1 {
+            self.window.pop_front();
+        }
+        if self.window.len() < self.period + 1 {
+            return None;
+        }
+
+        let change = (self.window.back().unwrap() - self.window.front().unwrap()).abs();
+        let mut volatility = 0.0f64;
+        for pair in self.window.iter().collect::<Vec<_>>().windows(2) {
+            volatility += (*pair[1] - *pair[0]).abs();
+        }
+        let er = if volatility > 0.0 {
+            change / volatility
+        } else {
+            0.0
+        };
+
+        let fast_sc = 2.0 / (self.fast_period as f64 + 1.0);
+        let slow_sc = 2.0 / (self.slow_period as f64 + 1.0);
+        let sc = (er * (fast_sc - slow_sc) + slow_sc).powi(2);
+
+        let next = match self.state {
+            Some(prev) => prev + sc * (src - prev),
+            None => src,
+        };
+        self.state = Some(next);
+        Some(next)
+    }
+
+    pub fn reset(&mut self) {
+        self.window.clear();
+        self.state = None;
+    }
+}
+
 #[cfg(test)]
 mod jma_tests {
     use super::Jma;
@@ -502,6 +651,98 @@ mod jma_tests {
         for (actual, expected) in actual.iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
         }
+    }
+}
+
+#[cfg(test)]
+mod supersmoother_tests {
+    use super::SuperSmoother;
+
+    /// Reference values independently derived (Python, from the documented Ehlers 2-pole
+    /// Butterworth formula transcribed in `SuperSmoother::new`/`update`'s doc comments — not by
+    /// running this Rust code):
+    /// ```python
+    /// import math
+    /// def super_smoother(prices, length):
+    ///     a1 = math.exp(-1.414 * math.pi / length)
+    ///     b1 = 2 * a1 * math.cos(1.414 * math.pi / length)
+    ///     c2, c3 = b1, -(a1 * a1)
+    ///     c1 = 1 - c2 - c3
+    ///     prev_src = prev1 = prev2 = 0.0
+    ///     out = []
+    ///     for src in prices:
+    ///         ss = c1 * (src + prev_src) / 2.0 + c2 * prev1 + c3 * prev2
+    ///         prev2, prev1, prev_src = prev1, ss, src
+    ///         out.append(ss)
+    ///     return out
+    /// ```
+    #[test]
+    fn matches_independently_derived_reference_formula_fixture() {
+        let mut ss = SuperSmoother::new(3);
+        let actual: Vec<_> = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+            .into_iter()
+            .map(|value| ss.update(value))
+            .collect();
+        let expected = [
+            0.505_413_249_748_865_4,
+            1.536_919_267_057_587,
+            2.563_799_552_420_708,
+            3.563_269_185_823_832_3,
+            4.561_856_630_604_048,
+            5.561_826_276_936_932,
+        ];
+        for (actual, expected) in actual.iter().zip(expected) {
+            assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
+        }
+    }
+
+    #[test]
+    fn reset_clears_transient_state() {
+        let mut ss = SuperSmoother::new(5);
+        ss.update(100.0);
+        ss.update(110.0);
+        ss.reset();
+        let mut fresh = SuperSmoother::new(5);
+        assert_eq!(ss.update(50.0), fresh.update(50.0));
+    }
+}
+
+#[cfg(test)]
+mod kama_smoother_tests {
+    use super::Kama;
+
+    /// `Kama` reuses `KamaEngine`'s already golden-validated formula (see
+    /// `tests/golden_reference_moving_averages.rs`, `kama5_last =
+    /// 14.554043488814198` for `KAMA(period=5, fast_period=2, slow_period=30)` over the shared
+    /// `CLOSES` series `[10, 11, 12, 11, 13, 14, 13, 15, 16, 15]`) — this is not a new formula
+    /// derivation, just a check that the `Bar`-decoupled scalar-stream version computes the exact
+    /// same sequence as the already-confirmed `Indicator` version, referencing that existing
+    /// golden fixture rather than re-deriving it (no circularity: the fixture value predates and
+    /// is independent of this struct).
+    #[test]
+    fn matches_already_confirmed_kama_engine_golden_value() {
+        const CLOSES: [f64; 10] = [10.0, 11.0, 12.0, 11.0, 13.0, 14.0, 13.0, 15.0, 16.0, 15.0];
+        let mut kama = Kama::new(5, 2, 30);
+        let mut last = None;
+        for &c in &CLOSES {
+            if let Some(value) = kama.update(c) {
+                last = Some(value);
+            }
+        }
+        let last = last.expect("kama produced no output");
+        assert!(
+            (last - 14.554_043_488_814_198).abs() < 1e-9,
+            "{last} != 14.554043488814198"
+        );
+    }
+
+    #[test]
+    fn warmup_returns_none_until_period_plus_one_samples() {
+        let mut kama = Kama::new(3, 2, 30);
+        assert_eq!(kama.update(1.0), None);
+        assert_eq!(kama.update(2.0), None);
+        assert_eq!(kama.update(3.0), None);
+        assert!(kama.update(4.0).is_some());
     }
 }
 

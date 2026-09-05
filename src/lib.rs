@@ -8,6 +8,8 @@
 /// Provider-neutral data-feed and notification integration contracts (traits), plus
 /// dependency-free reference implementations.
 pub mod adapters;
+/// Plausibility check between an indicator's data requirements and a series' capabilities.
+pub mod applicability;
 /// Shared, typed result/artifact models (pivots, zones, profiles, scenarios).
 pub mod artifact;
 /// IANA-timezone, DST-aware exchange calendars. Requires the `calendar` feature.
@@ -75,6 +77,10 @@ pub use adapters::{
     DataFeedAdapter, InMemoryDataFeed, LoggingNotificationSink, NotificationEvent,
     NotificationSeverity, NotificationSink, WebhookNotificationSink,
 };
+pub use applicability::{
+    check_applicability, data_requirements, rule_catalog, Applicability, ApplicabilityNote,
+    ApplicabilityReason, ApplicabilityTier, DataRequirements, RuleDescription,
+};
 pub use artifact::{
     Artifact, PivotArtifact, ProfileArtifact, ProfileBin, ScenarioArtifact, ZoneArtifact,
 };
@@ -95,8 +101,9 @@ pub use indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 pub use intrabar::{IntrabarGroup, IntrabarGrouper};
 pub use lifecycle::{BarLifecycle, LifecycleError, LifecycleRunner};
 pub use model::{
-    Bar, BarQuality, BarValidationError, InstrumentMeta, InstrumentMetaError, MarketRegime,
-    QualifiedBar, Resolution, RiskPlan, Source, SupportResistanceZone, ZoneKind,
+    Bar, BarQuality, BarValidationError, ContinuityKind, InstrumentMeta, InstrumentMetaError,
+    LiquidityTier, MarketRegime, PriceAdjustment, Provenance, QualifiedBar, Resolution, RiskPlan,
+    SeriesCapabilities, SessionKind, Source, SupportResistanceZone, VolumeKind, ZoneKind,
 };
 pub use parity::{
     ParityFixture, ParityFixtureError, ParityFixtureRow, ParityOutcome, ParityReport,
@@ -110,7 +117,9 @@ pub use risk::{
     position_size, AccountRisk, PositionSizeResult, ScaleInStep, ScaleOutStep, ScalePlan,
     StopDecision, StopManager,
 };
-pub use runner::{run_batch, run_batch_checked, TimestampedOutput};
+pub use runner::{
+    run_batch, run_batch_checked, run_batch_with_applicability, BatchResult, TimestampedOutput,
+};
 pub use scenario::{ScenarioStateMachine, ScenarioStatus, StageConfig};
 pub use scoring::{
     aggregate_subscores, aggregate_subscores_with_instrument, score_indicator, WeightPreset,

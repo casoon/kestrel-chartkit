@@ -1,4 +1,4 @@
-use crate::model::Bar;
+use crate::model::{Bar, SeriesCapabilities};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,21 @@ pub struct SwingStructureOutput {
     pub required_stop_atr: f64,
     pub potential_crv: f64,
     pub last_impulse_velocity_atr: f64,
+    /// Which series this output was computed on, if the caller attached one via
+    /// [`SwingStructureOutput::with_capabilities`]. `None` by default — see
+    /// `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
+    /// mitführen": a structure result is only meaningful for the series (session cut,
+    /// roll/adjustment, provenance) it was computed on.
+    pub series_capabilities: Option<SeriesCapabilities>,
+}
+
+impl SwingStructureOutput {
+    /// Tags this output with the series it was computed on. See
+    /// [`SwingStructureOutput::series_capabilities`] for why this matters.
+    pub fn with_capabilities(mut self, capabilities: SeriesCapabilities) -> Self {
+        self.series_capabilities = Some(capabilities);
+        self
+    }
 }
 
 struct Pivot {
@@ -205,6 +220,7 @@ impl SwingStructureEngine {
             required_stop_atr,
             potential_crv,
             last_impulse_velocity_atr,
+            series_capabilities: None,
         })
     }
 
@@ -299,5 +315,38 @@ mod tests {
     fn zero_atr_yields_no_output() {
         let mut engine = SwingStructureEngine::with_defaults();
         assert!(engine.update(&bar(0, 101.0, 99.0, 100.0), 0.0).is_none());
+    }
+
+    fn sample_capabilities() -> SeriesCapabilities {
+        SeriesCapabilities {
+            volume: crate::model::VolumeKind::RealTurnover,
+            trade_direction: false,
+            session: crate::model::SessionKind::Regular,
+            continuity: crate::model::ContinuityKind::SingleContract,
+            price_adjustment: crate::model::PriceAdjustment::Raw,
+            provenance: crate::model::Provenance::Exchange,
+            liquidity_tier: crate::model::LiquidityTier::Deep,
+        }
+    }
+
+    #[test]
+    fn output_defaults_to_no_capabilities_and_can_be_tagged() {
+        let mut engine = SwingStructureEngine::new(2, 2, 10);
+        let mut result = None;
+        let mut price = 100.0;
+        for i in 0..80 {
+            let leg = i / 10;
+            let up = leg % 2 == 0;
+            price += if up { 1.0 } else { -0.5 };
+            let out = engine.update(&bar(i, price + 1.0, price - 1.0, price), 2.0);
+            if out.is_some() {
+                result = out;
+            }
+        }
+        let result = result.expect("expected SwingStructureOutput once enough legs are confirmed");
+        assert_eq!(result.series_capabilities, None);
+
+        let tagged = result.with_capabilities(sample_capabilities());
+        assert_eq!(tagged.series_capabilities, Some(sample_capabilities()));
     }
 }

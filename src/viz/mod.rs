@@ -9,6 +9,10 @@ use crate::signal::TriggerAction;
 pub mod scene;
 pub use scene::{Axis, AxisKind, LineStyle, Pane, Scene, SceneObject, SceneObjectKind};
 
+/// SVG renderer for the [`Scene`] model.
+mod scene_svg;
+pub use scene_svg::{render_scene_svg, Theme};
+
 /// Interactive Render DTO for charting frontend (Web, Canvas, Tauri, Terminal GUI).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -70,7 +74,7 @@ pub struct ChartMarkerData {
     pub action: TriggerAction,
 }
 
-fn escape_xml(s: &str) -> String {
+pub(crate) fn escape_xml(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
@@ -78,7 +82,7 @@ fn escape_xml(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
-fn sanitize_color(c: &str) -> String {
+pub(crate) fn sanitize_color(c: &str) -> String {
     let trimmed = c.trim();
     if (trimmed.len() == 4 || trimmed.len() == 7)
         && trimmed.starts_with('#')
