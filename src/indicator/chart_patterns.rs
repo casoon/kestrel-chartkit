@@ -3,10 +3,20 @@
 //! [`super::zigzag_advanced::ZigZagNode`] sequences (e.g. from
 //! [`super::zigzag_advanced::AdvancedZigZagEngine::nodes`]) rather than re-detecting swings.
 //!
-//! Covers Triangle, Rising/Falling Wedge, the 1-2-3 Reversal, the Wolfe Wave, and auto-fitted
-//! trendlines. Each detector is a fixed, documented geometric rule over swing points — a
-//! deterministic approximation of how these patterns are described in TA literature, not a claim
+//! Covers Triangle, Rising/Falling Wedge, the 1-2-3 Reversal, the Wolfe Wave, the classic
+//! reversal family (double and triple top/bottom, head and shoulders and its inverse), and
+//! auto-fitted trendlines. Each detector is a fixed, documented geometric rule over swing points —
+//! a deterministic approximation of how these patterns are described in TA literature, not a claim
 //! that every instance found is a "real" tradable pattern.
+//!
+//! # Complete is not confirmed
+//!
+//! Two roughly equal highs are not a double top. They become one when the trough between them
+//! breaks. The reversal detectors therefore emit their candidates as [`PatternState::Forming`]
+//! even though every defining node is already in place, and only [`PatternState::Confirmed`] once
+//! price closes through the neckline. That distinction is the whole point of the family: the
+//! shape is visible long before it means anything, and a detector that reported the shape as the
+//! result would encode exactly the misreading these patterns are famous for.
 
 use crate::model::Bar;
 
@@ -60,6 +70,39 @@ pub enum ChartPatternKind {
     ReversalOneTwoThree,
     WolfeWave,
     AutoTrendline,
+    DoubleTop,
+    DoubleBottom,
+    TripleTop,
+    TripleBottom,
+    HeadAndShoulders,
+    InverseHeadAndShoulders,
+}
+
+impl ChartPatternKind {
+    /// Whether this kind resolves downward — a top rather than a bottom.
+    ///
+    /// Only meaningful for the reversal family; the others carry their direction in their lines.
+    fn is_top(self) -> bool {
+        matches!(
+            self,
+            ChartPatternKind::DoubleTop
+                | ChartPatternKind::TripleTop
+                | ChartPatternKind::HeadAndShoulders
+        )
+    }
+
+    /// The reversal family, whose members share one lifecycle rule: break the neckline.
+    fn is_reversal_family(self) -> bool {
+        matches!(
+            self,
+            ChartPatternKind::DoubleTop
+                | ChartPatternKind::DoubleBottom
+                | ChartPatternKind::TripleTop
+                | ChartPatternKind::TripleBottom
+                | ChartPatternKind::HeadAndShoulders
+                | ChartPatternKind::InverseHeadAndShoulders
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -90,6 +133,11 @@ impl ChartPatternCandidate {
     /// terminal.
     pub fn update_state(&mut self, bar: &Bar) -> PatternState {
         if self.state != PatternState::Forming {
+            return self.state;
+        }
+
+        if self.kind.is_reversal_family() {
+            self.state = self.update_reversal_state(bar);
             return self.state;
         }
 
@@ -143,6 +191,12 @@ impl ChartPatternCandidate {
                     PatternState::Forming
                 }
             }
+            ChartPatternKind::DoubleTop
+            | ChartPatternKind::DoubleBottom
+            | ChartPatternKind::TripleTop
+            | ChartPatternKind::TripleBottom
+            | ChartPatternKind::HeadAndShoulders
+            | ChartPatternKind::InverseHeadAndShoulders => unreachable!("handled above"),
             ChartPatternKind::WolfeWave => {
                 let n5 = self.nodes[4];
                 let target_line = TrendLine::from_nodes(&self.nodes[0], &self.nodes[3]); // line 1-4 projects the target
@@ -171,6 +225,53 @@ impl ChartPatternCandidate {
     }
 }
 
+impl ChartPatternCandidate {
+    /// The reversal family shares one rule: the neckline decides.
+    ///
+    /// Confirmed on a close through the neckline in the pattern's direction; invalidated on a
+    /// close past the pattern's own extreme, which is where the structure it describes stops
+    /// existing. In between it stays `Forming` — complete, and saying nothing yet.
+    fn update_reversal_state(&self, bar: &Bar) -> PatternState {
+        let top = self.kind.is_top();
+        let Some(neckline) = (if top {
+            self.lower_line
+        } else {
+            self.upper_line
+        }) else {
+            return PatternState::Forming;
+        };
+        let level = neckline.value_at(bar.timestamp);
+
+        let extreme = if top {
+            self.nodes
+                .iter()
+                .map(|n| n.price)
+                .fold(f64::NEG_INFINITY, f64::max)
+        } else {
+            self.nodes
+                .iter()
+                .map(|n| n.price)
+                .fold(f64::INFINITY, f64::min)
+        };
+
+        if top {
+            if bar.close < level {
+                PatternState::Confirmed
+            } else if bar.close > extreme {
+                PatternState::Invalidated
+            } else {
+                PatternState::Forming
+            }
+        } else if bar.close > level {
+            PatternState::Confirmed
+        } else if bar.close < extreme {
+            PatternState::Invalidated
+        } else {
+            PatternState::Forming
+        }
+    }
+}
+
 /// Scans a swing-node sequence for pattern candidates and evicts overlapping lower-confidence
 /// ones, so the result is a ranked, non-redundant set rather than every geometrically-possible
 /// match.
@@ -192,6 +293,9 @@ impl ChartPatternDetector {
         candidates.extend(self.scan_triangles_and_wedges(nodes));
         candidates.extend(self.scan_reversal_one_two_three(nodes));
         candidates.extend(self.scan_wolfe_waves(nodes));
+        candidates.extend(self.scan_double_extremes(nodes));
+        candidates.extend(self.scan_triple_extremes(nodes));
+        candidates.extend(self.scan_head_and_shoulders(nodes));
         if let Some(trendline) = self.auto_trendline(nodes, true) {
             candidates.push(trendline);
         }
@@ -318,6 +422,176 @@ impl ChartPatternDetector {
                 lower_line: None,
                 state: PatternState::Forming,
                 confidence: magnitude.min(1.0),
+            });
+        }
+        out
+    }
+
+    /// How close two prices have to be to count as "the same level" here.
+    ///
+    /// `tolerance_pct` is a percentage, as everywhere else in this module. It is the single number
+    /// that decides how many of these patterns exist: at two percent one finds few double tops, at
+    /// eight percent many. A statement about their frequency that omits it says nothing.
+    fn within_tolerance(&self, a: f64, b: f64, scale: f64) -> bool {
+        (a - b).abs() <= self.tolerance_pct / 100.0 * scale.abs().max(1e-9)
+    }
+
+    /// How well two prices match, as `0.0..=1.0` — the confidence of the equal-level family.
+    fn level_match(&self, a: f64, b: f64, scale: f64) -> f64 {
+        let allowed = self.tolerance_pct / 100.0 * scale.abs().max(1e-9);
+        if allowed <= 0.0 {
+            return 0.0;
+        }
+        (1.0 - (a - b).abs() / allowed).clamp(0.0, 1.0)
+    }
+
+    /// Double top and bottom: two extremes at roughly the same level with one counter-swing
+    /// between them.
+    ///
+    /// The counter-swing has to be more than the level tolerance away, otherwise three points of
+    /// noise on one level would qualify. The neckline is that middle node, held horizontally —
+    /// its break is what turns two equal highs into a double top.
+    fn scan_double_extremes(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut out = Vec::new();
+        for window in nodes.windows(3) {
+            let (n1, n2, n3) = (&window[0], &window[1], &window[2]);
+            if n1.is_high != n3.is_high || n1.is_high == n2.is_high {
+                continue;
+            }
+            if !self.within_tolerance(n1.price, n3.price, n1.price) {
+                continue;
+            }
+            if self.within_tolerance(n1.price, n2.price, n1.price) {
+                continue;
+            }
+
+            let neckline = TrendLine::from_nodes(n2, n2);
+            let (kind, upper_line, lower_line) = if n1.is_high {
+                (ChartPatternKind::DoubleTop, None, Some(neckline))
+            } else {
+                (ChartPatternKind::DoubleBottom, Some(neckline), None)
+            };
+
+            out.push(ChartPatternCandidate {
+                kind,
+                nodes: window.to_vec(),
+                upper_line,
+                lower_line,
+                state: PatternState::Forming,
+                confidence: self.level_match(n1.price, n3.price, n1.price),
+            });
+        }
+        out
+    }
+
+    /// Triple top and bottom: three extremes on one level, two counter-swings between them.
+    ///
+    /// The neckline is the *further* of the two counter-swings — the lower trough for a top. The
+    /// nearer one breaking is not yet the pattern; taking the conservative level keeps
+    /// `Confirmed` meaning the same thing it means for the double.
+    fn scan_triple_extremes(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut out = Vec::new();
+        for window in nodes.windows(5) {
+            let alternating = window.windows(2).all(|p| p[0].is_high != p[1].is_high);
+            if !alternating {
+                continue;
+            }
+            let (n1, n3, n5) = (&window[0], &window[2], &window[4]);
+            if !self.within_tolerance(n1.price, n3.price, n1.price)
+                || !self.within_tolerance(n1.price, n5.price, n1.price)
+            {
+                continue;
+            }
+            let (n2, n4) = (&window[1], &window[3]);
+            if self.within_tolerance(n1.price, n2.price, n1.price) {
+                continue;
+            }
+
+            let conservative = if n1.is_high {
+                if n2.price <= n4.price {
+                    n2
+                } else {
+                    n4
+                }
+            } else if n2.price >= n4.price {
+                n2
+            } else {
+                n4
+            };
+            let neckline = TrendLine::from_nodes(conservative, conservative);
+            let (kind, upper_line, lower_line) = if n1.is_high {
+                (ChartPatternKind::TripleTop, None, Some(neckline))
+            } else {
+                (ChartPatternKind::TripleBottom, Some(neckline), None)
+            };
+
+            let fit = self.level_match(n1.price, n3.price, n1.price)
+                * self.level_match(n1.price, n5.price, n1.price);
+            out.push(ChartPatternCandidate {
+                kind,
+                nodes: window.to_vec(),
+                upper_line,
+                lower_line,
+                state: PatternState::Forming,
+                confidence: fit,
+            });
+        }
+        out
+    }
+
+    /// Head and shoulders and its inverse: five alternating nodes whose middle extreme overshoots
+    /// both its neighbours of the same type, which sit at roughly one level.
+    ///
+    /// The neckline is the line through the two counter-swings and is deliberately *not* forced
+    /// horizontal — a sloping neckline is the common case, and flattening it would move the
+    /// confirmation level.
+    ///
+    /// Note what is not required: that the right shoulder be "well formed". It bears no weight.
+    /// The pattern completes there and is confirmed only at the neckline.
+    fn scan_head_and_shoulders(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut out = Vec::new();
+        for window in nodes.windows(5) {
+            let alternating = window.windows(2).all(|p| p[0].is_high != p[1].is_high);
+            if !alternating {
+                continue;
+            }
+            let (n1, n2, n3, n4, n5) = (&window[0], &window[1], &window[2], &window[3], &window[4]);
+
+            let head_overshoots = if n1.is_high {
+                n3.price > n1.price && n3.price > n5.price
+            } else {
+                n3.price < n1.price && n3.price < n5.price
+            };
+            if !head_overshoots {
+                continue;
+            }
+            if !self.within_tolerance(n1.price, n5.price, n3.price) {
+                continue;
+            }
+            if !self.within_tolerance(n2.price, n4.price, n3.price) {
+                continue;
+            }
+
+            let neckline = TrendLine::from_nodes(n2, n4);
+            let (kind, upper_line, lower_line) = if n1.is_high {
+                (ChartPatternKind::HeadAndShoulders, None, Some(neckline))
+            } else {
+                (
+                    ChartPatternKind::InverseHeadAndShoulders,
+                    Some(neckline),
+                    None,
+                )
+            };
+
+            let shoulders = self.level_match(n1.price, n5.price, n3.price);
+            let necks = self.level_match(n2.price, n4.price, n3.price);
+            out.push(ChartPatternCandidate {
+                kind,
+                nodes: window.to_vec(),
+                upper_line,
+                lower_line,
+                state: PatternState::Forming,
+                confidence: shoulders * necks,
             });
         }
         out
@@ -573,6 +847,189 @@ mod tests {
         assert_eq!(
             invalidate_candidate.update_state(&reclaims_above_n2),
             PatternState::Invalidated
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Die Umkehrfamilie
+    // -----------------------------------------------------------------------
+
+    /// Zwei annähernd gleich hohe Hochs, ein Zwischentief.
+    fn doppeltop_nodes() -> Vec<ZigZagNode> {
+        vec![
+            node(0, 118.0, true),
+            node(1200, 108.0, false),
+            node(2400, 117.4, true),
+        ]
+    }
+
+    #[test]
+    fn test_double_top_is_forming_until_the_neckline_breaks() {
+        // Der Kernsatz der Familie: Die Formation ist vollständig und sagt trotzdem nichts.
+        let detector = ChartPatternDetector::new(2.0);
+        let mut candidate = detector
+            .scan(&doppeltop_nodes())
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::DoubleTop)
+            .expect("double top detected");
+        assert_eq!(candidate.state, PatternState::Forming);
+
+        // Über dem Zwischentief bleibt es beim Zustand.
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 112.0, 113.0, 111.0, 112.0, 1.0)),
+            PatternState::Forming
+        );
+        // Erst der Schluss darunter bestätigt.
+        assert_eq!(
+            candidate.update_state(&Bar::new(3600, 109.0, 109.5, 107.0, 107.5, 1.0)),
+            PatternState::Confirmed
+        );
+    }
+
+    #[test]
+    fn test_double_top_invalidates_above_its_own_extreme() {
+        let detector = ChartPatternDetector::new(2.0);
+        let mut candidate = detector
+            .scan(&doppeltop_nodes())
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::DoubleTop)
+            .expect("double top detected");
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 118.0, 120.0, 117.0, 119.0, 1.0)),
+            PatternState::Invalidated
+        );
+    }
+
+    #[test]
+    fn test_double_top_needs_the_two_highs_to_match() {
+        // Bei enger Toleranz sind 118 und 117,4 nicht mehr dasselbe Niveau — dieselbe Pivotfolge,
+        // ein anderes Ergebnis. Genau das ist der Ermessensspielraum.
+        let eng = ChartPatternDetector::new(0.1);
+        assert!(!eng
+            .scan(&doppeltop_nodes())
+            .iter()
+            .any(|c| c.kind == ChartPatternKind::DoubleTop));
+    }
+
+    #[test]
+    fn test_double_bottom_mirrors() {
+        let nodes = vec![
+            node(0, 90.0, false),
+            node(1200, 100.0, true),
+            node(2400, 90.5, false),
+        ];
+        let mut candidate = ChartPatternDetector::new(2.0)
+            .scan(&nodes)
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::DoubleBottom)
+            .expect("double bottom detected");
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 100.5, 102.0, 100.0, 101.5, 1.0)),
+            PatternState::Confirmed
+        );
+    }
+
+    #[test]
+    fn test_triple_top_uses_the_lower_trough_as_neckline() {
+        // Das nähere Zwischentief zu nehmen wäre großzügiger — und „bestätigt" hieße dann bei
+        // Dreifach etwas anderes als bei Doppel.
+        let nodes = vec![
+            node(0, 120.0, true),
+            node(600, 112.0, false),
+            node(1200, 119.5, true),
+            node(1800, 108.0, false),
+            node(2400, 120.4, true),
+        ];
+        let mut candidate = ChartPatternDetector::new(2.0)
+            .scan(&nodes)
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::TripleTop)
+            .expect("triple top detected");
+
+        // Unter dem höheren, aber über dem tieferen Zwischentief: noch nicht bestätigt.
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 111.0, 111.5, 110.0, 110.0, 1.0)),
+            PatternState::Forming
+        );
+        assert_eq!(
+            candidate.update_state(&Bar::new(3600, 109.0, 109.2, 107.0, 107.4, 1.0)),
+            PatternState::Confirmed
+        );
+    }
+
+    /// Fünf Pivots: Hoch, Tief, höheres Hoch, Tief, ähnlich hohes Hoch.
+    fn sks_nodes() -> Vec<ZigZagNode> {
+        vec![
+            node(0, 112.0, true),
+            node(600, 104.0, false),
+            node(1200, 124.0, true),
+            node(1800, 103.4, false),
+            node(2400, 111.6, true),
+        ]
+    }
+
+    #[test]
+    fn test_head_and_shoulders_confirms_on_the_sloping_neckline() {
+        let mut candidate = ChartPatternDetector::new(2.0)
+            .scan(&sks_nodes())
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::HeadAndShoulders)
+            .expect("head and shoulders detected");
+        assert_eq!(
+            candidate.state,
+            PatternState::Forming,
+            "die rechte Schulter bestätigt nichts"
+        );
+
+        // Die Nackenlinie fällt von 104 bei t=600 auf 103,4 bei t=1800: −0,0005 je Zeiteinheit.
+        // Bei t=3000 liegt sie damit bei 102,8.
+        let neckline = candidate.lower_line.expect("neckline");
+        assert!((neckline.value_at(3000) - 102.8).abs() < 1e-9);
+
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 103.5, 103.6, 103.0, 103.2, 1.0)),
+            PatternState::Forming,
+            "über der Linie, obwohl unter dem tieferen Zwischentief"
+        );
+        assert_eq!(
+            candidate.update_state(&Bar::new(3600, 103.0, 103.1, 101.0, 101.5, 1.0)),
+            PatternState::Confirmed
+        );
+    }
+
+    #[test]
+    fn test_head_and_shoulders_needs_a_head() {
+        // Ohne überragendes mittleres Hoch bleibt es eine Folge von drei Hochs.
+        let nodes = vec![
+            node(0, 112.0, true),
+            node(600, 104.0, false),
+            node(1200, 111.0, true),
+            node(1800, 103.4, false),
+            node(2400, 111.6, true),
+        ];
+        assert!(!ChartPatternDetector::new(2.0)
+            .scan(&nodes)
+            .iter()
+            .any(|c| c.kind == ChartPatternKind::HeadAndShoulders));
+    }
+
+    #[test]
+    fn test_inverse_head_and_shoulders_mirrors() {
+        let nodes = vec![
+            node(0, 98.0, false),
+            node(600, 106.0, true),
+            node(1200, 86.0, false),
+            node(1800, 106.6, true),
+            node(2400, 98.4, false),
+        ];
+        let mut candidate = ChartPatternDetector::new(2.0)
+            .scan(&nodes)
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::InverseHeadAndShoulders)
+            .expect("inverse head and shoulders detected");
+        assert_eq!(
+            candidate.update_state(&Bar::new(3000, 106.0, 108.0, 105.5, 107.5, 1.0)),
+            PatternState::Confirmed
         );
     }
 }
