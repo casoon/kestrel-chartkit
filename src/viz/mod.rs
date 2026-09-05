@@ -82,16 +82,43 @@ pub(crate) fn escape_xml(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
+/// Accepts a hex literal or a CSS custom-property reference, and nothing else.
+///
+/// The hex case is the obvious one. The `var(--name)` case exists because a fixed colour cannot
+/// serve two themes: a chart exported once has to render in both a light and a dark page, and only
+/// the page knows which is current. Emitting a variable reference lets the consumer map the
+/// library's colour decisions onto its own token system without the library knowing anything about
+/// themes — which is the vendor-neutral way round.
+///
+/// A fallback (`var(--x, #fff)`) is deliberately not accepted: it would put a second colour
+/// decision inside a string this function cannot check, and an unresolvable variable should show
+/// up as an obviously wrong chart rather than quietly render in a colour nobody chose.
 pub(crate) fn sanitize_color(c: &str) -> String {
     let trimmed = c.trim();
-    if (trimmed.len() == 4 || trimmed.len() == 7)
-        && trimmed.starts_with('#')
-        && trimmed[1..].chars().all(|ch| ch.is_ascii_hexdigit())
-    {
+    if is_hex_literal(trimmed) || is_css_variable(trimmed) {
         trimmed.to_string()
     } else {
         "#29b6f6".to_string()
     }
+}
+
+fn is_hex_literal(c: &str) -> bool {
+    (c.len() == 4 || c.len() == 7)
+        && c.starts_with('#')
+        && c[1..].chars().all(|ch| ch.is_ascii_hexdigit())
+}
+
+/// `var(--name)` with a conservative name charset — letters, digits, hyphen, underscore.
+fn is_css_variable(c: &str) -> bool {
+    let Some(inner) = c.strip_prefix("var(").and_then(|r| r.strip_suffix(')')) else {
+        return false;
+    };
+    let name = inner.trim();
+    name.starts_with("--")
+        && name.len() > 2
+        && name[2..]
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
 }
 
 /// Static SVG Renderer producing clean SVG string charts for CLI previews or reports.
@@ -318,5 +345,48 @@ mod tests {
         // Markers at the first/last timestamp receive distinct X coordinates.
         assert!(svg.contains("<circle cx=\"20.0\""));
         assert!(svg.contains("<circle cx=\"740.0\""));
+    }
+}
+
+#[cfg(test)]
+mod color_tests {
+    use super::sanitize_color;
+
+    #[test]
+    fn accepts_hex_literals() {
+        assert_eq!(sanitize_color("#abc"), "#abc");
+        assert_eq!(sanitize_color("#1a2B3c"), "#1a2B3c");
+        assert_eq!(sanitize_color("  #ffffff  "), "#ffffff");
+    }
+
+    #[test]
+    fn accepts_css_variables() {
+        assert_eq!(
+            sanitize_color("var(--chart-bullish)"),
+            "var(--chart-bullish)"
+        );
+        assert_eq!(sanitize_color("var(--x_1)"), "var(--x_1)");
+    }
+
+    #[test]
+    fn rejects_everything_else() {
+        // Anything that could carry a second colour decision, an expression, or markup.
+        for hostile in [
+            "red",
+            "rgb(1,2,3)",
+            "var(--x, #fff)",
+            "var(--x);fill:url(#y)",
+            "var(--x)\"onload=\"alert(1)",
+            "url(#gradient)",
+            "#12345",
+            "var(--)",
+            "var(x)",
+        ] {
+            assert_eq!(
+                sanitize_color(hostile),
+                "#29b6f6",
+                "must reject {hostile:?}"
+            );
+        }
     }
 }
