@@ -758,8 +758,16 @@ pub fn output_range(name: &str) -> OutputRange {
     };
 
     match name {
-        "adx" | "choppiness" | "connors_rsi" | "efficiency" | "mfi" | "rsi"
-        | "stoch_rsi" | "stochastic" | "ultimate_oscillator" | "williams_r" => PROZENT,
+        "adx"
+        | "choppiness"
+        | "connors_rsi"
+        | "efficiency"
+        | "mfi"
+        | "rsi"
+        | "stoch_rsi"
+        | "stochastic"
+        | "ultimate_oscillator"
+        | "williams_r" => PROZENT,
 
         // Auf -100..100 normierte Differenzmaße. `dmi` gehört hierher und nicht zu den
         // Prozentmaßen: seine Hauptreihe ist `plus_di - minus_di`, die Differenz zweier
@@ -782,8 +790,15 @@ pub fn output_range(name: &str) -> OutputRange {
         | "zscore" => OutputRange::Centered { center: 0.0 },
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
-        "atr" | "garman_klass" | "historical_volatility" | "mass_index" | "rvol" | "true_range"
-        | "vix_fix" | "volume" | "vortex" => OutputRange::NonNegative,
+        "atr"
+        | "garman_klass"
+        | "historical_volatility"
+        | "mass_index"
+        | "rvol"
+        | "true_range"
+        | "vix_fix"
+        | "volume"
+        | "vortex" => OutputRange::NonNegative,
 
         _ => OutputRange::Unbounded,
     }

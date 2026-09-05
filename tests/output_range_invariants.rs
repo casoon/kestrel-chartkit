@@ -49,7 +49,9 @@ fn werte(name: &str, bars: &[Bar]) -> Vec<(String, f64)> {
 
     let mut out = Vec::new();
     for eintrag in run_batch(gebaut.as_mut(), bars) {
-        let Some(output) = eintrag.output else { continue };
+        let Some(output) = eintrag.output else {
+            continue;
+        };
         if output.value.is_finite() {
             out.push(("value".to_string(), output.value));
         }
