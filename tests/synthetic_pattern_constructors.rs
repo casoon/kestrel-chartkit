@@ -165,11 +165,11 @@ fn each_pivot_is_a_strict_local_extreme() {
             bars.len() - 1
         };
 
-        for j in von..=bis {
+        for (j, kandidat) in bars.iter().enumerate().take(bis + 1).skip(von) {
             if j == *index {
                 continue;
             }
-            let bar = &bars[j].bar;
+            let bar = &kandidat.bar;
             if peak {
                 assert!(
                     bar.high < *price - f64::EPSILON,

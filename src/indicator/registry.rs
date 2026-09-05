@@ -11,7 +11,7 @@ use super::bollinger::BollingerBands;
 use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
 use super::buy_sell_pressure::BuySellPressureEstimator;
-use super::candle_story::CandleStoryEngine;
+use super::candle_story::{CandleStoryConfig, CandleStoryEngine};
 use super::cci::Cci;
 use super::chaikin_osc::ChaikinOscillatorEngine;
 use super::chandelier_exit::ChandelierExitEngine;
@@ -304,8 +304,18 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "candle_story",
-            description: "Single-candle narrative classification (e.g. pin bar, engulfing)",
-            default_params: HashMap::new(),
+            description: "Normalised candle classification — reports every pattern it recognises",
+            default_params: [
+                ("pin_wick_min".to_string(), 0.55),
+                ("pin_close_pos".to_string(), 0.65),
+                ("marubozu_body_min".to_string(), 0.82),
+                ("doji_body_max".to_string(), 0.08),
+                ("hammer_wick_body_min".to_string(), 2.0),
+                ("min_range_atr".to_string(), 0.5),
+                ("atr_len".to_string(), 14.0),
+                ("trend_lookback".to_string(), 10.0),
+            ]
+            .into(),
         },
         IndicatorCatalogEntry {
             name: "efficiency",
@@ -1215,7 +1225,61 @@ pub fn build_checked(
             let mult = get_f64_p(params, "mult", 2.0, 0.01, 100.0)?;
             Ok(Box::new(WilliamsVixFix::new(pd, bband_len, mult)))
         }
-        "candle_story" | "pinbar" => Ok(Box::new(CandleStoryEngine::new())),
+        "candle_story" | "pinbar" => {
+            let d = CandleStoryConfig::default();
+            Ok(Box::new(CandleStoryEngine::with_config(
+                CandleStoryConfig {
+                    pin_wick_min: get_f64_p(params, "pin_wick_min", d.pin_wick_min, 0.1, 0.95)?,
+                    pin_close_pos: get_f64_p(params, "pin_close_pos", d.pin_close_pos, 0.5, 1.0)?,
+                    marubozu_body_min: get_f64_p(
+                        params,
+                        "marubozu_body_min",
+                        d.marubozu_body_min,
+                        0.5,
+                        1.0,
+                    )?,
+                    doji_body_max: get_f64_p(params, "doji_body_max", d.doji_body_max, 0.0, 0.4)?,
+                    spinning_top_body_max: get_f64_p(
+                        params,
+                        "spinning_top_body_max",
+                        d.spinning_top_body_max,
+                        0.05,
+                        0.6,
+                    )?,
+                    hammer_wick_body_min: get_f64_p(
+                        params,
+                        "hammer_wick_body_min",
+                        d.hammer_wick_body_min,
+                        0.5,
+                        20.0,
+                    )?,
+                    hammer_opposite_max: get_f64_p(
+                        params,
+                        "hammer_opposite_max",
+                        d.hammer_opposite_max,
+                        0.0,
+                        5.0,
+                    )?,
+                    tweezer_tolerance: get_f64_p(
+                        params,
+                        "tweezer_tolerance",
+                        d.tweezer_tolerance,
+                        0.0,
+                        0.1,
+                    )?,
+                    min_range_atr: get_f64_p(params, "min_range_atr", d.min_range_atr, 0.0, 10.0)?,
+                    atr_len: get_usize_p(params, "atr_len", d.atr_len, 1, 10000)?,
+                    trend_lookback: get_usize_p(
+                        params,
+                        "trend_lookback",
+                        d.trend_lookback,
+                        1,
+                        10000,
+                    )?,
+                    trend_min_atr: get_f64_p(params, "trend_min_atr", d.trend_min_atr, 0.0, 100.0)?,
+                },
+            )))
+        }
         "efficiency" | "leg_efficiency" | "er" => {
             let len = get_usize_p(params, "len", 14, 1, 10000)?;
             Ok(Box::new(LegEfficiencyEngine::new(len)))

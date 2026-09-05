@@ -127,44 +127,123 @@ fn test_scenario_bos_choch_synthetic_bullish() {
 // ============================================================================
 #[test]
 fn test_scenario_candle_story() {
-    let mut ind = build_checked("candle_story", &HashMap::new()).unwrap();
+    // `min_range_atr` off: this fixture is three bars long, so the ATR is still warming up and a
+    // size floor would suppress everything. The point here is the classification, not the filter.
+    let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
+    let mut ind = build_checked("candle_story", &params).unwrap();
 
     // Bar 0: neutral bar
     let b0 = Bar::new(0, 100.0, 101.0, 99.0, 100.0, 1000.0);
     ind.on_bar(&b0);
 
-    // Bar 1: Bullish Kangaroo Tail (Pinbar Reversal):
+    // Bar 1: bullish pinbar.
     // Range = 100.5 - 80.0 = 20.5
-    // Lower Wick = min(100.0, 100.2) - 80.0 = 20.0 (20.0 / 20.5 = 97.5% >= 55%)
-    // Close Pos = (100.2 - 80.0) / 20.5 = 98.5% >= 65%
+    // Lower wick = min(100.0, 100.2) - 80.0 = 20.0 → 97.5% of range, ≥ 55%
+    // Close position = (100.2 - 80.0) / 20.5 = 98.5%, ≥ 65%
     let pinbar = Bar::new(60, 100.0, 100.5, 80.0, 100.2, 2000.0);
     let pinbar_out = ind.on_bar(&pinbar).expect("Pinbar should yield output");
 
-    assert_eq!(
-        pinbar_out.extra["pattern_type"], 1.0,
-        "Pattern type code must be 1.0 (Bullish Kangaroo Tail)"
-    );
+    assert_eq!(pinbar_out.extra["bullish_pinbar"], 1.0);
+    assert!(!pinbar_out.extra.contains_key("bearish_pinbar"));
+    // The metrics come out too, so the flag can be checked instead of trusted.
+    assert!((pinbar_out.extra["lower_wick_ratio"] - 20.0 / 20.5).abs() < 1e-12);
+    assert!((pinbar_out.extra["close_position"] - 20.2 / 20.5).abs() < 1e-12);
+
     let alerts = ind.alerts();
     assert!(
         alerts
             .iter()
-            .any(|a| a.kind == "bullish_kangaroo_tail" && a.strength >= 0.85),
-        "Must emit high-confidence bullish_kangaroo_tail alert"
+            .any(|a| a.kind == "bullish_pinbar" && a.strength >= 0.85),
+        "Must emit high-confidence bullish_pinbar alert"
     );
 
-    // Bar 2: Bearish Engulfing Bar (body > prev_body, close < open, closes below prev open, body/range = 10.5/15 = 70% < 82%)
+    // Bar 2: bearish engulfing over the pinbar's body, and at the same time a bearish pinbar is
+    // *not* present. Body = 10.5, previous body = 0.2, closes below the previous open.
     let engulfing = Bar::new(120, 100.5, 103.0, 88.0, 90.0, 3000.0);
     let eng_out = ind
         .on_bar(&engulfing)
         .expect("Engulfing should yield output");
-    assert_eq!(
-        eng_out.extra["pattern_type"], 4.0,
-        "Pattern type code must be 4.0 (Bearish Engulfing)"
-    );
+    assert_eq!(eng_out.extra["bearish_engulfing"], 1.0);
     assert!(
         ind.alerts().iter().any(|a| a.kind == "bearish_engulfing"),
         "Must emit bearish_engulfing alert"
     );
+}
+
+/// A bar can be several things at once, and the engine has to say so.
+///
+/// This is what the previous single `pattern_type` slot could not express: whichever check ran
+/// last overwrote the others, so the reported pattern depended on the order of the branches.
+#[test]
+fn test_scenario_candle_story_reports_every_match() {
+    let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
+    let mut ind = build_checked("candle_story", &params).unwrap();
+
+    // A small bearish bar, then a large bullish one that both engulfs it and is a marubozu.
+    ind.on_bar(&Bar::new(0, 100.0, 100.6, 99.6, 99.8, 1000.0));
+    let out = ind
+        .on_bar(&Bar::new(60, 99.7, 105.2, 99.6, 105.0, 2000.0))
+        .expect("output");
+
+    // body = 5.3, range = 5.6 → 94.6% ≥ 82%
+    assert_eq!(out.extra["bullish_marubozu"], 1.0, "marubozu by body ratio");
+    assert_eq!(out.extra["bullish_engulfing"], 1.0, "and engulfing at once");
+    assert!(
+        out.extra["pattern_count"] >= 2.0,
+        "both are reported, not one overwriting the other"
+    );
+}
+
+/// Hammer and hanging man are the same geometry; only the prior move separates them.
+#[test]
+fn test_scenario_candle_story_needs_the_trend_to_name_a_hammer() {
+    // Body 0.05, lower wick 3.0 (60× the body), upper wick 0.01 — hammer geometry either way.
+    let shape = |t: i64, base: f64| Bar::new(t, base, base + 0.06, base - 3.0, base + 0.05, 1000.0);
+
+    // Same shape after a decline and after an advance.
+    let run = |steigend: bool| {
+        let params: HashMap<String, f64> = [
+            ("min_range_atr".to_string(), 0.0),
+            ("trend_lookback".to_string(), 6.0),
+            ("atr_len".to_string(), 5.0),
+            ("trend_min_atr".to_string(), 1.0),
+        ]
+        .into();
+        let mut ind = build_checked("candle_story", &params).unwrap();
+        for i in 0..14 {
+            let base = if steigend {
+                100.0 + i as f64 * 2.0
+            } else {
+                130.0 - i as f64 * 2.0
+            };
+            ind.on_bar(&Bar::new(
+                i * 60,
+                base,
+                base + 0.8,
+                base - 0.8,
+                base + 0.4,
+                1000.0,
+            ));
+        }
+        let base = if steigend { 128.0 } else { 102.0 };
+        ind.on_bar(&shape(14 * 60, base)).expect("output")
+    };
+
+    let nach_abverkauf = run(false);
+    assert_eq!(nach_abverkauf.extra["hammer_shape"], 1.0);
+    assert_eq!(
+        nach_abverkauf.extra["hammer"], 1.0,
+        "after a decline it is a hammer"
+    );
+    assert!(!nach_abverkauf.extra.contains_key("hanging_man"));
+
+    let nach_anstieg = run(true);
+    assert_eq!(nach_anstieg.extra["hammer_shape"], 1.0, "same geometry");
+    assert_eq!(
+        nach_anstieg.extra["hanging_man"], 1.0,
+        "after an advance it is a hanging man"
+    );
+    assert!(!nach_anstieg.extra.contains_key("hammer"));
 }
 
 // ============================================================================
