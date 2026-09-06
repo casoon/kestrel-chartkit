@@ -54,9 +54,12 @@ pub struct MarketStateOutput {
     pub volatility_regime: VolatilityRegime,
     /// 0.0..1.0, analog `trend_quality` in `indicator::swing_structure`.
     pub trend_stability: f64,
-    /// 0.0..1.0
+    /// 0.0..1.0. Placeholder heuristic in [`super::pipeline::build_market_state_and_playbook`]:
+    /// a fixed 0.8/0.2 based only on `regime`, not a measured probability.
     pub balance_probability: f64,
-    /// Opening Range size vs. the last ~20 sessions, 0.0..1.0.
+    /// Opening Range size vs. the last ~20 sessions, 0.0..1.0. Placeholder heuristic in
+    /// [`super::pipeline::build_market_state_and_playbook`]: always 0.5 (neutral), not derived
+    /// from actual session history.
     pub opening_range_percentile: f64,
     pub opening_type: OpeningType,
 }

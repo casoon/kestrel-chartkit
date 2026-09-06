@@ -24,6 +24,10 @@ pub fn update_swing_structure(
 }
 
 /// M2.2: Anbindung von `build_market_context` an `VolumeProfileEngine`-Output.
+///
+/// `atr_val` ist immer der ATR-Prozentwert (`100 * ATR / close`), wie ihn
+/// [`crate::indicator::atr::Atr`] liefert — analog zu `atr_output.value` in
+/// [`update_swing_structure`].
 pub fn build_market_context_from_profile(
     regime: MarketRegime,
     bar: &Bar,
@@ -44,11 +48,7 @@ pub fn build_market_context_from_profile(
         .unwrap_or(0.05);
     let node = classify_volume_node(density, 0.10, 0.02);
 
-    let atr_raw = if atr_val < 1.0 {
-        (atr_val / 100.0) * bar.close
-    } else {
-        atr_val
-    };
+    let atr_raw = (atr_val / 100.0) * bar.close;
 
     build_market_context(
         regime,
@@ -87,6 +87,11 @@ pub fn derive_auction_phase(
 }
 
 /// M2.4 & M2.5: Erzeugt `MarketStateOutput` und leitet das `ExpectedPlaybook` ab.
+///
+/// `atr_val` ist der ATR-Prozentwert (`100 * ATR / close`), wie ihn
+/// [`crate::indicator::atr::Atr`] liefert. [`crate::regime::classify_regime`]
+/// erwartet ATR dagegen als Bruch (`ATR / close`), daher die Division um 100
+/// vor der Weitergabe.
 pub fn build_market_state_and_playbook(
     bars: &[Bar],
     adx_val: f64,
@@ -94,7 +99,7 @@ pub fn build_market_state_and_playbook(
     trend_stability: f64,
     opening_type: OpeningType,
 ) -> (MarketStateOutput, ExpectedPlaybook) {
-    let regime = crate::regime::classify_regime(bars, adx_val, atr_val);
+    let regime = crate::regime::classify_regime(bars, adx_val, atr_val / 100.0);
     let playbook = derive_playbook(regime, trend_stability);
 
     let vol_regime = if atr_val > 2.5 {
@@ -109,11 +114,16 @@ pub fn build_market_state_and_playbook(
         regime,
         volatility_regime: vol_regime,
         trend_stability,
+        // Placeholder heuristic, not a measured probability: no actual balance-persistence
+        // statistics feed into this yet, only the current `regime`. See the field doc on
+        // `MarketStateOutput::balance_probability`.
         balance_probability: if regime == MarketRegime::Consolidation {
             0.8
         } else {
             0.2
         },
+        // Placeholder heuristic, not derived from session history yet. See the field doc on
+        // `MarketStateOutput::opening_range_percentile`.
         opening_range_percentile: 0.5,
         opening_type,
     };
@@ -149,6 +159,9 @@ pub fn advance_structural_stop(
 }
 
 /// M2.8: `FreeSpaceScore` aus `VolumeProfileEngine`-Bins und ATR berechnen.
+///
+/// `atr_val` ist der ATR-Prozentwert (`100 * ATR / close`), wie ihn
+/// [`crate::indicator::atr::Atr`] liefert.
 pub fn build_free_space_from_profile(
     vp_output: &IndicatorOutput,
     atr_val: f64,
@@ -166,11 +179,7 @@ pub fn build_free_space_from_profile(
         .copied()
         .unwrap_or(0.05);
 
-    let atr_raw = if atr_val < 1.0 {
-        (atr_val / 100.0) * bar_close
-    } else {
-        atr_val
-    };
+    let atr_raw = (atr_val / 100.0) * bar_close;
 
     let lvn_width_atr = if atr_raw > 0.0 {
         lvn_width / atr_raw
@@ -187,6 +196,9 @@ pub fn build_free_space_from_profile(
 }
 
 /// M2.9: `VwapRegimeTracker` mit `indicator::vwap::Vwap` verbinden.
+///
+/// `atr_val` ist der ATR-Prozentwert (`100 * ATR / close`), wie ihn
+/// [`crate::indicator::atr::Atr`] liefert.
 pub fn update_vwap_regime(
     tracker: &mut VwapRegimeTracker,
     vwap_output: &IndicatorOutput,
@@ -206,11 +218,7 @@ pub fn update_vwap_regime(
         .unwrap_or(1.0)
         - vwap;
 
-    let atr_raw = if atr_val < 1.0 {
-        (atr_val / 100.0) * bar_close
-    } else {
-        atr_val
-    };
+    let atr_raw = (atr_val / 100.0) * bar_close;
 
     let slope_atr = if atr_raw > 0.0 {
         slope_raw / atr_raw

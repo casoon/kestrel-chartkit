@@ -90,6 +90,40 @@ fn test_m2_4_and_5_market_state_and_playbook_pipeline() {
 }
 
 #[test]
+fn test_m2_4_atr_percent_unit_reaches_consolidation_regime() {
+    // Regression: `atr_val` from a real `Atr` indicator is a percent value (e.g. ~0.3 for 0.3%
+    // ATR). `classify_regime`'s non-trending branch expects ATR as a fraction (threshold 0.02 =
+    // 2%). Feeding the percent value through unconverted always exceeds 0.02 for realistic
+    // markets, so low-volatility, non-trending bars would incorrectly never classify as
+    // Consolidation.
+    let mut atr = Atr::with_defaults();
+    let bars = generate_flat_spread_bars(60, 100.0, 0.5, 1000.0);
+
+    let mut last_atr = None;
+    for bar in &bars {
+        if let Some(out) = atr.on_bar(bar) {
+            last_atr = Some(out);
+        }
+    }
+    let atr_out = last_atr.expect("ATR should produce output after warmup");
+    assert!(
+        atr_out.value < 2.0,
+        "expected a realistic low ATR percent value, got {}",
+        atr_out.value
+    );
+
+    let (state, _playbook) = build_market_state_and_playbook(
+        &bars,
+        10.0, // ADX < 20 -> non-trending
+        atr_out.value,
+        0.5,
+        OpeningType::InsideValue,
+    );
+
+    assert_eq!(state.regime, MarketRegime::Consolidation);
+}
+
+#[test]
 fn test_m2_6_balance_migration_from_volume_profile() {
     let mut vp1 = VolumeProfileEngine::new(30, 10);
     let mut vp2 = VolumeProfileEngine::new(30, 10);
