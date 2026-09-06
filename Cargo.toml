@@ -21,3 +21,10 @@ serde = ["dep:serde"]
 # IANA timezone/DST-aware exchange calendars (src/calendar.rs). Optional: the core crate has no
 # timezone-database dependency unless this is enabled.
 calendar = ["dep:chrono", "dep:chrono-tz"]
+
+[dev-dependencies]
+criterion = { version = "0.8.2", features = ["html_reports"] }
+
+[[bench]]
+name = "indicators"
+harness = false
