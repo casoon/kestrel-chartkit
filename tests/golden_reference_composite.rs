@@ -69,8 +69,13 @@ fn test_golden_trend_quality_sub_components_and_composition() {
         "Trend Quality Participation Factor",
     );
 
-    // 2. Anti-Zirkularität: Verify composite output against documented formula
-    let expected_composite = direction * efficiency * strength * participation * 100.0;
+    // 2. Anti-Zirkularität: Verify composite output against documented formula, applied to the
+    // already-confirmed golden sub-values (not to the values just extracted from this run).
+    let expected_composite = expected("trend_quality5_direction")
+        * expected("trend_quality5_efficiency")
+        * expected("trend_quality5_strength")
+        * expected("trend_quality5_participation")
+        * 100.0;
     common::assert_close(
         out.value,
         expected_composite,
@@ -238,9 +243,15 @@ fn test_golden_multi_factor_sub_components_and_composition() {
         "Multi-Factor Volatility Regime Component",
     );
 
-    // 2. Anti-Zirkularität: Verify composite output via documented weighting & squeeze dampening formula
-    let raw_composite = trend_f * 0.35 + rsi_f * 0.25 + pressure_f * 0.40;
-    let expected_score = if vol_f < 0.0 {
+    // 2. Anti-Zirkularität: Verify composite output via documented weighting & squeeze dampening
+    // formula, applied to the already-confirmed golden sub-values (not to the values just
+    // extracted from this run).
+    let golden_trend_f = expected("multi_factor5_trend_factor");
+    let golden_rsi_f = expected("multi_factor5_rsi_factor");
+    let golden_pressure_f = expected("multi_factor5_pressure_factor");
+    let golden_vol_f = expected("multi_factor5_vol_state");
+    let raw_composite = golden_trend_f * 0.35 + golden_rsi_f * 0.25 + golden_pressure_f * 0.40;
+    let expected_score = if golden_vol_f < 0.0 {
         raw_composite * 0.5
     } else {
         raw_composite
