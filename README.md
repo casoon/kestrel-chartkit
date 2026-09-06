@@ -7,7 +7,7 @@ lower-level modules remain public for advanced composition but may change before
 
 ## Features
 
-- **35+ Streaming Technical Indicators:** RSI, MACD, ATR, ADX, Bollinger Bands, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more.
+- **90+ Streaming Technical Indicators:** RSI, MACD, ATR, ADX, Bollinger Bands, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `indicator::registry::catalog()` for the full, validated list).
 - **Dynamic Catalog Registry:** Parameter validation and dynamic instantiation via `catalog()` and `build_checked(name, params)`.
 - **Market Regime Alignment:** Automatic regime classification (`BullishExpansion`, `BearishExpansion`, `Consolidation`, `Transition`) with permission grading (`ClearToTrade`, `Caution`, `Veto`).
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
@@ -78,6 +78,13 @@ done
 cargo check --no-default-features
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
+```
+
+Run the indicator benchmark suite (streams every catalog indicator over a synthetic bar series,
+also run in CI as a separate `benchmark` job that uploads the Criterion HTML report as an artifact):
+
+```bash
+cargo bench
 ```
 
 ## License
