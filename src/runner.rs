@@ -73,6 +73,11 @@ pub struct BatchResult {
 /// `Degraded` result, and a batch caller can still act on `Unsuitable` since it is always present
 /// on [`BatchResult`], not silently dropped. This is what avoids the "computes and hides the
 /// warning" failure mode the applicability check exists to prevent.
+/// Also tags every emitted [`IndicatorOutput`] with `capabilities` (see
+/// [`IndicatorOutput::series_capabilities`]) — this is the one place in the crate that already
+/// receives a `SeriesCapabilities` value alongside the indicator run, so it is where the
+/// origin gets attached rather than requiring every one of the ~90 `Indicator` implementations to
+/// do it themselves.
 pub fn run_batch_with_applicability<I: Indicator + ?Sized>(
     name: &str,
     indicator: &mut I,
@@ -81,8 +86,17 @@ pub fn run_batch_with_applicability<I: Indicator + ?Sized>(
 ) -> BatchResult {
     let requirements = crate::applicability::data_requirements(name);
     let applicability = crate::applicability::check_applicability(&requirements, capabilities);
+    let series = run_batch(indicator, bars)
+        .into_iter()
+        .map(|entry| TimestampedOutput {
+            timestamp: entry.timestamp,
+            output: entry
+                .output
+                .map(|output| output.with_capabilities(*capabilities)),
+        })
+        .collect();
     BatchResult {
-        series: run_batch(indicator, bars),
+        series,
         applicability,
     }
 }
@@ -190,5 +204,41 @@ mod tests {
             result.applicability,
             crate::applicability::Applicability::Unsuitable { .. }
         ));
+    }
+
+    #[test]
+    fn test_run_batch_with_applicability_tags_every_output_with_capabilities() {
+        let bars = sample_bars(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut sma = SmaEngine::new(3);
+        let capabilities = real_volume_capabilities(crate::model::VolumeKind::RealTurnover);
+
+        let result = run_batch_with_applicability("vwap", &mut sma, &bars, &capabilities);
+
+        // Every emitted output (i.e. every entry past warmup) carries the capabilities it was
+        // computed against — this is what makes pivots_structure/zigzag/zigzag_advanced/
+        // pivot_sets (and every other generic `Indicator`) traceable to their source series
+        // without each of them needing its own `series_capabilities` plumbing.
+        for entry in &result.series {
+            if let Some(output) = &entry.output {
+                assert_eq!(output.series_capabilities, Some(capabilities));
+            }
+        }
+        assert!(result.series.iter().any(|e| e.output.is_some()));
+    }
+
+    #[test]
+    fn test_run_batch_leaves_capabilities_unset() {
+        let bars = sample_bars(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut sma = SmaEngine::new(3);
+
+        let series = run_batch(&mut sma, &bars);
+
+        // Plain `run_batch` never sees a `SeriesCapabilities` value, so it cannot attach one —
+        // callers without that information get `None`, same as a direct `on_bar` call.
+        for entry in &series {
+            if let Some(output) = &entry.output {
+                assert_eq!(output.series_capabilities, None);
+            }
+        }
     }
 }

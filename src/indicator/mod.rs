@@ -82,7 +82,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::artifact::Artifact;
-use crate::model::{Bar, BarValidationError};
+use crate::model::{Bar, BarValidationError, SeriesCapabilities};
 
 /// Output struct returned by an indicator on each processed Bar.
 #[derive(Debug, Clone, PartialEq)]
@@ -99,6 +99,19 @@ pub struct IndicatorOutput {
     pub reason: Option<String>,
     /// Typed result artifacts (pivots, zones, profiles, scenario progress) emitted this bar.
     pub artifacts: Vec<Artifact>,
+    /// Which series this output was computed on, if the caller attached one via
+    /// [`IndicatorOutput::with_capabilities`]. `None` by default: a result is only meaningful for
+    /// the series it was computed on (session cut, roll/adjustment, provenance — see
+    /// `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
+    /// mitführen"). [`crate::runner::run_batch_with_applicability`] sets this automatically from
+    /// the `SeriesCapabilities` it already receives; plain [`crate::runner::run_batch`] and direct
+    /// [`Indicator::on_bar`] calls leave it `None` since neither has a capabilities value to
+    /// attach. This is the same field/pattern already used on `elliott::ImpulseValidation`/
+    /// `CorrectionValidation` and `swing_structure::SwingStructureOutput`, generalized here so it
+    /// covers every indicator behind the shared `Indicator`/`IndicatorOutput` trait (including
+    /// `pivots_structure`/`zigzag`/`zigzag_advanced`/`pivot_sets`) instead of just those three
+    /// hand-picked result types.
+    pub series_capabilities: Option<SeriesCapabilities>,
 }
 
 impl IndicatorOutput {
@@ -111,6 +124,7 @@ impl IndicatorOutput {
             state: None,
             reason: None,
             artifacts: Vec::new(),
+            series_capabilities: None,
         }
     }
 
@@ -133,6 +147,7 @@ impl IndicatorOutput {
             state: None,
             reason: None,
             artifacts: Vec::new(),
+            series_capabilities: None,
         }
     }
 
@@ -148,6 +163,13 @@ impl IndicatorOutput {
 
     pub fn with_artifact(mut self, artifact: impl Into<Artifact>) -> Self {
         self.artifacts.push(artifact.into());
+        self
+    }
+
+    /// Tags this output with the series it was computed on. See
+    /// [`IndicatorOutput::series_capabilities`] for why this matters.
+    pub fn with_capabilities(mut self, capabilities: SeriesCapabilities) -> Self {
+        self.series_capabilities = Some(capabilities);
         self
     }
 }
