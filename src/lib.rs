@@ -89,6 +89,8 @@ pub mod structure;
 pub mod synthetic;
 /// Custom timeframe types and OHLCV bar resampling.
 pub mod timeframe;
+/// Bar-series transformations that derive alternative candles from observed ones.
+pub mod transform;
 /// Chart DTOs and static SVG rendering.
 pub mod viz;
 

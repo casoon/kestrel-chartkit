@@ -1,0 +1,32 @@
+# kestrel-chartkit golden reference fixture: bar-series transformations
+#
+# Heikin-Ashi (package 24) over five bars with an up gap on bar 3:
+#   (100, 103,  99, 102)
+#   (102, 105, 101, 104)
+#   (110, 112, 108, 109)
+#   (109, 110, 104, 105)
+#   (105, 106, 103, 103.5)
+# ha_close = (O+H+L+C)/4; ha_open = (previous ha_open + previous ha_close)/2, seeded on the first
+# bar with (O+C)/2; ha_high = max(H, ha_open, ha_close); ha_low = min(L, ha_open, ha_close).
+# Values derived independently in exact rational arithmetic.
+ha_bar1_open=101.0
+ha_bar1_high=103.0
+ha_bar1_low=99.0
+ha_bar1_close=101.0
+ha_bar2_open=101.0
+ha_bar2_high=105.0
+ha_bar2_low=101.0
+ha_bar2_close=103.0
+ha_bar3_open=102.0
+ha_bar3_high=112.0
+ha_bar3_low=102.0
+ha_bar3_close=109.75
+ha_bar4_open=105.875
+ha_bar4_high=110.0
+ha_bar4_low=104.0
+ha_bar4_close=107.0
+ha_bar5_open=106.4375
+ha_bar5_high=106.4375
+ha_bar5_low=103.0
+ha_bar5_close=104.375
+ha_tolerance=0.000000000001
