@@ -23,6 +23,7 @@ is complete.
 | tema | ✅ |
 | lsma | ✅ |
 | mcginley | ✅ |
+| vidya | ✅ |
 | bollinger | ✅ |
 | cci | ✅ |
 | stochastic | ✅ |

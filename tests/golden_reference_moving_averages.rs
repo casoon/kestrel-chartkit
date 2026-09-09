@@ -5,6 +5,7 @@ use kestrel_chartkit::indicator::moving_averages::EmaEngine;
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::smoothing::{Ema, EmaInit};
+use kestrel_chartkit::indicator::vidya::Vidya;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 use std::collections::HashMap;
@@ -360,4 +361,137 @@ fn test_lsma_regression_outputs_are_causal() {
     let prefix = collect(6);
     let full = collect(closes.len());
     assert_eq!(prefix, full[..prefix.len()]);
+}
+
+// --- Paket 27: VIDYA ------------------------------------------------------------------------
+
+const VIDYA_CLOSES: [f64; 15] = [
+    100.0, 101.0, 100.5, 102.0, 101.0, 103.0, 104.0, 103.5, 105.0, 104.0, 106.0, 105.5, 107.0,
+    106.5, 108.0,
+];
+
+fn vidya_values(cmo_len: usize, ema_len: usize) -> Vec<f64> {
+    let mut vidya = Vidya::new(cmo_len, ema_len);
+    VIDYA_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| {
+            vidya.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+        })
+        .map(|o| o.value)
+        .collect()
+}
+
+#[test]
+fn test_golden_vidya_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    let values = vidya_values(4, 5);
+
+    assert_eq!(
+        values.len() as f64,
+        expected("vidya4_5_output_count"),
+        "VIDYA gibt ab der ersten definierten CMO-Kerze aus"
+    );
+    common::assert_close(
+        values[0],
+        expected("vidya4_5_seed"),
+        tolerance,
+        "VIDYA Seed ist der Close der ersten CMO-Kerze",
+    );
+    common::assert_close(
+        values[1],
+        expected("vidya4_5_second"),
+        tolerance,
+        "VIDYA zweiter Wert",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("vidya4_5_last"),
+        tolerance,
+        "VIDYA letzter Wert",
+    );
+}
+
+/// Der letzte Schritt muss der dokumentierten Formel folgen: alpha aus dem unabhängig
+/// festgehaltenen CMO, angewandt auf den Vorwert.
+#[test]
+fn test_vidya_last_step_follows_the_documented_alpha() {
+    let values = vidya_values(4, 5);
+    let alpha = expected("vidya4_5_last_alpha");
+    let close = VIDYA_CLOSES[VIDYA_CLOSES.len() - 1];
+    let prev = values[values.len() - 2];
+
+    common::assert_close(
+        alpha,
+        2.0 / 6.0 * expected("vidya4_5_last_cmo").abs() / 100.0,
+        1e-15,
+        "alpha aus CMO",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        alpha * close + (1.0 - alpha) * prev,
+        1e-9,
+        "VIDYA-Rekursion",
+    );
+}
+
+/// Ohne Nettobewegung ist CMO 0, alpha 0 — die Linie hält ihren Wert, statt zu springen oder
+/// auf 0 zu fallen.
+#[test]
+fn test_vidya_flat_series_holds_its_level() {
+    let mut vidya = Vidya::new(4, 5);
+    let values: Vec<f64> = (0..12)
+        .filter_map(|i| vidya.on_bar(&Bar::new(i * 60, 50.0, 50.0, 50.0, 50.0, 1000.0)))
+        .map(|o| o.value)
+        .collect();
+    assert!(!values.is_empty(), "VIDYA gab nichts aus");
+    for value in values {
+        common::assert_close(value, 50.0, 0.0, "VIDYA im Flachmarkt");
+    }
+}
+
+/// Bei |CMO| = 100 — einer rein monotonen Reihe — verhält sich VIDYA wie eine EMA derselben
+/// Grundperiode.
+#[test]
+fn test_vidya_on_monotonic_series_matches_plain_ema() {
+    let mut vidya = Vidya::new(4, 5);
+    let mut ema = Ema::new(5);
+    let mut seeded = false;
+    let mut checked = 0;
+
+    for i in 0..20 {
+        let c = 100.0 + i as f64;
+        let bar = Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0);
+        let Some(out) = vidya.on_bar(&bar) else {
+            continue;
+        };
+        if !seeded {
+            // Beide starten beim selben Seed, damit nur die Rekursion verglichen wird.
+            ema.update(out.value);
+            seeded = true;
+            continue;
+        }
+        let expected_ema = ema.update(c).unwrap();
+        common::assert_close(out.value, expected_ema, 1e-9, "VIDYA bei |CMO| = 100");
+        checked += 1;
+    }
+    assert!(checked > 0, "kein Vergleich durchgeführt");
+}
+
+#[test]
+fn test_vidya_reset_restarts_deterministically() {
+    let mut vidya = Vidya::new(4, 5);
+    let run = |vidya: &mut Vidya| -> Vec<f64> {
+        VIDYA_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                vidya.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut vidya);
+    vidya.reset();
+    assert_eq!(first, run(&mut vidya));
 }

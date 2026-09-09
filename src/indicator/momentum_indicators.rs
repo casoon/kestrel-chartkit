@@ -397,6 +397,7 @@ impl Indicator for PpoEngine {
 }
 
 /// Chande Momentum Oscillator (CMO).
+#[derive(Debug, Clone)]
 pub struct CmoEngine {
     period: usize,
     prev_close: Option<f64>,

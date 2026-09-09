@@ -42,3 +42,15 @@ lsma5_noisy_slope=0.8
 lsma5_noisy_intercept=10.4
 lsma5_noisy_r2=0.64
 lsma5_noisy_value=13.6
+
+# VIDYA, CMO variant (package 27): alpha = 2/(ema_len+1) * |CMO(cmo_len)|/100 applied to the
+# ordinary exponential recursion; the first published value is the close of the bar the CMO first
+# becomes defined for. cmo_len = 4, ema_len = 5 over the closes
+# [100, 101, 100.5, 102, 101, 103, 104, 103.5, 105, 104, 106, 105.5, 107, 106.5, 108].
+# CMO, alpha and the line were derived independently from those definitions.
+vidya4_5_output_count=11
+vidya4_5_seed=101.0
+vidya4_5_second=101.26666666666667
+vidya4_5_last=105.10053072595704
+vidya4_5_last_cmo=50.0
+vidya4_5_last_alpha=0.16666666666666663

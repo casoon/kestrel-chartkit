@@ -60,6 +60,7 @@ use super::trend_structural::{
 };
 use super::trix::Trix;
 use super::tsi::Tsi;
+use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
     DonchianChannelEngine, GarmanKlassVolatilityEngine, HistoricalVolatilityEngine,
@@ -160,6 +161,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "vidya",
+            description: "Variable Index Dynamic Average (CMO-scaled exponential smoothing)",
+            default_params: [("cmo_len".to_string(), 9.0), ("ema_len".to_string(), 12.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "trix",
@@ -1090,6 +1096,11 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "vidya" => {
+            let cmo_len = get_usize_p(params, "cmo_len", 9, 1, 10000)?;
+            let ema_len = get_usize_p(params, "ema_len", 12, 1, 10000)?;
+            Ok(Box::new(Vidya::new(cmo_len, ema_len)))
         }
         "trix" => {
             let len = get_usize_p(params, "len", 15, 1, 10000)?;
@@ -2145,6 +2156,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "atr",
     "efi",
     "trix",
+    "vidya",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2256,8 +2268,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 93);
-        assert_eq!(catalog().len(), 93);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 94);
+        assert_eq!(catalog().len(), 94);
     }
 
     #[test]
