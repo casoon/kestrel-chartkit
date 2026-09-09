@@ -49,6 +49,7 @@ is complete.
 | kst | ✅ |
 | ppo | ✅ |
 | roc | ✅ |
+| trix | ✅ |
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |

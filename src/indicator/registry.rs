@@ -58,6 +58,7 @@ use super::trend_quality::TrendQualityScoreEngine;
 use super::trend_structural::{
     AroonEngine, DmiEngine, IchimokuEngine, ParabolicSarEngine, SupertrendEngine,
 };
+use super::trix::Trix;
 use super::tsi::Tsi;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -159,6 +160,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "trix",
+            description: "TRIX (rate of change of a triple-smoothed price series, in percent)",
+            default_params: [("len".to_string(), 15.0), ("signal_len".to_string(), 9.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "efi",
@@ -810,7 +816,7 @@ pub fn output_range(name: &str) -> OutputRange {
         // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
         "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "efi"
         | "elder_ray" | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc"
-        | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
+        | "trix" | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
@@ -1084,6 +1090,11 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "trix" => {
+            let len = get_usize_p(params, "len", 15, 1, 10000)?;
+            let signal_len = get_usize_p(params, "signal_len", 9, 1, 10000)?;
+            Ok(Box::new(Trix::new(len, signal_len)))
         }
         "efi" => {
             let ema_len = get_usize_p(params, "ema_len", 13, 1, 10000)?;
@@ -2133,6 +2144,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "mfi",
     "atr",
     "efi",
+    "trix",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2244,8 +2256,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 92);
-        assert_eq!(catalog().len(), 92);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 93);
+        assert_eq!(catalog().len(), 93);
     }
 
     #[test]

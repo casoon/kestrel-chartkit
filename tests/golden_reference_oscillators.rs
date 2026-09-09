@@ -4,6 +4,7 @@ use kestrel_chartkit::indicator::bollinger::{BollingerBands, VarianceConvention}
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
+use kestrel_chartkit::indicator::trix::Trix;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 use std::collections::HashMap;
@@ -845,4 +846,149 @@ fn test_bollinger_registry_default_is_population() {
             .collect()
     };
     assert_eq!(run(default_typed), run(explicit));
+}
+
+// --- Paket 22: TRIX -------------------------------------------------------------------------
+
+/// Steigende Reihe mit Rücksetzern; eine reine Gerade würde den Unterschied zwischen den drei
+/// Glättungsstufen kaum zeigen.
+const TRIX_CLOSES: [f64; 20] = [
+    100.0, 101.0, 102.5, 101.5, 103.0, 104.5, 104.0, 105.5, 107.0, 106.0, 107.5, 109.0, 108.5,
+    110.0, 111.5, 111.0, 112.5, 114.0, 113.5, 115.0,
+];
+
+fn trix_outputs(
+    len: usize,
+    signal_len: usize,
+) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    let mut trix = Trix::new(len, signal_len);
+    TRIX_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| trix.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .collect()
+}
+
+#[test]
+fn test_golden_trix_reference_values() {
+    let outputs = trix_outputs(4, 3);
+    let tolerance = expected("trix4_signal3_tolerance");
+
+    assert_eq!(
+        outputs.len() as f64,
+        expected("trix4_signal3_output_count"),
+        "TRIX(4) gibt ab der fünften Kerze aus"
+    );
+    common::assert_close(
+        outputs[0].value,
+        expected("trix4_signal3_line_first"),
+        tolerance,
+        "TRIX(4) erste Linie",
+    );
+    let last = outputs.last().unwrap();
+    common::assert_close(
+        last.value,
+        expected("trix4_signal3_line_last"),
+        tolerance,
+        "TRIX(4) letzte Linie",
+    );
+    common::assert_close(
+        last.extra["signal"],
+        expected("trix4_signal3_signal_last"),
+        tolerance,
+        "TRIX(4) Signal",
+    );
+    common::assert_close(
+        last.extra["hist"],
+        last.value - last.extra["signal"],
+        1e-15,
+        "TRIX-Histogramm ist Linie minus Signal",
+    );
+}
+
+/// Signal und Histogramm weisen eigene Bereitschaft aus: Vor der dritten Linie fehlen die
+/// Schlüssel, statt eine Null vorzutäuschen.
+#[test]
+fn test_trix_signal_and_histogram_report_their_own_readiness() {
+    let outputs = trix_outputs(4, 3);
+    for (i, out) in outputs.iter().enumerate() {
+        let ready = i + 1 >= 3;
+        assert_eq!(
+            out.extra.contains_key("signal"),
+            ready,
+            "Ausgabe {i}: Signalbereitschaft"
+        );
+        assert_eq!(
+            out.extra.contains_key("hist"),
+            ready,
+            "Ausgabe {i}: Histogrammbereitschaft"
+        );
+    }
+}
+
+/// Konstante Reihe: Die dreifach geglättete Reihe ändert sich nicht, die Rate ist exakt 0.
+#[test]
+fn test_trix_constant_series_is_zero() {
+    let mut trix = Trix::new(4, 3);
+    let outputs: Vec<f64> = (0..20)
+        .filter_map(|i| trix.on_bar(&Bar::new(i * 60, 50.0, 50.5, 49.5, 50.0, 1000.0)))
+        .map(|o| o.value)
+        .collect();
+    assert!(!outputs.is_empty(), "TRIX gab nichts aus");
+    for value in outputs {
+        common::assert_close(value, 0.0, 0.0, "TRIX auf konstanter Reihe");
+    }
+}
+
+/// Geometrisches Wachstum ist der analytisch eindeutige Fall: Wächst der Preis je Kerze um
+/// denselben Faktor, wächst nach dem Einschwingen jede Stufe um denselben Faktor, und TRIX
+/// nähert sich der prozentualen Wachstumsrate.
+#[test]
+fn test_trix_on_geometric_series_approaches_the_growth_rate() {
+    let mut trix = Trix::new(5, 3);
+    let mut last = None;
+    for i in 0..400 {
+        let c = 100.0 * 1.01_f64.powi(i);
+        if let Some(out) = trix.on_bar(&Bar::new(i as i64 * 60, c, c, c, c, 1000.0)) {
+            last = Some(out.value);
+        }
+    }
+    common::assert_close(
+        last.expect("TRIX gab nichts aus"),
+        expected("trix_geometric_growth_percent"),
+        expected("trix_geometric_tolerance"),
+        "TRIX auf geometrischer Reihe",
+    );
+}
+
+#[test]
+fn test_trix_reset_restarts_deterministically() {
+    let mut trix = Trix::new(4, 3);
+    let run = |trix: &mut Trix| -> Vec<f64> {
+        TRIX_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                trix.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut trix);
+    trix.reset();
+    assert_eq!(first, run(&mut trix));
+}
+
+/// Die Registry baut denselben Indikator wie der Konstruktor mit den Katalog-Voreinstellungen.
+#[test]
+fn test_trix_registry_defaults_match_direct_construction() {
+    let mut via_registry = build_checked("trix", &HashMap::new()).unwrap();
+    let mut direct = Trix::with_defaults();
+    for (i, &c) in TRIX_CLOSES.iter().enumerate() {
+        let bar = Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0);
+        assert_eq!(
+            via_registry.on_bar(&bar).map(|o| o.value),
+            direct.on_bar(&bar).map(|o| o.value)
+        );
+    }
 }

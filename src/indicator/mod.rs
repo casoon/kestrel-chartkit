@@ -57,6 +57,7 @@ pub mod tema;
 pub mod trend_quality;
 pub mod trend_relationship;
 pub mod trend_structural;
+pub mod trix;
 pub mod tsi;
 pub mod vix_fix;
 pub mod volatility_indicators;
