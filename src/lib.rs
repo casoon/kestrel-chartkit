@@ -188,8 +188,9 @@ pub use synthetic::{
 pub use timeframe::{BarResampler, ConfirmedResampler, Timeframe, TimeframeError};
 pub use valuation::bootstrap::CalibrationInstrument;
 pub use valuation::portfolio::{
-    MarketScenario, PortfolioScenarioResult, PortfolioSensitivities, PortfolioValuation,
-    PositionValuation, ValuationModel, ValuationPosition, ValuedInstrument,
+    MarketScenario, PortfolioReport, PortfolioScenarioResult, PortfolioSensitivities,
+    PortfolioValuation, PositionValuation, SensitivityKind, ValuationModel, ValuationPosition,
+    ValuedInstrument,
 };
 pub use valuation::volatility::{SurfaceValidity, VolatilitySurface};
 pub use valuation::{

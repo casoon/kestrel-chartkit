@@ -17,7 +17,7 @@ use crate::finance::{Date, FixedRateBond};
 use crate::option::{OptionStyle, OptionType};
 use crate::portfolio::PositionSide;
 
-use super::{ValuationContext, ValuationContextError, Valued};
+use super::{ValuationContext, ValuationContextError, ValuationStamp, Valued};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -379,5 +379,102 @@ impl ValuationContext {
             },
             stamp: self.stamp(),
         })
+    }
+}
+
+/// One named sensitivity, with the move it measures.
+///
+/// The kind is part of the result rather than a string a consumer invents: a report that labels
+/// "rate" without saying *how much* rate has labelled nothing, and a reader who assumes basis
+/// points where percent was meant is off by four orders of magnitude.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum SensitivityKind {
+    UnderlyingUpOnePercent,
+    VolatilityUpOnePoint,
+    RateUpOneBasisPoint,
+    FxUpOnePercent,
+}
+
+impl SensitivityKind {
+    /// The move this sensitivity is the answer to, ready to put next to the number.
+    pub fn described_move(&self) -> &'static str {
+        match self {
+            Self::UnderlyingUpOnePercent => "every underlying +1%",
+            Self::VolatilityUpOnePoint => "every volatility +1 point",
+            Self::RateUpOneBasisPoint => "every zero rate +1 bp",
+            Self::FxUpOnePercent => "every foreign currency +1% against the account currency",
+        }
+    }
+}
+
+impl PortfolioSensitivities {
+    /// The four sensitivities with their kinds, for a consumer that renders them as a list.
+    pub fn entries(&self) -> [(SensitivityKind, f64); 4] {
+        [
+            (
+                SensitivityKind::UnderlyingUpOnePercent,
+                self.underlying_up_1pct,
+            ),
+            (
+                SensitivityKind::VolatilityUpOnePoint,
+                self.volatility_up_1pt,
+            ),
+            (SensitivityKind::RateUpOneBasisPoint, self.rate_up_1bp),
+            (SensitivityKind::FxUpOnePercent, self.fx_up_1pct),
+        ]
+    }
+}
+
+/// What a consumer carries onward from a valuation.
+///
+/// The pieces exist separately — [`Valued`], [`PortfolioScenarioResult`], [`ValuationModel`] —
+/// and a report could assemble them itself. This type is the assembled form, so that every
+/// consumer assembles it the same way and none of them re-derives what a number means.
+///
+/// What the contract says, and what a consumer must not do with it:
+///
+/// * Every figure is in `account_currency`, at the [`ValuationStamp`] given. A number without its
+///   stamp cannot be traced back to the data it came from, so they travel together.
+/// * `positions` carries each position's [`ValuationModel`]. A display that puts a linearly
+///   valued position next to a model-valued one without distinction blurs exactly what the
+///   valuation was for.
+/// * `sensitivities` are *differences* under the named moves, not derivatives. Scaling one up to
+///   a larger move is not permitted: for a non-linear position the two disagree, and that
+///   disagreement is the convexity the number was supposed to expose.
+/// * A valuation this crate does not support comes back as an error, never as a zero. A consumer
+///   that renders a missing value as `0.00` has reported a position worth nothing.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PortfolioReport {
+    pub stamp: ValuationStamp,
+    pub account_currency: Currency,
+    /// Value before the scenario.
+    pub base_value_account: f64,
+    /// Value under the scenario.
+    pub scenario_value_account: f64,
+    /// `scenario_value_account - base_value_account`.
+    pub pnl_account: f64,
+    /// Position level of the base valuation, each with the model that produced it.
+    pub positions: Vec<PositionValuation>,
+    pub sensitivities: Vec<(SensitivityKind, f64)>,
+}
+
+impl PortfolioReport {
+    /// Flattens a scenario result into the consumer-facing form.
+    pub fn from_scenario(result: &Valued<PortfolioScenarioResult>) -> Self {
+        Self {
+            stamp: result.stamp.clone(),
+            account_currency: result.value.base.account_currency.clone(),
+            base_value_account: result.value.base.total_value_account,
+            scenario_value_account: result.value.stressed.total_value_account,
+            pnl_account: result.value.pnl_account,
+            positions: result.value.base.positions.clone(),
+            sensitivities: result.value.sensitivities.entries().to_vec(),
+        }
     }
 }
