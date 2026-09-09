@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::adx::Adx;
 use super::alligator::AlligatorEngine;
 use super::anchored_vwap::{AnchoredVwapEngine, VwapAnchorKind, ZeroVolumePolicy};
-use super::atr::Atr;
+use super::atr::{Atr, TrueRangeSmoothing};
 use super::bollinger::{BollingerBands, VarianceConvention};
 use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
@@ -186,7 +186,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "atr",
-            description: "Average True Range",
+            description: "Average True Range (build_typed accepts smoothing=rma|sma|ema|wma for the true-range average; rma is the default and the signal line stays Wilder-smoothed)",
             default_params: [("atr_len".to_string(), 14.0), ("sig_len".to_string(), 20.0)].into(),
         },
         IndicatorCatalogEntry {
@@ -1133,11 +1133,7 @@ pub fn build_checked(
             let ema_len = get_usize_p(params, "ema_len", 13, 1, 10000)?;
             Ok(Box::new(ElderForceIndex::new(ema_len)))
         }
-        "atr" => {
-            let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
-            let sig_len = get_usize_p(params, "sig_len", 20, 1, 10000)?;
-            Ok(Box::new(Atr::new(atr_len, sig_len)))
-        }
+        "atr" => Ok(Box::new(build_atr(params, TrueRangeSmoothing::Rma)?)),
         "chande_kroll" | "cks" => {
             let atr_len = get_usize_p(params, "atr_len", 10, 1, 10000)?;
             let stop_len = get_usize_p(params, "stop_len", 9, 1, 10000)?;
@@ -1787,6 +1783,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 
     let built = match name.to_lowercase().as_str() {
         "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
+        "atr" => build_atr_typed(&remaining)?,
         "ema" => build_ema_typed(&remaining)?,
         "rsi" => build_rsi_typed(&remaining)?,
         "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
@@ -1834,6 +1831,36 @@ fn flatten_typed(params: &TypedParams) -> Result<HashMap<String, f64>, RegistryE
         }
     }
     Ok(flat)
+}
+
+/// The numeric part of an ATR configuration; see [`build_rsi`] for why this is shared.
+fn build_atr(
+    params: &HashMap<String, f64>,
+    smoothing: TrueRangeSmoothing,
+) -> Result<Atr, RegistryError> {
+    let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
+    let sig_len = get_usize_p(params, "sig_len", 20, 1, 10000)?;
+    Ok(Atr::new(atr_len, sig_len).with_smoothing(smoothing))
+}
+
+fn build_atr_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    let smoothing = match get_enum_p(params, "smoothing")?.as_deref() {
+        None | Some("rma") => TrueRangeSmoothing::Rma,
+        Some("sma") => TrueRangeSmoothing::Sma,
+        Some("ema") => TrueRangeSmoothing::Ema,
+        Some("wma") => TrueRangeSmoothing::Wma,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "smoothing".to_string(),
+                value: other.to_string(),
+                reason: "expected one of rma|sma|ema|wma".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("smoothing");
+    Ok(Box::new(build_atr(&flatten_typed(&numeric)?, smoothing)?))
 }
 
 /// The numeric part of an EMA configuration; see [`build_rsi`] for why this is shared.

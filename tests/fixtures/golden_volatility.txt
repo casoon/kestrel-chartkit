@@ -71,3 +71,17 @@ cks4_3_mult2_short_last=114.74844339466654
 cks4_1_mult2_long_last=108.1886674540001
 cks4_1_mult2_short_last=114.8113325459999
 cks_tolerance=0.000000001
+
+# ATR true-range smoothing methods (package 42) over six bars with an up gap and a down gap,
+# atr_len = 3. Same true ranges [3, 6, 6, 8, 6, 4] for every method; only the average differs, and
+# all four publish from the third true range on. Raw values in price units, derived independently
+# from each method's own definition.
+atr3_rma_raw_last=5.333333333333333
+atr3_sma_raw_last=6.0
+atr3_ema_raw_last=5.15625
+atr3_wma_raw_last=5.333333333333333
+atr3_rma_raw_third=5.0
+atr3_sma_raw_third=5.0
+atr3_ema_raw_third=5.25
+atr3_wma_raw_third=5.5
+atr3_method_output_count=4

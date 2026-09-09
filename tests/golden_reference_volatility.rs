@@ -1,7 +1,7 @@
 mod common;
 
 use kestrel_chartkit::indicator::adx::Adx;
-use kestrel_chartkit::indicator::atr::Atr;
+use kestrel_chartkit::indicator::atr::{Atr, TrueRangeSmoothing};
 use kestrel_chartkit::indicator::chande_kroll::ChandeKrollStop;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
@@ -652,4 +652,170 @@ fn test_chande_kroll_reset_restarts_deterministically() {
     let first = run(&mut cks);
     cks.reset();
     assert_eq!(first, run(&mut cks));
+}
+
+// --- Paket 42: Wahl der True-Range-Glättung -------------------------------------------------
+
+/// Sechs Kerzen mit Auf- und Abwärtsgap; dieselben True Ranges für alle vier Methoden.
+const ATR_METHOD_BARS: [(f64, f64, f64, f64); 6] = [
+    (100.0, 102.0, 99.0, 101.0),
+    (105.0, 107.0, 104.0, 106.0),
+    (103.0, 104.0, 100.0, 101.0),
+    (95.0, 96.0, 93.0, 94.0),
+    (94.0, 99.0, 93.0, 98.0),
+    (98.0, 101.0, 97.0, 100.0),
+];
+
+fn atr_method_outputs(
+    method: TrueRangeSmoothing,
+) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    // sig_len = 1, damit die Signalglättung die Ausgabe nicht zusätzlich verzögert und der
+    // Vergleich allein die True-Range-Glättung trifft.
+    let mut atr = Atr::new(3, 1).with_smoothing(method);
+    ATR_METHOD_BARS
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &(o, h, l, c))| atr.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, 1000.0)))
+        .collect()
+}
+
+#[test]
+fn test_golden_atr_smoothing_methods_reference_values() {
+    let tolerance = expected("atr_tolerance");
+
+    for (method, key) in [
+        (TrueRangeSmoothing::Rma, "rma"),
+        (TrueRangeSmoothing::Sma, "sma"),
+        (TrueRangeSmoothing::Ema, "ema"),
+        (TrueRangeSmoothing::Wma, "wma"),
+    ] {
+        let outputs = atr_method_outputs(method);
+        assert_eq!(
+            outputs.len() as f64,
+            expected("atr3_method_output_count"),
+            "{key}: jede Methode gibt ab der dritten True Range aus"
+        );
+        common::assert_close(
+            outputs[0].extra["raw"],
+            expected(&format!("atr3_{key}_raw_third")),
+            tolerance,
+            &format!("ATR(3) {key}, erste Ausgabe"),
+        );
+        common::assert_close(
+            outputs.last().unwrap().extra["raw"],
+            expected(&format!("atr3_{key}_raw_last")),
+            tolerance,
+            &format!("ATR(3) {key}, letzte Ausgabe"),
+        );
+    }
+}
+
+/// Der Prozentwert folgt in jeder Methode demselben Rohwert derselben Kerze.
+#[test]
+fn test_atr_percent_follows_the_selected_raw_value_in_every_method() {
+    for method in [
+        TrueRangeSmoothing::Rma,
+        TrueRangeSmoothing::Sma,
+        TrueRangeSmoothing::Ema,
+        TrueRangeSmoothing::Wma,
+    ] {
+        let outputs = atr_method_outputs(method);
+        for (output, bar) in outputs.iter().zip(&ATR_METHOD_BARS[2..]) {
+            common::assert_close(
+                output.value,
+                100.0 * output.extra["raw"] / bar.3,
+                1e-12,
+                &format!("{method:?}: Prozentwert aus dem Rohwert"),
+            );
+        }
+    }
+}
+
+/// Der Default bleibt Wilder, und die bestehenden Golden-Werte gelten unverändert weiter.
+#[test]
+fn test_atr_default_smoothing_is_unchanged() {
+    let mut default = Atr::new(3, 2);
+    let mut explicit = Atr::new(3, 2).with_smoothing(TrueRangeSmoothing::Rma);
+    for (i, &(o, h, l, c)) in ATR_METHOD_BARS.iter().enumerate() {
+        let bar = Bar::new(i as i64 * 60, o, h, l, c, 1000.0);
+        assert_eq!(
+            default.on_bar(&bar).map(|out| out.value),
+            explicit.on_bar(&bar).map(|out| out.value)
+        );
+    }
+}
+
+/// Die Methodenwahl trifft nur die True-Range-Glättung. Die Signalreihe bleibt in jeder Methode
+/// Wilder-geglättet, erkennbar an ihrer Rekursion über die veröffentlichten Prozentwerte:
+/// `signal_t = signal_{t-1} + (value_t - signal_{t-1}) / sig_len`.
+#[test]
+fn test_signal_line_stays_wilder_smoothed_in_every_method() {
+    for method in [
+        TrueRangeSmoothing::Rma,
+        TrueRangeSmoothing::Sma,
+        TrueRangeSmoothing::Ema,
+        TrueRangeSmoothing::Wma,
+    ] {
+        let mut atr = Atr::new(3, 2).with_smoothing(method);
+        let outputs: Vec<_> = ATR_METHOD_BARS
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &(o, h, l, c))| {
+                atr.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, 1000.0))
+            })
+            .collect();
+
+        assert!(outputs.len() >= 2, "{method:?}: zu wenige Ausgaben");
+        for pair in outputs.windows(2) {
+            let previous_signal = pair[0].extra["signal"];
+            let expected = previous_signal + (pair[1].value - previous_signal) / 2.0;
+            common::assert_close(
+                pair[1].extra["signal"],
+                expected,
+                1e-12,
+                &format!("{method:?}: Wilder-Rekursion der Signallinie"),
+            );
+        }
+    }
+}
+
+#[test]
+fn test_atr_smoothing_enum_is_validated_and_defaults_to_rma() {
+    use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+    use kestrel_chartkit::indicator::registry::{build_typed, RegistryError};
+
+    let bars: Vec<Bar> = ATR_METHOD_BARS
+        .iter()
+        .enumerate()
+        .map(|(i, &(o, h, l, c))| Bar::new(i as i64 * 60, o, h, l, c, 1000.0))
+        .collect();
+    let run = |mut ind: Box<dyn Indicator>| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|b| ind.on_bar(b))
+            .map(|o| o.value)
+            .collect()
+    };
+
+    let default_typed = build_typed("atr", &TypedParams::new()).unwrap();
+    let explicit = build_typed(
+        "atr",
+        &TypedParams::from([("smoothing".to_string(), ParamValue::Enum("rma".to_string()))]),
+    )
+    .unwrap();
+    assert_eq!(run(default_typed), run(explicit));
+
+    let err = match build_typed(
+        "atr",
+        &TypedParams::from([(
+            "smoothing".to_string(),
+            ParamValue::Enum("wilder".to_string()),
+        )]),
+    ) {
+        Ok(_) => panic!("unbekannte Methode muss abgelehnt werden"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::InvalidEnumValue { .. }),
+        "{err:?}"
+    );
 }
