@@ -3,8 +3,9 @@
 //! per plan/09-finanzkonventionen-und-kurven.md and CLAUDE.md.
 
 use kestrel_chartkit::finance::{
-    discount_factor, price_bond, year_fraction, yield_to_maturity, Compounding, Date,
-    DayCountConvention,
+    discount_factor, price_bond, year_fraction, yield_to_maturity, BusinessCalendar,
+    BusinessDayConvention, Compounding, CouponSchedule, Date, DayCountConvention, FixedRateBond,
+    ScheduleStub, Weekday,
 };
 
 #[test]
@@ -164,4 +165,307 @@ fn test_golden_yield_to_maturity_inversion() {
         (solved_ytm - target_ytm).abs() < 1e-6,
         "YTM solver failed: solved={solved_ytm}, expected={target_ytm}"
     );
+}
+
+// --- Paket 12: Zahlungspläne, Konventionen und Stückzinsen ----------------------------------
+
+/// Wochentage gegen bekannte Kalendertage: Ohne diese Verankerung wäre jede Geschäftstagsregel
+/// nur intern konsistent.
+#[test]
+fn test_weekday_matches_known_calendar_dates() {
+    for (year, month, day, expected) in [
+        (2026, 6, 15, Weekday::Monday),
+        (2026, 10, 30, Weekday::Friday),
+        (2026, 10, 31, Weekday::Saturday),
+        (2026, 11, 2, Weekday::Monday),
+        (2028, 2, 29, Weekday::Tuesday),
+        (2026, 1, 1, Weekday::Thursday),
+    ] {
+        assert_eq!(
+            Date::new(year, month, day).unwrap().weekday(),
+            expected,
+            "{year}-{month}-{day}"
+        );
+    }
+}
+
+/// Monatsschritte klemmen den Tag auf die Länge des Zielmonats — das ist noch nicht die
+/// Monatsende-Regel, sondern nur die Vermeidung eines ungültigen Datums.
+#[test]
+fn test_add_months_clamps_the_day_to_the_target_month() {
+    let august_31 = Date::new(2027, 8, 31).unwrap();
+    assert_eq!(august_31.add_months(-6), Date::new(2027, 2, 28).unwrap());
+    assert_eq!(august_31.add_months(-18), Date::new(2026, 2, 28).unwrap());
+    // 2028 ist ein Schaltjahr.
+    assert_eq!(august_31.add_months(6), Date::new(2028, 2, 29).unwrap());
+    assert_eq!(august_31.add_months(12), Date::new(2028, 8, 31).unwrap());
+}
+
+#[test]
+fn test_add_days_crosses_month_and_year_boundaries() {
+    assert_eq!(
+        Date::new(2026, 12, 31).unwrap().add_days(1),
+        Date::new(2027, 1, 1).unwrap()
+    );
+    assert_eq!(
+        Date::new(2027, 1, 1).unwrap().add_days(-1),
+        Date::new(2026, 12, 31).unwrap()
+    );
+    assert_eq!(
+        Date::new(2028, 2, 28).unwrap().add_days(1),
+        Date::new(2028, 2, 29).unwrap()
+    );
+    assert_eq!(
+        Date::new(2026, 1, 1).unwrap().add_days(365),
+        Date::new(2027, 1, 1).unwrap()
+    );
+}
+
+/// Die Monatsende-Regel greift, wenn der Anker selbst ein Monatsende ist: Aus dem 31. August
+/// wird der 28./29. Februar und wieder der 31. August — nicht der 28. jedes Februars und der
+/// 28. jedes August.
+#[test]
+fn test_month_end_rule_snaps_generated_dates_to_month_end() {
+    let schedule = CouponSchedule::regular(
+        Date::new(2026, 8, 31).unwrap(),
+        Date::new(2028, 8, 31).unwrap(),
+        2,
+    )
+    .unwrap();
+
+    assert_eq!(
+        schedule.accrual_dates(),
+        [
+            Date::new(2026, 8, 31).unwrap(),
+            Date::new(2027, 2, 28).unwrap(),
+            Date::new(2027, 8, 31).unwrap(),
+            Date::new(2028, 2, 29).unwrap(),
+            Date::new(2028, 8, 31).unwrap(),
+        ]
+    );
+}
+
+/// Ohne Monatsende-Anker bleibt der Tag im Monat stehen.
+#[test]
+fn test_schedule_without_month_end_anchor_keeps_the_day_of_month() {
+    let schedule = CouponSchedule::regular(
+        Date::new(2026, 6, 15).unwrap(),
+        Date::new(2027, 6, 15).unwrap(),
+        2,
+    )
+    .unwrap();
+    assert_eq!(
+        schedule.accrual_dates(),
+        [
+            Date::new(2026, 6, 15).unwrap(),
+            Date::new(2026, 12, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+        ]
+    );
+}
+
+/// Kurze und lange erste Periode aus derselben Emission: Bei `ShortFirst` bleibt das
+/// angebrochene Stück eine eigene Periode, bei `LongFirst` verschmilzt es mit der folgenden.
+#[test]
+fn test_first_stub_is_kept_or_absorbed_as_selected() {
+    let issue = Date::new(2026, 8, 10).unwrap();
+    let maturity = Date::new(2028, 6, 15).unwrap();
+    let generate = |stub| {
+        CouponSchedule::generate(
+            issue,
+            maturity,
+            2,
+            stub,
+            BusinessDayConvention::Unadjusted,
+            &BusinessCalendar::weekends_only(),
+        )
+        .unwrap()
+    };
+
+    assert_eq!(
+        generate(ScheduleStub::ShortFirst).accrual_dates(),
+        [
+            issue,
+            Date::new(2026, 12, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+            Date::new(2027, 12, 15).unwrap(),
+            maturity,
+        ]
+    );
+    assert_eq!(
+        generate(ScheduleStub::LongFirst).accrual_dates(),
+        [
+            issue,
+            Date::new(2027, 6, 15).unwrap(),
+            Date::new(2027, 12, 15).unwrap(),
+            maturity,
+        ]
+    );
+}
+
+/// Geschäftstagsregeln: Der 31. Oktober 2026 ist ein Samstag. `Following` geht auf Montag, den
+/// 2. November — und damit in den Folgemonat, weshalb `ModifiedFollowing` stattdessen auf
+/// Freitag, den 30. Oktober zurückgeht.
+#[test]
+fn test_business_day_conventions_move_dates_as_documented() {
+    let calendar = BusinessCalendar::weekends_only();
+    let saturday = Date::new(2026, 10, 31).unwrap();
+
+    assert_eq!(
+        calendar.adjust(saturday, BusinessDayConvention::Unadjusted),
+        saturday
+    );
+    assert_eq!(
+        calendar.adjust(saturday, BusinessDayConvention::Following),
+        Date::new(2026, 11, 2).unwrap()
+    );
+    assert_eq!(
+        calendar.adjust(saturday, BusinessDayConvention::ModifiedFollowing),
+        Date::new(2026, 10, 30).unwrap()
+    );
+    assert_eq!(
+        calendar.adjust(saturday, BusinessDayConvention::Preceding),
+        Date::new(2026, 10, 30).unwrap()
+    );
+}
+
+/// Ein übergebener Feiertag wirkt wie ein Wochenendtag; Freitag der 25. Dezember 2026 als
+/// Feiertag schiebt `Preceding` auf Donnerstag den 24.
+#[test]
+fn test_supplied_holidays_are_treated_as_non_business_days() {
+    let christmas = Date::new(2026, 12, 25).unwrap();
+    let calendar = BusinessCalendar::with_holidays([christmas]);
+
+    assert!(!calendar.is_business_day(christmas));
+    assert_eq!(
+        calendar.adjust(christmas, BusinessDayConvention::Preceding),
+        Date::new(2026, 12, 24).unwrap()
+    );
+    // Samstag 26., Sonntag 27. -> Montag 28.
+    assert_eq!(
+        calendar.adjust(christmas, BusinessDayConvention::Following),
+        Date::new(2026, 12, 28).unwrap()
+    );
+}
+
+/// Zahlungstermine bewegen sich, Abgrenzungstermine nicht: Ein Kupon deckt einen Kalenderzeitraum
+/// ab, unabhängig davon, an welchen Tagen der Zahlungsverkehr geöffnet hat.
+#[test]
+fn test_adjustment_moves_payment_dates_but_not_accrual_dates() {
+    let schedule = CouponSchedule::generate(
+        Date::new(2026, 4, 30).unwrap(),
+        Date::new(2026, 10, 31).unwrap(),
+        2,
+        ScheduleStub::ShortFirst,
+        BusinessDayConvention::ModifiedFollowing,
+        &BusinessCalendar::weekends_only(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        schedule.accrual_dates().last().unwrap(),
+        &Date::new(2026, 10, 31).unwrap(),
+        "die Abgrenzung endet am Kalendertermin"
+    );
+    assert_eq!(
+        schedule.payment_dates().last().unwrap(),
+        &Date::new(2026, 10, 30).unwrap(),
+        "gezahlt wird am vorangehenden Geschäftstag"
+    );
+}
+
+/// Der Kupon folgt dem Day Count: Unter Actual/365 zahlt eine 183-Tage-Periode mehr als eine mit
+/// 182 Tagen. Handrechnung: 1000 * 5% * 183/365 und 1000 * 5% * 182/365.
+#[test]
+fn test_coupon_amount_follows_the_day_count() {
+    let bond = FixedRateBond::new(
+        1000.0,
+        0.05,
+        2,
+        CouponSchedule::regular(
+            Date::new(2026, 6, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+            2,
+        )
+        .unwrap(),
+        DayCountConvention::Actual365Fixed,
+    )
+    .unwrap();
+
+    assert!((bond.coupon_amount(0).unwrap() - 1000.0 * 0.05 * 183.0 / 365.0).abs() < 1e-12);
+    assert!((bond.coupon_amount(1).unwrap() - 1000.0 * 0.05 * 182.0 / 365.0).abs() < 1e-12);
+
+    // Unter 30/360 ist jede Halbjahresperiode exakt ein halbes Jahr, die Beträge sind gleich.
+    let thirty = FixedRateBond::new(
+        1000.0,
+        0.05,
+        2,
+        CouponSchedule::regular(
+            Date::new(2026, 6, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+            2,
+        )
+        .unwrap(),
+        DayCountConvention::Thirty360,
+    )
+    .unwrap();
+    assert!((thirty.coupon_amount(0).unwrap() - 25.0).abs() < 1e-12);
+    assert!((thirty.coupon_amount(1).unwrap() - 25.0).abs() < 1e-12);
+}
+
+/// Stückzinsen sind null auf einem Kupontermin und wachsen innerhalb der Periode linear im Sinne
+/// des Day Counts. Handrechnung: 1000 * 5% * 92/365 vom 15. Juni bis 15. September.
+#[test]
+fn test_accrued_interest_is_zero_on_a_coupon_date_and_day_counted_between() {
+    let bond = FixedRateBond::new(
+        1000.0,
+        0.05,
+        2,
+        CouponSchedule::regular(
+            Date::new(2026, 6, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+            2,
+        )
+        .unwrap(),
+        DayCountConvention::Actual365Fixed,
+    )
+    .unwrap();
+
+    assert_eq!(
+        bond.accrued_interest(Date::new(2026, 6, 15).unwrap()),
+        0.0,
+        "Emissionstag"
+    );
+    assert_eq!(
+        bond.accrued_interest(Date::new(2026, 12, 15).unwrap()),
+        0.0,
+        "Kupontermin"
+    );
+    let mid = bond.accrued_interest(Date::new(2026, 9, 15).unwrap());
+    assert!((mid - 1000.0 * 0.05 * 92.0 / 365.0).abs() < 1e-12);
+}
+
+/// Eine Zahlung am Settlement-Tag ist nicht mehr ausstehend — genau deshalb sind die Stückzinsen
+/// dort null.
+#[test]
+fn test_cashflow_on_the_settlement_date_is_not_outstanding() {
+    let bond = FixedRateBond::new(
+        1000.0,
+        0.05,
+        2,
+        CouponSchedule::regular(
+            Date::new(2026, 6, 15).unwrap(),
+            Date::new(2027, 6, 15).unwrap(),
+            2,
+        )
+        .unwrap(),
+        DayCountConvention::Actual365Fixed,
+    )
+    .unwrap();
+
+    let before = bond.cashflows(Date::new(2026, 12, 14).unwrap());
+    let on = bond.cashflows(Date::new(2026, 12, 15).unwrap());
+    assert_eq!(before.len(), 2);
+    assert_eq!(on.len(), 1);
+    assert_eq!(on[0].date, Date::new(2027, 6, 15).unwrap());
 }

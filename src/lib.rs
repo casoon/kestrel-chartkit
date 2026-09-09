@@ -119,8 +119,9 @@ pub use execution::{
     OrderSide, OrderStatus, Position,
 };
 pub use finance::{
-    discount_factor, price_bond, year_fraction, yield_to_maturity, BondPricingResult, Compounding,
-    Date, DayCountConvention, FinanceError,
+    discount_factor, price_bond, year_fraction, yield_to_maturity, BondPricingResult,
+    BusinessCalendar, BusinessDayConvention, Cashflow, Compounding, CouponSchedule, Date,
+    DayCountConvention, FinanceError, FixedRateBond, ScheduleStub, Weekday,
 };
 pub use graph::{ComposedNode, CompositionGraph, GraphError, GraphIndicator, Leaf};
 pub use indicator::registry::{
