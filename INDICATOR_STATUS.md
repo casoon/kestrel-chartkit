@@ -56,6 +56,7 @@ is complete.
 | smi | ✅ |
 | roc | ✅ |
 | trix | ✅ |
+| relative_volatility | ✅ |
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |

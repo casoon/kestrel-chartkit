@@ -96,3 +96,17 @@ ulcer3_second=6.997537270408222
 ulcer3_last=1.217919291260194
 ulcer3_output_count=8
 ulcer_tolerance=0.000000000001
+
+# Relative Volatility Index (package 35), stdev_len = 5, smooth_len = 4, over
+# close = 100 + 6*sin(0.4*i) + 0.5*(-1)^i, 40 bars, high = close + 1, low = close - 1.
+# Population standard deviation over the window, filed under up/down by the direction of the
+# price, Wilder-smoothed, 100 * up/(up+down). Derived independently from that contract; no parity
+# with any other implementation is claimed.
+rvi_vol_close_first=36.58915087502494
+rvi_vol_close_last=36.83672490447423
+rvi_vol_close_output_count=33
+# Highs und Lows sind hier um denselben Betrag verschoben, ihre Standardabweichungen und
+# Richtungen also identisch — die Mittelung beider Seiten ergibt denselben Wert wie die
+# Close-Variante. Das prüft die Mittelung, nicht die Formel.
+rvi_vol_high_low_last=36.83672490447423
+rvi_vol_tolerance=0.000000000001

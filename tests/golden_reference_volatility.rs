@@ -3,6 +3,9 @@ mod common;
 use kestrel_chartkit::indicator::adx::Adx;
 use kestrel_chartkit::indicator::atr::{Atr, TrueRangeSmoothing};
 use kestrel_chartkit::indicator::chande_kroll::ChandeKrollStop;
+use kestrel_chartkit::indicator::relative_volatility::{
+    RelativeVolatilityIndex, RelativeVolatilityVariant,
+};
 use kestrel_chartkit::indicator::ulcer::{ulcer_index, UlcerIndexCore, UlcerIndexEngine};
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
@@ -938,4 +941,171 @@ fn test_ulcer_index_engine_matches_the_scalar_core() {
         );
         assert_eq!(engine.on_bar(&bar).map(|out| out.value), core.update(price));
     }
+}
+
+// --- Paket 35: Relative Volatility Index ----------------------------------------------------
+
+fn rvi_vol_bars() -> Vec<Bar> {
+    (0..40)
+        .map(|i| {
+            let close = 100.0 + 6.0 * (i as f64 * 0.4).sin() + 0.5 * (-1.0_f64).powi(i);
+            Bar::new(
+                i as i64 * 60,
+                close,
+                close + 1.0,
+                close - 1.0,
+                close,
+                1000.0,
+            )
+        })
+        .collect()
+}
+
+fn rvi_vol_values(variant: RelativeVolatilityVariant) -> Vec<f64> {
+    let mut rvi = RelativeVolatilityIndex::new(5, 4, variant);
+    rvi_vol_bars()
+        .iter()
+        .filter_map(|bar| rvi.on_bar(bar))
+        .map(|out| out.value)
+        .collect()
+}
+
+#[test]
+fn test_golden_relative_volatility_reference_values() {
+    let values = rvi_vol_values(RelativeVolatilityVariant::Close);
+    let tolerance = expected("rvi_vol_tolerance");
+
+    assert_eq!(
+        values.len() as f64,
+        expected("rvi_vol_close_output_count"),
+        "erste Ausgabe erst, wenn Fenster und Wilder-Glättung bereit sind"
+    );
+    common::assert_close(
+        values[0],
+        expected("rvi_vol_close_first"),
+        tolerance,
+        "erste Ausgabe",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("rvi_vol_close_last"),
+        tolerance,
+        "letzte Ausgabe",
+    );
+    common::assert_close(
+        *rvi_vol_values(RelativeVolatilityVariant::HighLow)
+            .last()
+            .unwrap(),
+        expected("rvi_vol_high_low_last"),
+        tolerance,
+        "Hoch/Tief-Variante",
+    );
+}
+
+/// Monotone Reihen sind die analytisch eindeutigen Fälle: Steigt der Preis in jedem Schritt,
+/// landet jede Standardabweichung auf der Aufwärtsseite und der Wert ist exakt 100.
+#[test]
+fn test_relative_volatility_is_bounded_by_monotone_series() {
+    let run = |prices: Vec<f64>| {
+        let mut rvi = RelativeVolatilityIndex::new(5, 4, RelativeVolatilityVariant::Close);
+        prices
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                rvi.on_bar(&Bar::new(i as i64 * 60, c, c + 1.0, c - 1.0, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .last()
+            .expect("keine Ausgabe")
+    };
+
+    common::assert_close(
+        run((0..30).map(|i| 100.0 + i as f64).collect()),
+        100.0,
+        0.0,
+        "monoton steigend",
+    );
+    common::assert_close(
+        run((0..30).map(|i| 100.0 - i as f64).collect()),
+        0.0,
+        0.0,
+        "monoton fallend",
+    );
+}
+
+/// Ohne jede Bewegung landet nichts auf einer der beiden Seiten. Die dokumentierte Konvention
+/// ist dann 50 — dieselbe neutrale Lesart, die auch der RSI dieses Crates verwendet.
+#[test]
+fn test_relative_volatility_on_a_flat_series_is_the_neutral_fifty() {
+    let mut rvi = RelativeVolatilityIndex::new(5, 4, RelativeVolatilityVariant::Close);
+    let values: Vec<f64> = (0..30)
+        .filter_map(|i| rvi.on_bar(&Bar::new(i * 60, 50.0, 50.0, 50.0, 50.0, 1000.0)))
+        .map(|o| o.value)
+        .collect();
+    assert!(!values.is_empty());
+    for value in values {
+        assert_eq!(value, 50.0);
+    }
+}
+
+/// Beide Glätter sehen jede Beobachtung: Ein Kurzschluss während des Warmups hätte die beiden
+/// Zustände um die Glättungslänge auseinanderlaufen lassen. Der Test prüft, dass die erste
+/// Ausgabe genau dort steht, wo der Vertrag sie verspricht.
+#[test]
+fn test_relative_volatility_first_output_matches_the_declared_warmup() {
+    let mut rvi = RelativeVolatilityIndex::new(5, 4, RelativeVolatilityVariant::Close);
+    let bars = rvi_vol_bars();
+    let first_index = bars
+        .iter()
+        .position(|bar| rvi.on_bar(bar).is_some())
+        .expect("keine Ausgabe");
+
+    assert!(
+        first_index <= rvi.warmup_period(),
+        "erste Ausgabe bei {first_index}, deklarierter Warmup {}",
+        rvi.warmup_period()
+    );
+}
+
+#[test]
+fn test_relative_volatility_reset_restarts_deterministically() {
+    let bars = rvi_vol_bars();
+    let mut rvi = RelativeVolatilityIndex::new(5, 4, RelativeVolatilityVariant::HighLow);
+    let run = |rvi: &mut RelativeVolatilityIndex| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|bar| rvi.on_bar(bar))
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut rvi);
+    rvi.reset();
+    assert_eq!(first, run(&mut rvi));
+}
+
+/// Die Variante ist typisiert wählbar und wird geprüft.
+#[test]
+fn test_relative_volatility_variant_is_validated() {
+    use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+    use kestrel_chartkit::indicator::registry::{build_typed, RegistryError};
+
+    assert!(build_typed(
+        "relative_volatility",
+        &TypedParams::from([(
+            "variant".to_string(),
+            ParamValue::Enum("high_low".to_string())
+        )])
+    )
+    .is_ok());
+
+    let err = match build_typed(
+        "relative_volatility",
+        &TypedParams::from([("variant".to_string(), ParamValue::Enum("hl2".to_string()))]),
+    ) {
+        Ok(_) => panic!("unbekannte Variante muss abgelehnt werden"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::InvalidEnumValue { .. }),
+        "{err:?}"
+    );
 }

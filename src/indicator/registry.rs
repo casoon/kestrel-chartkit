@@ -54,6 +54,7 @@ use super::pivots_structure::PivotStructureEngine;
 use super::pmo::PriceMomentumOscillator;
 use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
+use super::relative_volatility::{RelativeVolatilityIndex, RelativeVolatilityVariant};
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
@@ -168,6 +169,15 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("mfi_len".to_string(), 14.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "relative_volatility",
+            description: "Relative Volatility Index (the RSI construction applied to the standard deviation; build_typed accepts variant=close|high_low). Unrelated to \"rvi\", the Relative Vigor Index",
+            default_params: [
+                ("stdev_len".to_string(), 10.0),
+                ("smooth_len".to_string(), 14.0),
             ]
             .into(),
         },
@@ -878,6 +888,7 @@ pub fn output_range(name: &str) -> OutputRange {
         | "connors_rsi"
         | "efficiency"
         | "mfi"
+        | "relative_volatility"
         | "rsi"
         | "stoch_rsi"
         | "stochastic"
@@ -1181,6 +1192,10 @@ pub fn build_checked(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
         }
+        "relative_volatility" => Ok(Box::new(build_relative_volatility(
+            params,
+            RelativeVolatilityVariant::Close,
+        )?)),
         "bbtrend" => Ok(Box::new(build_bbtrend(
             params,
             VarianceConvention::Population,
@@ -1776,6 +1791,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "atr",
+    "relative_volatility",
     "smi",
     "chande_kroll",
     "cks",
@@ -1895,6 +1911,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         "ema" => build_ema_typed(&remaining)?,
         "rsi" => build_rsi_typed(&remaining)?,
         "bbtrend" => build_bbtrend_typed(&remaining)?,
+        "relative_volatility" => build_relative_volatility_typed(&remaining)?,
         "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
         "trend_relationship" => build_trend_relationship_typed(&remaining)?,
@@ -1994,6 +2011,40 @@ fn build_ema_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryE
     let mut numeric = params.clone();
     numeric.remove("init");
     Ok(Box::new(build_ema(&flatten_typed(&numeric)?, init)?))
+}
+
+/// The numeric part of a Relative Volatility configuration; the variant selects which prices are
+/// measured.
+fn build_relative_volatility(
+    params: &HashMap<String, f64>,
+    variant: RelativeVolatilityVariant,
+) -> Result<RelativeVolatilityIndex, RegistryError> {
+    let stdev_len = get_usize_p(params, "stdev_len", 10, 2, 10000)?;
+    let smooth_len = get_usize_p(params, "smooth_len", 14, 1, 10000)?;
+    Ok(RelativeVolatilityIndex::new(stdev_len, smooth_len, variant))
+}
+
+fn build_relative_volatility_typed(
+    params: &TypedParams,
+) -> Result<Box<dyn Indicator>, RegistryError> {
+    let variant = match get_enum_p(params, "variant")?.as_deref() {
+        None | Some("close") => RelativeVolatilityVariant::Close,
+        Some("high_low") => RelativeVolatilityVariant::HighLow,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "variant".to_string(),
+                value: other.to_string(),
+                reason: "expected one of close|high_low".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("variant");
+    Ok(Box::new(build_relative_volatility(
+        &flatten_typed(&numeric)?,
+        variant,
+    )?))
 }
 
 /// The numeric part of a BBTrend configuration; the variance convention applies to both band
@@ -2371,6 +2422,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "smi",
     "rvat",
     "bbtrend",
+    "relative_volatility",
     "pvt",
     "pmo",
     "chandelier_exit",
@@ -2484,8 +2536,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 103);
-        assert_eq!(catalog().len(), 103);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 104);
+        assert_eq!(catalog().len(), 104);
     }
 
     #[test]

@@ -51,6 +51,7 @@ pub mod pvt;
 pub mod rci;
 pub mod registry;
 pub mod relative_strength;
+pub mod relative_volatility;
 pub mod rsi;
 pub mod rvat;
 pub mod rvi;
