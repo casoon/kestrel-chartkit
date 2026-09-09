@@ -1,0 +1,141 @@
+# kestrel-chartkit golden reference fixture: fixed-rate bond difference tests
+#
+# Reference values generated offline from an independent second implementation that prices
+# over an explicit payment schedule; generator, pinned version and conventions are recorded in
+# the local project documentation, not in this repository.
+#
+# Conventions: unadjusted schedule without holiday calendar, Actual/365Fixed, compounded at the
+# coupon frequency, zero settlement days. Prices are absolute amounts, not per-100 quotes.
+#
+# The cases deliberately include settlement exactly on a coupon date and settlement between
+# coupon dates: the crate's simplified schedule agrees with the first and differs on the
+# second.
+
+# case count
+meta_bond_case_count=7.0
+
+# on a coupon date, five years to maturity, semiannual
+bond1_face=1000.0
+bond1_coupon=0.05
+bond1_frequency=2.0
+bond1_settlement_y=2026.0
+bond1_settlement_m=6.0
+bond1_settlement_d=15.0
+bond1_maturity_y=2031.0
+bond1_maturity_m=6.0
+bond1_maturity_d=15.0
+bond1_ytm=0.04
+bond1_on_coupon_date=1.0
+bond1_clean_price=1044.9338430034475
+bond1_dirty_price=1044.9338430034475
+bond1_accrued_interest=0.0
+bond1_macaulay_duration=4.501128765457108
+bond1_modified_duration=4.4128713386834395
+
+# on a coupon date, two years to maturity, annual
+bond2_face=1000.0
+bond2_coupon=0.03
+bond2_frequency=1.0
+bond2_settlement_y=2026.0
+bond2_settlement_m=6.0
+bond2_settlement_d=15.0
+bond2_maturity_y=2028.0
+bond2_maturity_m=6.0
+bond2_maturity_d=15.0
+bond2_ytm=0.035
+bond2_on_coupon_date=1.0
+bond2_clean_price=990.4876292194176
+bond2_dirty_price=990.4876292194176
+bond2_accrued_interest=0.0
+bond2_macaulay_duration=1.9733956749382358
+bond2_modified_duration=1.9066624878630298
+
+# between coupon dates, roughly mid-period
+bond3_face=1000.0
+bond3_coupon=0.05
+bond3_frequency=2.0
+bond3_settlement_y=2026.0
+bond3_settlement_m=9.0
+bond3_settlement_d=20.0
+bond3_maturity_y=2031.0
+bond3_maturity_m=6.0
+bond3_maturity_d=15.0
+bond3_ytm=0.04
+bond3_on_coupon_date=0.0
+bond3_clean_price=1042.702425688159
+bond3_dirty_price=1055.9900969210357
+bond3_accrued_interest=13.287671232876665
+bond3_macaulay_duration=4.235375340799576
+bond3_modified_duration=4.15232876548978
+
+# between coupon dates, shortly before the next coupon
+bond4_face=1000.0
+bond4_coupon=0.05
+bond4_frequency=2.0
+bond4_settlement_y=2026.0
+bond4_settlement_m=12.0
+bond4_settlement_d=10.0
+bond4_maturity_y=2031.0
+bond4_maturity_m=6.0
+bond4_maturity_d=15.0
+bond4_ytm=0.04
+bond4_on_coupon_date=0.0
+bond4_clean_price=1040.9286563332803
+bond4_dirty_price=1065.312217977116
+bond4_accrued_interest=24.383561643835705
+bond4_macaulay_duration=4.013457532580396
+bond4_modified_duration=3.934762286843525
+
+# on a coupon date, negative yield
+bond5_face=1000.0
+bond5_coupon=0.01
+bond5_frequency=2.0
+bond5_settlement_y=2026.0
+bond5_settlement_m=6.0
+bond5_settlement_d=15.0
+bond5_maturity_y=2029.0
+bond5_maturity_m=6.0
+bond5_maturity_d=15.0
+bond5_ytm=-0.004
+bond5_on_coupon_date=1.0
+bond5_clean_price=1042.3344616267227
+bond5_dirty_price=1042.3344616267227
+bond5_accrued_interest=0.0
+bond5_macaulay_duration=2.9665280414396045
+bond5_modified_duration=2.9724729874144336
+
+# on a coupon date, zero coupon over three years
+bond6_face=1000.0
+bond6_coupon=0.0
+bond6_frequency=1.0
+bond6_settlement_y=2026.0
+bond6_settlement_m=6.0
+bond6_settlement_d=15.0
+bond6_maturity_y=2029.0
+bond6_maturity_m=6.0
+bond6_maturity_d=15.0
+bond6_ytm=0.03
+bond6_on_coupon_date=1.0
+bond6_clean_price=915.0675514187865
+bond6_dirty_price=915.0675514187865
+bond6_accrued_interest=0.0
+bond6_macaulay_duration=3.0027397260273974
+bond6_modified_duration=2.9152812874052403
+
+# on a coupon date, across a leap day
+bond7_face=1000.0
+bond7_coupon=0.04
+bond7_frequency=2.0
+bond7_settlement_y=2028.0
+bond7_settlement_m=2.0
+bond7_settlement_d=29.0
+bond7_maturity_y=2030.0
+bond7_maturity_m=8.0
+bond7_maturity_d=29.0
+bond7_ytm=0.045
+bond7_on_coupon_date=1.0
+bond7_clean_price=988.3079945122213
+bond7_dirty_price=988.3079945122213
+bond7_accrued_interest=0.0
+bond7_macaulay_duration=2.4019311637845093
+bond7_modified_duration=2.3490769327965864

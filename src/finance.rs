@@ -237,6 +237,30 @@ impl std::error::Error for FinanceError {}
 /// Prices a standard fixed-rate bond with regular coupon payments.
 ///
 /// Returns clean price, dirty price, accrued interest, Macaulay/Modified duration, and DV01.
+///
+/// # Model and its limits
+///
+/// This function works from a *derived* time grid, not from an actual payment schedule: the
+/// number of remaining coupons is the remaining year fraction times the frequency, rounded, and
+/// each payment is discounted at `i / frequency` years. There is no calendar, no business-day
+/// rule, no month-end convention and no stub period.
+///
+/// What that costs is measured against reference values in
+/// `tests/golden_reference_bond_diff.rs`:
+///
+/// * **Settlement on a coupon date.** Dirty price within `1e-4` relative, both durations within
+///   `1.4e-3` relative of a full-schedule valuation. The residual comes from the grid: real
+///   coupon dates are not exactly `i / frequency` years apart under Actual/365Fixed.
+/// * **Accrued interest and clean price are not reliable.** Without a schedule this function
+///   cannot tell that a settlement date *is* a coupon date — leap years alone keep the remaining
+///   year fraction from being a clean multiple of the period length. The accrued interest can
+///   come out nearly a full coupon too high, and the clean price correspondingly too low. Use
+///   `dirty_price` and treat the split as unsupported.
+/// * **Settlement between coupon dates.** The rounded coupon count drops the fractional first
+///   period, and the dirty price deviates by percent, not basis points.
+///
+/// Real payment schedules with calendars, business-day adjustment and stub periods are planned
+/// separately; until then these are the boundaries of what this function claims.
 pub fn price_bond(
     face_value: f64,
     coupon_rate: f64,
