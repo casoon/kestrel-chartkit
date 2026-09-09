@@ -91,3 +91,15 @@ trix4_signal3_tolerance=0.000000000001
 # 100 * (1.01 - 1) = 1 percentage point per bar.
 trix_geometric_growth_percent=1.0
 trix_geometric_tolerance=0.000001
+
+# Rank Correlation Index (package 33), len = 5. Average ranks of the prices against the ranks of
+# time, Pearson-correlated and scaled by 100. Derived independently; the tie case is the one the
+# `1 - 6*sum(d^2)/(n^3-n)` shortcut gets wrong, so it is pinned separately.
+rci5_rising=100.0
+rci5_falling=-100.0
+rci5_mixed=80.0
+rci5_with_ties=89.44271909999159
+rci5_series_first=69.99999999999999
+rci5_series_last=66.68859288553503
+rci5_series_output_count=6
+rci_tolerance=0.0000000001

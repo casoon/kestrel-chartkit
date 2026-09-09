@@ -50,6 +50,7 @@ is complete.
 | elder_ray | ✅ |
 | kst | ✅ |
 | ppo | ✅ |
+| rci | ✅ |
 | roc | ✅ |
 | trix | ✅ |
 | rvi | ✅ |

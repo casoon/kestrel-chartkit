@@ -2,6 +2,7 @@ mod common;
 
 use kestrel_chartkit::indicator::bollinger::{BollingerBands, VarianceConvention};
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+use kestrel_chartkit::indicator::rci::RciEngine;
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
 use kestrel_chartkit::indicator::trix::Trix;
@@ -991,4 +992,123 @@ fn test_trix_registry_defaults_match_direct_construction() {
             direct.on_bar(&bar).map(|o| o.value)
         );
     }
+}
+
+// --- Paket 33: Rank Correlation Index -------------------------------------------------------
+
+fn rci_last(prices: &[f64], len: usize) -> f64 {
+    let mut rci = RciEngine::new(len);
+    prices
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| rci.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .map(|out| out.value)
+        .last()
+        .expect("RCI gab nichts aus")
+}
+
+#[test]
+fn test_golden_rci_reference_values() {
+    let tolerance = expected("rci_tolerance");
+
+    common::assert_close(
+        rci_last(&[10.0, 11.0, 12.0, 13.0, 14.0], 5),
+        expected("rci5_rising"),
+        tolerance,
+        "monoton steigend",
+    );
+    common::assert_close(
+        rci_last(&[14.0, 13.0, 12.0, 11.0, 10.0], 5),
+        expected("rci5_falling"),
+        tolerance,
+        "monoton fallend",
+    );
+    common::assert_close(
+        rci_last(&[10.0, 12.0, 11.0, 14.0, 13.0], 5),
+        expected("rci5_mixed"),
+        tolerance,
+        "gemischte Ränge",
+    );
+}
+
+/// Gleichstände teilen sich den Durchschnittsrang. Genau hier liefert die verbreitete
+/// Kurzformel über die Rangdifferenzen einen anderen Wert, weshalb der Fall eigens festgehalten
+/// wird.
+#[test]
+fn test_rci_shares_average_ranks_among_ties() {
+    common::assert_close(
+        rci_last(&[10.0, 11.0, 11.0, 11.0, 13.0], 5),
+        expected("rci5_with_ties"),
+        expected("rci_tolerance"),
+        "drei gleiche Preise in der Mitte",
+    );
+}
+
+#[test]
+fn test_golden_rci_series_reference_values() {
+    let series = [
+        100.0, 101.0, 99.0, 102.0, 103.0, 101.0, 104.0, 103.0, 105.0, 104.0,
+    ];
+    let mut rci = RciEngine::new(5);
+    let values: Vec<f64> = series
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| rci.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .map(|out| out.value)
+        .collect();
+
+    let tolerance = expected("rci_tolerance");
+    assert_eq!(values.len() as f64, expected("rci5_series_output_count"));
+    common::assert_close(
+        values[0],
+        expected("rci5_series_first"),
+        tolerance,
+        "erste Ausgabe",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("rci5_series_last"),
+        tolerance,
+        "letzte Ausgabe",
+    );
+}
+
+/// Ohne Preisvarianz gibt es keine Rangordnung. Die dokumentierte Konvention ist 0 — keine
+/// Richtung, statt einer aus dem Nichts erzeugten Trendstärke.
+#[test]
+fn test_rci_on_a_constant_series_is_zero_by_convention() {
+    common::assert_close(rci_last(&[7.0; 8], 5), 0.0, 0.0, "konstante Reihe");
+}
+
+/// Ränge kennen nur die Reihenfolge: Eine beliebige streng monoton steigende Transformation der
+/// Preise lässt den Wert unverändert.
+#[test]
+fn test_rci_depends_only_on_the_order_not_on_the_scale() {
+    let prices = [100.0, 101.0, 99.0, 102.0, 103.0, 101.0, 104.0];
+    let scaled: Vec<f64> = prices.iter().map(|p| (p - 90.0) * 1_000.0).collect();
+    common::assert_close(
+        rci_last(&prices, 5),
+        rci_last(&scaled, 5),
+        1e-12,
+        "skalenunabhängig",
+    );
+}
+
+#[test]
+fn test_rci_reset_restarts_deterministically() {
+    let series = [100.0, 101.0, 99.0, 102.0, 103.0, 101.0, 104.0];
+    let mut rci = RciEngine::new(5);
+    let run = |rci: &mut RciEngine| -> Vec<f64> {
+        series
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                rci.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut rci);
+    rci.reset();
+    assert_eq!(first, run(&mut rci));
 }

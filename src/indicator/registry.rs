@@ -50,6 +50,7 @@ use super::order_block::OrderBlockEngine;
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
+use super::rci::RciEngine;
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvi::RviEngine;
 use super::smoothing::EmaInit;
@@ -164,6 +165,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "rci",
+            description: "Rank Correlation Index (rank of prices against rank of time, scaled by 100)",
+            default_params: [("len".to_string(), 9.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "ulcer_index",
@@ -831,7 +837,7 @@ pub fn output_range(name: &str) -> OutputRange {
         // Prozentmaßen: seine Hauptreihe ist `plus_di - minus_di`, die Differenz zweier
         // 0..100-Werte — die einzelnen DI liegen als Nebenreihen darin. `aroon` ebenso: die
         // Hauptreihe ist der Oszillator `up - down`, nicht eine der beiden Linien.
-        "aroon" | "cmo" | "dmi" | "tsi" => OutputRange::Bounded {
+        "aroon" | "cmo" | "dmi" | "rci" | "tsi" => OutputRange::Bounded {
             min: -100.0,
             max: 100.0,
         },
@@ -1120,6 +1126,10 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "rci" => {
+            let len = get_usize_p(params, "len", 9, 2, 10000)?;
+            Ok(Box::new(RciEngine::new(len)))
         }
         "ulcer_index" => {
             let len = get_usize_p(params, "len", 14, 1, 10000)?;
@@ -2228,6 +2238,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "vidya",
     "t3",
     "ulcer_index",
+    "rci",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2339,8 +2350,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 97);
-        assert_eq!(catalog().len(), 97);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 98);
+        assert_eq!(catalog().len(), 98);
     }
 
     #[test]

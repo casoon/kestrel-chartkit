@@ -45,6 +45,7 @@ pub mod params;
 pub mod pivot_sets;
 pub mod pivots_structure;
 pub mod price_levels;
+pub mod rci;
 pub mod registry;
 pub mod relative_strength;
 pub mod rsi;
