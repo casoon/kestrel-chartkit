@@ -33,6 +33,86 @@ fn test_golden_atr_reference_values() {
     );
 }
 
+/// Rohwert und Prozentwert stammen aus derselben ATR-Rechnung: Der Test prueft beide Einheiten
+/// an denselben Kerzen gegen unabhaengig hergeleitete Referenzwerte, damit ein Konsument den
+/// Rohwert nicht aus `value * close / 100` zurueckrechnen muss.
+#[test]
+fn test_golden_atr_raw_and_percent_with_gaps() {
+    // Aufwaertsgap auf Kerze 2, Abwaertsgap auf Kerze 4: ohne Gaps waere die True Range mit der
+    // High-Low-Spanne identisch und der Unterschied zur naiven Spanne nicht sichtbar.
+    let bars = [
+        Bar::new(0, 100.0, 102.0, 99.0, 101.0, 1000.0),
+        Bar::new(60, 105.0, 107.0, 104.0, 106.0, 1000.0),
+        Bar::new(120, 103.0, 104.0, 100.0, 101.0, 1000.0),
+        Bar::new(180, 95.0, 96.0, 93.0, 94.0, 1000.0),
+        Bar::new(240, 94.0, 99.0, 93.0, 98.0, 1000.0),
+    ];
+
+    let mut atr = Atr::new(3, 2);
+    let outputs: Vec<_> = bars.iter().filter_map(|bar| atr.on_bar(bar)).collect();
+
+    assert_eq!(
+        outputs.len(),
+        2,
+        "ATR(3)/Signal(2) darf erst mit der zweiten Prozentbeobachtung ausgeben"
+    );
+
+    let tolerance = expected("atr_tolerance");
+    for (output, suffix) in outputs.iter().zip(["first", "second"]) {
+        common::assert_close(
+            output.extra["raw"],
+            expected(&format!("atr_gap3_signal2_raw_{suffix}")),
+            tolerance,
+            &format!("ATR(3) raw ({suffix} output)"),
+        );
+        common::assert_close(
+            output.value,
+            expected(&format!("atr_gap3_signal2_pct_{suffix}")),
+            tolerance,
+            &format!("ATR(3) percent ({suffix} output)"),
+        );
+        common::assert_close(
+            output.extra["signal"],
+            expected(&format!("atr_gap3_signal2_signal_{suffix}")),
+            tolerance,
+            &format!("ATR(3) signal ({suffix} output)"),
+        );
+    }
+}
+
+/// Der Rohwert ist kein zweiter Rechenweg: Er muss zum Prozentwert derselben Kerze passen.
+#[test]
+fn test_atr_raw_and_percent_stay_consistent() {
+    let mut atr = Atr::new(14, 20);
+    let bars: Vec<Bar> = (0..60)
+        .map(|i| {
+            let center = 100.0 + (i as f64 * 0.7).sin() * 5.0;
+            Bar::new(
+                i as i64 * 60,
+                center,
+                center + 1.5,
+                center - 1.2,
+                center,
+                1000.0,
+            )
+        })
+        .collect();
+
+    let mut seen = 0;
+    for bar in &bars {
+        if let Some(out) = atr.on_bar(bar) {
+            seen += 1;
+            common::assert_close(
+                out.value,
+                100.0 * out.extra["raw"] / bar.close,
+                1e-9,
+                "ATR percent equals raw relative to close",
+            );
+        }
+    }
+    assert!(seen > 0, "ATR produced no outputs");
+}
+
 #[test]
 fn test_golden_adx_reference_values() {
     let mut adx = Adx::new(3, 3, 2, 20.0);

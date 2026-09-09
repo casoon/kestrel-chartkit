@@ -2,6 +2,14 @@
 # ATR/ADX follow Wilder, New Concepts in Technical Trading Systems (1978).
 atr3_signal2_pct=2.0
 atr_tolerance=0.000000000001
+# ATR(3)/Signal(2) over a series with an up gap and a down gap; raw value in price units, main
+# value in percent of the close. Derived independently from the true-range/Wilder formulas.
+atr_gap3_signal2_raw_first=6.0
+atr_gap3_signal2_pct_first=6.382978723404255
+atr_gap3_signal2_signal_first=5.666736886454602
+atr_gap3_signal2_raw_second=6.0
+atr_gap3_signal2_pct_second=6.122448979591836
+atr_gap3_signal2_signal_second=5.894592933023219
 adx3_smooth3=100.0
 adx_tolerance=0.000000000001
 

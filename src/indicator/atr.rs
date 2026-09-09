@@ -5,6 +5,25 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Average True Range, emitted in two units.
+///
+/// True range: `TR_1 = high - low`, then
+/// `TR_t = max(high - low, |high - close_{t-1}|, |low - close_{t-1}|)` — both gap terms are
+/// absent on the first bar because there is no previous close.
+///
+/// Wilder-smoothed ([`Rma`]): the seed is the SMA of the first `atr_len` true ranges, then
+/// `ATR_t = ATR_{t-1} + (TR_t - ATR_{t-1}) / atr_len`.
+///
+/// Per-bar outputs:
+/// - `value`: `100 * ATR / close`, in percent of the closing price (0 for `close <= 0`).
+/// - `extra["raw"]`: the same ATR in the series' price units — neither a second calculation nor
+///   a back-conversion from the percentage. A price distance, not money or contract risk: a
+///   monetary amount only follows from contract size and tick value (see [`crate::contract`]).
+/// - `extra["signal"]`: `Rma_{sig_len}` over the percentage series, in percent.
+///
+/// First output: with the `sig_len`-th percentage observation, i.e. after `atr_len + sig_len - 1`
+/// bars — there is no partial output before that, `raw` included. [`Indicator::reset`] clears the
+/// previous close, both smoothers and the alerts, so the next series starts deterministically.
 #[derive(Debug, Clone)]
 pub struct Atr {
     prev_close: Option<f64>,
@@ -94,6 +113,7 @@ impl Indicator for Atr {
 
         let mut extra = HashMap::new();
         extra.insert("signal".to_string(), atr_signal);
+        extra.insert("raw".to_string(), atr_raw);
 
         Some(IndicatorOutput::with_extra(atr_disp, extra))
     }
