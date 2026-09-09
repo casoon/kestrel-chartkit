@@ -90,6 +90,7 @@ is complete.
 
 | Indicator | Verified |
 |---|---|
+| twap | ✅ |
 | vwap | ✅ |
 | volume_profile | ✅ |
 | acc_dist | ✅ |

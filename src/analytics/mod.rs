@@ -9,6 +9,7 @@ mod fear_gauge;
 mod fear_greed;
 mod price;
 mod regime;
+mod seasonality;
 mod trend;
 mod trend_persistence;
 
@@ -20,6 +21,7 @@ pub use fear_gauge::{fear_gauge_reading, FearGaugeReading, FearGaugeState};
 pub use fear_greed::{fear_greed_reading, FearGreedDriver, FearGreedReading, FearGreedState};
 pub use price::{price_summary, PriceSummary};
 pub use regime::{classify_regime as classify_trend_regime, RegimeReading, RegimeState};
+pub use seasonality::{monthly_seasonality, MonthStatistics, MonthlyReturn, SeasonalityReport};
 pub use trend::{trend_reading, MarketPhase, TrendDirection, TrendReading};
 pub use trend_persistence::{
     trend_persistence_reading, TrendPersistenceDirection, TrendPersistenceReading,

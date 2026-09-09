@@ -69,6 +69,7 @@ pub mod trend_relationship;
 pub mod trend_structural;
 pub mod trix;
 pub mod tsi;
+pub mod twap;
 pub mod ulcer;
 pub mod vidya;
 pub mod vix_fix;

@@ -69,6 +69,7 @@ use super::trend_structural::{
 };
 use super::trix::Trix;
 use super::tsi::Tsi;
+use super::twap::{AnchoredTwap, TwapAnchor, TwapWeighting};
 use super::ulcer::UlcerIndexEngine;
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
@@ -171,6 +172,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "twap",
+            description: "Anchored Time Weighted Average Price (no volume; build_typed accepts weighting=per_bar|by_duration and anchor=continuous|daily|manual_timestamp)",
+            default_params: [("day_start_offset".to_string(), 0.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "relative_volatility",
@@ -1192,6 +1198,16 @@ pub fn build_checked(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
         }
+        "twap" => {
+            let offset = get_f64_p(params, "day_start_offset", 0.0, -86_400.0, 86_400.0)?;
+            Ok(Box::new(AnchoredTwap::new(
+                TwapAnchor::Daily {
+                    start_offset_seconds: offset as i64,
+                },
+                crate::model::Source::Close,
+                TwapWeighting::PerBar,
+            )))
+        }
         "relative_volatility" => Ok(Box::new(build_relative_volatility(
             params,
             RelativeVolatilityVariant::Close,
@@ -1912,6 +1928,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         "rsi" => build_rsi_typed(&remaining)?,
         "bbtrend" => build_bbtrend_typed(&remaining)?,
         "relative_volatility" => build_relative_volatility_typed(&remaining)?,
+        "twap" => build_twap_typed(&remaining, source)?,
         "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
         "trend_relationship" => build_trend_relationship_typed(&remaining)?,
@@ -2011,6 +2028,60 @@ fn build_ema_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryE
     let mut numeric = params.clone();
     numeric.remove("init");
     Ok(Box::new(build_ema(&flatten_typed(&numeric)?, init)?))
+}
+
+/// TWAP takes its own price source rather than being wrapped in `SourceMapped`: the wrapper
+/// flattens a bar to one value, which would make a duration-weighted average of a flattened bar
+/// series — the same number, but arrived at in a way that hides what was averaged.
+fn build_twap_typed(
+    params: &TypedParams,
+    source: Option<crate::model::Source>,
+) -> Result<Box<dyn Indicator>, RegistryError> {
+    let weighting = match get_enum_p(params, "weighting")?.as_deref() {
+        None | Some("per_bar") => TwapWeighting::PerBar,
+        Some("by_duration") => TwapWeighting::ByDuration,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "weighting".to_string(),
+                value: other.to_string(),
+                reason: "expected one of per_bar|by_duration".to_string(),
+            });
+        }
+    };
+
+    let numeric = extract_numeric_subset(params, &["day_start_offset"])?;
+    let offset = get_f64_p(&numeric, "day_start_offset", 0.0, -86_400.0, 86_400.0)? as i64;
+
+    let anchor = match get_enum_p(params, "anchor")?.as_deref() {
+        None | Some("daily") => TwapAnchor::Daily {
+            start_offset_seconds: offset,
+        },
+        Some("continuous") => TwapAnchor::Continuous,
+        Some("manual_timestamp") => {
+            let timestamp = get_timestamp_p(params, "anchor_timestamp")?.ok_or_else(|| {
+                RegistryError::InvalidEnumValue {
+                    parameter: "anchor".to_string(),
+                    value: "manual_timestamp".to_string(),
+                    reason: "requires an accompanying 'anchor_timestamp' Timestamp parameter"
+                        .to_string(),
+                }
+            })?;
+            TwapAnchor::ManualTimestamp(timestamp)
+        }
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "anchor".to_string(),
+                value: other.to_string(),
+                reason: "expected one of continuous|daily|manual_timestamp".to_string(),
+            });
+        }
+    };
+
+    Ok(Box::new(AnchoredTwap::new(
+        anchor,
+        source.unwrap_or(crate::model::Source::Close),
+        weighting,
+    )))
 }
 
 /// The numeric part of a Relative Volatility configuration; the variant selects which prices are
@@ -2423,6 +2494,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "rvat",
     "bbtrend",
     "relative_volatility",
+    "twap",
     "pvt",
     "pmo",
     "chandelier_exit",
@@ -2536,8 +2608,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 104);
-        assert_eq!(catalog().len(), 104);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 105);
+        assert_eq!(catalog().len(), 105);
     }
 
     #[test]
