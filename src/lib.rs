@@ -91,6 +91,8 @@ pub mod synthetic;
 pub mod timeframe;
 /// Bar-series transformations that derive alternative candles from observed ones.
 pub mod transform;
+/// Shared valuation context: valuation date, market-data stamp, curves and FX.
+pub mod valuation;
 /// Chart DTOs and static SVG rendering.
 pub mod viz;
 
@@ -181,6 +183,10 @@ pub use synthetic::{
     SwingDirection, WyckoffGeneratorConfig,
 };
 pub use timeframe::{BarResampler, ConfirmedResampler, Timeframe, TimeframeError};
+pub use valuation::{
+    BondCurveValuation, DiscountCurve, ForwardCurve, ValuationContext, ValuationContextError,
+    ValuationStamp, Valued, YieldCurve,
+};
 
 /// Cross-instrument return analysis over aligned close samples.
 pub mod cross_asset;
