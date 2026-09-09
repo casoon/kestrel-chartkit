@@ -3,7 +3,7 @@
 //! per plan/09-finanzkonventionen-und-kurven.md and CLAUDE.md.
 
 use kestrel_chartkit::finance::{
-    discount_factor, price_bond, year_fraction, yield_to_maturity, BusinessCalendar,
+    discount_factor, price_bond, year_fraction, yield_to_maturity, BondSpec, BusinessCalendar,
     BusinessDayConvention, Compounding, CouponSchedule, Date, DayCountConvention, FixedRateBond,
     ScheduleStub, Weekday,
 };
@@ -468,4 +468,104 @@ fn test_cashflow_on_the_settlement_date_is_not_outstanding() {
     assert_eq!(before.len(), 2);
     assert_eq!(on.len(), 1);
     assert_eq!(on[0].date, Date::new(2027, 6, 15).unwrap());
+}
+
+// --- Datenvertrag in Richtung Konsumenten ----------------------------------------------------
+
+/// Aus derselben Produktspezifikation muss dieselbe Bewertung folgen wie aus dem von Hand
+/// zusammengesetzten Plan — sonst wäre der Vertrag ein zweiter Rechenweg statt einer Eingabe.
+#[test]
+fn test_bond_spec_builds_the_same_instrument_as_manual_construction() {
+    let calendar = BusinessCalendar::weekends_only();
+    let issue = Date::new(2026, 6, 15).unwrap();
+    let maturity = Date::new(2029, 6, 15).unwrap();
+    let settlement = Date::new(2026, 9, 20).unwrap();
+
+    let from_spec = BondSpec::new(
+        1000.0,
+        0.05,
+        2,
+        issue,
+        maturity,
+        DayCountConvention::Actual365Fixed,
+    )
+    .build(&calendar)
+    .unwrap();
+
+    let manual = FixedRateBond::new(
+        1000.0,
+        0.05,
+        2,
+        CouponSchedule::generate(
+            issue,
+            maturity,
+            2,
+            ScheduleStub::ShortFirst,
+            BusinessDayConvention::Unadjusted,
+            &calendar,
+        )
+        .unwrap(),
+        DayCountConvention::Actual365Fixed,
+    )
+    .unwrap();
+
+    assert_eq!(from_spec, manual);
+    assert_eq!(
+        from_spec.price(settlement, 0.04).unwrap(),
+        manual.price(settlement, 0.04).unwrap()
+    );
+}
+
+/// Stub-Lage und Geschäftstagsregel aus der Spezifikation erreichen den Plan.
+#[test]
+fn test_bond_spec_carries_stub_and_business_day_convention_into_the_schedule() {
+    let calendar = BusinessCalendar::weekends_only();
+    let spec = BondSpec::new(
+        1000.0,
+        0.04,
+        2,
+        Date::new(2026, 4, 30).unwrap(),
+        Date::new(2026, 10, 31).unwrap(),
+        DayCountConvention::Actual365Fixed,
+    )
+    .with_stub(ScheduleStub::LongFirst)
+    .with_business_day_convention(BusinessDayConvention::ModifiedFollowing);
+
+    let schedule = spec.schedule(&calendar).unwrap();
+    assert_eq!(
+        schedule.accrual_dates().last().unwrap(),
+        &Date::new(2026, 10, 31).unwrap()
+    );
+    assert_eq!(
+        schedule.payment_dates().last().unwrap(),
+        &Date::new(2026, 10, 30).unwrap(),
+        "die Geschäftstagsregel aus der Spezifikation wirkt auf den Zahlungstermin"
+    );
+}
+
+/// Ein fehlerhafter Produktdatensatz fällt beim Bauen auf, nicht erst in einem Preis.
+#[test]
+fn test_bond_spec_rejects_invalid_product_records() {
+    let calendar = BusinessCalendar::weekends_only();
+    let base = |frequency, face, issue, maturity| {
+        BondSpec::new(
+            face,
+            0.04,
+            frequency,
+            issue,
+            maturity,
+            DayCountConvention::Actual365Fixed,
+        )
+        .build(&calendar)
+    };
+    let issue = Date::new(2026, 6, 15).unwrap();
+    let maturity = Date::new(2029, 6, 15).unwrap();
+
+    assert!(base(2, 1000.0, issue, maturity).is_ok());
+    // Frequenz teilt 12 nicht
+    assert!(base(5, 1000.0, issue, maturity).is_err());
+    // Nominal nicht positiv
+    assert!(base(2, 0.0, issue, maturity).is_err());
+    // Fälligkeit vor Emission
+    assert!(base(2, 1000.0, maturity, issue).is_err());
 }

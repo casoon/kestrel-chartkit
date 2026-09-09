@@ -856,6 +856,108 @@ impl FixedRateBond {
     }
 }
 
+/// The terms a consumer supplies so this crate can build a bond's schedule and value it.
+///
+/// This is the data contract between a consuming application and `kestrel-chartkit`, and it is
+/// drawn along one line: **the consumer owns what the instrument *is*, this crate owns what
+/// follows from it.** A consumer reads these fields from wherever its product master lives and
+/// hands them over; it does not compute coupon dates, accrual or prices itself, and this crate
+/// does not go looking for instrument data.
+///
+/// What is deliberately *not* in here:
+///
+/// * **Holidays.** They are market data with their own validity — announced, moved and revised
+///   per market and year — so they are passed to [`BondSpec::build`] as a [`BusinessCalendar`]
+///   rather than frozen into the instrument's terms.
+/// * **Currency, multiplier and quantity steps.** Those belong to
+///   [`ContractSpec`](crate::contract::ContractSpec). Repeating them here would create a second
+///   truth about the same instrument.
+/// * **Market prices and yields.** They are observations, not terms, and are passed per
+///   valuation.
+///
+/// The day count has no default: it decides every coupon amount and every accrual, and a silently
+/// assumed one would be wrong more often than right.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct BondSpec {
+    /// Redeemed at maturity, and the base of every coupon.
+    pub face_value: f64,
+    /// Annual coupon rate as a fraction, e.g. `0.05` for 5%.
+    pub coupon_rate: f64,
+    /// Coupon payments per year; must divide 12 evenly.
+    pub frequency: u32,
+    /// Start of the first accrual period — usually the issue or dated date, not the settlement of
+    /// a later trade.
+    pub issue: Date,
+    pub maturity: Date,
+    /// Governs coupon amounts, accrued interest and discounting alike.
+    pub day_count: DayCountConvention,
+    /// Where an irregular period sits, if the dates do not divide evenly.
+    pub stub: ScheduleStub,
+    /// How payment dates move off non-business days. The accrual dates never move.
+    pub business_day_convention: BusinessDayConvention,
+}
+
+impl BondSpec {
+    /// The terms every bond needs. Stub placement and business-day handling take their documented
+    /// defaults ([`ScheduleStub::ShortFirst`], [`BusinessDayConvention::Unadjusted`]) and are set
+    /// with [`BondSpec::with_stub`] and [`BondSpec::with_business_day_convention`].
+    pub fn new(
+        face_value: f64,
+        coupon_rate: f64,
+        frequency: u32,
+        issue: Date,
+        maturity: Date,
+        day_count: DayCountConvention,
+    ) -> Self {
+        Self {
+            face_value,
+            coupon_rate,
+            frequency,
+            issue,
+            maturity,
+            day_count,
+            stub: ScheduleStub::default(),
+            business_day_convention: BusinessDayConvention::default(),
+        }
+    }
+
+    pub fn with_stub(mut self, stub: ScheduleStub) -> Self {
+        self.stub = stub;
+        self
+    }
+
+    pub fn with_business_day_convention(mut self, convention: BusinessDayConvention) -> Self {
+        self.business_day_convention = convention;
+        self
+    }
+
+    /// The coupon schedule these terms describe, against the holidays of the market it trades in.
+    pub fn schedule(&self, calendar: &BusinessCalendar) -> Result<CouponSchedule, FinanceError> {
+        CouponSchedule::generate(
+            self.issue,
+            self.maturity,
+            self.frequency,
+            self.stub,
+            self.business_day_convention,
+            calendar,
+        )
+    }
+
+    /// The valuable instrument these terms describe. Rejects the same inputs
+    /// [`CouponSchedule::generate`] and [`FixedRateBond::new`] reject, so a consumer finds a bad
+    /// product record here rather than in a price.
+    pub fn build(&self, calendar: &BusinessCalendar) -> Result<FixedRateBond, FinanceError> {
+        FixedRateBond::new(
+            self.face_value,
+            self.coupon_rate,
+            self.frequency,
+            self.schedule(calendar)?,
+            self.day_count,
+        )
+    }
+}
+
 /// Prices a standard fixed-rate bond with regular coupon payments.
 ///
 /// A convenience over [`FixedRateBond`] for the common case where only settlement and maturity

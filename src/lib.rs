@@ -119,7 +119,7 @@ pub use execution::{
     OrderSide, OrderStatus, Position,
 };
 pub use finance::{
-    discount_factor, price_bond, year_fraction, yield_to_maturity, BondPricingResult,
+    discount_factor, price_bond, year_fraction, yield_to_maturity, BondPricingResult, BondSpec,
     BusinessCalendar, BusinessDayConvention, Cashflow, Compounding, CouponSchedule, Date,
     DayCountConvention, FinanceError, FixedRateBond, ScheduleStub, Weekday,
 };
