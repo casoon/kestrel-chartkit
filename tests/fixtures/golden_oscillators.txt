@@ -103,3 +103,15 @@ rci5_series_first=69.99999999999999
 rci5_series_last=66.68859288553503
 rci5_series_output_count=6
 rci_tolerance=0.0000000001
+
+# Stochastic Momentum Index (package 32), len = 5, smoothing 3 and 3, signal 3, over
+# close = 100 + 6*sin(i/2) with high = close + 1 and low = close - 1, 24 bars.
+# 200 * doubleEma(close - (HH+LL)/2) / doubleEma(HH - LL), derived independently.
+smi5_first=-53.038915071810735
+smi5_last=-67.5205573741016
+smi5_signal_last=-57.910691021649654
+smi5_output_count=16
+# Analytisch eindeutig: Bei einer Geraden mit c_i = 100 + i, high = c + 1, low = c - 1 stehen
+# Spanne (6) und Abstand zur Mitte (2) ab dem vollen Fenster fest, also exakt 200 * 2/6.
+smi5_linear_ramp=66.66666666666667
+smi_tolerance=0.000000000001

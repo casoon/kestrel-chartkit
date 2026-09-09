@@ -51,6 +51,7 @@ is complete.
 | kst | ✅ |
 | ppo | ✅ |
 | rci | ✅ |
+| smi | ✅ |
 | roc | ✅ |
 | trix | ✅ |
 | rvi | ✅ |

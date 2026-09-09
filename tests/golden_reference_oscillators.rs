@@ -5,6 +5,7 @@ use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::rci::RciEngine;
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
+use kestrel_chartkit::indicator::smi::StochasticMomentumIndex;
 use kestrel_chartkit::indicator::trix::Trix;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
@@ -1111,4 +1112,126 @@ fn test_rci_reset_restarts_deterministically() {
     let first = run(&mut rci);
     rci.reset();
     assert_eq!(first, run(&mut rci));
+}
+
+// --- Paket 32: Stochastic Momentum Index ----------------------------------------------------
+
+fn smi_outputs(
+    bars: &[(f64, f64, f64)],
+    len: usize,
+) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    let mut smi = StochasticMomentumIndex::new(len, 3, 3, 3);
+    bars.iter()
+        .enumerate()
+        .filter_map(|(i, &(high, low, close))| {
+            smi.on_bar(&Bar::new(i as i64 * 60, close, high, low, close, 1000.0))
+        })
+        .collect()
+}
+
+fn smi_sine_bars() -> Vec<(f64, f64, f64)> {
+    (0..24)
+        .map(|i| {
+            let close = 100.0 + 6.0 * (i as f64 * 0.5).sin();
+            (close + 1.0, close - 1.0, close)
+        })
+        .collect()
+}
+
+#[test]
+fn test_golden_smi_reference_values() {
+    let outputs = smi_outputs(&smi_sine_bars(), 5);
+    let tolerance = expected("smi_tolerance");
+
+    assert_eq!(outputs.len() as f64, expected("smi5_output_count"));
+    common::assert_close(
+        outputs[0].value,
+        expected("smi5_first"),
+        tolerance,
+        "SMI erste Ausgabe",
+    );
+    let last = outputs.last().unwrap();
+    common::assert_close(last.value, expected("smi5_last"), tolerance, "SMI letzte");
+    common::assert_close(
+        last.extra["signal"],
+        expected("smi5_signal_last"),
+        tolerance,
+        "SMI Signal",
+    );
+}
+
+/// Der analytisch eindeutige Fall: Auf einer Geraden mit fester Kerzenform stehen Spanne und
+/// Abstand zur Fenstermitte ab dem vollen Fenster fest, der Wert ist also exakt 200 * 2/6.
+#[test]
+fn test_smi_on_a_linear_ramp_is_exactly_two_hundred_thirds() {
+    let bars: Vec<(f64, f64, f64)> = (0..20)
+        .map(|i| {
+            let close = 100.0 + i as f64;
+            (close + 1.0, close - 1.0, close)
+        })
+        .collect();
+    common::assert_close(
+        smi_outputs(&bars, 5).last().unwrap().value,
+        expected("smi5_linear_ramp"),
+        expected("smi_tolerance"),
+        "Gerade",
+    );
+}
+
+/// Flacher Markt: Die Spanne ist null, es gibt keine Position darin — 0 statt einer Division
+/// durch null.
+#[test]
+fn test_smi_on_a_flat_market_is_zero_without_dividing_by_zero() {
+    let flat: Vec<(f64, f64, f64)> = vec![(50.0, 50.0, 50.0); 20];
+    for output in smi_outputs(&flat, 5) {
+        assert_eq!(output.value, 0.0);
+    }
+}
+
+/// Symmetrie: Spiegelt man die Kerzen an einer Achse, kehrt sich der Wert exakt um.
+#[test]
+fn test_smi_is_antisymmetric_under_mirrored_prices() {
+    let bars = smi_sine_bars();
+    let mirrored: Vec<(f64, f64, f64)> = bars
+        .iter()
+        .map(|&(high, low, close)| (200.0 - low, 200.0 - high, 200.0 - close))
+        .collect();
+
+    let straight = smi_outputs(&bars, 5);
+    let flipped = smi_outputs(&mirrored, 5);
+    assert_eq!(straight.len(), flipped.len());
+    for (a, b) in straight.iter().zip(&flipped) {
+        common::assert_close(a.value, -b.value, 1e-9, "gespiegelte Reihe");
+    }
+}
+
+/// Die Signallinie weist ihre Bereitschaft getrennt aus.
+#[test]
+fn test_smi_signal_reports_its_own_readiness() {
+    let outputs = smi_outputs(&smi_sine_bars(), 5);
+    for (i, output) in outputs.iter().enumerate() {
+        assert_eq!(
+            output.extra.contains_key("signal"),
+            i + 1 >= 3,
+            "Ausgabe {i}"
+        );
+    }
+}
+
+#[test]
+fn test_smi_reset_restarts_deterministically() {
+    let bars = smi_sine_bars();
+    let mut smi = StochasticMomentumIndex::new(5, 3, 3, 3);
+    let run = |smi: &mut StochasticMomentumIndex| -> Vec<f64> {
+        bars.iter()
+            .enumerate()
+            .filter_map(|(i, &(high, low, close))| {
+                smi.on_bar(&Bar::new(i as i64 * 60, close, high, low, close, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut smi);
+    smi.reset();
+    assert_eq!(first, run(&mut smi));
 }

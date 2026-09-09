@@ -53,6 +53,7 @@ use super::pivots_structure::PivotStructureEngine;
 use super::rci::RciEngine;
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvi::RviEngine;
+use super::smi::StochasticMomentumIndex;
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
 use super::t3::T3;
@@ -163,6 +164,17 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("mfi_len".to_string(), 14.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "smi",
+            description: "Stochastic Momentum Index (double-smoothed position of the close relative to the midpoint of the high-low range)",
+            default_params: [
+                ("len".to_string(), 10.0),
+                ("smooth_1".to_string(), 3.0),
+                ("smooth_2".to_string(), 3.0),
+                ("signal_len".to_string(), 3.0),
             ]
             .into(),
         },
@@ -851,7 +863,7 @@ pub fn output_range(name: &str) -> OutputRange {
         // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
         "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "efi"
         | "elder_ray" | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc"
-        | "trix" | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
+        | "smi" | "trix" | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
@@ -1125,6 +1137,15 @@ pub fn build_checked(
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
+            )))
+        }
+        "smi" => {
+            let len = get_usize_p(params, "len", 10, 1, 10000)?;
+            let smooth_1 = get_usize_p(params, "smooth_1", 3, 1, 10000)?;
+            let smooth_2 = get_usize_p(params, "smooth_2", 3, 1, 10000)?;
+            let signal_len = get_usize_p(params, "signal_len", 3, 1, 10000)?;
+            Ok(Box::new(StochasticMomentumIndex::new(
+                len, smooth_1, smooth_2, signal_len,
             )))
         }
         "rci" => {
@@ -1690,6 +1711,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "atr",
+    "smi",
     "chande_kroll",
     "cks",
     "true_range",
@@ -2239,6 +2261,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "t3",
     "ulcer_index",
     "rci",
+    "smi",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2350,8 +2373,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 98);
-        assert_eq!(catalog().len(), 98);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 99);
+        assert_eq!(catalog().len(), 99);
     }
 
     #[test]

@@ -51,6 +51,7 @@ pub mod relative_strength;
 pub mod rsi;
 pub mod rvi;
 pub mod smart_money_structure;
+pub mod smi;
 pub mod smoothing;
 pub mod source_mapped;
 pub mod stoch_rsi;
