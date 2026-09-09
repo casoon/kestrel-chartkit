@@ -53,6 +53,7 @@ use super::rsi::{Rsi, RsiSmoothing};
 use super::rvi::RviEngine;
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
+use super::t3::T3;
 use super::tema::TemaEngine;
 use super::trend_quality::TrendQualityScoreEngine;
 use super::trend_structural::{
@@ -161,6 +162,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "t3",
+            description: "Tillson T3 (weighted combination of six chained EMAs; v is a shape factor, not volume)",
+            default_params: [("period".to_string(), 5.0), ("v".to_string(), 0.7)].into(),
         },
         IndicatorCatalogEntry {
             name: "vidya",
@@ -1096,6 +1102,11 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "t3" => {
+            let period = get_usize_p(params, "period", 5, 1, 10000)?;
+            let v = get_f64_p(params, "v", 0.7, 0.0, 1.0)?;
+            Ok(Box::new(T3::new(period, v)))
         }
         "vidya" => {
             let cmo_len = get_usize_p(params, "cmo_len", 9, 1, 10000)?;
@@ -2157,6 +2168,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "efi",
     "trix",
     "vidya",
+    "t3",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2268,8 +2280,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 94);
-        assert_eq!(catalog().len(), 94);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 95);
+        assert_eq!(catalog().len(), 95);
     }
 
     #[test]

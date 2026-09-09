@@ -53,6 +53,7 @@ pub mod smoothing;
 pub mod source_mapped;
 pub mod stoch_rsi;
 pub mod swing_structure;
+pub mod t3;
 pub mod tema;
 pub mod trend_quality;
 pub mod trend_relationship;

@@ -54,3 +54,14 @@ vidya4_5_second=101.26666666666667
 vidya4_5_last=105.10053072595704
 vidya4_5_last_cmo=50.0
 vidya4_5_last_alpha=0.16666666666666663
+
+# Tillson T3 (package 28): six chained first-sample-seeded EMAs of period combined as
+# c1*e6 + c2*e5 + c3*e4 + c4*e3 with c1 = -v^3, c2 = 3v^2+3v^3, c3 = -6v^2-3v-3v^3,
+# c4 = 1+3v+v^3+3v^2; published from the period-th bar on. period = 3 over the closes
+# [100, 101, 102, 101.5, 103, 104, 103.5, 105, 106, 105.5, 107, 108, 107.5, 109, 110].
+# Derived independently from those definitions.
+t3_3_v07_output_count=13
+t3_3_v07_first=100.95681250000007
+t3_3_v07_last=109.014645576477
+t3_3_v00_last=107.53822326660156
+t3_3_v10_last=109.66966247558594

@@ -24,6 +24,7 @@ is complete.
 | lsma | ✅ |
 | mcginley | ✅ |
 | vidya | ✅ |
+| t3 | ✅ |
 | bollinger | ✅ |
 | cci | ✅ |
 | stochastic | ✅ |

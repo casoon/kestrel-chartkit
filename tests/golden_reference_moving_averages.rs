@@ -5,6 +5,7 @@ use kestrel_chartkit::indicator::moving_averages::EmaEngine;
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::smoothing::{Ema, EmaInit};
+use kestrel_chartkit::indicator::t3::T3;
 use kestrel_chartkit::indicator::vidya::Vidya;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
@@ -494,4 +495,119 @@ fn test_vidya_reset_restarts_deterministically() {
     let first = run(&mut vidya);
     vidya.reset();
     assert_eq!(first, run(&mut vidya));
+}
+
+// --- Paket 28: Tillson T3 -------------------------------------------------------------------
+
+const T3_CLOSES: [f64; 15] = [
+    100.0, 101.0, 102.0, 101.5, 103.0, 104.0, 103.5, 105.0, 106.0, 105.5, 107.0, 108.0, 107.5,
+    109.0, 110.0,
+];
+
+fn t3_values(period: usize, v: f64) -> Vec<f64> {
+    let mut t3 = T3::new(period, v);
+    T3_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| t3.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .map(|o| o.value)
+        .collect()
+}
+
+#[test]
+fn test_golden_t3_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    let values = t3_values(3, 0.7);
+
+    assert_eq!(
+        values.len() as f64,
+        expected("t3_3_v07_output_count"),
+        "T3 gibt ab der period-ten Kerze aus"
+    );
+    common::assert_close(
+        values[0],
+        expected("t3_3_v07_first"),
+        tolerance,
+        "T3(3, v=0.7) erster Wert",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("t3_3_v07_last"),
+        tolerance,
+        "T3(3, v=0.7) letzter Wert",
+    );
+    common::assert_close(
+        *t3_values(3, 1.0).last().unwrap(),
+        expected("t3_3_v10_last"),
+        tolerance,
+        "T3(3, v=1)",
+    );
+}
+
+/// Bei v = 0 verschwinden alle Koeffizienten außer c4 = 1: T3 ist dann exakt die dritte EMA.
+#[test]
+fn test_t3_with_zero_v_reduces_to_the_third_ema() {
+    let values = t3_values(3, 0.0);
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("t3_3_v00_last"),
+        expected("ma_tolerance"),
+        "T3(3, v=0)",
+    );
+
+    let mut e1 = Ema::new(3);
+    let mut e2 = Ema::new(3);
+    let mut e3 = Ema::new(3);
+    let third_ema: Vec<f64> = T3_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| {
+            let v = e3.update(e2.update(e1.update(c)?)?)?;
+            (i + 1 >= 3).then_some(v)
+        })
+        .collect();
+    assert_eq!(values, third_ema, "v = 0 muss die dritte EMA reproduzieren");
+}
+
+/// Konstante Reihe: Alle sechs Stufen stehen auf demselben Wert, die Koeffizienten summieren
+/// sich zu 1 — also derselbe Wert, unabhängig von v.
+#[test]
+fn test_t3_on_constant_series_returns_the_constant_for_any_v() {
+    for v in [0.0, 0.3, 0.7, 1.0] {
+        let mut t3 = T3::new(4, v);
+        let values: Vec<f64> = (0..15)
+            .filter_map(|i| t3.on_bar(&Bar::new(i * 60, 42.0, 42.0, 42.0, 42.0, 1000.0)))
+            .map(|o| o.value)
+            .collect();
+        assert!(!values.is_empty(), "T3 gab nichts aus");
+        for value in values {
+            common::assert_close(value, 42.0, 1e-9, &format!("T3 konstant, v = {v}"));
+        }
+    }
+}
+
+#[test]
+fn test_t3_reset_restarts_deterministically() {
+    let mut t3 = T3::new(3, 0.7);
+    let run = |t3: &mut T3| -> Vec<f64> {
+        T3_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                t3.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut t3);
+    t3.reset();
+    assert_eq!(first, run(&mut t3));
+}
+
+/// `v` außerhalb von 0..=1 lehnt die Registry ab, statt eine Kurve mit unbelegter Form zu bauen.
+#[test]
+fn test_t3_registry_rejects_shape_factor_outside_its_range() {
+    assert!(build_checked("t3", &HashMap::from([("v".to_string(), 1.5)])).is_err());
+    assert!(build_checked("t3", &HashMap::from([("v".to_string(), -0.1)])).is_err());
+    assert!(build_checked("t3", &HashMap::from([("v".to_string(), 1.0)])).is_ok());
 }
