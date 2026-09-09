@@ -58,3 +58,22 @@ rsi5_mixed_ema_line=61.528914934867174
 rsi5_mixed_ema_signal=54.47370478892891
 rsi5_mixed_ema_ctx=54.85570069104892
 rsi5_mixed_tolerance=0.000000000001
+
+# Bollinger(5, 2) over closes near 10000 with cent-sized fluctuations: the case where a
+# variance shortcut would lose the signal in rounding. Reference computed in decimal arithmetic
+# from basis = SMA(N) and sum((x - basis)^2) / divisor, divisor N resp. N - 1.
+bollinger5_population_basis=10000.05
+bollinger5_population_upper=10000.113245553204
+bollinger5_population_lower=9999.986754446796
+bollinger5_population_bandwidth=0.000012649047395436541
+bollinger5_population_percent_b=0.8162277660168379
+bollinger5_sample_basis=10000.05
+bollinger5_sample_upper=10000.120710678118
+bollinger5_sample_lower=9999.979289321882
+bollinger5_sample_bandwidth=0.000014142064913406384
+bollinger5_sample_percent_b=0.782842712474619
+bollinger5_band_tolerance=0.000000001
+bollinger5_ratio_tolerance=0.000000000001
+# sqrt(20/19): the factor between the two band distances at N = 20 — not between the band values,
+# which share the unaffected basis.
+bollinger20_sample_over_population_distance=1.025978352085154

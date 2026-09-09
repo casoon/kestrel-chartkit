@@ -1,5 +1,6 @@
 mod common;
 
+use kestrel_chartkit::indicator::bollinger::{BollingerBands, VarianceConvention};
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
@@ -656,4 +657,192 @@ fn test_rsi_registry_default_is_wilder_and_enum_is_validated() {
         matches!(err, RegistryError::InvalidEnumValue { .. }),
         "{err:?}"
     );
+}
+
+// --- Paket 18: Bollinger-Varianzkonvention --------------------------------------------------
+
+/// Schlusskurse nahe 10000 mit Schwankungen im Cent-Bereich.
+const BOLLINGER_OFFSET_CLOSES: [f64; 5] = [10000.05, 10000.02, 10000.08, 10000.01, 10000.09];
+
+fn bollinger_offset_output(
+    variance: VarianceConvention,
+) -> kestrel_chartkit::indicator::IndicatorOutput {
+    let mut bb = BollingerBands::new(5, 2.0).with_variance(variance);
+    BOLLINGER_OFFSET_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| bb.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0)))
+        .last()
+        .expect("Bollinger(5) gab nichts aus")
+}
+
+#[test]
+fn test_golden_bollinger_variance_conventions_reference_values() {
+    let tolerance = expected("bollinger5_band_tolerance");
+
+    for (variance, key) in [
+        (VarianceConvention::Population, "population"),
+        (VarianceConvention::Sample, "sample"),
+    ] {
+        let out = bollinger_offset_output(variance);
+        for (field, value) in [
+            ("basis", out.value),
+            ("upper", out.extra["upper"]),
+            ("lower", out.extra["lower"]),
+            ("bandwidth", out.extra["bandwidth"]),
+            ("percent_b", out.extra["percent_b"]),
+        ] {
+            common::assert_close(
+                value,
+                expected(&format!("bollinger5_{key}_{field}")),
+                tolerance,
+                &format!("Bollinger(5) {field}, {key}"),
+            );
+        }
+        common::assert_close(
+            out.extra["basis"],
+            out.value,
+            0.0,
+            "Bollinger basis equals main value",
+        );
+    }
+}
+
+/// Bandbreite und Prozent-B folgen den gewählten Bändern, statt aus einer zweiten,
+/// populationsbasierten Rechnung zu stammen.
+#[test]
+fn test_bollinger_derived_outputs_follow_selected_bands() {
+    for variance in [VarianceConvention::Population, VarianceConvention::Sample] {
+        let out = bollinger_offset_output(variance);
+        let close = BOLLINGER_OFFSET_CLOSES[BOLLINGER_OFFSET_CLOSES.len() - 1];
+        let (upper, lower, basis) = (out.extra["upper"], out.extra["lower"], out.value);
+        common::assert_close(
+            out.extra["bandwidth"],
+            (upper - lower) / basis,
+            1e-15,
+            "bandwidth from selected bands",
+        );
+        common::assert_close(
+            out.extra["percent_b"],
+            (close - lower) / (upper - lower),
+            1e-12,
+            "percent_b from selected bands",
+        );
+    }
+}
+
+/// Bei N = 20 unterscheiden sich die Bandabstände um sqrt(20/19) — die Bandwerte selbst nicht,
+/// weil die Basis von der Divisorwahl unberührt bleibt.
+#[test]
+fn test_bollinger_sample_widens_band_distance_by_bessel_factor() {
+    let closes: Vec<f64> = (0..20).map(|i| 100.0 + (i % 7) as f64 * 0.5).collect();
+    let run = |variance: VarianceConvention| {
+        let mut bb = BollingerBands::new(20, 2.0).with_variance(variance);
+        closes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                bb.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0))
+            })
+            .last()
+            .expect("Bollinger(20) gab nichts aus")
+    };
+
+    let population = run(VarianceConvention::Population);
+    let sample = run(VarianceConvention::Sample);
+
+    common::assert_close(
+        sample.value,
+        population.value,
+        0.0,
+        "Basis ist von der Divisorwahl unabhängig",
+    );
+    common::assert_close(
+        (sample.extra["upper"] - sample.value) / (population.extra["upper"] - population.value),
+        expected("bollinger20_sample_over_population_distance"),
+        expected("bollinger5_ratio_tolerance"),
+        "Bandabstand sample/population",
+    );
+}
+
+/// Konstante Reihe: Standardabweichung 0 in beiden Modi, also entartete Bänder mit der
+/// dokumentierten Prozent-B-Konvention 0.5.
+#[test]
+fn test_bollinger_constant_series_has_degenerate_bands_in_both_modes() {
+    for variance in [VarianceConvention::Population, VarianceConvention::Sample] {
+        let mut bb = BollingerBands::new(5, 2.0).with_variance(variance);
+        let out = (0..10)
+            .filter_map(|i| bb.on_bar(&Bar::new(i * 60, 42.0, 42.0, 42.0, 42.0, 1000.0)))
+            .last()
+            .expect("Bollinger gab nichts aus");
+        common::assert_close(out.extra["upper"], 42.0, 1e-12, "upper on constant series");
+        common::assert_close(out.extra["lower"], 42.0, 1e-12, "lower on constant series");
+        common::assert_close(out.extra["bandwidth"], 0.0, 1e-12, "bandwidth constant");
+        common::assert_close(out.extra["percent_b"], 0.5, 0.0, "percent_b constant");
+    }
+}
+
+/// `sample` braucht N >= 2; die Registry lehnt die Kombination ab, statt durch null zu teilen.
+#[test]
+fn test_bollinger_sample_variance_requires_at_least_two_periods() {
+    let params = TypedParams::from([
+        ("len".to_string(), ParamValue::Int(1)),
+        (
+            "variance".to_string(),
+            ParamValue::Enum("sample".to_string()),
+        ),
+    ]);
+    let err = match build_typed("bollinger", &params) {
+        Ok(_) => panic!("len=1 mit sample muss scheitern"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::IncompatibleParameter { .. }),
+        "{err:?}"
+    );
+
+    // Populationsmodus bleibt bei N = 1 erlaubt.
+    let population = TypedParams::from([("len".to_string(), ParamValue::Int(1))]);
+    assert!(build_typed("bollinger", &population).is_ok());
+
+    let unknown = TypedParams::from([(
+        "variance".to_string(),
+        ParamValue::Enum("populational".to_string()),
+    )]);
+    let err = match build_typed("bollinger", &unknown) {
+        Ok(_) => panic!("unbekannte Konvention muss abgelehnt werden"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::InvalidEnumValue { .. }),
+        "{err:?}"
+    );
+}
+
+/// Der Default über die Registry bleibt die Populationsvarianz.
+#[test]
+fn test_bollinger_registry_default_is_population() {
+    let default_typed = build_typed("bollinger", &TypedParams::new()).unwrap();
+    let explicit = build_typed(
+        "bollinger",
+        &TypedParams::from([(
+            "variance".to_string(),
+            ParamValue::Enum("population".to_string()),
+        )]),
+    )
+    .unwrap();
+
+    let bars: Vec<Bar> = (0..30)
+        .map(|i| {
+            let c = 100.0 + (i as f64 * 0.4).sin() * 3.0;
+            Bar::new(i as i64 * 60, c, c + 0.3, c - 0.3, c, 1000.0)
+        })
+        .collect();
+    let run = |mut ind: Box<dyn Indicator>| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|b| ind.on_bar(b))
+            .map(|o| o.extra["upper"])
+            .collect()
+    };
+    assert_eq!(run(default_typed), run(explicit));
 }

@@ -7,7 +7,7 @@ use super::adx::Adx;
 use super::alligator::AlligatorEngine;
 use super::anchored_vwap::{AnchoredVwapEngine, VwapAnchorKind, ZeroVolumePolicy};
 use super::atr::Atr;
-use super::bollinger::BollingerBands;
+use super::bollinger::{BollingerBands, VarianceConvention};
 use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
 use super::buy_sell_pressure::BuySellPressureEstimator;
@@ -112,7 +112,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "bollinger",
-            description: "Bollinger Bands",
+            description: "Bollinger Bands (build_typed accepts variance=population|sample for the standard-deviation divisor; population is the default)",
             default_params: [("len".to_string(), 20.0), ("mult".to_string(), 2.0)].into(),
         },
         IndicatorCatalogEntry {
@@ -1037,11 +1037,10 @@ pub fn build_checked(
             ensure_less("fast_len", fast_len as f64, "slow_len", slow_len as f64)?;
             Ok(Box::new(Macd::new(fast_len, slow_len, signal_len)))
         }
-        "bollinger" | "bb" => {
-            let len = get_usize_p(params, "len", 20, 1, 10000)?;
-            let mult = get_f64_p(params, "mult", 2.0, 0.01, 100.0)?;
-            Ok(Box::new(BollingerBands::new(len, mult)))
-        }
+        "bollinger" | "bb" => Ok(Box::new(build_bollinger(
+            params,
+            VarianceConvention::Population,
+        )?)),
         "adx" => {
             let di_len = get_usize_p(params, "di_len", 14, 1, 10000)?;
             let adx_smooth = get_usize_p(params, "adx_smooth", 14, 1, 10000)?;
@@ -1711,6 +1710,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
     let built = match name.to_lowercase().as_str() {
         "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
         "rsi" => build_rsi_typed(&remaining)?,
+        "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
         "trend_relationship" => build_trend_relationship_typed(&remaining)?,
         "zigzag_advanced" => build_zigzag_advanced_typed(&remaining)?,
@@ -1788,6 +1788,44 @@ fn build_rsi_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryE
     let mut numeric = params.clone();
     numeric.remove("smoothing");
     Ok(Box::new(build_rsi(&flatten_typed(&numeric)?, smoothing)?))
+}
+
+/// The numeric part of a Bollinger configuration; see [`build_rsi`] for why this is shared.
+fn build_bollinger(
+    params: &HashMap<String, f64>,
+    variance: VarianceConvention,
+) -> Result<BollingerBands, RegistryError> {
+    let len = get_usize_p(params, "len", 20, 1, 10000)?;
+    let mult = get_f64_p(params, "mult", 2.0, 0.01, 100.0)?;
+    if variance == VarianceConvention::Sample && len < 2 {
+        return Err(RegistryError::IncompatibleParameter {
+            parameter: "variance".to_string(),
+            indicator: "bollinger".to_string(),
+            reason: "sample variance divides by len - 1 and is undefined for len < 2".to_string(),
+        });
+    }
+    Ok(BollingerBands::new(len, mult).with_variance(variance))
+}
+
+fn build_bollinger_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    let variance = match get_enum_p(params, "variance")?.as_deref() {
+        None | Some("population") => VarianceConvention::Population,
+        Some("sample") => VarianceConvention::Sample,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "variance".to_string(),
+                value: other.to_string(),
+                reason: "expected one of population|sample".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("variance");
+    Ok(Box::new(build_bollinger(
+        &flatten_typed(&numeric)?,
+        variance,
+    )?))
 }
 
 /// Reads a `ParamValue::Enum` parameter, lower-cased. Returns `Ok(None)` if the key is absent, and
