@@ -115,3 +115,26 @@ smi5_output_count=16
 # Spanne (6) und Abstand zur Mitte (2) ab dem vollen Fenster fest, also exakt 200 * 2/6.
 smi5_linear_ramp=66.66666666666667
 smi_tolerance=0.000000000001
+
+# BBTrend (package 36), short 3 / long 6 / mult 2, population variance, over the closes
+# [100, 101, 102.5, 101.5, 103, 104.5, 104, 105.5, 107, 106, 107.5, 109].
+# 100 * (|lower_short - lower_long| - |upper_short - upper_long|) / basis_short, derived in
+# decimal arithmetic from the already confirmed band formulas rather than from this indicator.
+bbtrend_3_6_first=0.8955698187294214
+bbtrend_3_6_first_upper_gap=0.45544821002101465
+bbtrend_3_6_first_lower_gap=1.3778851233123186
+bbtrend_3_6_last=1.3261170556003743
+bbtrend_3_6_output_count=7
+bbtrend_tolerance=0.000000001
+
+# Price Momentum Oscillator (package 38), length_1 = 5, length_2 = 3, signal 3, over a sawtooth
+# of 30 closes: 100 * (1 + 0.01 * ((i mod 7) - 3)). Smoothing constant 2/length, factor ten
+# between the stages, ordinary EMA for the signal. Derived independently.
+pmo_5_3_first=-8.229055135030965
+pmo_5_3_last=-7.64144258006697
+pmo_5_3_signal_last=-4.615696203534343
+pmo_5_3_output_count=23
+# Analytisch eindeutig: Bei konstantem Wachstum von einem Prozent je Bar ist die Rendite konstant,
+# beide Glättungsstufen laufen dagegen, und der Wert nähert sich zehn mal ein Prozent.
+pmo_constant_growth=10.0
+pmo_tolerance=0.000000000001

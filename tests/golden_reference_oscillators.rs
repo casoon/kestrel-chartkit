@@ -1,7 +1,9 @@
 mod common;
 
+use kestrel_chartkit::indicator::bbtrend::BbTrend;
 use kestrel_chartkit::indicator::bollinger::{BollingerBands, VarianceConvention};
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+use kestrel_chartkit::indicator::pmo::PriceMomentumOscillator;
 use kestrel_chartkit::indicator::rci::RciEngine;
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
@@ -1234,4 +1236,251 @@ fn test_smi_reset_restarts_deterministically() {
     let first = run(&mut smi);
     smi.reset();
     assert_eq!(first, run(&mut smi));
+}
+
+// --- Paket 36: BBTrend ----------------------------------------------------------------------
+
+const BBTREND_CLOSES: [f64; 12] = [
+    100.0, 101.0, 102.5, 101.5, 103.0, 104.5, 104.0, 105.5, 107.0, 106.0, 107.5, 109.0,
+];
+
+fn bbtrend_outputs() -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    let mut bbtrend = BbTrend::new(3, 6, 2.0, VarianceConvention::Population);
+    BBTREND_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| {
+            bbtrend.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0))
+        })
+        .collect()
+}
+
+#[test]
+fn test_golden_bbtrend_reference_values() {
+    let outputs = bbtrend_outputs();
+    let tolerance = expected("bbtrend_tolerance");
+
+    assert_eq!(outputs.len() as f64, expected("bbtrend_3_6_output_count"));
+    common::assert_close(
+        outputs[0].value,
+        expected("bbtrend_3_6_first"),
+        tolerance,
+        "BBTrend erste Ausgabe",
+    );
+    common::assert_close(
+        outputs[0].extra["upper_gap"],
+        expected("bbtrend_3_6_first_upper_gap"),
+        tolerance,
+        "oberer Abstand",
+    );
+    common::assert_close(
+        outputs[0].extra["lower_gap"],
+        expected("bbtrend_3_6_first_lower_gap"),
+        tolerance,
+        "unterer Abstand",
+    );
+    common::assert_close(
+        outputs.last().unwrap().value,
+        expected("bbtrend_3_6_last"),
+        tolerance,
+        "BBTrend letzte Ausgabe",
+    );
+}
+
+/// Gleiche Perioden bedeuten identische Bandsätze: Beide Abstände sind null, der Wert ist es auch.
+#[test]
+fn test_bbtrend_with_equal_periods_is_zero() {
+    let mut bbtrend = BbTrend::new(4, 4, 2.0, VarianceConvention::Population);
+    let outputs: Vec<_> = BBTREND_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| {
+            bbtrend.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0))
+        })
+        .collect();
+
+    assert!(!outputs.is_empty());
+    for out in outputs {
+        common::assert_close(out.value, 0.0, 1e-12, "gleiche Perioden");
+        common::assert_close(out.extra["upper_gap"], 0.0, 1e-12, "oberer Abstand");
+    }
+}
+
+/// Flacher Markt: Beide Sätze fallen auf denselben Preis zusammen, es gibt keinen Abstand.
+#[test]
+fn test_bbtrend_on_a_flat_market_is_zero() {
+    let mut bbtrend = BbTrend::new(3, 6, 2.0, VarianceConvention::Population);
+    let outputs: Vec<_> = (0..12)
+        .filter_map(|i| bbtrend.on_bar(&Bar::new(i * 60, 50.0, 50.0, 50.0, 50.0, 1000.0)))
+        .collect();
+    assert!(!outputs.is_empty());
+    for out in outputs {
+        common::assert_close(out.value, 0.0, 0.0, "flacher Markt");
+    }
+}
+
+/// Die Varianzkonvention gilt für beide Sätze — ein Vergleich zweier Konventionen misst die
+/// Konvention, nicht den Markt.
+#[test]
+fn test_bbtrend_variance_convention_reaches_both_sets_and_is_validated() {
+    use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+    use kestrel_chartkit::indicator::registry::{build_typed, RegistryError};
+
+    let sample = BbTrend::new(3, 6, 2.0, VarianceConvention::Sample);
+    let population = BbTrend::new(3, 6, 2.0, VarianceConvention::Population);
+    let run = |mut engine: BbTrend| -> Vec<f64> {
+        BBTREND_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                engine.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    assert_ne!(run(sample), run(population));
+
+    let err = match build_typed(
+        "bbtrend",
+        &TypedParams::from([(
+            "variance".to_string(),
+            ParamValue::Enum("populational".to_string()),
+        )]),
+    ) {
+        Ok(_) => panic!("unbekannte Konvention muss abgelehnt werden"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::InvalidEnumValue { .. }),
+        "{err:?}"
+    );
+}
+
+// --- Paket 38: Price Momentum Oscillator ----------------------------------------------------
+
+fn pmo_sawtooth() -> Vec<f64> {
+    (0..30)
+        .map(|i| 100.0 * (1.0 + 0.01 * ((i % 7) as f64 - 3.0)))
+        .collect()
+}
+
+fn pmo_outputs(closes: &[f64]) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    let mut pmo = PriceMomentumOscillator::new(5, 3, 3);
+    closes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| pmo.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0)))
+        .collect()
+}
+
+#[test]
+fn test_golden_pmo_reference_values() {
+    let outputs = pmo_outputs(&pmo_sawtooth());
+    let tolerance = expected("pmo_tolerance");
+
+    assert_eq!(outputs.len() as f64, expected("pmo_5_3_output_count"));
+    common::assert_close(
+        outputs[0].value,
+        expected("pmo_5_3_first"),
+        tolerance,
+        "PMO erste Ausgabe",
+    );
+    let last = outputs.last().unwrap();
+    common::assert_close(
+        last.value,
+        expected("pmo_5_3_last"),
+        tolerance,
+        "PMO letzte",
+    );
+    common::assert_close(
+        last.extra["signal"],
+        expected("pmo_5_3_signal_last"),
+        tolerance,
+        "PMO Signal",
+    );
+}
+
+/// Analytisch eindeutig: Bei konstantem Wachstum ist die Rendite konstant, beide Stufen laufen
+/// dagegen, und der Wert nähert sich zehn mal der Rendite.
+#[test]
+fn test_pmo_on_constant_growth_approaches_ten_times_the_return() {
+    let growing: Vec<f64> = (0..200).map(|i| 100.0 * 1.01_f64.powi(i)).collect();
+    common::assert_close(
+        pmo_outputs(&growing).last().unwrap().value,
+        expected("pmo_constant_growth"),
+        1e-9,
+        "konstantes Wachstum",
+    );
+}
+
+/// Die Glättungskonstante ist `2/length`, nicht `2/(length+1)`. Der Nachweis nutzt zwei
+/// Sonderfälle: `length_2 = 2` ergibt alpha = 1, die zweite Stufe reicht also unverändert durch,
+/// und `length_1 = 4` ergibt alpha = 0.5 — dasselbe alpha wie eine gewöhnliche EMA der Periode 3,
+/// nicht der Periode 4. Genau diese Verschiebung um eins wäre der stille Fehler.
+#[test]
+fn test_pmo_uses_two_over_length_not_the_ordinary_ema_convention() {
+    use kestrel_chartkit::indicator::smoothing::Ema;
+
+    let closes = pmo_sawtooth();
+    let mut same_alpha = Ema::new(3); // alpha = 2/4 = 0.5, wie length_1 = 4
+    let mut shifted_alpha = Ema::new(4); // alpha = 2/5 = 0.4
+    let mut same_series = Vec::new();
+    let mut shifted_series = Vec::new();
+    let mut previous = closes[0];
+    for close in &closes[1..] {
+        let roc = 100.0 * (close / previous - 1.0);
+        previous = *close;
+        same_series.push(same_alpha.update(roc).unwrap());
+        shifted_series.push(shifted_alpha.update(roc).unwrap());
+    }
+
+    let mut pmo = PriceMomentumOscillator::new(4, 2, 1);
+    let published: Vec<f64> = closes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| pmo.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0)))
+        .map(|o| o.value)
+        .collect();
+
+    // Ausgabe ab der (length_1 + length_2 - 1)-ten Rendite, also ab Index 4 der Renditereihe.
+    let offset = same_series.len() - published.len();
+    for (index, value) in published.iter().enumerate() {
+        common::assert_close(
+            *value,
+            10.0 * same_series[offset + index],
+            1e-12,
+            "alpha = 2/length",
+        );
+        assert!(
+            (value - 10.0 * shifted_series[offset + index]).abs() > 1e-9,
+            "die verschobene Konvention 2/(length+1) muss unterscheidbar sein"
+        );
+    }
+}
+
+#[test]
+fn test_pmo_signal_reports_its_own_readiness() {
+    let outputs = pmo_outputs(&pmo_sawtooth());
+    for (i, out) in outputs.iter().enumerate() {
+        assert_eq!(out.extra.contains_key("signal"), i + 1 >= 3, "Ausgabe {i}");
+    }
+}
+
+#[test]
+fn test_pmo_reset_restarts_deterministically() {
+    let closes = pmo_sawtooth();
+    let mut pmo = PriceMomentumOscillator::new(5, 3, 3);
+    let run = |pmo: &mut PriceMomentumOscillator| -> Vec<f64> {
+        closes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                pmo.on_bar(&Bar::new(i as i64 * 60, c, c + 0.2, c - 0.2, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut pmo);
+    pmo.reset();
+    assert_eq!(first, run(&mut pmo));
 }

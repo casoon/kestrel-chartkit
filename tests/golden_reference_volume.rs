@@ -1,6 +1,7 @@
 mod common;
 
 use kestrel_chartkit::indicator::force_index::ElderForceIndex;
+use kestrel_chartkit::indicator::pvt::PriceVolumeTrend;
 use kestrel_chartkit::indicator::rvat::RelativeVolumeAtTime;
 use kestrel_chartkit::indicator::volume_profile::VolumeProfileEngine;
 use kestrel_chartkit::indicator::vwap::Vwap;
@@ -618,4 +619,101 @@ fn test_rvat_declared_warmup_is_one_day_of_bars() {
     assert_eq!(RelativeVolumeAtTime::new(5, 0, 3600).warmup_period(), 24);
     assert_eq!(RelativeVolumeAtTime::new(5, 0, 60).warmup_period(), 1440);
     assert_eq!(RelativeVolumeAtTime::new(5, 0, 86_400).warmup_period(), 1);
+}
+
+// --- Paket 37: Price Volume Trend -----------------------------------------------------------
+
+const PVT_CLOSES: [f64; 5] = [100.0, 102.0, 101.0, 101.0, 104.0];
+const PVT_VOLUMES: [f64; 5] = [1000.0, 1500.0, 800.0, 1200.0, 900.0];
+
+fn pvt_values() -> Vec<f64> {
+    let mut pvt = PriceVolumeTrend::new();
+    PVT_CLOSES
+        .iter()
+        .zip(PVT_VOLUMES)
+        .enumerate()
+        .filter_map(|(i, (&c, v))| pvt.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, v)))
+        .map(|out| out.value)
+        .collect()
+}
+
+#[test]
+fn test_golden_price_volume_trend_reference_values() {
+    let values = pvt_values();
+    let tolerance = expected("pvt_tolerance");
+
+    assert_eq!(values.len() as f64, expected("pvt_output_count"));
+    for (value, key) in values.iter().zip(["first", "second", "third", "last"]) {
+        common::assert_close(
+            *value,
+            expected(&format!("pvt_{key}")),
+            tolerance,
+            &format!("PVT {key}"),
+        );
+    }
+}
+
+/// Ein unveränderter Schluss trägt nichts bei, gleich wie hoch das Volumen war: Die Rendite ist
+/// null, nicht das Volumen.
+#[test]
+fn test_pvt_unchanged_close_leaves_the_total_where_it_was() {
+    let values = pvt_values();
+    common::assert_close(
+        values[2],
+        values[1],
+        0.0,
+        "vierte Kerze schloss unverändert",
+    );
+}
+
+/// Ohne Vorgänger gibt es keine Rendite: Die erste Kerze erzeugt keine Ausgabe, statt eine Null
+/// zu behaupten.
+#[test]
+fn test_pvt_has_no_output_on_the_first_bar() {
+    let mut pvt = PriceVolumeTrend::new();
+    assert!(pvt
+        .on_bar(&Bar::new(0, 100.0, 101.0, 99.0, 100.0, 1000.0))
+        .is_none());
+    assert!(pvt
+        .on_bar(&Bar::new(60, 100.0, 101.0, 99.0, 101.0, 1000.0))
+        .is_some());
+}
+
+/// Die relative Gewichtung ist der Unterschied zu OBV und EFI: Dieselbe prozentuale Bewegung
+/// trägt auf jedem Preisniveau denselben Beitrag bei.
+#[test]
+fn test_pvt_weights_by_the_relative_move_not_the_absolute_one() {
+    let step = |start: f64| {
+        let mut pvt = PriceVolumeTrend::new();
+        pvt.on_bar(&Bar::new(0, start, start, start, start, 1000.0));
+        let raised = start * 1.02;
+        pvt.on_bar(&Bar::new(60, raised, raised, raised, raised, 1000.0))
+            .unwrap()
+            .value
+    };
+    common::assert_close(
+        step(10.0),
+        step(1_000.0),
+        1e-9,
+        "zwei Prozent bleiben zwei Prozent",
+    );
+}
+
+#[test]
+fn test_pvt_reset_returns_the_total_to_zero() {
+    let mut pvt = PriceVolumeTrend::new();
+    let run = |pvt: &mut PriceVolumeTrend| -> Vec<f64> {
+        PVT_CLOSES
+            .iter()
+            .zip(PVT_VOLUMES)
+            .enumerate()
+            .filter_map(|(i, (&c, v))| {
+                pvt.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, v))
+            })
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut pvt);
+    pvt.reset();
+    assert_eq!(first, run(&mut pvt));
 }

@@ -64,3 +64,13 @@ rvat_d2_s7200_cumulative=1.0909090909090908
 rvat_d2_s7200_samples=2
 rvat_output_count=5
 rvat_tolerance=0.000000000001
+
+# Price Volume Trend (package 37) over closes [100, 102, 101, 101, 104] with volumes
+# [1000, 1500, 800, 1200, 900]: running sum of volume * (close/previous close - 1), starting at
+# zero on the first bar that has a predecessor. Derived independently.
+pvt_first=30.00000000000003
+pvt_second=22.156862745098096
+pvt_third=22.156862745098096
+pvt_last=48.889536012424855
+pvt_output_count=4
+pvt_tolerance=0.000000000001

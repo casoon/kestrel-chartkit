@@ -26,6 +26,7 @@ is complete.
 | vidya | ✅ |
 | t3 | ✅ |
 | bollinger | ✅ |
+| bbtrend | ✅ |
 | cci | ✅ |
 | stochastic | ✅ |
 | stoch_rsi | ✅ |
@@ -49,6 +50,7 @@ is complete.
 | dpo | ✅ |
 | elder_ray | ✅ |
 | kst | ✅ |
+| pmo | ✅ |
 | ppo | ✅ |
 | rci | ✅ |
 | smi | ✅ |
@@ -103,6 +105,7 @@ is complete.
 | obv | ✅ |
 | persistent_volume_profile | ✅ |
 | pvi | ✅ |
+| pvt | ✅ |
 | rvat | ✅ |
 | rvol | ✅ |
 | volume | ✅ |

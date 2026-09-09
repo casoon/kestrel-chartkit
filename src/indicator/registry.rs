@@ -7,6 +7,7 @@ use super::adx::Adx;
 use super::alligator::AlligatorEngine;
 use super::anchored_vwap::{AnchoredVwapEngine, VwapAnchorKind, ZeroVolumePolicy};
 use super::atr::{Atr, TrueRangeSmoothing};
+use super::bbtrend::BbTrend;
 use super::bollinger::{BollingerBands, VarianceConvention};
 use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
@@ -50,6 +51,8 @@ use super::order_block::OrderBlockEngine;
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
+use super::pmo::PriceMomentumOscillator;
+use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
@@ -165,6 +168,31 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("mfi_len".to_string(), 14.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "bbtrend",
+            description: "BBTrend (how far a short Bollinger set has moved out of a long one, in percent of the short basis; build_typed accepts variance=population|sample for both sets)",
+            default_params: [
+                ("short_len".to_string(), 20.0),
+                ("long_len".to_string(), 50.0),
+                ("mult".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "pvt",
+            description: "Price Volume Trend (volume weighted by the relative price change, accumulated)",
+            default_params: [].into(),
+        },
+        IndicatorCatalogEntry {
+            name: "pmo",
+            description: "Price Momentum Oscillator (twice-smoothed one-bar return with alpha = 2/length, scaled by ten)",
+            default_params: [
+                ("length_1".to_string(), 35.0),
+                ("length_2".to_string(), 20.0),
+                ("signal_len".to_string(), 10.0),
             ]
             .into(),
         },
@@ -874,7 +902,9 @@ pub fn output_range(name: &str) -> OutputRange {
         // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
         "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "efi"
         | "elder_ray" | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc"
-        | "smi" | "trix" | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
+        | "bbtrend" | "pmo" | "smi" | "trix" | "wavetrend" | "zscore" => {
+            OutputRange::Centered { center: 0.0 }
+        }
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
@@ -1149,6 +1179,19 @@ pub fn build_checked(
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
+            )))
+        }
+        "bbtrend" => Ok(Box::new(build_bbtrend(
+            params,
+            VarianceConvention::Population,
+        )?)),
+        "pvt" => Ok(Box::new(PriceVolumeTrend::new())),
+        "pmo" => {
+            let length_1 = get_usize_p(params, "length_1", 35, 1, 10000)?;
+            let length_2 = get_usize_p(params, "length_2", 20, 1, 10000)?;
+            let signal_len = get_usize_p(params, "signal_len", 10, 1, 10000)?;
+            Ok(Box::new(PriceMomentumOscillator::new(
+                length_1, length_2, signal_len,
             )))
         }
         "rvat" => {
@@ -1851,6 +1894,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         "atr" => build_atr_typed(&remaining)?,
         "ema" => build_ema_typed(&remaining)?,
         "rsi" => build_rsi_typed(&remaining)?,
+        "bbtrend" => build_bbtrend_typed(&remaining)?,
         "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
         "trend_relationship" => build_trend_relationship_typed(&remaining)?,
@@ -1950,6 +1994,47 @@ fn build_ema_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryE
     let mut numeric = params.clone();
     numeric.remove("init");
     Ok(Box::new(build_ema(&flatten_typed(&numeric)?, init)?))
+}
+
+/// The numeric part of a BBTrend configuration; the variance convention applies to both band
+/// sets, since comparing sets built on different conventions would measure the convention.
+fn build_bbtrend(
+    params: &HashMap<String, f64>,
+    variance: VarianceConvention,
+) -> Result<BbTrend, RegistryError> {
+    let short_len = get_usize_p(params, "short_len", 20, 1, 10000)?;
+    let long_len = get_usize_p(params, "long_len", 50, 1, 10000)?;
+    let mult = get_f64_p(params, "mult", 2.0, 0.01, 100.0)?;
+    ensure_less("short_len", short_len as f64, "long_len", long_len as f64)?;
+    if variance == VarianceConvention::Sample && short_len < 2 {
+        return Err(RegistryError::IncompatibleParameter {
+            parameter: "variance".to_string(),
+            indicator: "bbtrend".to_string(),
+            reason: "sample variance divides by len - 1 and is undefined for len < 2".to_string(),
+        });
+    }
+    Ok(BbTrend::new(short_len, long_len, mult, variance))
+}
+
+fn build_bbtrend_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    let variance = match get_enum_p(params, "variance")?.as_deref() {
+        None | Some("population") => VarianceConvention::Population,
+        Some("sample") => VarianceConvention::Sample,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "variance".to_string(),
+                value: other.to_string(),
+                reason: "expected one of population|sample".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("variance");
+    Ok(Box::new(build_bbtrend(
+        &flatten_typed(&numeric)?,
+        variance,
+    )?))
 }
 
 /// The numeric part of an RSI configuration, shared by the `f64`-only and the typed surface so
@@ -2285,6 +2370,9 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "rci",
     "smi",
     "rvat",
+    "bbtrend",
+    "pvt",
+    "pmo",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2396,8 +2484,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 100);
-        assert_eq!(catalog().len(), 100);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 103);
+        assert_eq!(catalog().len(), 103);
     }
 
     #[test]
