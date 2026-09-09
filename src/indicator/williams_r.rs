@@ -116,7 +116,7 @@ impl Indicator for WilliamsR {
             } else {
                 50.0
             };
-            Some(self.ctx_avg.update(ctx_raw))
+            self.ctx_avg.update(ctx_raw)
         } else {
             None
         };
@@ -146,8 +146,8 @@ impl Indicator for WilliamsR {
             50.0
         };
 
-        let wpr_line = self.avg.update(wpr_raw);
-        let signal = self.signal_avg.update(wpr_line);
+        let wpr_line = self.avg.update(wpr_raw)?;
+        let signal = self.signal_avg.update(wpr_line)?;
 
         let extreme = self.extreme_window.push(wpr_line);
         let was_oversold = extreme

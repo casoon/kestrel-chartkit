@@ -60,8 +60,8 @@ impl Indicator for ChaikinOscillatorEngine {
         self.count += 1;
         let adl_val = self.adl.on_bar(bar)?.value;
 
-        let fast = self.fast_ema.update(adl_val);
-        let slow = self.slow_ema.update(adl_val);
+        let fast = self.fast_ema.update(adl_val)?;
+        let slow = self.slow_ema.update(adl_val)?;
 
         if self.count < self.slow_len {
             return None;

@@ -50,7 +50,7 @@ impl Indicator for BuySellPressureEstimator {
 
         // Raw pressure per bar
         let raw_pressure = (location * 0.6 + wick_balance * 0.4) * 100.0;
-        let smoothed_pressure = self.ema.update(raw_pressure).clamp(-100.0, 100.0);
+        let smoothed_pressure = self.ema.update(raw_pressure)?.clamp(-100.0, 100.0);
 
         let mut extra = HashMap::new();
         extra.insert("location".to_string(), location);

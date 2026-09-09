@@ -115,19 +115,19 @@ impl Indicator for Tsi {
         self.prev_close = Some(close);
 
         let mom = close - prev_close;
-        let double_mom = self.mom_short.update(self.mom_long.update(mom));
-        let double_abs = self.abs_short.update(self.abs_long.update(mom.abs()));
+        let double_mom = self.mom_short.update(self.mom_long.update(mom)?)?;
+        let double_abs = self.abs_short.update(self.abs_long.update(mom.abs())?)?;
         let tsi_line = if double_abs != 0.0 {
             100.0 * double_mom / double_abs
         } else {
             0.0
         };
-        let signal = self.signal_avg.update(tsi_line);
+        let signal = self.signal_avg.update(tsi_line)?;
 
-        let ctx_double_mom = self.ctx_mom_short.update(self.ctx_mom_long.update(mom));
+        let ctx_double_mom = self.ctx_mom_short.update(self.ctx_mom_long.update(mom)?)?;
         let ctx_double_abs = self
             .ctx_abs_short
-            .update(self.ctx_abs_long.update(mom.abs()));
+            .update(self.ctx_abs_long.update(mom.abs())?)?;
         let ctx_line = if ctx_double_abs != 0.0 {
             100.0 * ctx_double_mom / ctx_double_abs
         } else {

@@ -69,8 +69,8 @@ impl Indicator for WaveTrendEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         let ap = bar.typical_price();
-        let esa = self.ema_ap.update(ap);
-        let d = self.ema_d.update((ap - esa).abs());
+        let esa = self.ema_ap.update(ap)?;
+        let d = self.ema_d.update((ap - esa).abs())?;
 
         let ci = if d > 1e-8 {
             (ap - esa) / (0.015 * d)
@@ -78,7 +78,7 @@ impl Indicator for WaveTrendEngine {
             0.0
         };
 
-        let wt1 = self.ema_wt1.update(ci);
+        let wt1 = self.ema_wt1.update(ci)?;
         let wt2 = self.sma_wt2.update(wt1)?;
 
         self.alerts = WaveTrendAlerts::default();

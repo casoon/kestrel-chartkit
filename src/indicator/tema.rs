@@ -43,9 +43,9 @@ impl Indicator for TemaEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.count += 1;
-        let e1 = self.ema1.update(bar.close);
-        let e2 = self.ema2.update(e1);
-        let e3 = self.ema3.update(e2);
+        let e1 = self.ema1.update(bar.close)?;
+        let e2 = self.ema2.update(e1)?;
+        let e3 = self.ema3.update(e2)?;
 
         if self.count < self.period {
             return None;

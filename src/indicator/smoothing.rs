@@ -3,30 +3,104 @@ use std::collections::VecDeque;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// Exponential moving average: seeds with the input value itself on the first sample
+/// How an [`Ema`] produces its first value.
+///
+/// The recurrence `alpha * src + (1 - alpha) * prev` with `alpha = 2/(len+1)` is the same in both
+/// modes; only the value it starts from differs, and with it how long the series carries the
+/// influence of that start. At `len == 1` (`alpha == 1`) both modes produce the same values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum EmaInit {
+    /// Seeds with the input value itself and emits from the first sample on. The default, and the
+    /// historical behaviour of this type.
+    #[default]
+    FirstSample,
+    /// Seeds with the SMA of the first `len` samples and emits from the `len`-th sample on.
+    /// Earlier samples produce no value — a partially accumulated average is not an EMA.
+    Sma,
+}
+
+/// Exponential moving average over a scalar stream.
+///
+/// `EMA_t = alpha * src_t + (1 - alpha) * EMA_{t-1}` with `alpha = 2/(len + 1)`; the first value
+/// comes from [`EmaInit`]. Returns `None` while the seed is not ready, which in the default
+/// [`EmaInit::FirstSample`] mode never happens: there the very first sample is already the seed.
+///
+/// [`Ema::reset`] clears the state and any partially accumulated seed, so the next series starts
+/// deterministically.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Ema {
     len: usize,
+    init: EmaInit,
     state: Option<f64>,
+    seed_sum: f64,
+    seed_count: usize,
 }
 
 impl Ema {
     pub fn new(len: usize) -> Self {
-        Self { len, state: None }
+        Self {
+            len,
+            init: EmaInit::FirstSample,
+            state: None,
+            seed_sum: 0.0,
+            seed_count: 0,
+        }
     }
 
-    pub fn update(&mut self, src: f64) -> f64 {
+    /// Selects the initialisation; see [`EmaInit`].
+    ///
+    /// Additive to [`Ema::new`], which keeps the first-sample seed. Nested users of this type
+    /// (MACD, TEMA, ...) are deliberately not switched over by this: a seed change inside a chain
+    /// is a separate contract question per indicator.
+    pub fn with_init(mut self, init: EmaInit) -> Self {
+        self.init = init;
+        self
+    }
+
+    pub fn init(&self) -> EmaInit {
+        self.init
+    }
+
+    pub fn update(&mut self, src: f64) -> Option<f64> {
         let alpha = 2.0 / (self.len as f64 + 1.0);
-        let next = match self.state {
-            None => src,
-            Some(prev) => alpha * src + (1.0 - alpha) * prev,
+        if let Some(prev) = self.state {
+            let next = alpha * src + (1.0 - alpha) * prev;
+            self.state = Some(next);
+            return Some(next);
+        }
+
+        let seed = match self.init {
+            EmaInit::FirstSample => src,
+            EmaInit::Sma => {
+                self.seed_sum += src;
+                self.seed_count += 1;
+                if self.seed_count < self.len {
+                    return None;
+                }
+                self.seed_sum / self.len as f64
+            }
         };
-        self.state = Some(next);
-        next
+        self.state = Some(seed);
+        Some(seed)
+    }
+
+    /// Bars needed before [`Ema::update`] first returns `Some`.
+    pub fn warmup_period(&self) -> usize {
+        match self.init {
+            EmaInit::FirstSample => 0,
+            EmaInit::Sma => self.len,
+        }
     }
 
     pub fn reset(&mut self) {
         self.state = None;
+        self.seed_sum = 0.0;
+        self.seed_count = 0;
     }
 }
 
@@ -236,10 +310,13 @@ pub trait Smoother: Send + Sync {
 
 impl Smoother for Ema {
     fn update(&mut self, src: f64) -> Option<f64> {
-        Some(Ema::update(self, src))
+        Ema::update(self, src)
     }
     fn reset(&mut self) {
         Ema::reset(self)
+    }
+    fn warmup_period(&self) -> usize {
+        Ema::warmup_period(self)
     }
 }
 
@@ -784,7 +861,7 @@ mod chain_tests {
         let mut via_kind = SmootherKind::Ema.build(5);
         let mut direct = Ema::new(5);
         for v in [10.0, 11.0, 12.0, 9.0] {
-            assert_eq!(via_kind.update(v), Some(Ema::update(&mut direct, v)));
+            assert_eq!(via_kind.update(v), Ema::update(&mut direct, v));
         }
     }
 }

@@ -153,15 +153,15 @@ impl Indicator for KlingerVolumeForceEngine {
         self.prev_trend = trend;
         self.prev_dm = dm;
 
-        let fast_v = self.fast_ema.update(vf);
-        let slow_v = self.slow_ema.update(vf);
+        let fast_v = self.fast_ema.update(vf)?;
+        let slow_v = self.slow_ema.update(vf)?;
 
         if self.count < self.slow_len {
             return None;
         }
 
         let kvo = fast_v - slow_v;
-        let sig = self.signal_ema.update(kvo);
+        let sig = self.signal_ema.update(kvo)?;
 
         let mut extra = HashMap::new();
         extra.insert("volume_force".to_string(), vf);

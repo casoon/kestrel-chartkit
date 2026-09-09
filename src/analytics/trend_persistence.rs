@@ -176,7 +176,12 @@ fn adx_score_series(bars: &[Bar]) -> Vec<Option<f64>> {
         };
         let raw = output.value;
         if let Some(prev) = prev_adx {
-            let slope = slope_ema.update(raw - prev);
+            // Default first-sample seed: this emits from the first slope on. The `else` branch
+            // skips the bar rather than substituting a slope that was never observed.
+            let Some(slope) = slope_ema.update(raw - prev) else {
+                prev_adx = Some(raw);
+                continue;
+            };
             let adx_strength = normalize(raw, ADX_LO, ADX_HI);
             let adx_slope_norm = normalize(slope, -1.0, 1.5);
             out[i] = Some((adx_strength * 0.7 + adx_slope_norm * 0.3) * 100.0);
@@ -261,7 +266,7 @@ pub fn trend_persistence_reading(bars: &[Bar]) -> Option<TrendPersistenceReading
             + adx_score * WEIGHT_ADX
             + sub.fdi_score * WEIGHT_FDI)
             / weight_sum;
-        score = smoother.update(raw);
+        score = smoother.update(raw)?;
         if idx == last {
             latest_adx_score = adx_score;
             latest = Some(sub);

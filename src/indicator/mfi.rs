@@ -125,8 +125,8 @@ impl Indicator for Mfi {
             100.0 - 100.0 / (1.0 + self.pos_sum / self.neg_sum)
         };
 
-        let mfi_line = self.mfi_avg.update(raw_mfi);
-        let signal = self.signal_avg.update(mfi_line);
+        let mfi_line = self.mfi_avg.update(raw_mfi)?;
+        let signal = self.signal_avg.update(mfi_line)?;
 
         let extreme = self.extreme_window.push(mfi_line);
         let was_oversold = extreme

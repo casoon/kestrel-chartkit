@@ -51,6 +51,7 @@ use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvi::RviEngine;
+use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
 use super::tema::TemaEngine;
 use super::trend_quality::TrendQualityScoreEngine;
@@ -390,7 +391,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "ema",
-            description: "Exponential Moving Average",
+            description: "Exponential Moving Average (build_typed accepts init=first_sample|sma for the seed; first_sample is the default)",
             default_params: [("period".to_string(), 20.0)].into(),
         },
         IndicatorCatalogEntry {
@@ -1343,10 +1344,7 @@ pub fn build_checked(
             let p = get_usize_p(params, "period", 20, 1, 10000)?;
             Ok(Box::new(SmaEngine::new(p)))
         }
-        "ema" => {
-            let p = get_usize_p(params, "period", 20, 1, 10000)?;
-            Ok(Box::new(EmaEngine::new(p)))
-        }
+        "ema" => Ok(Box::new(build_ema(params, EmaInit::FirstSample)?)),
         "wma" => {
             let p = get_usize_p(params, "period", 20, 1, 10000)?;
             Ok(Box::new(WmaEngine::new(p)))
@@ -1737,6 +1735,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 
     let built = match name.to_lowercase().as_str() {
         "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
+        "ema" => build_ema_typed(&remaining)?,
         "rsi" => build_rsi_typed(&remaining)?,
         "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
@@ -1783,6 +1782,30 @@ fn flatten_typed(params: &TypedParams) -> Result<HashMap<String, f64>, RegistryE
         }
     }
     Ok(flat)
+}
+
+/// The numeric part of an EMA configuration; see [`build_rsi`] for why this is shared.
+fn build_ema(params: &HashMap<String, f64>, init: EmaInit) -> Result<EmaEngine, RegistryError> {
+    let period = get_usize_p(params, "period", 20, 1, 10000)?;
+    Ok(EmaEngine::new(period).with_init(init))
+}
+
+fn build_ema_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    let init = match get_enum_p(params, "init")?.as_deref() {
+        None | Some("first_sample") => EmaInit::FirstSample,
+        Some("sma") => EmaInit::Sma,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "init".to_string(),
+                value: other.to_string(),
+                reason: "expected one of first_sample|sma".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("init");
+    Ok(Box::new(build_ema(&flatten_typed(&numeric)?, init)?))
 }
 
 /// The numeric part of an RSI configuration, shared by the `f64`-only and the typed surface so

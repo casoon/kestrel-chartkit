@@ -168,7 +168,7 @@ impl Indicator for ChandelierFlipRadarEngine {
         self.lows.push(low_src);
         let ch_hi = self.highs.highest(self.length);
         let ch_lo = self.lows.lowest(self.length);
-        let ema5 = self.ema5.update(bar.close);
+        let ema5 = self.ema5.update(bar.close)?;
 
         let (atr_raw, ch_hi, ch_lo) = match (atr_raw, ch_hi, ch_lo) {
             (Some(atr), Some(hi), Some(lo)) => (atr, hi, lo),

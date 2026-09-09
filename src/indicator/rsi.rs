@@ -57,7 +57,7 @@ impl ChangeSmoother {
         match self {
             Self::Wilder(rma) => rma.update(change),
             Self::Ema { ema, len, seen } => {
-                let value = ema.update(change);
+                let value = ema.update(change)?;
                 *seen += 1;
                 (*seen >= *len).then_some(value)
             }
@@ -227,7 +227,7 @@ impl Indicator for Rsi {
                 } else {
                     100.0 - 100.0 / (1.0 + ctx_avg_gain / ctx_avg_loss)
                 };
-                Some(self.ctx_avg.update(ctx_raw))
+                self.ctx_avg.update(ctx_raw)
             }
             _ => None,
         };
@@ -247,8 +247,8 @@ impl Indicator for Rsi {
             (100.0 - 100.0 / (1.0 + avg_gain / avg_loss)).clamp(0.0, 100.0)
         };
 
-        let rsi_line = self.rsi_avg.update(raw_rsi).clamp(0.0, 100.0);
-        let signal = self.signal_avg.update(rsi_line).clamp(0.0, 100.0);
+        let rsi_line = self.rsi_avg.update(raw_rsi)?.clamp(0.0, 100.0);
+        let signal = self.signal_avg.update(rsi_line)?.clamp(0.0, 100.0);
 
         let extreme = self.extreme_window.push(rsi_line);
         let was_oversold = extreme

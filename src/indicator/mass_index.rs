@@ -45,8 +45,8 @@ impl Indicator for MassIndexEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         let range = (bar.high - bar.low).max(1e-8);
-        let e1 = self.ema1.update(range);
-        let e2 = self.ema2.update(e1);
+        let e1 = self.ema1.update(range)?;
+        let e2 = self.ema2.update(e1)?;
 
         let ratio = if e2 > 1e-8 { e1 / e2 } else { 1.0 };
 

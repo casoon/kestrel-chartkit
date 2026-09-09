@@ -19,3 +19,13 @@ lsma5_last=15.6
 mcginley5_last=11.786474782982436
 ma_tolerance=0.000000001
 
+# EMA seed contract (package 19): the same recursion alpha = 2/(period+1) started from two
+# different first values, over the 12-bar close series
+# [22, 22.5, 23.25, 22.75, 23.5, 24, 23, 22.25, 23.75, 24.5, 25, 24.25], period = 5.
+#   first_sample: seeded with the first close, running from bar 1 on (output withheld until
+#                 count >= period, as above).
+#   sma:          seeded with the SMA of the first 5 closes, undefined before that.
+# Values independently derived from those two definitions.
+ema5_seed_sma_first_output=22.8
+ema5_seed_sma_last=24.12558299039781
+ema5_seed_first_sample_last=24.131508013119053

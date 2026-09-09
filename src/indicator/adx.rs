@@ -130,7 +130,7 @@ impl Indicator for Adx {
         };
 
         let adx_raw = self.dx_rma.update(dx)?;
-        let adx_line = self.adx_signal.update(adx_raw);
+        let adx_line = self.adx_signal.update(adx_raw)?;
 
         if let (Some(prev_plus), Some(prev_minus), Some(prev_adx)) =
             (self.prev_di_plus, self.prev_di_minus, self.prev_adx_raw)

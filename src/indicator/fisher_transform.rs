@@ -133,7 +133,7 @@ impl Indicator for FisherTransform {
             let ctx_raw = 0.5 * ((1.0 + ctx_value) / (1.0 - ctx_value)).ln() + 0.5 * ctx_prev_fish;
             self.ctx_prev_value = Some(ctx_value);
             self.ctx_prev_fish = Some(ctx_raw);
-            Some(self.ctx_avg.update(ctx_raw))
+            self.ctx_avg.update(ctx_raw)
         } else {
             None
         };
@@ -170,8 +170,8 @@ impl Indicator for FisherTransform {
         self.prev_value = Some(value);
         self.prev_fish = Some(fish_raw);
 
-        let fish_line = self.avg.update(fish_raw);
-        let signal = self.signal_avg.update(fish_line);
+        let fish_line = self.avg.update(fish_raw)?;
+        let signal = self.signal_avg.update(fish_line)?;
 
         let extreme = self.extreme_window.push(fish_line);
         let was_oversold = extreme

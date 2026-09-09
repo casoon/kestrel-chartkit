@@ -75,7 +75,7 @@ impl Indicator for ElderForceIndex {
         self.prev_close = Some(bar.close);
 
         let raw = (bar.close - prev_close) * bar.volume;
-        let line = self.ema.update(raw);
+        let line = self.ema.update(raw)?;
         self.changes_seen += 1;
         if self.changes_seen < self.ema_len {
             return None;

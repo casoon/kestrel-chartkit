@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use crate::indicator::smoothing::{Ema, EmaInit};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -54,11 +55,19 @@ impl Indicator for SmaEngine {
     }
 }
 
-/// Exponential Moving Average (EMA).
+/// Exponential Moving Average (EMA) over the closing price.
+///
+/// Wraps the shared [`Ema`] smoother rather than repeating its recurrence, so both surfaces stay
+/// one calculation. The first output appears with the `period`-th bar in either initialisation:
+/// with [`EmaInit::FirstSample`] the average is already running before that and its early values
+/// are withheld, with [`EmaInit::Sma`] it is not defined before that at all.
+///
+/// [`Indicator::reset`] clears the average and the bar counter, so the next series starts
+/// deterministically.
 #[derive(Debug, Clone)]
 pub struct EmaEngine {
     period: usize,
-    current_ema: Option<f64>,
+    ema: Ema,
     count: usize,
     alerts: Vec<IndicatorAlert>,
 }
@@ -67,10 +76,22 @@ impl EmaEngine {
     pub fn new(period: usize) -> Self {
         Self {
             period,
-            current_ema: None,
+            ema: Ema::new(period),
             count: 0,
             alerts: Vec::new(),
         }
+    }
+
+    /// Selects the initialisation; see [`EmaInit`]. Additive to [`EmaEngine::new`], which keeps
+    /// the first-sample seed. Indicators that nest EMAs internally (DEMA, TEMA, MACD, ...) are
+    /// deliberately not affected.
+    pub fn with_init(mut self, init: EmaInit) -> Self {
+        self.ema = self.ema.with_init(init);
+        self
+    }
+
+    pub fn init(&self) -> EmaInit {
+        self.ema.init()
     }
 }
 
@@ -84,26 +105,21 @@ impl Indicator for EmaEngine {
     }
 
     fn reset(&mut self) {
-        self.current_ema = None;
+        self.ema.reset();
         self.count = 0;
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.count += 1;
-        let k = 2.0 / (self.period as f64 + 1.0);
-        let ema = match self.current_ema {
-            Some(prev) => bar.close * k + prev * (1.0 - k),
-            None => bar.close,
-        };
-        self.current_ema = Some(ema);
+        let ema = self.ema.update(bar.close);
 
         self.alerts.clear();
         if self.count < self.period {
             return None;
         }
 
-        Some(IndicatorOutput::new(ema))
+        ema.map(IndicatorOutput::new)
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {

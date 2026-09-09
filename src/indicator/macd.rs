@@ -59,15 +59,15 @@ impl Indicator for Macd {
         self.bars_seen += 1;
 
         let close = bar.close;
-        let fast = self.fast_ema.update(close);
-        let slow = self.slow_ema.update(close);
+        let fast = self.fast_ema.update(close)?;
+        let slow = self.slow_ema.update(close)?;
 
         if self.bars_seen < self.slow_len {
             return None;
         }
 
         let macd_line = fast - slow;
-        let signal_line = self.signal_ema.update(macd_line);
+        let signal_line = self.signal_ema.update(macd_line)?;
         let hist = macd_line - signal_line;
 
         if let (Some(prev_m), Some(prev_s)) = (self.prev_macd, self.prev_signal) {

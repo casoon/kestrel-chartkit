@@ -508,7 +508,7 @@ impl Indicator for ElderRayEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.count += 1;
-        let ema_val = self.ema.update(bar.close);
+        let ema_val = self.ema.update(bar.close)?;
 
         if self.count < self.ema_period {
             return None;
