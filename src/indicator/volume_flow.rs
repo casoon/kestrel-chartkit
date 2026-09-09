@@ -4,7 +4,13 @@ use crate::model::Bar;
 use std::collections::HashMap;
 
 /// Cumulative Volume Delta (CVD) Engine.
-/// Derives buying/selling volume delta from bar price action (or direct volume delta).
+///
+/// Derives the buying/selling split from the shape of each bar — where the close sits inside its
+/// range — which is [`super::cvd_intrabar::DeltaProvenance::BarShape`]. It looks at no individual
+/// trade and cannot tell aggressive buying from selling into absorption: both can close at the
+/// high. That is a documented estimate, not a measurement of the aggressor, and it remains this
+/// crate's default. [`super::cvd_intrabar::IntrabarCvd`] offers the finer estimate from
+/// lower-timeframe bars without replacing this one.
 #[derive(Debug, Clone)]
 pub struct CvdEngine {
     cum_cvd: f64,

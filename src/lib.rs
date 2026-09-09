@@ -126,6 +126,9 @@ pub use finance::{
     DayCountConvention, FinanceError, FixedRateBond, ScheduleStub, Weekday,
 };
 pub use graph::{ComposedNode, CompositionGraph, GraphError, GraphIndicator, Leaf};
+pub use indicator::cvd_intrabar::{
+    DeltaAnchor, DeltaProvenance, IntrabarCvd, IntrabarDelta, UnchangedIntrabarPolicy,
+};
 pub use indicator::registry::{
     build, build_checked, build_typed, catalog, ParamValue, RegistryError, TypedParams,
 };

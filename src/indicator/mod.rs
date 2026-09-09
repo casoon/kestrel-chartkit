@@ -17,6 +17,7 @@ pub mod chart_patterns;
 pub mod choppiness;
 pub mod connors_rsi;
 pub mod coppock;
+pub mod cvd_intrabar;
 pub mod divergence;
 pub mod dpo;
 pub mod efficiency;
