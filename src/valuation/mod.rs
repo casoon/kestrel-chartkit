@@ -17,9 +17,14 @@
 //!   [`ValuationStamp`] it was produced under, so a result found later can be traced back to the
 //!   data snapshot that produced it.
 //!
+//! [`portfolio`] builds on this: positions valued by model, revalued under market scenarios, and
+//! aggregated in account currency.
+//!
 //! Not modelled here: curve bootstrapping from market instruments, and volatility over strike and
 //! maturity. Both need their own decisions about which instruments and which interpolation are
 //! supported, and neither is approximated in the meantime.
+
+pub mod portfolio;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -51,6 +56,10 @@ pub enum ValuationContextError {
     Instrument(FinanceError),
     /// The option inputs are invalid.
     Option(OptionError),
+    /// A scenario's shocks are not usable.
+    InvalidScenario(&'static str),
+    /// The instrument's exercise style has no pricing engine in this crate.
+    UnsupportedExercise(crate::option::OptionStyle),
 }
 
 impl fmt::Display for ValuationContextError {
@@ -69,6 +78,11 @@ impl fmt::Display for ValuationContextError {
             Self::InvalidCurve(reason) => write!(f, "invalid curve: {reason}"),
             Self::Instrument(err) => write!(f, "invalid instrument: {err}"),
             Self::Option(err) => write!(f, "invalid option inputs: {err:?}"),
+            Self::InvalidScenario(reason) => write!(f, "invalid scenario: {reason}"),
+            Self::UnsupportedExercise(style) => write!(
+                f,
+                "no pricing engine for {style:?} exercise; only European options are valued here"
+            ),
         }
     }
 }
@@ -202,6 +216,23 @@ impl YieldCurve {
     /// Discount factor for a calendar date.
     pub fn discount_factor(&self, date: Date) -> Result<f64, ValuationContextError> {
         self.discount_factor_at(self.time_to(date)?)
+    }
+
+    /// The same curve with every zero rate shifted by `delta`, in absolute rate units — a
+    /// parallel shift. `0.0001` is one basis point.
+    ///
+    /// Parallel is the only shape offered here: a twist or a steepening needs a statement about
+    /// which part of the curve moves how, and that belongs to whoever has that view.
+    pub fn shifted(&self, delta: f64) -> Self {
+        Self {
+            reference: self.reference,
+            day_count: self.day_count,
+            nodes: self
+                .nodes
+                .iter()
+                .map(|(t, rate)| (*t, rate + delta))
+                .collect(),
+        }
     }
 
     /// Continuously compounded forward rate covering `t1..t2`, from the same term structure:
@@ -409,7 +440,19 @@ impl ValuationContext {
         bond: &FixedRateBond,
         currency: &Currency,
     ) -> Result<Valued<BondCurveValuation>, ValuationContextError> {
-        let curve = self.discount_curve(currency)?;
+        self.price_bond_shifted(bond, currency, 0.0)
+    }
+
+    /// [`ValuationContext::price_bond`] with every zero rate shifted in parallel by `rate_shift`
+    /// (absolute rate units). The scenario machinery in [`portfolio`] uses this; a shift of zero
+    /// is the unshocked case.
+    pub fn price_bond_shifted(
+        &self,
+        bond: &FixedRateBond,
+        currency: &Currency,
+        rate_shift: f64,
+    ) -> Result<Valued<BondCurveValuation>, ValuationContextError> {
+        let curve = self.discount_curve(currency)?.curve().shifted(rate_shift);
         let flows = bond.cashflows(self.valuation_date);
         if flows.is_empty() {
             return Err(ValuationContextError::Instrument(
@@ -450,7 +493,33 @@ impl ValuationContext {
         volatility: f64,
         dividend_yield: f64,
     ) -> Result<Valued<crate::option::OptionPricingResult>, ValuationContextError> {
-        let curve = self.discount_curve(currency)?.curve();
+        self.price_european_option_shifted(
+            currency,
+            option_type,
+            spot,
+            strike,
+            expiry,
+            volatility,
+            dividend_yield,
+            0.0,
+        )
+    }
+
+    /// [`ValuationContext::price_european_option`] with the curve shifted in parallel by
+    /// `rate_shift` (absolute rate units).
+    #[allow(clippy::too_many_arguments)]
+    pub fn price_european_option_shifted(
+        &self,
+        currency: &Currency,
+        option_type: OptionType,
+        spot: f64,
+        strike: f64,
+        expiry: Date,
+        volatility: f64,
+        dividend_yield: f64,
+        rate_shift: f64,
+    ) -> Result<Valued<crate::option::OptionPricingResult>, ValuationContextError> {
+        let curve = self.discount_curve(currency)?.curve().shifted(rate_shift);
         if expiry < self.valuation_date {
             return Err(ValuationContextError::TimeOutsideCurve);
         }
