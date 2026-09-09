@@ -13,6 +13,8 @@ use kestrel_chartkit::finance::{
     discount_factor, BondSpec, BusinessCalendar, Compounding, Date, DayCountConvention,
 };
 use kestrel_chartkit::option::{black_scholes_merton, BlackScholesInputs, OptionType};
+use kestrel_chartkit::valuation::bootstrap::CalibrationInstrument;
+use kestrel_chartkit::valuation::volatility::{SurfaceValidity, VolatilitySurface};
 use kestrel_chartkit::valuation::{
     DiscountCurve, ForwardCurve, ValuationContext, ValuationContextError, YieldCurve,
 };
@@ -459,4 +461,371 @@ fn test_fx_conversion_uses_given_rates_and_refuses_to_build_cross_rates() {
             .is_err(),
         "kein Kreuzkurs über EUR"
     );
+}
+
+// --- Paket 13, zweite Stufe: Bootstrapping ---------------------------------------------------
+
+fn date(year: i32, month: u32, day: u32) -> Date {
+    Date::new(year, month, day).unwrap()
+}
+
+/// Die Abnahme eines Bootstraps ist die Reproduktion seiner Kalibrierungsinstrumente: Die fertige
+/// Kurve muss jeden Swap, aus dem sie gebaut wurde, wieder auf seinen gequoteten Satz bringen.
+#[test]
+fn test_bootstrapped_curve_reprices_its_calibration_instruments() {
+    let reference = reference_date();
+    let instruments = [
+        CalibrationInstrument::ZeroRate {
+            maturity: date(2026, 12, 15),
+            rate: 0.020,
+        },
+        CalibrationInstrument::ParSwap {
+            maturity: date(2028, 6, 15),
+            rate: 0.025,
+            frequency: 2,
+        },
+        CalibrationInstrument::ParSwap {
+            maturity: date(2031, 6, 15),
+            rate: 0.030,
+            frequency: 2,
+        },
+        CalibrationInstrument::ParSwap {
+            maturity: date(2036, 6, 15),
+            rate: 0.033,
+            frequency: 2,
+        },
+    ];
+
+    let curve =
+        YieldCurve::bootstrap(reference, &instruments, DayCountConvention::Actual365Fixed).unwrap();
+
+    for instrument in &instruments {
+        match instrument {
+            CalibrationInstrument::ZeroRate { maturity, rate } => {
+                common::assert_close(
+                    curve.zero_rate(curve.time_to(*maturity).unwrap()).unwrap(),
+                    *rate,
+                    1e-12,
+                    "gequoteter Zerosatz",
+                );
+            }
+            CalibrationInstrument::ParSwap {
+                maturity,
+                rate,
+                frequency,
+            } => {
+                common::assert_close(
+                    curve.par_swap_rate(*maturity, *frequency).unwrap(),
+                    *rate,
+                    1e-10,
+                    "Par-Swap-Satz",
+                );
+            }
+        }
+    }
+}
+
+/// Eine flache Kurve muss einen Swap zum passenden Satz sehen: Bei stetigem Zins r ist der
+/// Par-Satz nicht r, sondern folgt aus derselben Barwertgleichung — geprüft wird deshalb die
+/// Gleichung selbst, nicht eine zweite Formel.
+#[test]
+fn test_par_swap_rate_satisfies_the_par_condition_it_is_defined_by() {
+    let reference = reference_date();
+    let curve = flat_curve(0.03);
+    let maturity = date(2031, 6, 15);
+    let rate = curve.par_swap_rate(maturity, 2).unwrap();
+
+    let schedule =
+        kestrel_chartkit::finance::CouponSchedule::covering(reference, maturity, 2).unwrap();
+    let mut annuity = 0.0;
+    for index in 0..schedule.period_count() {
+        let (start, end) = schedule.period(index).unwrap();
+        annuity += kestrel_chartkit::finance::year_fraction(
+            start,
+            end,
+            DayCountConvention::Actual365Fixed,
+        ) * curve.discount_factor(end).unwrap();
+    }
+    let final_discount = curve.discount_factor(maturity).unwrap();
+
+    common::assert_close(rate * annuity, 1.0 - final_discount, 1e-12, "Par-Bedingung");
+}
+
+/// Negative Sätze sind kein Sonderfall: Auch eine invertierte, ins Negative reichende Kurve muss
+/// ihre Instrumente reproduzieren.
+#[test]
+fn test_bootstrapping_handles_negative_rates() {
+    let reference = reference_date();
+    let instruments = [
+        CalibrationInstrument::ZeroRate {
+            maturity: date(2026, 12, 15),
+            rate: -0.006,
+        },
+        CalibrationInstrument::ParSwap {
+            maturity: date(2029, 6, 15),
+            rate: -0.004,
+            frequency: 2,
+        },
+        CalibrationInstrument::ParSwap {
+            maturity: date(2036, 6, 15),
+            rate: 0.002,
+            frequency: 2,
+        },
+    ];
+    let curve =
+        YieldCurve::bootstrap(reference, &instruments, DayCountConvention::Actual365Fixed).unwrap();
+
+    common::assert_close(
+        curve.par_swap_rate(date(2029, 6, 15), 2).unwrap(),
+        -0.004,
+        1e-10,
+        "negativer Swap-Satz",
+    );
+    assert!(
+        curve.discount_factor(date(2029, 6, 15)).unwrap() > 1.0,
+        "negative Zinsen ergeben Diskontfaktoren über eins"
+    );
+}
+
+#[test]
+fn test_bootstrapping_rejects_unusable_instrument_sets() {
+    let reference = reference_date();
+    let day_count = DayCountConvention::Actual365Fixed;
+
+    assert!(YieldCurve::bootstrap(reference, &[], day_count).is_err());
+    assert!(
+        YieldCurve::bootstrap(
+            reference,
+            &[
+                CalibrationInstrument::ZeroRate {
+                    maturity: date(2027, 6, 15),
+                    rate: 0.02
+                },
+                CalibrationInstrument::ZeroRate {
+                    maturity: date(2027, 6, 15),
+                    rate: 0.03
+                },
+            ],
+            day_count
+        )
+        .is_err(),
+        "zwei Instrumente auf derselben Fälligkeit"
+    );
+    assert!(
+        YieldCurve::bootstrap(
+            reference,
+            &[CalibrationInstrument::ZeroRate {
+                maturity: date(2026, 1, 1),
+                rate: 0.02
+            }],
+            day_count
+        )
+        .is_err(),
+        "Fälligkeit vor dem Referenzdatum"
+    );
+}
+
+/// Die Reihenfolge der Eingabe darf das Ergebnis nicht ändern — sortiert wird nach Fälligkeit.
+#[test]
+fn test_bootstrapping_is_independent_of_the_input_order() {
+    let reference = reference_date();
+    let a = CalibrationInstrument::ZeroRate {
+        maturity: date(2026, 12, 15),
+        rate: 0.02,
+    };
+    let b = CalibrationInstrument::ParSwap {
+        maturity: date(2029, 6, 15),
+        rate: 0.028,
+        frequency: 2,
+    };
+    let day_count = DayCountConvention::Actual365Fixed;
+
+    let forward = YieldCurve::bootstrap(reference, &[a, b], day_count).unwrap();
+    let reversed = YieldCurve::bootstrap(reference, &[b, a], day_count).unwrap();
+    assert_eq!(forward, reversed);
+}
+
+// --- Paket 13, zweite Stufe: Volatilitätsfläche ----------------------------------------------
+
+fn test_surface() -> VolatilitySurface {
+    VolatilitySurface::new(
+        reference_date(),
+        vec![0.5, 1.0],
+        vec![90.0, 100.0, 110.0],
+        vec![vec![0.30, 0.20, 0.25], vec![0.34, 0.24, 0.29]],
+        DayCountConvention::Actual365Fixed,
+        SurfaceValidity::default(),
+    )
+    .unwrap()
+}
+
+/// Bilinear zwischen den Gitterlinien, von Hand nachgerechnet: In der Mitte zwischen 0.5 und 1.0
+/// Jahren und zwischen den Strikes 90 und 100 liegt der Mittelwert der vier Ecken.
+#[test]
+fn test_surface_interpolates_bilinearly_between_quoted_points() {
+    let surface = test_surface();
+
+    common::assert_close(
+        surface.volatility_at(0.5, 100.0).unwrap(),
+        0.20,
+        0.0,
+        "Gitterpunkt",
+    );
+    common::assert_close(
+        surface.volatility_at(0.75, 100.0).unwrap(),
+        0.22,
+        1e-15,
+        "auf halbem Weg in der Laufzeit",
+    );
+    common::assert_close(
+        surface.volatility_at(0.5, 95.0).unwrap(),
+        0.25,
+        1e-15,
+        "auf halbem Weg im Strike",
+    );
+    common::assert_close(
+        surface.volatility_at(0.75, 95.0).unwrap(),
+        (0.30 + 0.20 + 0.34 + 0.24) / 4.0,
+        1e-15,
+        "Mitte der vier Ecken",
+    );
+}
+
+/// Innerhalb der Gültigkeit wird der Randwert flach gehalten, außerhalb wird abgelehnt statt mit
+/// dem nächstgelegenen Quote geantwortet.
+#[test]
+fn test_surface_holds_edges_flat_inside_its_validity_and_refuses_beyond() {
+    let surface = test_surface();
+
+    common::assert_close(
+        surface.volatility_at(1.0, 111.0).unwrap(),
+        0.29,
+        0.0,
+        "knapp über dem letzten Strike",
+    );
+    common::assert_close(
+        surface.volatility_at(1.2, 100.0).unwrap(),
+        0.24,
+        0.0,
+        "knapp hinter der letzten Laufzeit",
+    );
+
+    assert_eq!(
+        surface.volatility_at(1.0, 150.0),
+        Err(ValuationContextError::OutsideSurfaceValidity),
+        "weit außerhalb der Strikes"
+    );
+    assert_eq!(
+        surface.volatility_at(5.0, 100.0),
+        Err(ValuationContextError::OutsideSurfaceValidity),
+        "weit hinter der letzten Laufzeit"
+    );
+}
+
+/// Die flache Fläche ist der kompatible Spezialfall und antwortet überall gleich.
+#[test]
+fn test_flat_surface_answers_the_same_everywhere() {
+    let flat = VolatilitySurface::flat(reference_date(), 0.22, DayCountConvention::Actual365Fixed)
+        .unwrap();
+    for (time, strike) in [(0.1, 50.0), (2.0, 100.0), (30.0, 5_000.0)] {
+        common::assert_close(
+            flat.volatility_at(time, strike).unwrap(),
+            0.22,
+            0.0,
+            "flache Fläche",
+        );
+    }
+}
+
+#[test]
+fn test_surface_rejects_a_grid_that_is_not_one() {
+    let reference = reference_date();
+    let day_count = DayCountConvention::Actual365Fixed;
+    let validity = SurfaceValidity::default();
+
+    assert!(
+        VolatilitySurface::new(
+            reference,
+            vec![1.0, 0.5],
+            vec![100.0],
+            vec![vec![0.2], vec![0.2]],
+            day_count,
+            validity
+        )
+        .is_err(),
+        "Laufzeiten müssen aufsteigen"
+    );
+    assert!(
+        VolatilitySurface::new(
+            reference,
+            vec![0.5, 1.0],
+            vec![100.0],
+            vec![vec![0.2]],
+            day_count,
+            validity
+        )
+        .is_err(),
+        "Zeilenzahl muss zu den Laufzeiten passen"
+    );
+    assert!(
+        VolatilitySurface::new(
+            reference,
+            vec![0.5],
+            vec![100.0],
+            vec![vec![-0.1]],
+            day_count,
+            validity
+        )
+        .is_err(),
+        "negative Volatilität"
+    );
+}
+
+/// Über den Kontext bezieht eine Option beides aus den Marktdaten: den Zins aus der Kurve, die
+/// Volatilität aus der Fläche des eigenen Underlyings.
+#[test]
+fn test_context_prices_an_option_from_curve_and_surface() {
+    let expiry = Date::new(2027, 6, 15).unwrap();
+    let context = ValuationContext::new(reference_date(), 0, "surface")
+        .with_discount_curve(Currency::eur(), DiscountCurve::new(flat_curve(0.03)))
+        .with_volatility_surface("XYZ", test_surface());
+
+    // 2027-06-15 liegt ein Jahr entfernt, Strike 100 ist ein Gitterpunkt: Volatilität 0.24.
+    let from_surface = context
+        .price_european_option_on_surface(
+            "XYZ",
+            &Currency::eur(),
+            OptionType::Call,
+            100.0,
+            100.0,
+            expiry,
+            0.0,
+        )
+        .unwrap();
+    let explicit = context
+        .price_european_option(
+            &Currency::eur(),
+            OptionType::Call,
+            100.0,
+            100.0,
+            expiry,
+            0.24,
+            0.0,
+        )
+        .unwrap();
+    assert_eq!(from_surface.value, explicit.value);
+
+    // Fehlende Fläche ist ein Fehler, kein Rückfall auf irgendeine Volatilität.
+    assert!(matches!(
+        context.price_european_option_on_surface(
+            "UNKNOWN",
+            &Currency::eur(),
+            OptionType::Call,
+            100.0,
+            100.0,
+            expiry,
+            0.0
+        ),
+        Err(ValuationContextError::MissingVolatilitySurface(_))
+    ));
 }

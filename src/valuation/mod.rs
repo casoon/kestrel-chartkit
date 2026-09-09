@@ -6,6 +6,11 @@
 //! currency. This module holds those pieces together so a valuation is reproducible rather than
 //! assembled from whatever constants a caller had at hand.
 //!
+//! (Dieser Modul-Doc-Kommentar verwendet voll qualifizierte `crate::`-Pfade: rustdoc löst
+//! Intra-Doc-Links hier gegen den Crate-Wurzel-Scope auf, weil `pub mod valuation;` in `lib.rs`
+//! einen eigenen `///`-Kommentar trägt, der mit diesem zu einem Block verschmilzt — dieselbe
+//! Lage wie in `applicability.rs`.)
+//!
 //! Three rules run through it:
 //!
 //! * **Missing data is an error, never a default.** A currency without a curve does not silently
@@ -17,14 +22,15 @@
 //!   [`ValuationStamp`] it was produced under, so a result found later can be traced back to the
 //!   data snapshot that produced it.
 //!
-//! [`portfolio`] builds on this: positions valued by model, revalued under market scenarios, and
-//! aggregated in account currency.
+//! [`crate::valuation::portfolio`] builds on this: positions valued by model, revalued under market scenarios,
+//! and aggregated in account currency.
 //!
-//! Not modelled here: curve bootstrapping from market instruments, and volatility over strike and
-//! maturity. Both need their own decisions about which instruments and which interpolation are
-//! supported, and neither is approximated in the meantime.
+//! [`crate::valuation::bootstrap`] builds a curve from quoted instruments instead of from given zero rates,
+//! and [`crate::valuation::volatility`] holds volatility over strike and maturity.
 
+pub mod bootstrap;
 pub mod portfolio;
+pub mod volatility;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -46,6 +52,8 @@ pub enum ValuationContextError {
     MissingDiscountCurve(Currency),
     /// No forward curve for this currency.
     MissingForwardCurve(Currency),
+    /// No volatility surface for this underlying.
+    MissingVolatilitySurface(String),
     /// No exchange rate connecting these two currencies.
     MissingFxRate { from: Currency, to: Currency },
     /// A curve was asked for a date before its reference date, or for a non-finite time.
@@ -60,6 +68,9 @@ pub enum ValuationContextError {
     InvalidScenario(&'static str),
     /// The instrument's exercise style has no pricing engine in this crate.
     UnsupportedExercise(crate::option::OptionStyle),
+    /// The requested strike or maturity lies further outside the quoted volatility grid than its
+    /// declared validity allows.
+    OutsideSurfaceValidity,
 }
 
 impl fmt::Display for ValuationContextError {
@@ -71,6 +82,9 @@ impl fmt::Display for ValuationContextError {
             Self::MissingForwardCurve(currency) => {
                 write!(f, "no forward curve for {currency}")
             }
+            Self::MissingVolatilitySurface(symbol) => {
+                write!(f, "no volatility surface for {symbol}")
+            }
             Self::MissingFxRate { from, to } => {
                 write!(f, "no fx rate from {from} to {to}")
             }
@@ -79,6 +93,9 @@ impl fmt::Display for ValuationContextError {
             Self::Instrument(err) => write!(f, "invalid instrument: {err}"),
             Self::Option(err) => write!(f, "invalid option inputs: {err:?}"),
             Self::InvalidScenario(reason) => write!(f, "invalid scenario: {reason}"),
+            Self::OutsideSurfaceValidity => {
+                f.write_str("strike or maturity lies outside the volatility surface's validity")
+            }
             Self::UnsupportedExercise(style) => write!(
                 f,
                 "no pricing engine for {style:?} exercise; only European options are valued here"
@@ -338,6 +355,7 @@ pub struct ValuationContext {
     data_version: String,
     discount_curves: HashMap<Currency, DiscountCurve>,
     forward_curves: HashMap<Currency, ForwardCurve>,
+    volatility_surfaces: HashMap<String, volatility::VolatilitySurface>,
     fx_rates: Vec<FxRate>,
 }
 
@@ -350,6 +368,7 @@ impl ValuationContext {
             data_version: data_version.into(),
             discount_curves: HashMap::new(),
             forward_curves: HashMap::new(),
+            volatility_surfaces: HashMap::new(),
             fx_rates: Vec::new(),
         }
     }
@@ -362,6 +381,29 @@ impl ValuationContext {
     pub fn with_forward_curve(mut self, currency: Currency, curve: ForwardCurve) -> Self {
         self.forward_curves.insert(currency, curve);
         self
+    }
+
+    /// Adds a volatility surface for one underlying.
+    ///
+    /// Keyed by the underlying's symbol rather than by currency: two instruments quoted in the
+    /// same currency have their own smiles, and sharing one between them would be a statement
+    /// about the market that nobody made.
+    pub fn with_volatility_surface(
+        mut self,
+        symbol: impl Into<String>,
+        surface: volatility::VolatilitySurface,
+    ) -> Self {
+        self.volatility_surfaces.insert(symbol.into(), surface);
+        self
+    }
+
+    pub fn volatility_surface(
+        &self,
+        symbol: &str,
+    ) -> Result<&volatility::VolatilitySurface, ValuationContextError> {
+        self.volatility_surfaces
+            .get(symbol)
+            .ok_or_else(|| ValuationContextError::MissingVolatilitySurface(symbol.to_string()))
     }
 
     pub fn with_fx_rate(mut self, rate: FxRate) -> Self {
@@ -502,6 +544,39 @@ impl ValuationContext {
             volatility,
             dividend_yield,
             0.0,
+        )
+    }
+
+    /// Prices a European option taking *both* the rate and the volatility from the context: the
+    /// rate from the currency's discount curve, the volatility from the underlying's surface at
+    /// this option's own strike and expiry.
+    ///
+    /// The surface is what makes this different from
+    /// [`ValuationContext::price_european_option`], which takes a volatility from the caller. A
+    /// strike or expiry outside the surface's declared validity fails here rather than being
+    /// answered with the nearest quoted value.
+    #[allow(clippy::too_many_arguments)]
+    pub fn price_european_option_on_surface(
+        &self,
+        symbol: &str,
+        currency: &Currency,
+        option_type: OptionType,
+        spot: f64,
+        strike: f64,
+        expiry: Date,
+        dividend_yield: f64,
+    ) -> Result<Valued<crate::option::OptionPricingResult>, ValuationContextError> {
+        let volatility = self
+            .volatility_surface(symbol)?
+            .volatility(expiry, strike)?;
+        self.price_european_option(
+            currency,
+            option_type,
+            spot,
+            strike,
+            expiry,
+            volatility,
+            dividend_yield,
         )
     }
 

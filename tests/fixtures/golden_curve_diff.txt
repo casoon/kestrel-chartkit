@@ -1,0 +1,144 @@
+# kestrel-chartkit golden reference fixture: yield curve difference tests
+#
+# Reference values generated offline from an independent second implementation; generator,
+# pinned version and conventions are recorded in the local project documentation, not in this
+# repository.
+#
+# Conventions: continuously compounded zero rates, linear interpolation in time between the
+# nodes, flat extrapolation outside them, Actual/365Fixed. Discount factors are exp(-z(t)*t).
+#
+# Each curve carries its nodes as node<i>_t / node<i>_rate and its queries as query<j>_t /
+# query<j>_zero / query<j>_discount.
+#
+# query<j>_inside marks whether the query lies within the quoted node range. Beyond the last
+# node the reference continues the slope of the final segment, while this crate holds the edge
+# rate flat; those queries are therefore not comparable and are marked 0.
+
+# case count
+meta_curve_case_count=3.0
+
+# rising term structure
+curve1_node_count=4.0
+curve1_query_count=10.0
+curve1_node0_t=0.5013698630136987
+curve1_node0_rate=0.02
+curve1_node1_t=2.0
+curve1_node1_rate=0.028
+curve1_node2_t=5.0
+curve1_node2_rate=0.033
+curve1_node3_t=10.0
+curve1_node3_rate=0.036
+curve1_query0_t=0.10136986301369863
+curve1_query0_zero=0.02000000000000079
+curve1_query0_discount=0.9979746565213733
+curve1_query0_inside=1.0
+curve1_query1_t=0.5013698630136987
+curve1_query1_zero=0.019999999999999924
+curve1_query1_discount=0.9900227094677558
+curve1_query1_inside=1.0
+curve1_query2_t=1.0
+curve1_query2_zero=0.02266179159049367
+curve1_query2_discount=0.9775930580619354
+curve1_query2_inside=1.0
+curve1_query3_t=2.0
+curve1_query3_zero=0.027999999999999987
+curve1_query3_discount=0.9455391358903963
+curve1_query3_inside=1.0
+curve1_query4_t=3.5013698630136987
+curve1_query4_zero=0.030502283105022825
+curve1_query4_discount=0.8987055984697803
+curve1_query4_inside=1.0
+curve1_query5_t=5.0
+curve1_query5_zero=0.03300000000000001
+curve1_query5_discount=0.8478937040879159
+curve1_query5_inside=1.0
+curve1_query6_t=7.501369863013698
+curve1_query6_zero=0.03450082191780821
+curve1_query6_discount=0.7719747584629213
+curve1_query6_inside=1.0
+curve1_query7_t=10.0
+curve1_query7_zero=0.036000000000000004
+curve1_query7_discount=0.697676326071031
+curve1_query7_inside=1.0
+curve1_query8_t=12.0
+curve1_query8_zero=0.036999999999999984
+curve1_query8_discount=0.6414654208273199
+curve1_query8_inside=0.0
+curve1_query9_t=30.0
+curve1_query9_zero=0.039999999999999994
+curve1_query9_discount=0.3011942119122022
+curve1_query9_inside=0.0
+
+# inverted, partly negative
+curve2_node_count=4.0
+curve2_query_count=9.0
+curve2_node0_t=0.2493150684931507
+curve2_node0_rate=-0.006
+curve2_node1_t=1.0
+curve2_node1_rate=-0.004
+curve2_node2_t=3.0
+curve2_node2_rate=0.001
+curve2_node3_t=7.0
+curve2_node3_rate=0.0
+curve2_query0_t=0.049315068493150684
+curve2_query0_zero=-0.005999999999999404
+curve2_query0_discount=1.0002959341908444
+curve2_query0_inside=1.0
+curve2_query1_t=0.2493150684931507
+curve2_query1_zero=-0.005999999999999701
+curve2_query1_discount=1.0014970098131177
+curve2_query1_inside=1.0
+curve2_query2_t=0.6
+curve2_query2_zero=-0.005065693430656857
+curve2_query2_discount=1.0030440397666531
+curve2_query2_inside=1.0
+curve2_query3_t=1.0
+curve2_query3_zero=-0.003999999999999988
+curve2_query3_discount=1.004008010677342
+curve2_query3_inside=1.0
+curve2_query4_t=2.0
+curve2_query4_zero=-0.0015000000000000434
+curve2_query4_discount=1.003004504503377
+curve2_query4_inside=1.0
+curve2_query5_t=3.0
+curve2_query5_zero=0.0010000000000000185
+curve2_query5_discount=0.997004495503373
+curve2_query5_inside=1.0
+curve2_query6_t=5.0
+curve2_query6_zero=0.0005000000000000201
+curve2_query6_discount=0.9975031223974601
+curve2_query6_inside=1.0
+curve2_query7_t=7.0
+curve2_query7_zero=0.0
+curve2_query7_discount=1.0
+curve2_query7_inside=1.0
+curve2_query8_t=9.0
+curve2_query8_zero=-0.0003888888888888913
+curve2_query8_discount=1.0035061321520904
+curve2_query8_inside=0.0
+
+# single node, flat
+curve3_node_count=1.0
+curve3_query_count=5.0
+curve3_node0_t=1.0
+curve3_node0_rate=0.025
+curve3_query0_t=0.0
+curve3_query0_zero=0.02499999999958521
+curve3_query0_discount=1.0
+curve3_query0_inside=1.0
+curve3_query1_t=0.5013698630136987
+curve3_query1_zero=0.025000000000000158
+curve3_query1_discount=0.9875439799154531
+curve3_query1_inside=1.0
+curve3_query2_t=1.0
+curve3_query2_zero=0.025000000000000015
+curve3_query2_discount=0.9753099120283326
+curve3_query2_inside=1.0
+curve3_query3_t=4.0
+curve3_query3_zero=0.02500000000000002
+curve3_query3_discount=0.9048374180359595
+curve3_query3_inside=0.0
+curve3_query4_t=25.0
+curve3_query4_zero=0.02500000000000001
+curve3_query4_discount=0.5352614285189902
+curve3_query4_inside=0.0

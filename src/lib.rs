@@ -186,10 +186,12 @@ pub use synthetic::{
     SwingDirection, WyckoffGeneratorConfig,
 };
 pub use timeframe::{BarResampler, ConfirmedResampler, Timeframe, TimeframeError};
+pub use valuation::bootstrap::CalibrationInstrument;
 pub use valuation::portfolio::{
     MarketScenario, PortfolioScenarioResult, PortfolioSensitivities, PortfolioValuation,
     PositionValuation, ValuationModel, ValuationPosition, ValuedInstrument,
 };
+pub use valuation::volatility::{SurfaceValidity, VolatilitySurface};
 pub use valuation::{
     BondCurveValuation, DiscountCurve, ForwardCurve, ValuationContext, ValuationContextError,
     ValuationStamp, Valued, YieldCurve,
