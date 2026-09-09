@@ -149,31 +149,73 @@ impl fmt::Display for OptionError {
 
 impl std::error::Error for OptionError {}
 
-/// Standard normal cumulative distribution function $\Phi(x)$ using Abramowitz & Stegun (1964) formula 7.1.26.
-/// Maximum absolute approximation error is less than $1.5 \times 10^{-7}$.
+/// Evaluates a polynomial in Horner form: `lead` is the highest-order coefficient, `rest` the
+/// remaining ones in descending order.
+fn horner(x: f64, lead: f64, rest: &[f64]) -> f64 {
+    rest.iter()
+        .fold(lead, |acc, coefficient| acc * x + coefficient)
+}
+
+/// Standard normal cumulative distribution function $\Phi(x)$, evaluated with Hart's rational
+/// approximation.
+///
+/// Every option price, delta, theta and rho in this module passes through here, so this
+/// function's accuracy is their ceiling. Hart's form holds close to double precision across the
+/// body and both tails — `tests/golden_reference_option_diff.rs` pins it against independently
+/// generated reference values. The earlier Abramowitz & Stegun 7.1.26 approximation used here was accurate
+/// to about $1.5 \times 10^{-7}$ absolute, which showed up as errors of that order times the
+/// price level in every quantity derived from it.
+///
+/// Beyond $|x| = 37$ the result is 0 or 1 in double precision, and is returned as such.
 pub fn normal_cdf(x: f64) -> f64 {
-    if x < -38.0 {
-        return 0.0;
-    }
-    if x > 38.0 {
-        return 1.0;
+    let abs_x = x.abs();
+    if abs_x > 37.0 {
+        return if x > 0.0 { 1.0 } else { 0.0 };
     }
 
-    let p = 0.3275911;
-    let a1 = 0.254829592;
-    let a2 = -0.284496736;
-    let a3 = 1.421413741;
-    let a4 = -1.453152027;
-    let a5 = 1.061405429;
+    let exponential = (-0.5 * abs_x * abs_x).exp();
+    let upper_tail = if abs_x < 7.071_067_811_865_475 {
+        // Rational approximation for the body, both polynomials in Horner form.
+        let numerator = horner(
+            abs_x,
+            3.526_249_659_989_109e-2,
+            &[
+                0.700_383_064_443_688,
+                6.373_962_203_531_65,
+                33.912_866_078_383,
+                112.079_291_497_871,
+                221.213_596_169_931,
+                220.206_867_912_376,
+            ],
+        );
+        let denominator = horner(
+            abs_x,
+            8.838_834_764_831_844e-2,
+            &[
+                1.755_667_163_182_64,
+                16.064_177_579_207,
+                86.780_732_202_946_1,
+                296.564_248_779_674,
+                637.333_633_378_831,
+                793.826_512_519_948,
+                440.413_735_824_752,
+            ],
+        );
+        exponential * numerator / denominator
+    } else {
+        // Continued fraction for the far tail, where the quotient above loses its digits.
+        let mut fraction = abs_x + 0.65;
+        for term in [4.0, 3.0, 2.0, 1.0] {
+            fraction = abs_x + term / fraction;
+        }
+        exponential / (fraction * 2.506_628_274_631_000_5)
+    };
 
-    let sign = if x < 0.0 { -1.0 } else { 1.0 };
-    let abs_x = x.abs() / std::f64::consts::SQRT_2;
-
-    let t = 1.0 / (1.0 + p * abs_x);
-    let poly = (((a5 * t + a4) * t + a3) * t + a2) * t + a1;
-    let erf = 1.0 - poly * t * (-abs_x * abs_x).exp();
-
-    0.5 * (1.0 + sign * erf)
+    if x > 0.0 {
+        1.0 - upper_tail
+    } else {
+        upper_tail
+    }
 }
 
 /// Standard normal probability density function $\phi(x) = \frac{1}{\sqrt{2\pi}} e^{-x^2 / 2}$.
