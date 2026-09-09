@@ -2,6 +2,7 @@ mod common;
 
 use kestrel_chartkit::indicator::adx::Adx;
 use kestrel_chartkit::indicator::atr::Atr;
+use kestrel_chartkit::indicator::chande_kroll::ChandeKrollStop;
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 
@@ -492,4 +493,163 @@ fn test_golden_vortex_reference_values() {
         tol,
         "Vortex -VI",
     );
+}
+
+// --- Paket 29: Chande Kroll Stop ------------------------------------------------------------
+
+/// (open, high, low, close) — Aufwärtsbewegung mit Rücksetzern und einer Abwärtsphase am Ende,
+/// damit beide Linien in Bewegung geraten.
+const CKS_BARS: [(f64, f64, f64, f64); 20] = [
+    (99.5, 101.5, 98.5, 100.0),
+    (100.5, 102.0, 100.0, 101.0),
+    (102.5, 104.0, 102.0, 103.0),
+    (101.5, 103.5, 101.0, 102.0),
+    (103.5, 105.0, 102.5, 104.0),
+    (105.5, 107.0, 105.0, 106.0),
+    (104.5, 106.5, 104.0, 105.0),
+    (106.5, 108.0, 106.0, 107.0),
+    (108.5, 110.0, 107.5, 109.0),
+    (107.5, 109.5, 107.0, 108.0),
+    (109.5, 111.0, 109.0, 110.0),
+    (111.5, 113.0, 111.0, 112.0),
+    (110.5, 112.5, 109.5, 111.0),
+    (112.5, 114.0, 112.0, 113.0),
+    (114.5, 116.0, 114.0, 115.0),
+    (113.5, 115.5, 113.0, 114.0),
+    (111.5, 113.0, 110.5, 112.0),
+    (109.5, 111.0, 109.0, 110.0),
+    (110.5, 112.5, 110.0, 111.0),
+    (112.5, 114.0, 112.0, 113.0),
+];
+
+fn cks_outputs(
+    atr_len: usize,
+    stop_len: usize,
+    mult: f64,
+) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    let mut cks = ChandeKrollStop::new(atr_len, stop_len, mult);
+    CKS_BARS
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &(o, h, l, c))| cks.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, 1000.0)))
+        .collect()
+}
+
+#[test]
+fn test_golden_chande_kroll_reference_values() {
+    let tolerance = expected("cks_tolerance");
+    let outputs = cks_outputs(4, 3, 2.0);
+
+    assert_eq!(
+        outputs.len() as f64,
+        expected("cks4_3_mult2_output_count"),
+        "erste Ausgabe nach atr_len + stop_len Kerzen"
+    );
+    common::assert_close(
+        outputs[0].extra["stop_long"],
+        expected("cks4_3_mult2_long_first"),
+        tolerance,
+        "Chande Kroll Long-Stop, erste Ausgabe",
+    );
+    common::assert_close(
+        outputs[0].extra["stop_short"],
+        expected("cks4_3_mult2_short_first"),
+        tolerance,
+        "Chande Kroll Short-Stop, erste Ausgabe",
+    );
+
+    let last = outputs.last().unwrap();
+    common::assert_close(
+        last.extra["stop_long"],
+        expected("cks4_3_mult2_long_last"),
+        tolerance,
+        "Chande Kroll Long-Stop, letzte Ausgabe",
+    );
+    common::assert_close(
+        last.extra["stop_short"],
+        expected("cks4_3_mult2_short_last"),
+        tolerance,
+        "Chande Kroll Short-Stop, letzte Ausgabe",
+    );
+    common::assert_close(
+        last.value,
+        last.extra["stop_long"],
+        0.0,
+        "value ist der Long-Stop",
+    );
+}
+
+/// stop_len = 1 macht die zweite Stufe zur Identität — die Ausgabe muss dann genau die
+/// Vorstufenwerte sein.
+#[test]
+fn test_chande_kroll_with_stop_len_one_returns_the_first_stage() {
+    let tolerance = expected("cks_tolerance");
+    let last = cks_outputs(4, 1, 2.0)
+        .last()
+        .cloned()
+        .expect("Chande Kroll gab nichts aus");
+    common::assert_close(
+        last.extra["stop_long"],
+        expected("cks4_1_mult2_long_last"),
+        tolerance,
+        "Vorstufe Long",
+    );
+    common::assert_close(
+        last.extra["stop_short"],
+        expected("cks4_1_mult2_short_last"),
+        tolerance,
+        "Vorstufe Short",
+    );
+}
+
+/// Konstante Reihe ohne Spanne: True Range 0, also ATR 0 — beide Stops fallen auf den Preis.
+#[test]
+fn test_chande_kroll_on_constant_series_collapses_to_the_price() {
+    let mut cks = ChandeKrollStop::new(4, 3, 3.0);
+    let outputs: Vec<_> = (0..15)
+        .filter_map(|i| cks.on_bar(&Bar::new(i * 60, 42.0, 42.0, 42.0, 42.0, 1000.0)))
+        .collect();
+    assert!(!outputs.is_empty(), "Chande Kroll gab nichts aus");
+    for out in outputs {
+        common::assert_close(out.extra["stop_long"], 42.0, 1e-12, "Long-Stop konstant");
+        common::assert_close(out.extra["stop_short"], 42.0, 1e-12, "Short-Stop konstant");
+    }
+}
+
+/// Die Linien dürfen sich kreuzen: Bei kleinem Multiplikator bleibt der Long-Stop nahe am
+/// Fensterhoch und der Short-Stop nahe am Fenstertief, sodass der Long-Stop über dem Short-Stop
+/// liegt. Das bleibt so stehen, statt sortiert zu werden.
+#[test]
+fn test_chande_kroll_lines_may_cross_without_being_sorted() {
+    let mut cks = ChandeKrollStop::new(4, 3, 0.1);
+    let mut crossed = false;
+    for (i, &(o, h, l, c)) in CKS_BARS.iter().enumerate() {
+        if let Some(out) = cks.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, 1000.0)) {
+            if out.extra["stop_long"] > out.extra["stop_short"] {
+                crossed = true;
+            }
+        }
+    }
+    assert!(
+        crossed,
+        "bei kleinem Multiplikator müssen sich die Linien kreuzen können"
+    );
+}
+
+#[test]
+fn test_chande_kroll_reset_restarts_deterministically() {
+    let mut cks = ChandeKrollStop::new(4, 3, 2.0);
+    let run = |cks: &mut ChandeKrollStop| -> Vec<(f64, f64)> {
+        CKS_BARS
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &(o, h, l, c))| {
+                cks.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, 1000.0))
+            })
+            .map(|o| (o.extra["stop_long"], o.extra["stop_short"]))
+            .collect()
+    };
+    let first = run(&mut cks);
+    cks.reset();
+    assert_eq!(first, run(&mut cks));
 }

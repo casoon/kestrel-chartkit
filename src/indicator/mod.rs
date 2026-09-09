@@ -9,6 +9,7 @@ pub mod buy_sell_pressure;
 pub mod candle_story;
 pub mod cci;
 pub mod chaikin_osc;
+pub mod chande_kroll;
 pub mod chandelier_exit;
 pub mod chandelier_flip_radar;
 pub mod chart_patterns;

@@ -14,6 +14,7 @@ use super::buy_sell_pressure::BuySellPressureEstimator;
 use super::candle_story::{CandleStoryConfig, CandleStoryEngine};
 use super::cci::Cci;
 use super::chaikin_osc::ChaikinOscillatorEngine;
+use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
 use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
@@ -187,6 +188,16 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             name: "atr",
             description: "Average True Range",
             default_params: [("atr_len".to_string(), 14.0), ("sig_len".to_string(), 20.0)].into(),
+        },
+        IndicatorCatalogEntry {
+            name: "chande_kroll",
+            description: "Chande Kroll Stop (window extremes minus/plus a Wilder-smoothed ATR, passed through a second extreme window)",
+            default_params: [
+                ("atr_len".to_string(), 10.0),
+                ("stop_len".to_string(), 9.0),
+                ("mult".to_string(), 3.0),
+            ]
+            .into(),
         },
         IndicatorCatalogEntry {
             name: "chandelier_exit",
@@ -1127,6 +1138,12 @@ pub fn build_checked(
             let sig_len = get_usize_p(params, "sig_len", 20, 1, 10000)?;
             Ok(Box::new(Atr::new(atr_len, sig_len)))
         }
+        "chande_kroll" | "cks" => {
+            let atr_len = get_usize_p(params, "atr_len", 10, 1, 10000)?;
+            let stop_len = get_usize_p(params, "stop_len", 9, 1, 10000)?;
+            let mult = get_f64_p(params, "mult", 3.0, 0.01, 100.0)?;
+            Ok(Box::new(ChandeKrollStop::new(atr_len, stop_len, mult)))
+        }
         "chandelier_exit" | "ce" => {
             let length = get_usize_p(params, "length", 22, 1, 10000)?;
             let atr_mult = get_f64_p(params, "atr_mult", 3.0, 0.01, 100.0)?;
@@ -1656,6 +1673,8 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "atr",
+    "chande_kroll",
+    "cks",
     "true_range",
     "adx",
     "dmi",
@@ -2165,6 +2184,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "cci",
     "mfi",
     "atr",
+    "chande_kroll",
     "efi",
     "trix",
     "vidya",
@@ -2280,8 +2300,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 95);
-        assert_eq!(catalog().len(), 95);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 96);
+        assert_eq!(catalog().len(), 96);
     }
 
     #[test]

@@ -58,7 +58,16 @@ vortex5_minus=1.110236220472441
 
 vol_tolerance=0.000000001
 
-
-
-
-
+# Chande Kroll Stop (package 29), atr_len = 4, stop_len = 3, mult = 2, over the 20 OHLC bars in
+# the test file. First stage: highest(high, 4) - 2*ATR(4) and lowest(low, 4) + 2*ATR(4) with the
+# true range smoothed the Wilder way. Second stage: highest of the long series and lowest of the
+# short series over 3 values. Derived independently from that specification.
+cks4_3_mult2_output_count=15
+cks4_3_mult2_long_first=101.421875
+cks4_3_mult2_short_first=103.75
+cks4_3_mult2_long_last=110.00207547377795
+cks4_3_mult2_short_last=114.74844339466654
+# stop_len = 1 makes the second stage the identity, so the outputs are the first-stage values.
+cks4_1_mult2_long_last=108.1886674540001
+cks4_1_mult2_short_last=114.8113325459999
+cks_tolerance=0.000000001

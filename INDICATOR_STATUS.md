@@ -63,6 +63,7 @@ is complete.
 | atr | ✅ |
 | adx | ✅ |
 | aroon | ✅ |
+| chande_kroll | ✅ |
 | chandelier_exit | ✅ |
 | chandelier_flip_radar | ✅ |
 | choppiness | ✅ |
