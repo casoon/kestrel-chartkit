@@ -29,4 +29,15 @@ volume_last=2000.0
 volume_avg5=1800.0
 volume_tolerance=0.000000001
 
-
+# Elder's Force Index(3): raw = (close - previous close) * volume, main line an EMA over that raw
+# series (alpha = 2/(N+1), seeded with the first actual raw observation, published from the N-th
+# change on). Closes 100, 102, 101, 101, 104, 103 with volumes 1000, 1500, 800, 0, 1200, 900 —
+# the fourth bar is both zero-volume and unchanged, so its raw force is 0 and enters the average
+# as an ordinary observation.
+efi3_raw_first=0.0
+efi3_line_first=550.0
+efi3_raw_second=3600.0
+efi3_line_second=2075.0
+efi3_raw_third=-900.0
+efi3_line_third=587.5
+efi_tolerance=0.000000000001

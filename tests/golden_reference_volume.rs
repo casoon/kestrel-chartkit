@@ -1,5 +1,6 @@
 mod common;
 
+use kestrel_chartkit::indicator::force_index::ElderForceIndex;
 use kestrel_chartkit::indicator::volume_profile::VolumeProfileEngine;
 use kestrel_chartkit::indicator::vwap::Vwap;
 use kestrel_chartkit::indicator::Indicator;
@@ -306,4 +307,136 @@ fn test_golden_volume_profile_contract_boundary_reset() {
     let out_roll = vp.on_bar_with_boundary(&roll_bar, true);
     // Since lookback is 3, resetting state means only 1 bar is present, so None is returned until warmup finishes
     assert!(out_roll.is_none());
+}
+
+// --- Paket 21: Elder's Force Index -----------------------------------------------------------
+
+const EFI_CLOSES: [f64; 6] = [100.0, 102.0, 101.0, 101.0, 104.0, 103.0];
+const EFI_VOLUMES: [f64; 6] = [1000.0, 1500.0, 800.0, 0.0, 1200.0, 900.0];
+
+fn efi_bars() -> Vec<Bar> {
+    EFI_CLOSES
+        .iter()
+        .zip(EFI_VOLUMES)
+        .enumerate()
+        .map(|(i, (&c, v))| Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, v))
+        .collect()
+}
+
+#[test]
+fn test_golden_force_index_reference_values() {
+    let mut efi = ElderForceIndex::new(3);
+    let outputs: Vec<_> = efi_bars().iter().filter_map(|b| efi.on_bar(b)).collect();
+
+    assert_eq!(
+        outputs.len(),
+        3,
+        "EFI(3) darf erst ab der dritten Preisänderung ausgeben"
+    );
+
+    let tolerance = expected("efi_tolerance");
+    for (out, key) in outputs.iter().zip(["first", "second", "third"]) {
+        common::assert_close(
+            out.extra["raw"],
+            expected(&format!("efi3_raw_{key}")),
+            tolerance,
+            &format!("EFI(3) raw ({key} output)"),
+        );
+        common::assert_close(
+            out.value,
+            expected(&format!("efi3_line_{key}")),
+            tolerance,
+            &format!("EFI(3) line ({key} output)"),
+        );
+    }
+}
+
+/// Nullvolumen bzw. unveränderter Schluss ergibt Rohwert 0 — die geglättete Linie wird dadurch
+/// aber nicht auf 0 gesetzt, sondern nur in Richtung 0 gezogen.
+#[test]
+fn test_force_index_zero_volume_bar_does_not_zero_the_line() {
+    let mut efi = ElderForceIndex::new(3);
+    let first = efi_bars()
+        .iter()
+        .filter_map(|b| efi.on_bar(b))
+        .next()
+        .expect("EFI gab nichts aus");
+
+    common::assert_close(
+        first.extra["raw"],
+        0.0,
+        0.0,
+        "Rohwert der Nullvolumen-Kerze",
+    );
+    assert!(
+        first.value.abs() > 1.0,
+        "geglättete Linie wurde durch die Nullvolumen-Kerze auf {} gesetzt",
+        first.value
+    );
+}
+
+/// Ohne Vorgängerschluss gibt es keine Kraft: Die erste Kerze ist keine Nullkraft-Kerze.
+#[test]
+fn test_force_index_has_no_output_without_a_previous_close() {
+    let mut efi = ElderForceIndex::new(1);
+    let bars = efi_bars();
+    assert!(efi.on_bar(&bars[0]).is_none());
+    let second = efi
+        .on_bar(&bars[1])
+        .expect("EFI(1) gibt ab der ersten Änderung aus");
+    common::assert_close(second.extra["raw"], 3000.0, 0.0, "erste Rohkraft");
+    common::assert_close(second.value, 3000.0, 0.0, "EMA(1) entspricht dem Rohwert");
+}
+
+/// Flachmarkt: keine Preisänderung bei echtem Volumen heißt Kraft 0 auf jeder Kerze.
+#[test]
+fn test_force_index_flat_series_is_zero() {
+    let mut efi = ElderForceIndex::new(3);
+    let outputs: Vec<_> = (0..10)
+        .filter_map(|i| efi.on_bar(&Bar::new(i * 60, 42.0, 42.5, 41.5, 42.0, 1000.0)))
+        .collect();
+    assert!(!outputs.is_empty(), "EFI gab nichts aus");
+    for out in outputs {
+        common::assert_close(out.value, 0.0, 0.0, "EFI im Flachmarkt");
+        common::assert_close(out.extra["raw"], 0.0, 0.0, "EFI-Rohwert im Flachmarkt");
+    }
+}
+
+/// Nach `reset` beginnt die Serie deterministisch neu; ein Serienwechsel führt den Durchschnitt
+/// nicht über die Grenze fort.
+#[test]
+fn test_force_index_reset_restarts_deterministically() {
+    let mut efi = ElderForceIndex::new(3);
+    let bars = efi_bars();
+    let run = |efi: &mut ElderForceIndex| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|b| efi.on_bar(b))
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut efi);
+    efi.reset();
+    assert_eq!(first, run(&mut efi));
+}
+
+/// Kausalität: Ein bereits ausgegebener Wert ändert sich durch spätere Kerzen nicht.
+#[test]
+fn test_force_index_earlier_outputs_do_not_change_with_more_bars() {
+    let bars = efi_bars();
+    let prefix: Vec<f64> = {
+        let mut efi = ElderForceIndex::new(3);
+        bars[..5]
+            .iter()
+            .filter_map(|b| efi.on_bar(b))
+            .map(|o| o.value)
+            .collect()
+    };
+    let full: Vec<f64> = {
+        let mut efi = ElderForceIndex::new(3);
+        bars.iter()
+            .filter_map(|b| efi.on_bar(b))
+            .map(|o| o.value)
+            .collect()
+    };
+    assert_eq!(prefix, full[..prefix.len()]);
 }

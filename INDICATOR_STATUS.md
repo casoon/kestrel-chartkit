@@ -1,6 +1,6 @@
 # Indicator Status
 
-As of: 2026-09-08
+As of: 2026-09-09
 
 Overview of all indicators/detectors from `src/indicator/registry.rs`: name and whether it has
 been verified (✅) or is still open (❌). Only the verification status — not what it was
@@ -86,6 +86,7 @@ is complete.
 | anchored_vwap | ✅ |
 | cmf | ✅ |
 | cvd | ✅ |
+| efi | ✅ |
 | eom | ✅ |
 | extended_volume_profile | ✅ |
 | hires_volume_flow | ✅ |

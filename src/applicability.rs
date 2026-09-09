@@ -331,7 +331,7 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             session_sensitive: true,
             ..DataRequirements::default()
         },
-        "cvd" | "buy_sell_pressure" | "mfi" | "eom" | "nvi" | "pvi" | "klinger"
+        "cvd" | "buy_sell_pressure" | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "klinger"
         | "chaikin_oscillator" | "elder_ray" | "midas" => DataRequirements {
             needs_real_volume: true,
             ..DataRequirements::default()

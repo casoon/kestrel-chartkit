@@ -24,6 +24,7 @@ use super::efficiency::LegEfficiencyEngine;
 use super::envelope::EnvelopeEngine;
 use super::eom::EomEngine;
 use super::fisher_transform::FisherTransform;
+use super::force_index::ElderForceIndex;
 use super::kst::KstEngine;
 use super::liquidity_fvg::LiquidityFvgEngine;
 use super::liquidity_sweeps::LiquiditySweepEngine;
@@ -157,6 +158,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "efi",
+            description: "Elder's Force Index (price change times volume, EMA-smoothed)",
+            default_params: [("ema_len".to_string(), 13.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "atr",
@@ -801,9 +807,9 @@ pub fn output_range(name: &str) -> OutputRange {
         },
 
         // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
-        "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "elder_ray"
-        | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc" | "wavetrend"
-        | "zscore" => OutputRange::Centered { center: 0.0 },
+        "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "efi"
+        | "elder_ray" | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc"
+        | "wavetrend" | "zscore" => OutputRange::Centered { center: 0.0 },
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
@@ -1077,6 +1083,10 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "efi" => {
+            let ema_len = get_usize_p(params, "ema_len", 13, 1, 10000)?;
+            Ok(Box::new(ElderForceIndex::new(ema_len)))
         }
         "atr" => {
             let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
@@ -1671,6 +1681,12 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "swing_structure",
 ];
 
+/// Indicators whose price source is fixed by an explicit decision rather than by their math:
+/// `SourceMapped` would compute a differently-defined series under the same name. `efi` weighs a
+/// close-to-close change by the bar's volume; pairing that volume with a derived price (hlc3,
+/// ohlc4, ...) needs its own documented contract before it is offered.
+const SOURCE_FIXED_INDICATORS: &[&str] = &["efi"];
+
 pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
     if name.to_lowercase() == "midas" {
         // Bypasses the generic `source` handling below; see `build_midas_typed`.
@@ -1689,6 +1705,18 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
     };
 
     if let Some(s) = source {
+        if s != crate::model::Source::Close
+            && SOURCE_FIXED_INDICATORS.contains(&name.to_lowercase().as_str())
+        {
+            return Err(RegistryError::IncompatibleParameter {
+                parameter: "source".to_string(),
+                indicator: name.to_string(),
+                reason: "price source is fixed to the close by contract; another source would \
+                         redefine the series under the same name"
+                    .to_string(),
+            });
+        }
+
         if s != crate::model::Source::Close
             && RANGE_DEPENDENT_INDICATORS.contains(&name.to_lowercase().as_str())
         {
@@ -2081,6 +2109,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "cci",
     "mfi",
     "atr",
+    "efi",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2171,7 +2200,7 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
-    /// Finding 04: `catalog()` must expose exactly the 89 canonical, buildable indicator names —
+    /// Finding 04: `catalog()` must expose exactly the canonical, buildable indicator names —
     /// no fewer (a name silently missing from discovery) and no more (a stray or alias-as-
     /// canonical entry). This is the "buildable canonical name -> catalog entry" direction that a
     /// simple `catalog().len() > N` check does not exercise.
@@ -2192,8 +2221,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 91);
-        assert_eq!(catalog().len(), 91);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 92);
+        assert_eq!(catalog().len(), 92);
     }
 
     #[test]
@@ -2611,6 +2640,30 @@ mod tests {
             registry_out.map(|o| o.value),
             "Atr::with_defaults() must produce identical output to the registry's \"atr\" default"
         );
+    }
+
+    /// `efi` weighs a close-to-close change by the bar's volume; a derived price source would be
+    /// a different series under the same name, so it is refused until that contract exists.
+    #[test]
+    fn test_build_typed_rejects_non_close_source_on_efi() {
+        let params: TypedParams = HashMap::from([(
+            "source".to_string(),
+            ParamValue::Source(crate::model::Source::Hlc3),
+        )]);
+        let err = match build_typed("efi", &params) {
+            Err(e) => e,
+            Ok(_) => panic!("expected 'efi' to reject a non-Close source"),
+        };
+        assert!(
+            matches!(err, RegistryError::IncompatibleParameter { .. }),
+            "efi returned {err:?} instead of IncompatibleParameter"
+        );
+
+        let close: TypedParams = HashMap::from([(
+            "source".to_string(),
+            ParamValue::Source(crate::model::Source::Close),
+        )]);
+        assert!(build_typed("efi", &close).is_ok());
     }
 
     #[test]

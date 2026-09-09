@@ -22,6 +22,7 @@ pub mod elliott;
 pub mod envelope;
 pub mod eom;
 pub mod fisher_transform;
+pub mod force_index;
 pub mod harmonics;
 pub mod kst;
 pub mod liquidity_fvg;
