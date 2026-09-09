@@ -62,6 +62,7 @@ use super::trend_structural::{
 };
 use super::trix::Trix;
 use super::tsi::Tsi;
+use super::ulcer::UlcerIndexEngine;
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -163,6 +164,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("oversold".to_string(), 20.0),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "ulcer_index",
+            description: "Ulcer Index (root mean square of the percentage drawdowns below the running high)",
+            default_params: [("len".to_string(), 14.0)].into(),
         },
         IndicatorCatalogEntry {
             name: "t3",
@@ -848,6 +854,7 @@ pub fn output_range(name: &str) -> OutputRange {
         | "mass_index"
         | "rvol"
         | "true_range"
+        | "ulcer_index"
         | "vix_fix"
         | "volume"
         | "vortex" => OutputRange::NonNegative,
@@ -1113,6 +1120,10 @@ pub fn build_checked(
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
             )))
+        }
+        "ulcer_index" => {
+            let len = get_usize_p(params, "len", 14, 1, 10000)?;
+            Ok(Box::new(UlcerIndexEngine::new(len)))
         }
         "t3" => {
             let period = get_usize_p(params, "period", 5, 1, 10000)?;
@@ -2216,6 +2227,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "trix",
     "vidya",
     "t3",
+    "ulcer_index",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2327,8 +2339,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 96);
-        assert_eq!(catalog().len(), 96);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 97);
+        assert_eq!(catalog().len(), 97);
     }
 
     #[test]

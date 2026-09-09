@@ -77,6 +77,7 @@ is complete.
 | parabolic_sar | ✅ |
 | supertrend | ✅ |
 | true_range | ✅ |
+| ulcer_index | ✅ |
 | vix_fix | ✅ |
 | vortex | ✅ |
 

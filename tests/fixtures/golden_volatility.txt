@@ -85,3 +85,14 @@ atr3_sma_raw_third=5.0
 atr3_ema_raw_third=5.25
 atr3_wma_raw_third=5.5
 atr3_method_output_count=4
+
+# Ulcer Index (package 34), len = 3, over a decline with recovery and an expiring high:
+# [100, 102, 104, 101, 96, 92, 95, 99, 103, 106, 104, 105].
+# Each value's percentage below the running maximum of the last 3 values up to and including it;
+# the squares averaged over 3 and rooted. First value with the fifth observation (2*len - 1).
+# Derived independently from that definition.
+ulcer3_first=4.743156598381007
+ulcer3_second=6.997537270408222
+ulcer3_last=1.217919291260194
+ulcer3_output_count=8
+ulcer_tolerance=0.000000000001

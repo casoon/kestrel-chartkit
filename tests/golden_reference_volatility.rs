@@ -3,6 +3,7 @@ mod common;
 use kestrel_chartkit::indicator::adx::Adx;
 use kestrel_chartkit::indicator::atr::{Atr, TrueRangeSmoothing};
 use kestrel_chartkit::indicator::chande_kroll::ChandeKrollStop;
+use kestrel_chartkit::indicator::ulcer::{ulcer_index, UlcerIndexCore, UlcerIndexEngine};
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 
@@ -818,4 +819,123 @@ fn test_atr_smoothing_enum_is_validated_and_defaults_to_rma() {
         matches!(err, RegistryError::InvalidEnumValue { .. }),
         "{err:?}"
     );
+}
+
+// --- Paket 34: Ulcer Index ------------------------------------------------------------------
+
+const ULCER_PRICES: [f64; 12] = [
+    100.0, 102.0, 104.0, 101.0, 96.0, 92.0, 95.0, 99.0, 103.0, 106.0, 104.0, 105.0,
+];
+
+#[test]
+fn test_golden_ulcer_index_reference_values() {
+    let mut core = UlcerIndexCore::new(3);
+    let values: Vec<f64> = ULCER_PRICES
+        .iter()
+        .filter_map(|v| core.update(*v))
+        .collect();
+    let tolerance = expected("ulcer_tolerance");
+
+    assert_eq!(
+        values.len() as f64,
+        expected("ulcer3_output_count"),
+        "erste Ausgabe nach 2*len - 1 Beobachtungen"
+    );
+    common::assert_close(
+        values[0],
+        expected("ulcer3_first"),
+        tolerance,
+        "erster Wert",
+    );
+    common::assert_close(
+        values[1],
+        expected("ulcer3_second"),
+        tolerance,
+        "zweiter Wert",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("ulcer3_last"),
+        tolerance,
+        "letzter Wert",
+    );
+}
+
+/// Eine monoton steigende und eine flache Reihe kennen keinen Abstand zum eigenen Hoch: exakt 0.
+#[test]
+fn test_ulcer_index_is_zero_without_any_drawdown() {
+    let rising: Vec<f64> = (0..10).map(|i| 100.0 * 1.01_f64.powi(i)).collect();
+    assert_eq!(ulcer_index(&rising, 3), Some(0.0));
+    assert_eq!(ulcer_index(&[50.0; 10], 3), Some(0.0));
+}
+
+/// Ein alter Drawdown wird nicht gegen ein späteres Hoch umgerechnet: Hängt man an dieselbe
+/// Reihe einen kräftigen Anstieg an, bleiben die zuvor ausgegebenen Werte unverändert.
+#[test]
+fn test_past_drawdowns_are_not_recomputed_against_a_later_high() {
+    let mut short = UlcerIndexCore::new(3);
+    let prefix: Vec<f64> = ULCER_PRICES
+        .iter()
+        .filter_map(|v| short.update(*v))
+        .collect();
+
+    let mut extended_input = ULCER_PRICES.to_vec();
+    extended_input.extend_from_slice(&[130.0, 160.0, 200.0]);
+    let mut long = UlcerIndexCore::new(3);
+    let full: Vec<f64> = extended_input
+        .iter()
+        .filter_map(|v| long.update(*v))
+        .collect();
+
+    assert_eq!(prefix, full[..prefix.len()]);
+}
+
+/// Nicht positive oder nicht endliche Werte haben keinen prozentualen Abstand zu einem Hoch —
+/// sie werden abgelehnt, statt in das Fenster zu wandern.
+#[test]
+fn test_non_positive_values_are_refused_and_leave_the_state_untouched() {
+    let mut core = UlcerIndexCore::new(3);
+    for value in ULCER_PRICES.iter().take(5) {
+        core.update(*value);
+    }
+    let before = core.clone();
+
+    assert_eq!(core.update(0.0), None);
+    assert_eq!(core.update(-5.0), None);
+    assert_eq!(core.update(f64::NAN), None);
+
+    let mut untouched = before;
+    assert_eq!(core.update(95.0), untouched.update(95.0));
+}
+
+#[test]
+fn test_ulcer_index_reset_restarts_deterministically() {
+    let mut core = UlcerIndexCore::new(3);
+    let run = |core: &mut UlcerIndexCore| -> Vec<f64> {
+        ULCER_PRICES
+            .iter()
+            .filter_map(|v| core.update(*v))
+            .collect()
+    };
+    let first = run(&mut core);
+    core.reset();
+    assert_eq!(first, run(&mut core));
+}
+
+/// Der Registry-Indikator rechnet über den Schlusskurs denselben Kern.
+#[test]
+fn test_ulcer_index_engine_matches_the_scalar_core() {
+    let mut engine = UlcerIndexEngine::new(3);
+    let mut core = UlcerIndexCore::new(3);
+    for (i, &price) in ULCER_PRICES.iter().enumerate() {
+        let bar = Bar::new(
+            i as i64 * 60,
+            price,
+            price + 1.0,
+            price - 1.0,
+            price,
+            1000.0,
+        );
+        assert_eq!(engine.on_bar(&bar).map(|out| out.value), core.update(price));
+    }
 }
