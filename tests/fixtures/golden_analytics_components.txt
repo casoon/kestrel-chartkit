@@ -1,0 +1,37 @@
+# Independent analytical component references, 2026-09-08.
+# Ramp: 120 bars close=100+0.5*i, high=close+0.2, low=close-0.2.
+# DX=100 for every directional sample => ADX=100; ER=1, R²=1.
+# n=20: sumTR=14, high-low=9.9. n=34: path/range=17/17.4;
+# FDI<1.2 => normalized FDI score=100. ADX slope=0 => norm=(0+1)/2.5=.4.
+# SMA5 at i119 =158.5; at i114=156.
+# Price: closes [10,11,12,11,13,14,13,15,16,15], H=C+1,L=C-1.
+# RMA3: SMA seed over first 3 TR, then (TR+2*prior)/3, exact rational arithmetic.
+# Fear: 40 bars C100,H101,L99 then C100,H101,L80. WVF20, mirror1;
+# last14 TR mean=(13*2+21)/14, unchanged close => absorbed.
+# Volume [1,4,2,3] has 3/4 samples <=last.
+# RSI kernel: closes [10,12,10,12,10], Wilder length2 => gain .75, loss1.25.
+# Next-close RSI inversion: RSI30=>9.5, RSI50=>10.5, RSI70=>73/6.
+ramp_adx=100
+ramp_er=1
+ramp_r2_score=100
+ramp_fdi_score=100
+ramp_chop=11.567207641810288
+ramp_sma5_last=158.5
+ramp_sma5_prior=156
+ramp_adx_strength=1
+ramp_adx_slope_norm=0.40000000000000002
+price_atr=2.1920438957475996
+price_atr_pct=14.613625971650663
+price_atr_rank=0.5
+price_stop=3.288065843621399
+price_change_pct=-6.25
+price_range_position=0.75
+fear_wvf=20
+fear_bwvf=1
+fear_atr_simple=3.3571428571428572
+volume_rank=0.75
+rsi_gain2=0.75
+rsi_loss2=1.25
+rsi_target30=9.5
+rsi_target50=10.5
+rsi_target70=12.166666666666666

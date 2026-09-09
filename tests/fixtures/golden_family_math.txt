@@ -1,0 +1,12 @@
+# Independent hand calculations. Inputs are in the companion test, not engine-generated.
+# votes: 2 bull, 1 bear => 2/3; weights .2+.3 bull, .9 bear => .9/1.4
+majority 0.6666666666666666
+weighted 0.6428571428571429
+# pnl [10,-2,0,NULL]: closed=4, wins=1, sum=8, present=3
+win_rate 0.25
+average 2.6666666666666665
+total 8
+# A returns [10%,20%,-10%]; B [-10%,-20%,10%]: correlation -1
+correlation -1
+# A closes 100,110,132,118.8 => final one-bar return -10%
+relative_strength -10

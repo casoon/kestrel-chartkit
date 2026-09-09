@@ -1,0 +1,24 @@
+# kestrel-chartkit golden reference fixture: trend indicators
+# Values independently computed via Python analytical calculations
+
+alligator_jaw=44.83561499947481
+alligator_teeth=45.27049603330015
+alligator_lips=45.70450359962738
+
+efficiency5_last=1.0
+
+ichimoku_tenkan=46.3
+ichimoku_kijun=46.2
+ichimoku_senkou_a=46.25
+ichimoku_senkou_b=45.95
+
+midas_curve=45.2
+midas_proj=45.2
+
+trend_rel_fast=46.30000000596046
+trend_rel_slow=46.20001188063843
+trend_rel_diff=0.09998812532203516
+
+zscore5_last=1.414213562373075
+
+trend_tolerance=0.000000001
