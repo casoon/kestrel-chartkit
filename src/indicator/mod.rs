@@ -49,6 +49,7 @@ pub mod rci;
 pub mod registry;
 pub mod relative_strength;
 pub mod rsi;
+pub mod rvat;
 pub mod rvi;
 pub mod smart_money_structure;
 pub mod smi;

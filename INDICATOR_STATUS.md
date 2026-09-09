@@ -103,6 +103,7 @@ is complete.
 | obv | ✅ |
 | persistent_volume_profile | ✅ |
 | pvi | ✅ |
+| rvat | ✅ |
 | rvol | ✅ |
 | volume | ✅ |
 

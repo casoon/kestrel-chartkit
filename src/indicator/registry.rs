@@ -52,6 +52,7 @@ use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
 use super::rci::RciEngine;
 use super::rsi::{Rsi, RsiSmoothing};
+use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
 use super::smoothing::EmaInit;
@@ -164,6 +165,16 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("mfi_len".to_string(), 14.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "rvat",
+            description: "Relative Volume at Time (volume against the same time of day on previous days, regular and cumulative)",
+            default_params: [
+                ("days".to_string(), 10.0),
+                ("day_start_offset".to_string(), 0.0),
+                ("bar_seconds".to_string(), 60.0),
             ]
             .into(),
         },
@@ -870,6 +881,7 @@ pub fn output_range(name: &str) -> OutputRange {
         | "garman_klass"
         | "historical_volatility"
         | "mass_index"
+        | "rvat"
         | "rvol"
         | "true_range"
         | "ulcer_index"
@@ -1137,6 +1149,16 @@ pub fn build_checked(
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(Mfi::new(
                 mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
+            )))
+        }
+        "rvat" => {
+            let days = get_usize_p(params, "days", 10, 1, 1000)?;
+            let day_start_offset = get_f64_p(params, "day_start_offset", 0.0, -86_400.0, 86_400.0)?;
+            let bar_seconds = get_f64_p(params, "bar_seconds", 60.0, 1.0, 86_400.0)?;
+            Ok(Box::new(RelativeVolumeAtTime::new(
+                days,
+                day_start_offset as i64,
+                bar_seconds as i64,
             )))
         }
         "smi" => {
@@ -2262,6 +2284,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "ulcer_index",
     "rci",
     "smi",
+    "rvat",
     "chandelier_exit",
     "chandelier_flip_radar",
     "midas",
@@ -2373,8 +2396,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 99);
-        assert_eq!(catalog().len(), 99);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 100);
+        assert_eq!(catalog().len(), 100);
     }
 
     #[test]

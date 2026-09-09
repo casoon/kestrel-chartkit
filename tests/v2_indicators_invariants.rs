@@ -12,12 +12,14 @@ fn test_all_catalog_v2_indicators_build_and_run() {
         "Expected at least 25 indicators in catalog"
     );
 
-    let bars = generate_sine_bars(100, 100.0, 10.0, 20.0, 1000.0);
-
     for entry in &cat {
         let mut ind = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
 
+        // Long enough for this indicator's own warmup: `rvat` needs a full trading day before it
+        // has anything to compare against, and a fixed 100-bar fixture would only test the
+        // fixture.
+        let bars = generate_sine_bars(ind.warmup_period() + 100, 100.0, 10.0, 20.0, 1000.0);
         let mut output_count = 0;
         for bar in &bars {
             if let Some(out) = ind.on_bar(bar) {

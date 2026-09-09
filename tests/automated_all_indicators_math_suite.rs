@@ -218,10 +218,13 @@ fn automated_test_5_all_bounded_indicators_domain_constraints() {
 #[test]
 fn automated_test_6_all_indicators_high_volume_stream_stress() {
     let cat = catalog();
-    let bars = generate_sine_bars(2000, 100.0, 10.0, 50.0, 1000.0);
 
     for entry in &cat {
         let mut ind = build(entry.name, &entry.default_params).unwrap();
+        // Bars per indicator rather than one shared series: an indicator whose warmup is a full
+        // trading day (`rvat`) would otherwise be measured over a stream shorter than its own
+        // warmup, and the assertion would say more about the fixture than about the indicator.
+        let bars = generate_sine_bars(ind.warmup_period() + 1600, 100.0, 10.0, 50.0, 1000.0);
         let mut generated_count = 0;
 
         for bar in &bars {
@@ -233,8 +236,9 @@ fn automated_test_6_all_indicators_high_volume_stream_stress() {
 
         assert!(
             generated_count > 1500,
-            "Indicator '{}' failed to generate outputs over 2000 bars stream (only produced {})",
+            "Indicator '{}' failed to generate outputs over {} bars stream (only produced {})",
             entry.name,
+            bars.len(),
             generated_count
         );
     }

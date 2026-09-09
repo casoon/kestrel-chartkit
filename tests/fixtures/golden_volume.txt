@@ -41,3 +41,26 @@ efi3_line_second=2075.0
 efi3_raw_third=-900.0
 efi3_line_third=587.5
 efi_tolerance=0.000000000001
+
+# Relative Volume at Time (package 31), days = 5, day start at UTC midnight. Three days with
+# three slots each (00:00, 01:00, 02:00) and deliberately unequal day profiles:
+#   day 0: 100, 200, 300   day 1: 150, -, 350 (slot 01:00 missing)   day 2: 300, 100, 200
+# Regular ratio against the same slot on previous days, cumulative ratio against what had
+# accumulated by that slot. Derived independently; the missing slot is what makes the two ratios
+# diverge on day 1 at 02:00.
+rvat_d1_s0_regular=1.5
+rvat_d1_s0_cumulative=1.5
+rvat_d1_s0_samples=1
+rvat_d1_s7200_regular=1.1666666666666667
+rvat_d1_s7200_cumulative=0.8333333333333334
+rvat_d2_s0_regular=2.4
+rvat_d2_s0_cumulative=2.4
+rvat_d2_s0_samples=2
+rvat_d2_s3600_regular=0.5
+rvat_d2_s3600_cumulative=1.3333333333333333
+rvat_d2_s3600_samples=1
+rvat_d2_s7200_regular=0.6153846153846154
+rvat_d2_s7200_cumulative=1.0909090909090908
+rvat_d2_s7200_samples=2
+rvat_output_count=5
+rvat_tolerance=0.000000000001

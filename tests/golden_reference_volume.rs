@@ -1,6 +1,7 @@
 mod common;
 
 use kestrel_chartkit::indicator::force_index::ElderForceIndex;
+use kestrel_chartkit::indicator::rvat::RelativeVolumeAtTime;
 use kestrel_chartkit::indicator::volume_profile::VolumeProfileEngine;
 use kestrel_chartkit::indicator::vwap::Vwap;
 use kestrel_chartkit::indicator::Indicator;
@@ -439,4 +440,182 @@ fn test_force_index_earlier_outputs_do_not_change_with_more_bars() {
             .collect()
     };
     assert_eq!(prefix, full[..prefix.len()]);
+}
+
+// --- Paket 31: Relative Volume at Time ------------------------------------------------------
+
+const SECONDS_PER_DAY: i64 = 86_400;
+
+/// Drei Tage mit je drei Slots und ungleichen Tagesprofilen; an Tag 1 fehlt der Slot 01:00.
+fn rvat_bars() -> Vec<Bar> {
+    let profile = [
+        [100.0, 200.0, 300.0],
+        [150.0, 0.0, 350.0],
+        [300.0, 100.0, 200.0],
+    ];
+    let mut bars = Vec::new();
+    for (day, volumes) in profile.iter().enumerate() {
+        for (index, slot) in [0i64, 3600, 7200].iter().enumerate() {
+            if day == 1 && index == 1 {
+                continue;
+            }
+            let timestamp = day as i64 * SECONDS_PER_DAY + slot;
+            bars.push(Bar::new(
+                timestamp,
+                100.0,
+                101.0,
+                99.0,
+                100.0,
+                volumes[index],
+            ));
+        }
+    }
+    bars
+}
+
+#[test]
+fn test_golden_relative_volume_at_time_reference_values() {
+    let mut rvat = RelativeVolumeAtTime::new(5, 0, 3600);
+    let outputs: Vec<_> = rvat_bars()
+        .iter()
+        .filter_map(|bar| rvat.on_bar(bar).map(|out| (bar.timestamp, out)))
+        .collect();
+
+    let tolerance = expected("rvat_tolerance");
+    assert_eq!(outputs.len() as f64, expected("rvat_output_count"));
+
+    let find = |timestamp: i64| {
+        outputs
+            .iter()
+            .find(|(ts, _)| *ts == timestamp)
+            .map(|(_, out)| out)
+            .unwrap_or_else(|| panic!("keine Ausgabe für {timestamp}"))
+    };
+
+    for (timestamp, key) in [
+        (SECONDS_PER_DAY, "d1_s0"),
+        (SECONDS_PER_DAY + 7200, "d1_s7200"),
+        (2 * SECONDS_PER_DAY, "d2_s0"),
+        (2 * SECONDS_PER_DAY + 3600, "d2_s3600"),
+        (2 * SECONDS_PER_DAY + 7200, "d2_s7200"),
+    ] {
+        let out = find(timestamp);
+        common::assert_close(
+            out.value,
+            expected(&format!("rvat_{key}_regular")),
+            tolerance,
+            &format!("{key} regulär"),
+        );
+        common::assert_close(
+            out.extra["cumulative"],
+            expected(&format!("rvat_{key}_cumulative")),
+            tolerance,
+            &format!("{key} kumulativ"),
+        );
+    }
+}
+
+/// Wie viele Vergleichstage tatsächlich beigetragen haben, steht am Ergebnis — ein fehlender
+/// Slot senkt die Zahl, statt still übersprungen zu werden.
+#[test]
+fn test_rvat_reports_how_many_comparison_days_contributed() {
+    let mut rvat = RelativeVolumeAtTime::new(5, 0, 3600);
+    let outputs: Vec<_> = rvat_bars()
+        .iter()
+        .filter_map(|bar| rvat.on_bar(bar).map(|out| (bar.timestamp, out)))
+        .collect();
+
+    for (timestamp, key) in [
+        (SECONDS_PER_DAY, "d1_s0"),
+        (2 * SECONDS_PER_DAY, "d2_s0"),
+        (2 * SECONDS_PER_DAY + 3600, "d2_s3600"),
+        (2 * SECONDS_PER_DAY + 7200, "d2_s7200"),
+    ] {
+        let out = &outputs.iter().find(|(ts, _)| *ts == timestamp).unwrap().1;
+        let expected_samples = expected(&format!("rvat_{key}_samples"));
+        common::assert_close(out.extra["samples"], expected_samples, 0.0, key);
+        // Vollständig ist der Vergleich erst, wenn alle `days` Tage beigetragen haben.
+        common::assert_close(out.extra["complete"], 0.0, 0.0, &format!("{key} complete"));
+    }
+}
+
+/// Der erste Tag hat nichts zu vergleichen und gibt deshalb nichts aus.
+#[test]
+fn test_rvat_stays_silent_on_the_first_day() {
+    let mut rvat = RelativeVolumeAtTime::new(5, 0, 3600);
+    for bar in rvat_bars().iter().take(3) {
+        assert!(
+            rvat.on_bar(bar).is_none(),
+            "am ersten Tag gibt es keinen Vergleichstag"
+        );
+    }
+}
+
+/// Kein Lookahead: Ein bereits ausgegebener Wert ändert sich durch spätere Tage nicht.
+#[test]
+fn test_rvat_is_causal_over_prefixes() {
+    let bars = rvat_bars();
+    let collect = |upto: usize| -> Vec<(i64, f64)> {
+        let mut rvat = RelativeVolumeAtTime::new(5, 0, 3600);
+        bars[..upto]
+            .iter()
+            .filter_map(|bar| rvat.on_bar(bar).map(|out| (bar.timestamp, out.value)))
+            .collect()
+    };
+    let prefix = collect(6);
+    let full = collect(bars.len());
+    assert_eq!(prefix, full[..prefix.len()]);
+}
+
+/// Der Tagesbeginn ist verschiebbar, und er entscheidet, wo die kumulative Reihe neu anfängt.
+/// Beginnt der Tag um 02:00, ist die 02:00-Kerze die erste ihres Tages: dort muss die kumulative
+/// Quote mit der regulären zusammenfallen, während sie bei Tagesbeginn um Mitternacht die
+/// bereits aufgelaufene Menge des Tages trägt.
+#[test]
+fn test_rvat_day_start_offset_decides_where_the_cumulative_series_restarts() {
+    let bars = rvat_bars();
+    let last_output = |offset: i64| {
+        let mut rvat = RelativeVolumeAtTime::new(5, offset, 3600);
+        bars.iter()
+            .filter_map(|bar| rvat.on_bar(bar))
+            .last()
+            .expect("Ausgabe erwartet")
+    };
+
+    let midnight = last_output(0);
+    assert!(
+        (midnight.value - midnight.extra["cumulative"]).abs() > 0.1,
+        "um Mitternacht beginnend trägt die letzte Kerze bereits Tagesvolumen"
+    );
+
+    let two_am = last_output(7200);
+    common::assert_close(
+        two_am.extra["cumulative"],
+        two_am.value,
+        1e-12,
+        "als erste Kerze ihres Tages ist die kumulative Quote die reguläre",
+    );
+}
+
+#[test]
+fn test_rvat_reset_restarts_deterministically() {
+    let bars = rvat_bars();
+    let mut rvat = RelativeVolumeAtTime::new(5, 0, 3600);
+    let run = |rvat: &mut RelativeVolumeAtTime| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|bar| rvat.on_bar(bar))
+            .map(|o| o.value)
+            .collect()
+    };
+    let first = run(&mut rvat);
+    rvat.reset();
+    assert_eq!(first, run(&mut rvat));
+}
+
+/// Der deklarierte Warmup ist ein Tag in Bars — bei Stundenbars 24, bei Tagesbars einer.
+#[test]
+fn test_rvat_declared_warmup_is_one_day_of_bars() {
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 3600).warmup_period(), 24);
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 60).warmup_period(), 1440);
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 86_400).warmup_period(), 1);
 }

@@ -326,7 +326,7 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             roll_sensitive: true,
             ..DataRequirements::default()
         },
-        "vwap" | "anchored_vwap" => DataRequirements {
+        "vwap" | "anchored_vwap" | "rvat" => DataRequirements {
             needs_real_volume: true,
             session_sensitive: true,
             ..DataRequirements::default()
