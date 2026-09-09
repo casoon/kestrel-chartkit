@@ -48,7 +48,7 @@ use super::order_block::OrderBlockEngine;
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
-use super::rsi::Rsi;
+use super::rsi::{Rsi, RsiSmoothing};
 use super::rvi::RviEngine;
 use super::stoch_rsi::StochRsi;
 use super::tema::TemaEngine;
@@ -90,7 +90,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
     vec![
         IndicatorCatalogEntry {
             name: "rsi",
-            description: "Relative Strength Index",
+            description: "Relative Strength Index (build_typed accepts smoothing=wilder|ema for the up/down averages; wilder is the default)",
             default_params: [
                 ("rsi_len".to_string(), 14.0),
                 ("avg_len".to_string(), 3.0),
@@ -1029,17 +1029,7 @@ pub fn build_checked(
     params: &HashMap<String, f64>,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
     match name.to_lowercase().as_str() {
-        "rsi" => {
-            let rsi_len = get_usize_p(params, "rsi_len", 14, 1, 10000)?;
-            let avg_len = get_usize_p(params, "avg_len", 3, 1, 10000)?;
-            let sig_len = get_usize_p(params, "sig_len", 3, 1, 10000)?;
-            let overbought = get_f64_p(params, "overbought", 70.0, 0.0, 100.0)?;
-            let oversold = get_f64_p(params, "oversold", 30.0, 0.0, 100.0)?;
-            ensure_less("oversold", oversold, "overbought", overbought)?;
-            Ok(Box::new(Rsi::new(
-                rsi_len, avg_len, sig_len, 50.0, overbought, oversold, 5, true, 100, 4, 10.0,
-            )))
-        }
+        "rsi" => Ok(Box::new(build_rsi(params, RsiSmoothing::Wilder)?)),
         "macd" => {
             let fast_len = get_usize_p(params, "fast_len", 12, 1, 10000)?;
             let slow_len = get_usize_p(params, "slow_len", 26, 1, 10000)?;
@@ -1720,6 +1710,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 
     let built = match name.to_lowercase().as_str() {
         "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
+        "rsi" => build_rsi_typed(&remaining)?,
         "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
         "trend_relationship" => build_trend_relationship_typed(&remaining)?,
         "zigzag_advanced" => build_zigzag_advanced_typed(&remaining)?,
@@ -1741,6 +1732,14 @@ fn build_typed_by_flattening(
     name: &str,
     params: &TypedParams,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
+    build_checked(name, &flatten_typed(params)?)
+}
+
+/// Flattens every entry to `f64`, rejecting values with no scalar form. Used both by
+/// [`build_typed_by_flattening`] and by the per-indicator typed builders, which read their own
+/// enum parameters first and then hand the numeric remainder to the same `build_checked`
+/// validation as the `f64`-only surface.
+fn flatten_typed(params: &TypedParams) -> Result<HashMap<String, f64>, RegistryError> {
     let mut flat = HashMap::with_capacity(params.len());
     for (key, value) in params {
         match value.as_f64() {
@@ -1755,7 +1754,40 @@ fn build_typed_by_flattening(
             }
         }
     }
-    build_checked(name, &flat)
+    Ok(flat)
+}
+
+/// The numeric part of an RSI configuration, shared by the `f64`-only and the typed surface so
+/// both validate identically and only the smoothing method differs.
+fn build_rsi(params: &HashMap<String, f64>, smoothing: RsiSmoothing) -> Result<Rsi, RegistryError> {
+    let rsi_len = get_usize_p(params, "rsi_len", 14, 1, 10000)?;
+    let avg_len = get_usize_p(params, "avg_len", 3, 1, 10000)?;
+    let sig_len = get_usize_p(params, "sig_len", 3, 1, 10000)?;
+    let overbought = get_f64_p(params, "overbought", 70.0, 0.0, 100.0)?;
+    let oversold = get_f64_p(params, "oversold", 30.0, 0.0, 100.0)?;
+    ensure_less("oversold", oversold, "overbought", overbought)?;
+    Ok(Rsi::new(
+        rsi_len, avg_len, sig_len, 50.0, overbought, oversold, 5, true, 100, 4, 10.0,
+    )
+    .with_smoothing(smoothing))
+}
+
+fn build_rsi_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    let smoothing = match get_enum_p(params, "smoothing")?.as_deref() {
+        None | Some("wilder") => RsiSmoothing::Wilder,
+        Some("ema") => RsiSmoothing::Ema,
+        Some(other) => {
+            return Err(RegistryError::InvalidEnumValue {
+                parameter: "smoothing".to_string(),
+                value: other.to_string(),
+                reason: "expected one of wilder|ema".to_string(),
+            });
+        }
+    };
+
+    let mut numeric = params.clone();
+    numeric.remove("smoothing");
+    Ok(Box::new(build_rsi(&flatten_typed(&numeric)?, smoothing)?))
 }
 
 /// Reads a `ParamValue::Enum` parameter, lower-cased. Returns `Ok(None)` if the key is absent, and

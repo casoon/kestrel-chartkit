@@ -47,8 +47,14 @@ wt2_last=7.216014608344748
 
 osc_tolerance=0.000000001
 
-
-
-
-
-
+# RSI(5, avg 3, sig 3, ctx 8) over one series with rising, flat, falling and alternating closes.
+# The up/down averages are smoothed either Wilder-style (alpha = 1/N, seeded with the SMA of the
+# first N changes) or exponentially (alpha = 2/(N+1), seeded with the first actual change); both
+# publish from the N-th change on. Same periods therefore do not mean same values.
+rsi5_mixed_wilder_line=53.53303130806443
+rsi5_mixed_wilder_signal=47.93254795757299
+rsi5_mixed_wilder_ctx=50.59461155128686
+rsi5_mixed_ema_line=61.528914934867174
+rsi5_mixed_ema_signal=54.47370478892891
+rsi5_mixed_ema_ctx=54.85570069104892
+rsi5_mixed_tolerance=0.000000000001

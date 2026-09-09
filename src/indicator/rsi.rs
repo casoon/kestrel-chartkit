@@ -1,10 +1,79 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
+
+/// How the average up/down moves feeding the RSI ratio are smoothed.
+///
+/// This is a property of the RSI core itself and independent of `avg_len` (which smooths the
+/// finished RSI line) and `sig_len` (the signal line): those two keep their own smoothers in
+/// either mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum RsiSmoothing {
+    /// Wilder's own smoothing, `alpha = 1/N`, seeded with the SMA of the first `N` changes.
+    /// The default, and the historical behaviour of this indicator.
+    #[default]
+    Wilder,
+    /// Exponential smoothing, `alpha = 2/(N+1)`, seeded with the first actual change.
+    ///
+    /// A different formula, not a parametrisation of Wilder: `Ema(N)` reacts like
+    /// `Wilder(2N - 1)`. Matching a period against another implementation therefore does not by
+    /// itself produce matching values, and the seeds differ as well.
+    Ema,
+}
+
+/// Smooths the up/down moves for one RSI line, in whichever mode was selected.
+///
+/// Both modes report readiness the same way: `None` until `len` changes have been seen, so the
+/// RSI line starts at the same bar regardless of the mode. In `Ema` mode the internal EMA is
+/// already running before that — it is seeded with the first real change, never with an invented
+/// starting value — but its early, seed-dominated values are not published.
+#[derive(Debug, Clone)]
+enum ChangeSmoother {
+    Wilder(Rma),
+    Ema { ema: Ema, len: usize, seen: usize },
+}
+
+impl ChangeSmoother {
+    fn new(method: RsiSmoothing, len: usize) -> Self {
+        match method {
+            RsiSmoothing::Wilder => Self::Wilder(Rma::new(len)),
+            RsiSmoothing::Ema => Self::Ema {
+                ema: Ema::new(len),
+                len,
+                seen: 0,
+            },
+        }
+    }
+
+    fn update(&mut self, change: f64) -> Option<f64> {
+        match self {
+            Self::Wilder(rma) => rma.update(change),
+            Self::Ema { ema, len, seen } => {
+                let value = ema.update(change);
+                *seen += 1;
+                (*seen >= *len).then_some(value)
+            }
+        }
+    }
+
+    fn reset(&mut self) {
+        match self {
+            Self::Wilder(rma) => rma.reset(),
+            Self::Ema { ema, seen, .. } => {
+                ema.reset();
+                *seen = 0;
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Rsi {
@@ -12,11 +81,13 @@ pub struct Rsi {
     oversold: f64,
     overbought: f64,
     require_extreme_zone: bool,
+    rsi_len: usize,
     ctx_len: usize,
+    smoothing: RsiSmoothing,
 
     prev_close: Option<f64>,
-    avg_gain: Rma,
-    avg_loss: Rma,
+    avg_gain: ChangeSmoother,
+    avg_loss: ChangeSmoother,
     rsi_avg: Ema,
     signal_avg: Ema,
     extreme_window: ExtremeWindow,
@@ -25,8 +96,8 @@ pub struct Rsi {
     bars_seen: usize,
     warmup_period: usize,
 
-    ctx_avg_gain: Rma,
-    ctx_avg_loss: Rma,
+    ctx_avg_gain: ChangeSmoother,
+    ctx_avg_loss: ChangeSmoother,
     ctx_avg: Ema,
     divergence: SlopeDivergence,
 
@@ -65,10 +136,12 @@ impl Rsi {
             oversold,
             overbought,
             require_extreme_zone,
+            rsi_len,
             ctx_len,
+            smoothing: RsiSmoothing::Wilder,
             prev_close: None,
-            avg_gain: Rma::new(rsi_len),
-            avg_loss: Rma::new(rsi_len),
+            avg_gain: ChangeSmoother::new(RsiSmoothing::Wilder, rsi_len),
+            avg_loss: ChangeSmoother::new(RsiSmoothing::Wilder, rsi_len),
             rsi_avg: Ema::new(avg_len),
             signal_avg: Ema::new(sig_len),
             extreme_window: ExtremeWindow::new(lookback_extreme),
@@ -76,8 +149,8 @@ impl Rsi {
             prev_signal: None,
             bars_seen: 0,
             warmup_period: rsi_len + 1,
-            ctx_avg_gain: Rma::new(ctx_len),
-            ctx_avg_loss: Rma::new(ctx_len),
+            ctx_avg_gain: ChangeSmoother::new(RsiSmoothing::Wilder, ctx_len),
+            ctx_avg_loss: ChangeSmoother::new(RsiSmoothing::Wilder, ctx_len),
             ctx_avg: Ema::new(avg_len),
             divergence: SlopeDivergence::new(div_len, div_min),
             alerts: RsiAlerts::default(),
@@ -90,6 +163,26 @@ impl Rsi {
 
     pub fn with_period(rsi_len: usize) -> Self {
         Self::new(rsi_len, 3, 3, 50.0, 70.0, 30.0, 5, true, 100, 4, 10.0)
+    }
+
+    /// Selects how the up/down moves are smoothed; see [`RsiSmoothing`].
+    ///
+    /// Additive to the existing constructors, which keep the Wilder default. The choice applies
+    /// to the main line *and* the context line — each with its own period (`rsi_len`/`ctx_len`) —
+    /// so the divergence comparison is never between two differently smoothed series.
+    ///
+    /// Resets the smoothing state, so this belongs before the first bar, not mid-series.
+    pub fn with_smoothing(mut self, method: RsiSmoothing) -> Self {
+        self.smoothing = method;
+        self.avg_gain = ChangeSmoother::new(method, self.rsi_len);
+        self.avg_loss = ChangeSmoother::new(method, self.rsi_len);
+        self.ctx_avg_gain = ChangeSmoother::new(method, self.ctx_len);
+        self.ctx_avg_loss = ChangeSmoother::new(method, self.ctx_len);
+        self
+    }
+
+    pub fn smoothing(&self) -> RsiSmoothing {
+        self.smoothing
     }
 }
 

@@ -1,6 +1,8 @@
 mod common;
 
-use kestrel_chartkit::indicator::registry::build_checked;
+use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
+use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
+use kestrel_chartkit::indicator::rsi::{Rsi, RsiSmoothing};
 use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 use std::collections::HashMap;
@@ -496,4 +498,162 @@ fn test_golden_wavetrend_reference_values() {
     let tol = expected("osc_tolerance");
     common::assert_close(out.value, expected("wt1_last"), tol, "WaveTrend WT1");
     common::assert_close(out.extra["wt2"], expected("wt2_last"), tol, "WaveTrend WT2");
+}
+
+// --- Paket 17: RSI-Glättungsmethode ---------------------------------------------------------
+
+/// Preisreihe mit steigendem, flachem, fallendem und wechselndem Abschnitt: In einer reinen
+/// Trendreihe wären beide Glättungsmodi kaum unterscheidbar, weil `avg_gain`/`avg_loss` dort
+/// gegen dieselben Extremwerte laufen.
+const RSI_MIXED_CLOSES: [f64; 20] = [
+    100.0, 101.0, 102.0, 103.0, 104.0, 104.0, 104.0, 104.0, 103.0, 101.0, 98.0, 96.0, 95.0, 96.0,
+    95.0, 97.0, 96.0, 98.0, 97.0, 99.0,
+];
+
+fn rsi_mixed(smoothing: RsiSmoothing) -> Vec<kestrel_chartkit::indicator::IndicatorOutput> {
+    // ctx_len = 8 statt der Voreinstellung 100, damit die Kontextlinie innerhalb der Reihe
+    // überhaupt ausgibt und mitgeprüft werden kann.
+    let mut rsi =
+        Rsi::new(5, 3, 3, 50.0, 70.0, 30.0, 5, true, 8, 4, 10.0).with_smoothing(smoothing);
+    RSI_MIXED_CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| rsi.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .collect()
+}
+
+#[test]
+fn test_golden_rsi_smoothing_modes_reference_values() {
+    let tolerance = expected("rsi5_mixed_tolerance");
+
+    for (smoothing, key) in [(RsiSmoothing::Wilder, "wilder"), (RsiSmoothing::Ema, "ema")] {
+        let outputs = rsi_mixed(smoothing);
+        assert_eq!(
+            outputs.len(),
+            15,
+            "{key}: beide Modi geben ab der fünften Änderung aus"
+        );
+
+        let last = outputs.last().unwrap();
+        common::assert_close(
+            last.value,
+            expected(&format!("rsi5_mixed_{key}_line")),
+            tolerance,
+            &format!("RSI(5) line, {key}"),
+        );
+        common::assert_close(
+            last.extra["signal"],
+            expected(&format!("rsi5_mixed_{key}_signal")),
+            tolerance,
+            &format!("RSI(5) signal, {key}"),
+        );
+        common::assert_close(
+            last.extra["ctx"],
+            expected(&format!("rsi5_mixed_{key}_ctx")),
+            tolerance,
+            &format!("RSI(5) context, {key}"),
+        );
+    }
+}
+
+/// Der Modus wirkt auch auf die Kontextlinie: Sonst verglichen die Divergenzen zwei
+/// unterschiedlich geglättete Reihen miteinander.
+#[test]
+fn test_rsi_smoothing_mode_reaches_context_line() {
+    let wilder = rsi_mixed(RsiSmoothing::Wilder);
+    let ema = rsi_mixed(RsiSmoothing::Ema);
+
+    let wilder_ctx = wilder.last().unwrap().extra["ctx"];
+    let ema_ctx = ema.last().unwrap().extra["ctx"];
+    assert!(
+        (wilder_ctx - ema_ctx).abs() > 1e-6,
+        "Kontextlinie unverändert: {wilder_ctx} vs {ema_ctx}"
+    );
+}
+
+/// Flachmarkt bleibt in beiden Modi bei 50 — dort ist weder ein Aufwärts- noch ein
+/// Abwärtsdurchschnitt definiert, und die dokumentierte Konvention ist die Mitte.
+#[test]
+fn test_rsi_flat_series_stays_at_fifty_in_both_modes() {
+    for smoothing in [RsiSmoothing::Wilder, RsiSmoothing::Ema] {
+        let mut rsi =
+            Rsi::new(5, 3, 3, 50.0, 70.0, 30.0, 5, true, 8, 4, 10.0).with_smoothing(smoothing);
+        let outputs: Vec<_> = (0..20)
+            .filter_map(|i| rsi.on_bar(&Bar::new(i * 60, 50.0, 50.5, 49.5, 50.0, 1000.0)))
+            .collect();
+        assert!(!outputs.is_empty(), "{smoothing:?}: keine Ausgabe");
+        for out in outputs {
+            common::assert_close(out.value, 50.0, 1e-12, "RSI flat series");
+        }
+    }
+}
+
+/// Nach `reset` beginnt der Zustand deterministisch neu — in beiden Modi, auch im EMA-Modus,
+/// dessen Seed die erste tatsächliche Änderung ist.
+#[test]
+fn test_rsi_reset_restarts_both_modes_deterministically() {
+    for smoothing in [RsiSmoothing::Wilder, RsiSmoothing::Ema] {
+        let mut rsi =
+            Rsi::new(5, 3, 3, 50.0, 70.0, 30.0, 5, true, 8, 4, 10.0).with_smoothing(smoothing);
+        let first: Vec<f64> = RSI_MIXED_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                rsi.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect();
+        rsi.reset();
+        let second: Vec<f64> = RSI_MIXED_CLOSES
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                rsi.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| o.value)
+            .collect();
+        assert_eq!(first, second, "{smoothing:?}: Reset nicht deterministisch");
+    }
+}
+
+/// Der Default bleibt Wilder — auch über die typisierte Registry ohne `smoothing`-Angabe.
+#[test]
+fn test_rsi_registry_default_is_wilder_and_enum_is_validated() {
+    let default_typed = build_typed("rsi", &TypedParams::new()).expect("rsi ohne smoothing");
+    let explicit = build_typed(
+        "rsi",
+        &TypedParams::from([(
+            "smoothing".to_string(),
+            ParamValue::Enum("wilder".to_string()),
+        )]),
+    )
+    .expect("rsi mit smoothing=wilder");
+
+    let bars: Vec<Bar> = RSI_MIXED_CLOSES
+        .iter()
+        .enumerate()
+        .map(|(i, &c)| Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+        .collect();
+    let run = |mut ind: Box<dyn Indicator>| -> Vec<f64> {
+        bars.iter()
+            .filter_map(|b| ind.on_bar(b))
+            .map(|o| o.value)
+            .collect()
+    };
+    assert_eq!(run(default_typed), run(explicit));
+
+    let err = match build_typed(
+        "rsi",
+        &TypedParams::from([(
+            "smoothing".to_string(),
+            ParamValue::Enum("wilders".to_string()),
+        )]),
+    ) {
+        Ok(_) => panic!("unbekannter Modus muss abgelehnt werden"),
+        Err(err) => err,
+    };
+    assert!(
+        matches!(err, RegistryError::InvalidEnumValue { .. }),
+        "{err:?}"
+    );
 }
