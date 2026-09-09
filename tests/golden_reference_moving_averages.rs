@@ -1,5 +1,6 @@
 mod common;
 
+use kestrel_chartkit::indicator::lsma::LsmaEngine;
 use kestrel_chartkit::indicator::moving_averages::EmaEngine;
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
@@ -268,4 +269,95 @@ fn test_ema_registry_default_is_first_sample_and_enum_is_validated() {
         matches!(err, RegistryError::InvalidEnumValue { .. }),
         "{err:?}"
     );
+}
+
+// --- Paket 23: Regressionsausgaben ----------------------------------------------------------
+
+fn lsma_last_output(closes: &[f64]) -> kestrel_chartkit::indicator::IndicatorOutput {
+    let mut lsma = LsmaEngine::new(closes.len());
+    closes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| lsma.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .last()
+        .expect("LSMA gab nichts aus")
+}
+
+#[test]
+fn test_golden_lsma_regression_outputs_reference_values() {
+    let tolerance = expected("ma_tolerance");
+
+    for (closes, key) in [
+        (vec![100.0, 102.5, 105.0, 107.5, 110.0], "linear"),
+        (vec![10.0, 12.0, 11.0, 14.0, 13.0], "noisy"),
+    ] {
+        let out = lsma_last_output(&closes);
+        for (field, value) in [
+            ("slope", out.extra["slope"]),
+            ("intercept", out.extra["intercept"]),
+            ("r2", out.extra["r2"]),
+            ("value", out.value),
+        ] {
+            common::assert_close(
+                value,
+                expected(&format!("lsma5_{key}_{field}")),
+                tolerance,
+                &format!("LSMA(5) {field}, {key}"),
+            );
+        }
+    }
+}
+
+/// Der Endpunkt ist der Fit an x = N-1 und muss aus Slope und Intercept derselben Ausgabe
+/// folgen — sonst stammten die Zusatzfelder aus einer zweiten Rechnung.
+#[test]
+fn test_lsma_endpoint_follows_from_published_slope_and_intercept() {
+    let mut lsma = LsmaEngine::new(5);
+    let mut seen = 0;
+    for (i, c) in [10.0, 12.0, 11.0, 14.0, 13.0, 15.0, 14.5, 16.0]
+        .into_iter()
+        .enumerate()
+    {
+        if let Some(out) = lsma.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0)) {
+            seen += 1;
+            common::assert_close(
+                out.value,
+                out.extra["intercept"] + out.extra["slope"] * 4.0,
+                1e-9,
+                "LSMA-Endpunkt aus Slope und Intercept",
+            );
+        }
+    }
+    assert!(seen > 0, "LSMA gab nichts aus");
+}
+
+/// Flache Reihe: Steigung 0. Es gibt keine Preisvarianz, die die Gerade erklären könnte —
+/// die dokumentierte Konvention dafür ist R² = 1.
+#[test]
+fn test_lsma_flat_window_has_zero_slope_and_documented_r2() {
+    let out = lsma_last_output(&[7.0; 5]);
+    common::assert_close(out.extra["slope"], 0.0, 1e-12, "Steigung flach");
+    common::assert_close(out.extra["intercept"], 7.0, 1e-12, "Intercept flach");
+    common::assert_close(out.extra["r2"], 1.0, 0.0, "R² flach");
+    common::assert_close(out.value, 7.0, 1e-12, "Endpunkt flach");
+}
+
+/// Kausalität: Bereits ausgegebene Regressionswerte ändern sich durch spätere Kerzen nicht.
+#[test]
+fn test_lsma_regression_outputs_are_causal() {
+    let closes = [10.0, 12.0, 11.0, 14.0, 13.0, 15.0, 14.5, 16.0];
+    let collect = |upto: usize| -> Vec<(f64, f64)> {
+        let mut lsma = LsmaEngine::new(5);
+        closes[..upto]
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                lsma.on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, 1000.0))
+            })
+            .map(|o| (o.extra["slope"], o.extra["r2"]))
+            .collect()
+    };
+    let prefix = collect(6);
+    let full = collect(closes.len());
+    assert_eq!(prefix, full[..prefix.len()]);
 }

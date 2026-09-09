@@ -29,3 +29,16 @@ ma_tolerance=0.000000001
 ema5_seed_sma_first_output=22.8
 ema5_seed_sma_last=24.12558299039781
 ema5_seed_first_sample_last=24.131508013119053
+
+# LSMA regression outputs (package 23): ordinary least squares y = intercept + slope * x over the
+# local window index x = 0..period-1, derived independently in exact rational arithmetic.
+#   linear window [100, 102.5, 105, 107.5, 110]
+#   noisy window  [10, 12, 11, 14, 13]
+lsma5_linear_slope=2.5
+lsma5_linear_intercept=100.0
+lsma5_linear_r2=1.0
+lsma5_linear_value=110.0
+lsma5_noisy_slope=0.8
+lsma5_noisy_intercept=10.4
+lsma5_noisy_r2=0.64
+lsma5_noisy_value=13.6
