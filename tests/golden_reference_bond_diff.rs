@@ -1,7 +1,8 @@
-//! Differenztests der Anleihenbewertung gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztests der Anleihenbewertung gegen eine unabhängige Zweitimplementierung.
 //!
-//! Die Fixtures entstehen offline aus einer unabhängigen Zweitimplementierung; dieser Test rechnet
-//! nur gegen die Fixtures. Beide Seiten bewerten über einen echten Zahlungsplan mit tatsächlichen
+//! Die Fixtures erzeugt `reference/generate.py` aus den dokumentierten Formeln (nur
+//! Python-Standardbibliothek);
+//! dieser Test rechnet nur gegen die Fixtures. Beide Seiten bewerten über einen echten Zahlungsplan mit tatsächlichen
 //! Kuponterminen, weshalb hier kein Näherungsspielraum mehr nötig ist: Preise, Stückzinsen und
 //! Sensitivitäten werden mit einer Toleranz von 1e-12 relativ verglichen, also auf
 //! Rechengenauigkeit.

@@ -1,8 +1,9 @@
-//! Differenztests der Volatilitätsfläche gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztests der Volatilitätsfläche gegen eine unabhängige Zweitimplementierung.
 //!
-//! Die Fläche war bisher nur handgerechnet abgenommen. Offen war dabei nicht die Rechnung,
-//! sondern die Festlegung, *wogegen* verglichen wird — denn zwischen den notierten Punkten gibt
-//! es mehr als eine gebräuchliche Konvention.
+//! Die Fixture erzeugt `reference/generate.py` aus den dokumentierten Formeln (nur
+//! Python-Standardbibliothek). Offen war an der Fläche nicht die Rechnung, sondern die
+//! Festlegung, *wogegen* verglichen wird — denn zwischen den notierten Punkten gibt es mehr als
+//! eine gebräuchliche Konvention.
 //!
 //! Dieses Crate interpoliert bilinear in der Volatilität selbst: linear in der Laufzeit, linear
 //! im Strike. Der Vergleich läuft gegen genau diese Konvention und muss auf Rechengenauigkeit

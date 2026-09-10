@@ -1,7 +1,8 @@
-//! Differenztests der Optionsbewertung gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztests der Optionsbewertung gegen eine unabhängige Zweitimplementierung.
 //!
-//! Die Fixtures entstehen offline aus einer unabhängigen Zweitimplementierung derselben Modelle
-//! und tragen ihre Eingaben selbst; dieser Test rechnet nur gegen die Fixtures. Verglichen werden
+//! Die Fixtures erzeugt `reference/generate.py` aus den dokumentierten Formeln (nur
+//! Python-Standardbibliothek);
+//! sie tragen ihre Eingaben selbst, und dieser Test rechnet nur gegen die Fixtures. Verglichen werden
 //! nur fachlich identische Modelle: europäische Optionen mit flachen Zinskurven, Actual/365Fixed
 //! und ganztägigen Laufzeiten, sodass der Jahresbruchteil der Referenz exakt die
 //! `time_to_expiry_years` dieses Crates ist.

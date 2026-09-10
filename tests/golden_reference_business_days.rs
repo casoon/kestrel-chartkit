@@ -1,15 +1,15 @@
-//! Differenztests der Geschäftstagsregeln gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztests der Geschäftstagsregeln gegen eine unabhängige Zweitimplementierung.
 //!
-//! Bisher war die Anpassungslogik nur handgerechnet belegt: Der Generator erzeugte ausschließlich
-//! unangepasste Pläne. Dieser Test schließt die Lücke.
+//! Die Fixture erzeugt `reference/generate.py` aus den dokumentierten Regeln (nur
+//! Python-Standardbibliothek).
 //!
 //! Der Kalender ist bewusst kein Marktkalender, sondern Wochenenden plus die in der Fixture
 //! ausgeschriebene Feiertagsliste. Geprüft wird die Regel, nicht fremde Feiertagsdaten — aus
 //! demselben Grund, aus dem dieses Crate keine Marktkalender mitliefert. Die Liste trifft
 //! Monatsenden, einen Jahreswechsel, ein Schaltjahresende und eine Kette über ein Wochenende.
 //!
-//! **Bei den Plänen weichen beide Seiten bewusst ab.** Der Referenz-Generator verschiebt auf
-//! Wunsch die Periodengrenzen selbst; dieses Crate tut das nicht: Ein Kupon deckt einen
+//! **Bei den Plänen trägt die Fixture zwei Lesarten.** In einem vollständig angepassten Plan
+//! verschiebt die Regel auch die Periodengrenzen; dieses Crate tut das nicht: Ein Kupon deckt einen
 //! Kalenderzeitraum ab, unabhängig davon, an welchen Tagen der Zahlungsverkehr geöffnet war.
 //! Angepasst wird deshalb nur die Zahlung. Die Fixture trägt beide Lesarten, und der Test hält
 //! die Abweichung mit Zahlen fest, statt sie zu behaupten.

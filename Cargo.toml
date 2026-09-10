@@ -8,6 +8,8 @@ repository = "https://github.com/casoon/kestrel-chartkit"
 keywords = ["trading", "technical-analysis", "indicators", "charting", "signals"]
 categories = ["finance", "visualization"]
 readme = "README.md"
+# The reference generator only produces tests/fixtures/; it is not part of the library.
+exclude = ["reference/"]
 rust-version = "1.87"
 
 [dependencies]

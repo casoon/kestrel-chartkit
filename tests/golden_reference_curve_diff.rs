@@ -1,15 +1,15 @@
-//! Differenztests der Zinskurve gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztests der Zinskurve gegen eine unabhängige Zweitimplementierung.
 //!
-//! Die Fixtures entstehen offline aus einer unabhängigen Zweitimplementierung: stetig verzinste
-//! Zerosätze, linear in der Zeit interpoliert. Innerhalb des Stützstellenbereichs müssen beide
-//! Seiten auf Rechengenauigkeit übereinstimmen.
+//! Die Fixtures erzeugt `reference/generate.py` aus den dokumentierten Formeln (nur
+//! Python-Standardbibliothek):
+//! stetig verzinste Zerosätze, linear in der Zeit interpoliert. Innerhalb des
+//! Stützstellenbereichs müssen beide Seiten auf Rechengenauigkeit übereinstimmen.
 //!
-//! **Hinter der letzten Stützstelle tun sie das nicht, und das ist Absicht.** Die Referenz setzt
-//! die Steigung des letzten Segments fort, dieses Crate hält den Randsatz flach — eine
-//! ausdrücklich getroffene Entscheidung, weil eine fortgesetzte Steigung wenige Jahre später
-//! unsinnige Diskontfaktoren erzeugt. Solche Abfragen sind in der Fixture als `inside = 0`
-//! markiert; der Test prüft dort die eigene Zusage und hält die Abweichung fest, statt sie mit
-//! einer weiten Toleranz zu verwischen.
+//! **Hinter der letzten Stützstelle tun sie das nicht, und das ist Absicht.** Die Referenz hält
+//! dort den Instantan-Forward der letzten Stützstelle flach — die etablierte Alternative —,
+//! dieses Crate den Zerosatz selbst, wie am Typ `YieldCurve` dokumentiert. Solche Abfragen sind
+//! in der Fixture als `inside = 0` markiert; der Test prüft dort die eigene Zusage und hält die
+//! Abweichung fest, statt sie mit einer weiten Toleranz zu verwischen.
 
 mod common;
 
@@ -132,7 +132,7 @@ fn test_flat_extrapolation_is_a_stated_divergence_beyond_the_last_node() {
         );
         assert!(
             (reference - last_rate).abs() > 1e-9,
-            "bei t={time} setzt die Referenz die Steigung fort; wäre sie hier gleich, hätte sich \
+            "bei t={time} hält die Referenz den Forward flach; wäre sie hier gleich, hätte sich \
              eine der Konventionen geändert"
         );
     }

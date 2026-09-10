@@ -1,12 +1,12 @@
-//! Differenztest der integrierten Neubewertung gegen unabhängig erzeugte externe Referenzwerte.
+//! Differenztest der integrierten Neubewertung gegen eine unabhängige Zweitimplementierung.
 //!
 //! Paket 14 war bisher nur gegen sich selbst abgenommen: `golden_reference_portfolio_valuation`
 //! prüft, dass jede Position genau das ergibt, was die entsprechende Einzelfunktion liefert. Das
 //! ist eine notwendige, aber innere Prüfung — sie kann nicht zeigen, dass die Einzelfunktion für
 //! *diesen* Fall richtig rechnet.
 //!
-//! Hier steht deshalb außen eine unabhängige Zweitimplementierung. Verglichen wird genau die
-//! Lücke, die die bestehenden Fixtures offenlassen:
+//! Hier steht deshalb außen eine unabhängige Zweitimplementierung, `reference/generate.py`.
+//! Verglichen wird genau die Lücke, die die bestehenden Fixtures offenlassen:
 //!
 //! * eine Anleihe, die auf einer Zinskurve diskontiert wird statt zu einer einzelnen Rendite —
 //!   `golden_bond_diff` prüft ausschließlich die Renditerechnung,
@@ -16,7 +16,7 @@
 //! * und die Sensitivitäten, die daraus folgen: einseitige Differenzen aus zwei vollständigen
 //!   Bewertungen, so wie das Crate sie definiert.
 //!
-//! Bewusst nicht extern nachgerechnet: das Aufsummieren der Positionen und die
+//! Bewusst nicht unabhängig nachgerechnet: das Aufsummieren der Positionen und die
 //! Währungsumrechnung. Eine Zweitimplementierung einer Addition und einer Multiplikation mit
 //! einem gesetzten Kurs würde nichts belegen; dafür ist die Portfolio-Fixture zuständig.
 
@@ -58,10 +58,12 @@ fn reference_date() -> Date {
 
 /// Beide Seiten diskontieren dieselben Zahlungen mit `exp(-z*t)` über derselben linear
 /// interpolierten Kurve, und beide werten dieselbe geschlossene Optionsformel aus. Was bleibt,
-/// ist die Reihenfolge der Gleitkommaoperationen: Gemessen weichen die Barwerte um höchstens
-/// 5e-13 bei einem Niveau von rund 1000 ab, also etwa ein Bit der Mantisse. Der absolute Boden
-/// von 1e-11 plus ein relativer Anteil von 1e-13 lässt davon rund das Zweihundertfache zu und
-/// bleibt damit weit unter jeder Abweichung, die ein Modellfehler erzeugen würde.
+/// ist die Reihenfolge der Gleitkommaoperationen. Gemessen über alle Szenarien: Anleihenwerte
+/// bitgleich, Optionspreise höchstens 1.7e-15 relativ. Ein früherer Stand der Fixture aus einer
+/// anderen Zweitimplementierung lag bei 5e-13 absolut auf einem Niveau von rund 1000; der absolute
+/// Boden von 1e-11 plus ein relativer Anteil von 1e-13 ist für diese Größenordnung bemessen, damit
+/// ein Wechsel der Referenzimplementierung nicht als Befund erscheint, und bleibt weit unter jeder
+/// Abweichung, die ein Modellfehler erzeugen würde.
 fn tolerance(expected: f64) -> f64 {
     1e-11 + 1e-13 * expected.abs()
 }
