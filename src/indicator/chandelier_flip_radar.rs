@@ -27,6 +27,27 @@ use std::collections::HashMap;
 
 /// Reusable Chandelier Flip Radar engine — see the module doc comment for how this relates to
 /// [`super::chandelier_exit::ChandelierExitEngine`].
+///
+/// Per bar: `atr_raw` is Wilder's average of the true range over `length` (the first bar's
+/// `high - low`), and `hi`/`lo` are the highest/lowest of the last `length` closes — highs and
+/// lows with `use_close_extremes = false`. The multiplier is `atr_mult`, or in adaptive mode 1.2
+/// or 0.85 times it when `atr_raw` is above 1.3 or below 0.8 times the plain mean of the last 100
+/// raw ATR values (the true range standing in before the ATR exists, and the raw ATR itself as the
+/// mean before 100 values exist). With `atr = multiplier · atr_raw`, `long_stop = hi - atr` and
+/// `short_stop = lo + atr`; while the previous direction is long the long stop only rises, while
+/// it is short the short stop only falls.
+///
+/// Against the previous bar's stops: a close above the short stop flips long, a close below the
+/// long stop flips short — but only when `|close - open| >= body_filter_atr · atr_raw` (a filter
+/// of 0 always passes); a crossing that fails the filter is a weak flip. The distance
+/// `|close - stop| / atr_raw` to the previous stop of the current direction sets the risk state:
+/// ±1 below `danger_dist_atr`, ±2 below `max(warn_dist_atr, danger_dist_atr + 0.05)` or on a
+/// pullback through the first-sample EMA(5) of the close, ±3 otherwise — positive when long. A
+/// wick through that stop with the close back at or inside it is a trap.
+///
+/// `value`: the current stop of the current direction; `extra`: `long_stop`, `short_stop`,
+/// `dist_atr`, `multiplier`, `risk_state`; `state`: the risk state's label. First output with bar
+/// `length`.
 pub struct ChandelierFlipRadarEngine {
     length: usize,
     atr_mult: f64,
@@ -336,8 +357,7 @@ impl Indicator for ChandelierFlipRadarEngine {
 mod tests {
     use super::*;
 
-    // Reference values below were independently derived from a fresh Python transcription of
-    // this same documented formula (not by running this Rust code).
+    // Reference values: `tests/golden_reference_volatility.rs`, derived in `reference/`.
 
     fn trending_up_bars(n: usize) -> Vec<Bar> {
         (0..n)
@@ -353,103 +373,6 @@ mod tests {
                 )
             })
             .collect()
-    }
-
-    #[test]
-    fn base_ratchet_matches_independently_derived_reference() {
-        // length=5, atr_mult=3.0, high/low-based extremes, no adaptive, no body filter.
-        let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, false, 0.0, 0.35, 0.75);
-        let bars = trending_up_bars(15);
-        let mut last = None;
-        for bar in &bars {
-            if let Some(out) = engine.on_bar(bar) {
-                last = Some(out);
-            }
-        }
-        let out = last.unwrap();
-        assert!(
-            (out.value - 113.0).abs() < 1e-9,
-            "active_stop: {}",
-            out.value
-        );
-        assert_eq!(out.extra["risk_state"], 3.0);
-        assert!((out.extra["dist_atr"] - 3.0).abs() < 1e-6);
-        assert!((out.extra["multiplier"] - 3.0).abs() < 1e-9);
-        assert_eq!(out.state.as_deref(), Some("long_healthy"));
-    }
-
-    #[test]
-    fn adaptive_multiplier_engages_on_volatility_spike_and_flags_bear_trap() {
-        // length=5, atr_mult=3.0, high/low extremes, adaptive on, no body filter. 105 bars of
-        // flat/stable range fill the 100-SMA ATR baseline, then one wide-range bar spikes raw ATR
-        // well above it (vol_ratio > 1.3) while also wicking through the long stop without
-        // closing through it (bear trap).
-        let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, true, 0.0, 0.35, 0.75);
-        let mut bars: Vec<Bar> = (0..105)
-            .map(|i| Bar::new(i as i64 * 60, 100.0, 101.0, 99.0, 100.0, 100.0))
-            .collect();
-        bars.push(Bar::new(105 * 60, 100.0, 250.0, 50.0, 150.0, 100.0));
-
-        let mut last = None;
-        for bar in &bars {
-            if let Some(out) = engine.on_bar(bar) {
-                last = Some(out);
-            }
-        }
-        let out = last.unwrap();
-        assert!(
-            (out.extra["multiplier"] - 3.6).abs() < 1e-9,
-            "multiplier: {}",
-            out.extra["multiplier"]
-        );
-        assert!(
-            (out.value - 100.240_000_000_000_01).abs() < 1e-6,
-            "active_stop: {}",
-            out.value
-        );
-        let alerts = engine.alerts();
-        assert!(
-            alerts.iter().any(|a| a.kind == "bull_bear_trap"),
-            "expected a bear-trap alert, got {alerts:?}"
-        );
-    }
-
-    #[test]
-    fn body_filter_downgrades_a_structural_flip_to_a_weak_flip() {
-        // length=5, atr_mult=3.0, high/low extremes, no adaptive, default body filter 0.8.
-        // After 6 warmup/trend bars establish long_stop, a bar closes below long_stop but with a
-        // tiny body relative to ATR — the direction must NOT flip, and a weak-short alert (not a
-        // sell-signal) fires instead.
-        let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, false, 0.8, 0.35, 0.75);
-        let mut bars = trending_up_bars(6);
-        bars.push(Bar::new(6 * 60, 94.6, 96.0, 94.0, 94.5, 100.0));
-
-        let mut last = None;
-        for bar in &bars {
-            if let Some(out) = engine.on_bar(bar) {
-                last = Some(out);
-            }
-        }
-        let out = last.unwrap();
-        assert!(
-            (out.value - 95.0).abs() < 1e-9,
-            "active_stop must stay at the long stop (no flip): {}",
-            out.value
-        );
-        assert_eq!(
-            out.extra["risk_state"], 1.0,
-            "close is within danger distance of the stop"
-        );
-        assert_eq!(out.state.as_deref(), Some("long_danger"));
-        let alerts = engine.alerts();
-        assert!(
-            alerts.iter().any(|a| a.kind == "bear_weak_flip"),
-            "expected a weak-short-flip alert, got {alerts:?}"
-        );
-        assert!(
-            !alerts.iter().any(|a| a.kind == "bear_flip"),
-            "must not be a real flip: {alerts:?}"
-        );
     }
 
     #[test]

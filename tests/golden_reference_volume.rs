@@ -1,6 +1,7 @@
 mod common;
 
 use kestrel_chartkit::indicator::force_index::ElderForceIndex;
+use kestrel_chartkit::indicator::money_flow_profile::MoneyFlowProfileEngine;
 use kestrel_chartkit::indicator::pvt::PriceVolumeTrend;
 use kestrel_chartkit::indicator::rvat::RelativeVolumeAtTime;
 use kestrel_chartkit::indicator::volume_profile::VolumeProfileEngine;
@@ -793,4 +794,58 @@ fn test_pvt_reset_returns_the_total_to_zero() {
     let first = run(&mut pvt);
     pvt.reset();
     assert_eq!(first, run(&mut pvt));
+}
+
+/// Money Flow Profile: the heavier bar sits at a fifth of the price, so dollar volume puts the POC
+/// in the lighter bar's bin; a third bar lifts the bullish share across 50 %.
+#[test]
+fn test_golden_money_flow_profile_reference_values() {
+    let tol = expected("mfp_tolerance");
+    let heavy = Bar::new(1, 10.0, 10.1, 9.9, 10.0, 1000.0);
+    let light = Bar::new(2, 49.9, 50.0, 49.8, 49.9, 300.0);
+    let third = Bar::new(3, 58.0, 60.0, 55.0, 58.0, 200.0);
+
+    let mut two = MoneyFlowProfileEngine::new(2, 10, 0.70);
+    assert!(
+        two.on_bar(&heavy).is_none(),
+        "a single bar is below the technical minimum window"
+    );
+    let out = two.on_bar(&light).expect("two bars must produce a profile");
+    common::assert_close(out.value, expected("mfp_two_bar_poc"), tol, "POC");
+    for key in ["vah", "val", "delta_poc", "bull_pct"] {
+        common::assert_close(
+            out.extra[key],
+            expected(&format!("mfp_two_bar_{key}")),
+            tol,
+            key,
+        );
+    }
+
+    let mut three = MoneyFlowProfileEngine::new(3, 10, 0.70);
+    three.on_bar(&heavy);
+    three.on_bar(&light);
+    assert_eq!(
+        three.alerts().len() as f64,
+        expected("mfp_three_bar_first_alerts"),
+        "no previous output to cross from yet"
+    );
+    let out = three.on_bar(&third).expect("output");
+    common::assert_close(out.value, expected("mfp_three_bar_poc"), tol, "POC");
+    common::assert_close(
+        out.extra["bull_pct"],
+        expected("mfp_three_bar_bull_pct"),
+        tol,
+        "bull_pct",
+    );
+    let alerts = three.alerts();
+    for (kind, key) in [
+        ("bull_bias", "mfp_three_bar_bull_bias"),
+        ("bear_bias", "mfp_three_bar_bear_bias"),
+    ] {
+        assert_eq!(
+            alerts.iter().any(|a| a.kind == kind),
+            expected(key) == 1.0,
+            "{kind}: {alerts:?}"
+        );
+    }
 }

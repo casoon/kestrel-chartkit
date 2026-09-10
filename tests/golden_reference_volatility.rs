@@ -3,6 +3,7 @@ mod common;
 use kestrel_chartkit::indicator::adx::Adx;
 use kestrel_chartkit::indicator::atr::{Atr, TrueRangeSmoothing};
 use kestrel_chartkit::indicator::chande_kroll::ChandeKrollStop;
+use kestrel_chartkit::indicator::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use kestrel_chartkit::indicator::relative_volatility::{
     RelativeVolatilityIndex, RelativeVolatilityVariant,
 };
@@ -1173,4 +1174,103 @@ fn test_relative_volatility_variant_is_validated() {
         matches!(err, RegistryError::InvalidEnumValue { .. }),
         "{err:?}"
     );
+}
+
+/// Chandelier Flip Radar über drei Folgen: ein ruhiger Aufwärtstrend, ein Volatilitätssprung mit
+/// Bärenfalle im adaptiven Modus und ein Schluss unter dem Long-Stop mit zu kleinem Körper.
+#[test]
+fn test_golden_chandelier_flip_radar_reference_values() {
+    let tol = expected("cfr_tolerance");
+    let trend = |n: usize| -> Vec<Bar> {
+        (0..n)
+            .map(|i| {
+                let base = 100.0 + i as f64 * 2.0;
+                Bar::new(
+                    i as i64 * 60,
+                    base,
+                    base + 3.0,
+                    base - 3.0,
+                    base + 1.0,
+                    100.0,
+                )
+            })
+            .collect()
+    };
+    let run = |engine: &mut ChandelierFlipRadarEngine, bars: &[Bar]| {
+        bars.iter()
+            .filter_map(|bar| engine.on_bar(bar))
+            .last()
+            .expect("output")
+    };
+
+    let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, false, 0.0, 0.35, 0.75);
+    let out = run(&mut engine, &trend(15));
+    common::assert_close(
+        out.value,
+        expected("cfr_trend_active_stop"),
+        tol,
+        "aktiver Stop",
+    );
+    common::assert_close(
+        out.extra["dist_atr"],
+        expected("cfr_trend_dist_atr"),
+        tol,
+        "Abstand",
+    );
+    common::assert_close(
+        out.extra["multiplier"],
+        expected("cfr_trend_multiplier"),
+        tol,
+        "Multiplikator",
+    );
+    assert_eq!(out.extra["risk_state"], expected("cfr_trend_risk_state"));
+    assert_eq!(out.state.as_deref(), Some("long_healthy"));
+
+    let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, true, 0.0, 0.35, 0.75);
+    let mut spike: Vec<Bar> = (0..105)
+        .map(|i| Bar::new(i * 60, 100.0, 101.0, 99.0, 100.0, 100.0))
+        .collect();
+    spike.push(Bar::new(105 * 60, 100.0, 250.0, 50.0, 150.0, 100.0));
+    let out = run(&mut engine, &spike);
+    common::assert_close(
+        out.extra["multiplier"],
+        expected("cfr_spike_multiplier"),
+        tol,
+        "adaptiver Multiplikator",
+    );
+    common::assert_close(
+        out.value,
+        expected("cfr_spike_active_stop"),
+        tol,
+        "aktiver Stop",
+    );
+    assert_eq!(
+        engine.alerts().iter().any(|a| a.kind == "bull_bear_trap"),
+        expected("cfr_spike_bear_trap") == 1.0,
+        "Bärenfalle"
+    );
+
+    let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, false, false, 0.8, 0.35, 0.75);
+    let mut weak = trend(6);
+    weak.push(Bar::new(6 * 60, 94.6, 96.0, 94.0, 94.5, 100.0));
+    let out = run(&mut engine, &weak);
+    common::assert_close(
+        out.value,
+        expected("cfr_weak_active_stop"),
+        tol,
+        "Stop bleibt long",
+    );
+    assert_eq!(out.extra["risk_state"], expected("cfr_weak_risk_state"));
+    assert_eq!(out.state.as_deref(), Some("long_danger"));
+    let alerts = engine.alerts();
+    for (kind, key) in [
+        ("bear_weak_flip", "cfr_weak_bear_weak_flip"),
+        ("bear_flip", "cfr_weak_bear_flip"),
+    ] {
+        assert_eq!(
+            alerts.iter().any(|a| a.kind == kind),
+            expected(key) == 1.0,
+            "{kind}: {alerts:?}"
+        );
+    }
 }

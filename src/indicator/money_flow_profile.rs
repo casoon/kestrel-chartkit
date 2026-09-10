@@ -35,6 +35,25 @@ use std::collections::HashMap;
 
 /// Money Flow Profile engine — see the module doc comment for how this relates to the
 /// [`super::volume_profile`] family.
+///
+/// Per bar, over the last `lookback` bars (at least two): the window's lowest low `L` and highest
+/// high `H` are split into `rows` bins of height `step = (H - L) / rows`. Every bar with a range
+/// spreads its flow over the bins it overlaps, in proportion to the overlap — the part of its
+/// `high - low` inside the bin over `high - low`. A bin receives `volume · overlap · mid` from the
+/// bar, `mid` the bin's middle price and a non-positive volume counted as 1; the bullish part of
+/// that is the same times the bar's `clamp((close - low) / (high - low), 0, 1)`.
+///
+/// `value` is the POC, the middle of the bin with the largest flow (the upper bin on a tie).
+/// `extra["delta_poc"]` is the middle of the first bin with the largest `|2 · bullish - flow|`.
+/// The value area grows from the POC bin one neighbour at a time — the one with more flow, the
+/// lower one on a tie — until it holds `va_pct` of the total flow; `extra["vah"]`/`extra["val"]`
+/// are its outer bin edges. `extra["bull_pct"] = 100 · sum bullish / sum flow`.
+///
+/// From the second output on, alerts fire when the close crosses above the value-area high or
+/// below the low — at or below (above) the previous bar's level before, beyond the current level
+/// now — with the distance beyond it over the value-area width, clamped to `0..=1`, as strength;
+/// and when `bull_pct` crosses 50 in the same sense. `None` for a single bar, a window without
+/// range, or no flow at all.
 pub struct MoneyFlowProfileEngine {
     lookback: usize,
     rows: usize,
@@ -81,10 +100,9 @@ impl Indicator for MoneyFlowProfileEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        // Technical minimum for a non-degenerate high/low range, same as the original
-        // (which computes over whatever history exists rather than waiting for the full
-        // lookback) — the profile only becomes operationally meaningful once the window has
-        // accumulated close to `lookback` bars.
+        // Technical minimum for a non-degenerate high/low range: the profile is computed over
+        // whatever history exists rather than waiting for the full lookback, and only becomes
+        // operationally meaningful once the window has accumulated close to `lookback` bars.
         2
     }
 
@@ -297,93 +315,7 @@ impl Indicator for MoneyFlowProfileEngine {
 mod tests {
     use super::*;
 
-    /// Reference values below were independently derived (Python re-implementation of this same
-    /// documented formula, not by running this Rust code). The two bars are deliberately shaped
-    /// so raw volume and dollar volume disagree on which bin dominates: bar A has 3x bar B's
-    /// volume
-    /// (1000 vs 300) but sits at ~1/5th bar B's price (~10 vs ~50) — a raw-volume-weighted
-    /// profile (like `VolumeProfileEngine`) would put POC in bar A's bin; dollar-volume weighting
-    /// puts it in bar B's bin instead (300 * ~48 > 1000 * ~12), which is exactly the behavior
-    /// this engine exists to provide.
-    #[test]
-    fn dollar_volume_weighting_moves_poc_to_the_higher_priced_lower_volume_bar() {
-        let mut mfp = MoneyFlowProfileEngine::new(2, 10, 0.70);
-        let bars = [
-            Bar::new(1, 10.0, 10.1, 9.9, 10.0, 1000.0),
-            Bar::new(2, 49.9, 50.0, 49.8, 49.9, 300.0),
-        ];
-
-        assert!(
-            mfp.on_bar(&bars[0]).is_none(),
-            "single bar is below the technical minimum window"
-        );
-        let out = mfp
-            .on_bar(&bars[1])
-            .expect("two-bar window must produce a profile");
-
-        let tol = 1e-6;
-        assert!((out.value - 47.995).abs() < tol, "POC: {}", out.value);
-        assert!(
-            (out.extra["vah"] - 50.0).abs() < tol,
-            "VAH: {}",
-            out.extra["vah"]
-        );
-        assert!(
-            (out.extra["val"] - 9.9).abs() < tol,
-            "VAL: {}",
-            out.extra["val"]
-        );
-        assert!(
-            (out.extra["delta_poc"] - 11.905).abs() < tol,
-            "Delta POC: {}",
-            out.extra["delta_poc"]
-        );
-        assert!(
-            (out.extra["bull_pct"] - 50.0).abs() < tol,
-            "bull_pct: {}",
-            out.extra["bull_pct"]
-        );
-    }
-
-    #[test]
-    fn bull_bias_alert_fires_when_flow_bias_crosses_above_fifty_percent() {
-        let mut mfp = MoneyFlowProfileEngine::new(3, 10, 0.70);
-        let bars = [
-            Bar::new(1, 10.0, 10.1, 9.9, 10.0, 1000.0),
-            Bar::new(2, 49.9, 50.0, 49.8, 49.9, 300.0),
-            Bar::new(3, 58.0, 60.0, 55.0, 58.0, 200.0),
-        ];
-
-        mfp.on_bar(&bars[0]);
-        let bar2_out = mfp.on_bar(&bars[1]).unwrap();
-        assert!(
-            mfp.alerts().is_empty(),
-            "no prior bar to cross from yet on the first emitted output"
-        );
-        assert!((bar2_out.extra["bull_pct"] - 50.0).abs() < 1e-6);
-
-        let bar3_out = mfp.on_bar(&bars[2]).unwrap();
-        let tol = 1e-6;
-        assert!(
-            (bar3_out.value - 47.474_999_999_999_994).abs() < tol,
-            "POC: {}",
-            bar3_out.value
-        );
-        assert!(
-            (bar3_out.extra["bull_pct"] - 53.002_600_739_487_37).abs() < tol,
-            "bull_pct: {}",
-            bar3_out.extra["bull_pct"]
-        );
-        let alerts = mfp.alerts();
-        assert!(
-            alerts.iter().any(|a| a.kind == "bull_bias"),
-            "bull_pct crossed 50% from below (50.0 -> 53.00): {alerts:?}"
-        );
-        assert!(
-            !alerts.iter().any(|a| a.kind == "bear_bias"),
-            "must not also fire the opposite bias: {alerts:?}"
-        );
-    }
+    // Reference values: `tests/golden_reference_volume.rs`, derived in `reference/`.
 
     #[test]
     fn synthetic_volume_substitutes_for_non_positive_volume() {

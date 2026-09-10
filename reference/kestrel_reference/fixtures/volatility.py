@@ -16,6 +16,7 @@ TOLERANCES = {
     "cks_tolerance": 1e-9,
     "ulcer_tolerance": 1e-12,
     "rvi_vol_tolerance": 1e-12,
+    "cfr_tolerance": 1e-9,
 }
 
 GAP_BARS = [(100.0, 102.0, 99.0, 101.0), (105.0, 107.0, 104.0, 106.0),
@@ -260,6 +261,89 @@ def _chandelier(bars, length, mult):
     return long, short
 
 
+
+def _chandelier_flip_radar(bars, length, atr_mult, close_extremes, adaptive, body_filter,
+                           danger, warn):
+    """Chandelier Flip Radar per bar as documented on its type: Wilder ATR of the true range,
+    stops at the highest high - multiplier ATR / lowest low + multiplier ATR ratcheted while the
+    previous direction holds, flips against the previous stops behind the body filter, risk state
+    from the distance to the previous stop, traps. `None` before the ATR exists."""
+    seed, atr = [], None
+    recent, recent_sum = [], 0.0
+    highs, lows = [], []
+    ema = None
+    prev_close = prev_long = prev_short = None
+    direction = prev_direction = 1
+    outputs = []
+    for o, h, l, c in bars:
+        tr = h - l if prev_close is None else max(h - l, abs(h - prev_close), abs(l - prev_close))
+        if atr is None:
+            seed.append(tr)
+            if len(seed) == length:
+                atr = sum(seed) / length
+        else:
+            alpha = 1.0 / length
+            atr = alpha * tr + (1.0 - alpha) * atr
+        source = tr if atr is None else atr
+        recent.append(source)
+        recent_sum += source
+        if len(recent) > 100:
+            recent_sum -= recent.pop(0)
+        atr_avg = recent_sum / 100 if len(recent) >= 100 else None
+        highs = (highs + [c if close_extremes else h])[-length:]
+        lows = (lows + [c if close_extremes else l])[-length:]
+        alpha5 = 2.0 / 6.0
+        ema = c if ema is None else alpha5 * c + (1.0 - alpha5) * ema
+        if atr is None:
+            prev_close = c
+            outputs.append(None)
+            continue
+        if adaptive:
+            average = atr if atr_avg is None else atr_avg
+            ratio = atr / average if average != 0.0 else 1.0
+            mult = atr_mult * 1.2 if ratio > 1.3 else atr_mult * 0.85 if ratio < 0.8 else atr_mult
+        else:
+            mult = atr_mult
+        offset = mult * atr
+        long_raw, short_raw = max(highs) - offset, min(lows) + offset
+        long_prev = long_raw if prev_long is None else prev_long
+        short_prev = short_raw if prev_short is None else prev_short
+        long_stop = max(long_raw, long_prev) if prev_direction == 1 else long_raw
+        short_stop = min(short_raw, short_prev) if prev_direction == -1 else short_raw
+        body_ok = body_filter <= 0.0 or abs(c - o) >= atr * body_filter
+        old = direction
+        if c > short_prev and body_ok:
+            direction = 1
+        elif c < long_prev and body_ok:
+            direction = -1
+        alerts = set()
+        if direction == 1 and old == -1:
+            alerts.add("bull_flip")
+        if direction == -1 and old == 1:
+            alerts.add("bear_flip")
+        if direction == -1 and c > short_prev and not body_ok:
+            alerts.add("bull_weak_flip")
+        if direction == 1 and c < long_prev and not body_ok:
+            alerts.add("bear_weak_flip")
+        trigger = long_prev if direction == 1 else short_prev
+        dist = abs(c - trigger) / atr if atr != 0.0 else 0.0
+        is_danger = dist < danger
+        is_warn = not is_danger and dist < max(warn, danger + 0.05)
+        if direction == 1:
+            state = 1 if is_danger else 2 if (is_warn or c < ema) else 3
+        else:
+            state = -1 if is_danger else -2 if (is_warn or c > ema) else -3
+        if direction == -1 and h > short_prev and c <= short_prev:
+            alerts.add("bear_bull_trap")
+        if direction == 1 and l < long_prev and c >= long_prev:
+            alerts.add("bull_bear_trap")
+        prev_direction = direction
+        prev_long, prev_short, prev_close = long_stop, short_stop, c
+        outputs.append({"value": long_stop if direction == 1 else short_stop, "dist_atr": dist,
+                        "multiplier": mult, "risk_state": float(state), "alerts": alerts})
+    return outputs
+
+
 def derive():
     keys = {}
     rising = [(100.0 + i, 100.0 + i + 1.0, 100.0 + i - 1.0, 100.0 + i) for i in range(10)]
@@ -318,6 +402,25 @@ def derive():
     keys["rvi_vol_high_low_last"] = (highs[-1] + lows[-1]) / 2.0
     keys["adx3_shaped_last"] = _adx(SHAPED, 3, 3)[-1]
     keys["mass_index5_shaped_last"] = _mass_index(SHAPED, 5)
+
+    trend = [(100.0 + i * 2.0, 100.0 + i * 2.0 + 3.0, 100.0 + i * 2.0 - 3.0, 100.0 + i * 2.0 + 1.0)
+             for i in range(15)]
+    last = _chandelier_flip_radar(trend, 5, 3.0, False, False, 0.0, 0.35, 0.75)[-1]
+    keys["cfr_trend_active_stop"] = last["value"]
+    keys["cfr_trend_dist_atr"] = last["dist_atr"]
+    keys["cfr_trend_multiplier"] = last["multiplier"]
+    keys["cfr_trend_risk_state"] = last["risk_state"]
+    spike = [(100.0, 101.0, 99.0, 100.0)] * 105 + [(100.0, 250.0, 50.0, 150.0)]
+    last = _chandelier_flip_radar(spike, 5, 3.0, False, True, 0.0, 0.35, 0.75)[-1]
+    keys["cfr_spike_multiplier"] = last["multiplier"]
+    keys["cfr_spike_active_stop"] = last["value"]
+    keys["cfr_spike_bear_trap"] = float("bull_bear_trap" in last["alerts"])
+    weak = trend[:6] + [(94.6, 96.0, 94.0, 94.5)]
+    last = _chandelier_flip_radar(weak, 5, 3.0, False, False, 0.8, 0.35, 0.75)[-1]
+    keys["cfr_weak_active_stop"] = last["value"]
+    keys["cfr_weak_risk_state"] = last["risk_state"]
+    keys["cfr_weak_bear_weak_flip"] = float("bear_weak_flip" in last["alerts"])
+    keys["cfr_weak_bear_flip"] = float("bear_flip" in last["alerts"])
     return keys
 
 
@@ -358,6 +461,18 @@ HEADER = [
     "deviation filed under up or down by the direction of the price, Wilder-smoothed,",
     "100 up / (up + down). The high/low variant averages the index over highs and lows.",
     "",
+    "Chandelier Flip Radar, length 5, atr_mult 3, high/low extremes, danger 0.35, warn 0.75, over",
+    "(open, high, low, close) bars:",
+    "  trend  15 bars, base = 100 + 2 i: (base, base + 3, base - 3, base + 1); no adaptive mode, no",
+    "         body filter.",
+    "  spike  105 bars (100, 101, 99, 100), then (100, 250, 50, 150), adaptive mode: the raw ATR",
+    "         jumps above 1.3 times its 100-bar mean, and the wick crosses the long stop (bear trap).",
+    "  weak   the first 6 trend bars, then (94.6, 96, 94, 94.5), body filter 0.8: a close below the",
+    "         long stop with a small body is a weak flip, not a flip.",
+    "Wilder ATR of the true range, stops at the highest high - 3 ATR and the lowest low + 3 ATR",
+    "ratcheted while the direction holds, risk state from the distance to the previous stop in",
+    "ATRs. Flags are 1 for yes and 0 for no.",
+    "",
     "The *_tolerance keys are the comparison tolerances the tests apply, stated rather than derived.",
 ]
 
@@ -388,6 +503,11 @@ SECTIONS = [
     ("Relative Volatility Index (package 35)",
      ["rvi_vol_close_first", "rvi_vol_close_last", "rvi_vol_close_output_count",
       "rvi_vol_high_low_last", "rvi_vol_tolerance"]),
+    ("Chandelier Flip Radar",
+     ["cfr_trend_active_stop", "cfr_trend_dist_atr", "cfr_trend_multiplier",
+      "cfr_trend_risk_state", "cfr_spike_multiplier", "cfr_spike_active_stop",
+      "cfr_spike_bear_trap", "cfr_weak_active_stop", "cfr_weak_risk_state",
+      "cfr_weak_bear_weak_flip", "cfr_weak_bear_flip", "cfr_tolerance"]),
 ]
 
 

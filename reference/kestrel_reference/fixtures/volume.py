@@ -14,6 +14,7 @@ TOLERANCES = {
     "efi_tolerance": 1e-12,
     "rvat_tolerance": 1e-12,
     "pvt_tolerance": 1e-12,
+    "mfp_tolerance": 1e-9,
 }
 
 # The shared series: open = close = p, high = p + 0.5, low = p - 0.5, volume (i + 1) * 100.
@@ -60,6 +61,15 @@ HEADER = [
     "Price Volume Trend (package 37) over closes [100, 102, 101, 101, 104] with volumes",
     "[1000, 1500, 800, 1200, 900]: running sum of volume * (close / previous close - 1), from the",
     "first bar that has a predecessor.",
+    "",
+    "Money Flow Profile, rows 10, value area 70 %, over (10, 10.1, 9.9, 10, 1000) and",
+    "(49.9, 50, 49.8, 49.9, 300) as (open, high, low, close, volume): with lookback 2 the heavier",
+    "bar sits at a fifth of the price, so dollar volume puts the POC in the lighter bar's bin;",
+    "lookback 3 adds (58, 60, 55, 58, 200), which lifts bull_pct across 50 and raises the bull-bias",
+    "alert. Each bar's flow is volume * overlap * bin middle, its bullish part weighted by the close",
+    "location; the POC is the bin with the most flow, the value area grows from it by the larger",
+    "neighbour. Flags are 1 for yes and 0 for no; mfp_three_bar_first_alerts counts the alerts at",
+    "the first output.",
     "",
     "The *_tolerance keys are the comparison tolerances the tests apply, stated rather than derived.",
 ]
@@ -243,6 +253,84 @@ def _persistent_poc(bars, bin_width):
     return (best_key * bin_width + (best_key + 1) * bin_width) / 2.0
 
 
+
+def _money_flow_profile(bars, lookback, rows, va_pct):
+    """Money Flow Profile per bar as documented on its type: dollar-volume flow over `rows` bins
+    of the window's range, POC (upper bin on a tie), delta POC, value area grown by the larger
+    neighbour (lower on a tie), bullish share and the crossing alerts. `None` for one bar."""
+    window, previous, outputs = [], None, []
+    for bar in bars:
+        if len(window) == lookback:
+            window.pop(0)
+        window.append(bar)
+        if len(window) < 2:
+            outputs.append(None)
+            continue
+        lo, hi = min(b[2] for b in window), max(b[1] for b in window)
+        step = (hi - lo) / rows
+        total, bull = [0.0] * rows, [0.0] * rows
+        for _, h, l, c, volume in window:
+            if h <= l:
+                continue
+            v = volume if volume > 0.0 else 1.0
+            buy = min(max((c - l) / (h - l), 0.0), 1.0)
+            for r in range(rows):
+                row_lo = lo + r * step
+                row_hi = row_lo + step
+                if h < row_lo or l >= row_hi:
+                    continue
+                if l >= row_lo and h > row_hi:
+                    overlap = (row_hi - l) / (h - l)
+                elif h <= row_hi and l < row_lo:
+                    overlap = (h - row_lo) / (h - l)
+                elif l >= row_lo and h <= row_hi:
+                    overlap = 1.0
+                else:
+                    overlap = step / (h - l)
+                flow = v * overlap * (lo + (r + 0.5) * step)
+                total[r] += flow
+                bull[r] += flow * buy
+        flow_sum = sum(total)
+        poc = max(range(rows), key=lambda r: (total[r], r))
+        delta, delta_abs = 0, 0.0
+        for r in range(rows):
+            d = abs(2.0 * bull[r] - total[r])
+            if d > delta_abs:
+                delta, delta_abs = r, d
+        va_lo = va_hi = poc
+        acc = total[poc]
+        while acc < flow_sum * va_pct:
+            add_lo = total[va_lo - 1] if va_lo > 0 else -1.0
+            add_hi = total[va_hi + 1] if va_hi < rows - 1 else -1.0
+            if add_lo < 0.0 and add_hi < 0.0:
+                break
+            if add_lo >= add_hi:
+                va_lo -= 1
+                acc += add_lo
+            else:
+                va_hi += 1
+                acc += add_hi
+        vah, val = lo + (va_hi + 1) * step, lo + va_lo * step
+        bull_pct = sum(bull) / flow_sum * 100.0
+        close = window[-1][3]
+        alerts = set()
+        if previous is not None:
+            p_close, p_vah, p_val, p_bull = previous
+            if p_close <= p_vah and close > vah:
+                alerts.add("vah_breakout")
+            if p_close >= p_val and close < val:
+                alerts.add("val_breakdown")
+            if p_bull <= 50.0 and bull_pct > 50.0:
+                alerts.add("bull_bias")
+            if p_bull >= 50.0 and bull_pct < 50.0:
+                alerts.add("bear_bias")
+        previous = (close, vah, val, bull_pct)
+        outputs.append({"poc": lo + (poc + 0.5) * step, "vah": vah, "val": val,
+                        "delta_poc": lo + (delta + 0.5) * step, "bull_pct": bull_pct,
+                        "alerts": alerts})
+    return outputs
+
+
 def derive():
     keys = {}
     # Rolling VWAP of the typical price over two bars: (100 * 1000 + 110 * 3000) / 4000.
@@ -302,6 +390,17 @@ def derive():
     keys["pvt_output_count"] = float(len(pvt))
     for value, label in zip(pvt, ["first", "second", "third", "last"]):
         keys[f"pvt_{label}"] = value
+
+    heavy, light = (10.0, 10.1, 9.9, 10.0, 1000.0), (49.9, 50.0, 49.8, 49.9, 300.0)
+    two = _money_flow_profile([heavy, light], 2, 10, 0.70)[-1]
+    for key in ("poc", "vah", "val", "delta_poc", "bull_pct"):
+        keys[f"mfp_two_bar_{key}"] = two[key]
+    three = _money_flow_profile([heavy, light, (58.0, 60.0, 55.0, 58.0, 200.0)], 3, 10, 0.70)
+    keys["mfp_three_bar_first_alerts"] = float(len(three[1]["alerts"]))
+    keys["mfp_three_bar_poc"] = three[-1]["poc"]
+    keys["mfp_three_bar_bull_pct"] = three[-1]["bull_pct"]
+    keys["mfp_three_bar_bull_bias"] = float("bull_bias" in three[-1]["alerts"])
+    keys["mfp_three_bar_bear_bias"] = float("bear_bias" in three[-1]["alerts"])
     return keys
 
 
@@ -327,6 +426,11 @@ SECTIONS = [
       "rvat_tolerance"]),
     ("Price Volume Trend (package 37)",
      ["pvt_first", "pvt_second", "pvt_third", "pvt_last", "pvt_output_count", "pvt_tolerance"]),
+    ("Money Flow Profile",
+     ["mfp_two_bar_poc", "mfp_two_bar_vah", "mfp_two_bar_val", "mfp_two_bar_delta_poc",
+      "mfp_two_bar_bull_pct", "mfp_three_bar_first_alerts", "mfp_three_bar_poc",
+      "mfp_three_bar_bull_pct", "mfp_three_bar_bull_bias", "mfp_three_bar_bear_bias",
+      "mfp_tolerance"]),
 ]
 
 

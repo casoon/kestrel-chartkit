@@ -34,6 +34,15 @@
 # [1000, 1500, 800, 1200, 900]: running sum of volume * (close / previous close - 1), from the
 # first bar that has a predecessor.
 #
+# Money Flow Profile, rows 10, value area 70 %, over (10, 10.1, 9.9, 10, 1000) and
+# (49.9, 50, 49.8, 49.9, 300) as (open, high, low, close, volume): with lookback 2 the heavier
+# bar sits at a fifth of the price, so dollar volume puts the POC in the lighter bar's bin;
+# lookback 3 adds (58, 60, 55, 58, 200), which lifts bull_pct across 50 and raises the bull-bias
+# alert. Each bar's flow is volume * overlap * bin middle, its bullish part weighted by the close
+# location; the POC is the bin with the most flow, the value area grows from it by the larger
+# neighbour. Flags are 1 for yes and 0 for no; mfp_three_bar_first_alerts counts the alerts at
+# the first output.
+#
 # The *_tolerance keys are the comparison tolerances the tests apply, stated rather than derived.
 
 # base values over the shared 20-bar series and the small VWAP/profile inputs
@@ -104,3 +113,16 @@ pvt_third=22.156862745098096
 pvt_last=48.889536012424855
 pvt_output_count=4.0
 pvt_tolerance=1e-12
+
+# Money Flow Profile
+mfp_two_bar_poc=47.995
+mfp_two_bar_vah=49.99999999999999
+mfp_two_bar_val=9.9
+mfp_two_bar_delta_poc=11.905000000000001
+mfp_two_bar_bull_pct=50.0
+mfp_three_bar_first_alerts=0.0
+mfp_three_bar_poc=47.474999999999994
+mfp_three_bar_bull_pct=53.00260073948737
+mfp_three_bar_bull_bias=1.0
+mfp_three_bar_bear_bias=0.0
+mfp_tolerance=1e-09
