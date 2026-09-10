@@ -12,15 +12,10 @@
 //! seam the base engine exposes, so this reimplements the shared ratchet arithmetic rather than
 //! wrapping it. Note this engine's ratchet condition (`prev_direction == 1` gates whether
 //! `long_stop` may only tighten) differs slightly from `ChandelierExitEngine`'s
-//! (`prev_close > long_stop_prev`) — both are independently-ported readings of the same idiom;
-//! this one follows the source below.
+//! (`prev_close > long_stop_prev`); both are readings of the same ratchet idiom.
 //!
-//! Ported from the sibling `kestrel` repo's `crates/core/src/indicators/
-//! chandelier_flip_radar.rs` (itself a scoped port of `indicators/trend_direction/
-//! chandelier_flip_radar` v1.6.1 — signal core only, no K-means/
-//! conviction mode/chart objects/MTF confluence). See
-//! `kestrel/plan/kestrel-chartkit-migration.md` for the comparison that identified this as worth
-//! porting.
+//! Scope: the signal core only — no clustering-based conviction mode, chart objects or
+//! multi-timeframe confluence.
 
 use crate::model::Bar;
 use crate::series::Series;
@@ -99,7 +94,7 @@ impl ChandelierFlipRadarEngine {
         }
     }
 
-    /// Defaults of the ported source: `length=30`, `atr_mult=4.5`, close-based extremes, adaptive mode off,
+    /// Defaults: `length=30`, `atr_mult=4.5`, close-based extremes, adaptive mode off,
     /// `body_filter_atr=0.80`, `danger_dist_atr=0.35`, `warn_dist_atr=0.75`.
     pub fn with_defaults() -> Self {
         Self::new(30, 4.5, true, false, 0.80, 0.35, 0.75)
@@ -342,8 +337,7 @@ mod tests {
     use super::*;
 
     // Reference values below were independently derived from a fresh Python transcription of
-    // this same documented formula (not by running this Rust code) — see
-    // `kestrel/plan/kestrel-chartkit-migration.md` for the source formula this ports.
+    // this same documented formula (not by running this Rust code).
 
     fn trending_up_bars(n: usize) -> Vec<Bar> {
         (0..n)

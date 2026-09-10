@@ -36,9 +36,8 @@ pub struct SwingStructureOutput {
     pub potential_crv: f64,
     pub last_impulse_velocity_atr: f64,
     /// Which series this output was computed on, if the caller attached one via
-    /// [`SwingStructureOutput::with_capabilities`]. `None` by default — see
-    /// `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
-    /// mitführen": a structure result is only meaningful for the series (session cut,
+    /// [`SwingStructureOutput::with_capabilities`]. `None` by default: a structure result is
+    /// only meaningful for the series (session cut,
     /// roll/adjustment, provenance) it was computed on.
     pub series_capabilities: Option<SeriesCapabilities>,
 }

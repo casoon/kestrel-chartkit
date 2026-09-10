@@ -39,9 +39,8 @@ pub struct ImpulseValidation {
     pub pullback_quality: f64,
     /// Which series this validation was computed on, if the caller attached one via
     /// [`ImpulseValidation::with_capabilities`]. `None` by default: a validation is only
-    /// meaningful for the series it was computed on (session cut, roll/adjustment, provenance —
-    /// see `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
-    /// mitführen"), so a stored/exported result should carry this rather than be re-checked
+    /// meaningful for the series it was computed on (session cut, roll/adjustment, provenance),
+    /// so a stored/exported result should carry this rather than be re-checked
     /// against a different series later without knowing it no longer applies.
     pub series_capabilities: Option<SeriesCapabilities>,
 }

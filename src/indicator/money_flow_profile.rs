@@ -17,18 +17,12 @@
 //! one" incremental step once bin edges themselves move), same as
 //! [`super::volume_profile::VolumeProfileEngine`].
 //!
-//! Ported from the sibling `kestrel` repo's `crates/core/src/indicators/money_flow_profile.rs`
-//! (itself a scoped port of `indicators/money_flow/money_flow_delta_profile` v2.0 — the numeric
-//! substance only: POC, Value Area High/Low,
-//! Delta POC and the overall bull% flow bias; drawing, HVN/LVN zone overlays, absorption, intrabar
-//! delta and non-default Money-Flow/price modes are explicitly not part of this port, same
-//! restriction as other scoped ports in this crate). See
-//! `kestrel/plan/kestrel-chartkit-migration.md` for the comparison that identified this as worth
-//! porting.
+//! Scope: the numeric substance only — POC, Value Area High/Low, Delta POC and the overall bull%
+//! flow bias. Drawing, HVN/LVN zone overlays, absorption, intrabar delta and alternative
+//! money-flow/price modes are not part of this engine.
 //!
-//! Bars with `volume <= 0.0` are treated as `1.0` (synthetic volume) rather than dropped — this
-//! is the original's default (`useSynVol = true`) and matters for feeds that report
-//! `volume = 0`/unavailable.
+//! Bars with `volume <= 0.0` are treated as `1.0` (synthetic volume) rather than dropped, a
+//! deliberate default that matters for feeds that report `volume = 0`/unavailable.
 
 use std::collections::VecDeque;
 
@@ -75,7 +69,7 @@ impl MoneyFlowProfileEngine {
         }
     }
 
-    /// Defaults of the ported source: `lookback=200`, `rows=25`, `va_pct=0.70`.
+    /// Defaults: `lookback=200`, `rows=25`, `va_pct=0.70`.
     pub fn with_defaults() -> Self {
         Self::new(200, 25, 0.70)
     }
@@ -304,9 +298,9 @@ mod tests {
     use super::*;
 
     /// Reference values below were independently derived (Python re-implementation of this same
-    /// documented formula, not by running this Rust code) — see
-    /// `kestrel/plan/kestrel-chartkit-migration.md`. The two bars are deliberately shaped so raw
-    /// volume and dollar volume disagree on which bin dominates: bar A has 3x bar B's volume
+    /// documented formula, not by running this Rust code). The two bars are deliberately shaped
+    /// so raw volume and dollar volume disagree on which bin dominates: bar A has 3x bar B's
+    /// volume
     /// (1000 vs 300) but sits at ~1/5th bar B's price (~10 vs ~50) — a raw-volume-weighted
     /// profile (like `VolumeProfileEngine`) would put POC in bar A's bin; dollar-volume weighting
     /// puts it in bar B's bin instead (300 * ~48 > 1000 * ~12), which is exactly the behavior

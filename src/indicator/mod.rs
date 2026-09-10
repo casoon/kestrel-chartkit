@@ -116,9 +116,8 @@ pub struct IndicatorOutput {
     pub artifacts: Vec<Artifact>,
     /// Which series this output was computed on, if the caller attached one via
     /// [`IndicatorOutput::with_capabilities`]. `None` by default: a result is only meaningful for
-    /// the series it was computed on (session cut, roll/adjustment, provenance — see
-    /// `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Herkunft an Ergebnissen
-    /// mitführen"). [`crate::runner::run_batch_with_applicability`] sets this automatically from
+    /// the series it was computed on (session cut, roll/adjustment, provenance).
+    /// [`crate::runner::run_batch_with_applicability`] sets this automatically from
     /// the `SeriesCapabilities` it already receives; plain [`crate::runner::run_batch`] and direct
     /// [`Indicator::on_bar`] calls leave it `None` since neither has a capabilities value to
     /// attach. This is the same field/pattern already used on `elliott::ImpulseValidation`/

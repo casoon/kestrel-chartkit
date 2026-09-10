@@ -575,12 +575,11 @@ impl Jma {
     }
 }
 
-/// Ehlers' SuperSmoother (2-pole Butterworth low-pass filter) — ported from the sibling `kestrel`
-/// repo (`crates/core/src/indicators/smoothing.rs`, itself transcribed from the original
-/// advanced ROC/CCI scripts; see `kestrel/plan/kestrel-chartkit-migration.md` for the comparison
-/// that identified this as worth porting). Valid from the first sample: the missing
-/// `src[1]`/`ss[1]`/`ss[2]` terms on the first bars default to `0`, producing a short transient
-/// rather than a `None` warmup.
+/// Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter:
+/// `a1 = exp(-1.414 · π / len)`, `c2 = 2 · a1 · cos(1.414 · π / len)`, `c3 = -a1²`,
+/// `c1 = 1 - c2 - c3`, and `ss_t = c1 · (src_t + src_(t-1)) / 2 + c2 · ss_(t-1) + c3 · ss_(t-2)`.
+/// Valid from the first sample: the missing `src[1]`/`ss[1]`/`ss[2]` terms on the first bars
+/// default to `0`, producing a short transient rather than a `None` warmup.
 #[derive(Debug, Clone)]
 pub struct SuperSmoother {
     c1: f64,
@@ -629,10 +628,8 @@ impl SuperSmoother {
 /// efficiency-ratio-derived adaptive-alpha formula as
 /// [`KamaEngine`](super::moving_averages::KamaEngine), decoupled from [`crate::model::Bar`] so it
 /// can be one stage of a [`Smoother`]/[`SmootherChain`] pipeline instead of only a stand-alone bar
-/// indicator. Deliberately not a new formula port: `KamaEngine`'s math (configurable
-/// `fast_period`/`slow_period`) is reused as-is rather than kestrel's simpler hardcoded-2/30
-/// variant, since it is already the more general of the two — see the "smoothing" comparison in
-/// `kestrel/plan/kestrel-chartkit-migration.md`.
+/// indicator. It reuses `KamaEngine`'s math with configurable `fast_period`/`slow_period` rather
+/// than adding a second variant with fixed 2/30 periods.
 #[derive(Debug, Clone)]
 pub struct Kama {
     period: usize,
