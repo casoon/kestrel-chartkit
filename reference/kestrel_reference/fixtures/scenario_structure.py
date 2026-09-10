@@ -40,6 +40,10 @@ HEADER = [
     "score from strict pivots, +2/-1 per high and +1/-2 per low against the previous one,",
     "100 sum / (2 score_window); the ZigZag's running leg confirmed by an opposite pivot beyond the",
     "deviation and the backstep. Flags are 1 for yes and 0 for no.",
+    "",
+    "zigzag_atr*: the same ZigZag bars in ATR mode, atr_len 3, multiples 3 and 6: the price",
+    "distance from the running node must reach the multiple of a Wilder ATR of the true range as",
+    "of the current bar. At 3 both swings (26 and 36 points) confirm, at 6 neither does.",
 ]
 
 
@@ -54,7 +58,7 @@ def build():
     pivots = {"pivots_structure_output_count": float(len(scores))}
     pivots.update({f"pivots_structure_score_{i}": s for i, s in enumerate(scores, 1)})
 
-    outputs, confirmations = advanced_zigzag(ZIGZAG, 2, 1, 2.0)
+    outputs, confirmations, _ = advanced_zigzag(ZIGZAG, 2, 1, 2.0)
     value, running = outputs[-1]
     zigzag = {
         "zigzag_advanced_value_last": value,
@@ -62,6 +66,13 @@ def build():
         "zigzag_advanced_confirmations": float(len(confirmations)),
         "zigzag_advanced_last_confirms_low": 1.0 if confirmations[-1] == "low" else 0.0,
     }
+    atr = {}
+    for mult in (3, 6):
+        _, _, nodes = advanced_zigzag(ZIGZAG, 2, 1, atr_mult=float(mult), atr_len=3)
+        confirmed = [price for price, _, done in nodes if done]
+        atr[f"zigzag_atr{mult}_confirmed_count"] = float(len(confirmed))
+        atr.update({f"zigzag_atr{mult}_confirmed_{i}_price": p for i, p in enumerate(confirmed, 1)})
+        atr[f"zigzag_atr{mult}_running_price"] = nodes[-1][0]
     return HEADER, [(None, "liquidity pools", pools), (None, "pivot structure", pivots),
-                    (None, "advanced ZigZag", zigzag),
+                    (None, "advanced ZigZag", zigzag), (None, "advanced ZigZag, ATR mode", atr),
                     (None, None, {"scenario_structure_tolerance": 1e-9})]

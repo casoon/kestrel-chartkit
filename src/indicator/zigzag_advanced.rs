@@ -39,14 +39,15 @@ pub struct ZigZagNode {
 /// both. A pivot of the same kind as the running (unconfirmed) node — or the very first pivot —
 /// extends the leg: the running node moves to it if it is more extreme, and a first pivot starts
 /// one. A pivot of the other kind confirms the running node and starts a new running node at its
-/// own price, once `|price - running| / |running|` reaches the threshold and the pivot bar lies at
-/// least `backstep` bars after the pivot bar of the last confirmation (checked once per bar,
-/// before either pivot is applied). Each confirmation raises a `zigzag_pivot_confirmed` alert.
+/// own price, once its change from the running node reaches the deviation threshold and the pivot
+/// bar lies at least `backstep` bars after the pivot bar of the last confirmation (checked once
+/// per bar, before either pivot is applied). Each confirmation raises a `zigzag_pivot_confirmed`
+/// alert.
 ///
-/// The threshold is `pct / 100` in [`ZigZagDeviationMode::Percent`]. In
-/// [`ZigZagDeviationMode::AtrMultiple`] it is `mult · ATR`, a Wilder ATR over `atr_len` (infinite
-/// until the ATR exists) — an absolute price distance compared with the same relative change, so
-/// this mode does not scale the way its name suggests.
+/// In [`ZigZagDeviationMode::Percent`] the relative change `|price - running| / |running|` must
+/// reach `pct / 100`. In [`ZigZagDeviationMode::AtrMultiple`] the price distance
+/// `|price - running|` must reach `mult · ATR`, a Wilder ATR of the true range over `atr_len` as
+/// of the current bar; nothing confirms before the ATR exists.
 ///
 /// `value`: the price of the newest node, or the middle bar's close before any; `state`:
 /// `"running"` while the newest node is unconfirmed, `"confirmed"` otherwise. First output with
@@ -107,9 +108,7 @@ impl AdvancedZigZagEngine {
         match self.deviation {
             ZigZagDeviationMode::Percent(pct) => pct / 100.0,
             ZigZagDeviationMode::AtrMultiple(mult) => {
-                // Expressed as a fraction of price for uniform comparison with the Percent mode;
-                // callers using ATR mode should compare `mult * atr` directly if they need the
-                // absolute price distance instead.
+                // An absolute price distance: `try_extend` compares it with the absolute change.
                 match atr {
                     Some(a) if a > 0.0 => mult * a,
                     _ => f64::INFINITY, // ATR not warmed up yet: no pivot can confirm
@@ -334,9 +333,14 @@ impl AdvancedZigZagEngine {
 
         // Opposite-direction pivot: only confirms the running leg (and starts a new one) once it
         // clears both the deviation threshold and the backstep spacing from the last confirmation.
+        // Percent mode compares the relative change, ATR mode the price distance, each with the
+        // threshold of its own unit.
         let last_price = self.nodes.last().map(|n| n.price);
-        let change = match last_price {
-            Some(lp) if lp != 0.0 => (price - lp).abs() / lp.abs(),
+        let change = match (self.deviation, last_price) {
+            (ZigZagDeviationMode::AtrMultiple(_), Some(lp)) => (price - lp).abs(),
+            (ZigZagDeviationMode::Percent(_), Some(lp)) if lp != 0.0 => {
+                (price - lp).abs() / lp.abs()
+            }
             _ => f64::INFINITY,
         };
 

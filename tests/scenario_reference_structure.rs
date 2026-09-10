@@ -1171,3 +1171,48 @@ fn test_scenario_zigzag_advanced() {
         "Last bar must confirm the prior running swing low: {confirm_alerts:?}"
     );
 }
+
+/// Im ATR-Modus zählt der Preisabstand gegen ein Vielfaches der ATR, nicht die relative Änderung:
+/// Beim Dreifachen bestätigen beide Ausschläge (26 und 36 Punkte), beim Sechsfachen keiner.
+#[test]
+fn test_scenario_zigzag_advanced_atr_mode() {
+    use kestrel_chartkit::indicator::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
+
+    let prices = [
+        100.0, 105.0, 115.0, 110.0, 105.0, 98.0, 92.0, 90.0, 95.0, 102.0, 110.0, 118.0, 125.0,
+        120.0, 115.0,
+    ];
+    let tol = expected("scenario_structure_tolerance");
+    for mult in [3, 6] {
+        let mut engine =
+            AdvancedZigZagEngine::new(2, 1, ZigZagDeviationMode::AtrMultiple(mult as f64), 3);
+        for (i, &p) in prices.iter().enumerate() {
+            engine.on_bar(&Bar::new(i as i64 * 60, p, p + 0.5, p - 0.5, p, 1000.0));
+        }
+        let confirmed: Vec<f64> = engine
+            .nodes()
+            .iter()
+            .filter(|n| n.confirmed)
+            .map(|n| n.price)
+            .collect();
+        assert_eq!(
+            confirmed.len(),
+            expected(&format!("zigzag_atr{mult}_confirmed_count")) as usize,
+            "ATR x{mult}: {confirmed:?}"
+        );
+        for (i, &price) in confirmed.iter().enumerate() {
+            common::assert_close(
+                price,
+                expected(&format!("zigzag_atr{mult}_confirmed_{}_price", i + 1)),
+                tol,
+                "bestätigter Knoten",
+            );
+        }
+        common::assert_close(
+            engine.current_leg().expect("laufender Schenkel").price,
+            expected(&format!("zigzag_atr{mult}_running_price")),
+            tol,
+            "laufender Schenkel",
+        );
+    }
+}

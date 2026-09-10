@@ -17,6 +17,10 @@
 # score from strict pivots, +2/-1 per high and +1/-2 per low against the previous one,
 # 100 sum / (2 score_window); the ZigZag's running leg confirmed by an opposite pivot beyond the
 # deviation and the backstep. Flags are 1 for yes and 0 for no.
+#
+# zigzag_atr*: the same ZigZag bars in ATR mode, atr_len 3, multiples 3 and 6: the price
+# distance from the running node must reach the multiple of a Wilder ATR of the true range as
+# of the current bar. At 3 both swings (26 and 36 points) confirm, at 6 neither does.
 
 # liquidity pools
 liquidity_pools_stop_hunt_count=2.0
@@ -38,5 +42,13 @@ zigzag_advanced_value_last=125.5
 zigzag_advanced_running_last=1.0
 zigzag_advanced_confirmations=2.0
 zigzag_advanced_last_confirms_low=1.0
+
+# advanced ZigZag, ATR mode
+zigzag_atr3_confirmed_count=2.0
+zigzag_atr3_confirmed_1_price=115.5
+zigzag_atr3_confirmed_2_price=89.5
+zigzag_atr3_running_price=125.5
+zigzag_atr6_confirmed_count=0.0
+zigzag_atr6_running_price=125.5
 
 scenario_structure_tolerance=1e-09

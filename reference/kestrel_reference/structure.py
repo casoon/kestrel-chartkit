@@ -81,14 +81,17 @@ def liquidity_pools(bars, pivot_len, tolerance_pct):
     return counts, events
 
 
-def advanced_zigzag(bars, depth, backstep, deviation_pct):
-    """Percent-mode ZigZag: `(value, running)` per output and the kinds of the swings confirmed,
-    oldest first ("low" when a pivot high confirms the running low, "high" the other way)."""
+def advanced_zigzag(bars, depth, backstep, deviation_pct=None, atr_mult=None, atr_len=14):
+    """ZigZag in percent mode (`deviation_pct`: relative change against pct / 100) or ATR mode
+    (`atr_mult`: price distance against atr_mult * Wilder ATR(atr_len), none before the ATR
+    exists). Returns `(value, running)` per output, the kinds of the swings confirmed, oldest
+    first ("low" when a pivot high confirms the running low, "high" the other way), and the
+    nodes as `(price, is_high, confirmed)`."""
     depth = max(depth, 1)
-    threshold = deviation_pct / 100.0
     size = 2 * depth + 1
     window, nodes, outputs, confirmed = [], [], [], []
-    state = {"direction": 0, "last_confirmed": None}
+    state = {"direction": 0, "last_confirmed": None, "threshold": None}
+    seed, atr, prev_close = [], None, None
 
     def extend(is_high, price, bar_index, backstep_ok):
         same = 1 if is_high else -1
@@ -103,8 +106,13 @@ def advanced_zigzag(bars, depth, backstep, deviation_pct):
                 state["direction"] = same
             return
         last = nodes[-1]["price"] if nodes else None
-        change = abs(price - last) / abs(last) if last not in (None, 0.0) else float("inf")
-        if change >= threshold and backstep_ok:
+        if last is None:
+            change = float("inf")
+        elif atr_mult is not None:
+            change = abs(price - last)
+        else:
+            change = abs(price - last) / abs(last) if last != 0.0 else float("inf")
+        if change >= state["threshold"] and backstep_ok:
             if nodes:
                 nodes[-1]["confirmed"] = True
             nodes.append({"price": price, "is_high": is_high, "confirmed": False})
@@ -113,6 +121,20 @@ def advanced_zigzag(bars, depth, backstep, deviation_pct):
             confirmed.append("low" if is_high else "high")
 
     for index, bar in enumerate(bars):
+        _, high, low, close = bar
+        tr = high - low if prev_close is None else max(high - low, abs(high - prev_close),
+                                                        abs(low - prev_close))
+        prev_close = close
+        if atr is None:
+            seed.append(tr)
+            if len(seed) == atr_len:
+                atr = sum(seed) / atr_len
+        else:
+            atr = (1.0 / atr_len) * tr + (1.0 - 1.0 / atr_len) * atr
+        if atr_mult is None:
+            state["threshold"] = deviation_pct / 100.0
+        else:
+            state["threshold"] = atr_mult * atr if atr is not None and atr > 0.0 else float("inf")
         window.append(bar)
         if len(window) > size:
             window.pop(0)
@@ -128,4 +150,4 @@ def advanced_zigzag(bars, depth, backstep, deviation_pct):
             extend(False, mid[2], mid_index, backstep_ok)
         value = nodes[-1]["price"] if nodes else mid[3]
         outputs.append((value, bool(nodes) and not nodes[-1]["confirmed"]))
-    return outputs, confirmed
+    return outputs, confirmed, [(n["price"], n["is_high"], n["confirmed"]) for n in nodes]
