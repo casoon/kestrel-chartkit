@@ -18,12 +18,15 @@
   externe Referenzformel/-datenreihe, oder — bei Composite-Indikatoren ohne externen Standard —
   die dokumentierte Kombinationsformel angewandt auf bereits bestätigte Sub-Indikator-
   Golden-Werte, ergänzt um mindestens ein analytisch eindeutiges Extremszenario.
+- Entstehen Referenzwerte per Skript, liegt das Skript im Repository unter `reference/` (nur
+  Python-Standardbibliothek) und erzeugt die Fixture; `python3 reference/generate.py --check`
+  reproduziert sie byte-identisch. Ein Verweis auf eine nicht veröffentlichte Herleitung ersetzt
+  das nicht.
 - Composite-Indikatoren dürfen ihre Sub-Werte ausschließlich aus bereits bestehenden
   Golden-Fixtures referenzieren, niemals aus einem Testlauf des gerade geprüften
   Composite-Tests selbst (Zirkularitätsverbot).
 - Golden-Reference-Fixtures werden nach Indikator-Gruppe aufgeteilt gepflegt
   (`tests/golden_reference_<gruppe>.rs` + `tests/fixtures/golden_<gruppe>.txt`), nicht als eine
   wachsende Sammeldatei.
-- Diese Regel ist bis auf Weiteres eigenständig in `CLAUDE.md` maßgeblich; sobald
-  `plan/review-prozess.md` Phase 3 angepasst wird, übernimmt sie diesen Wortlaut, statt ihn neu
-  zu formulieren.
+- `plan/review-prozess.md` Phase 3 führt diese Regel im selben Wortlaut; eine Änderung wird an
+  beiden Stellen zugleich vorgenommen.
