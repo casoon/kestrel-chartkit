@@ -44,8 +44,9 @@ pub struct TrendReading {
 /// `jma_phase`/`jma_power` select the kernel), combined with
 /// `regime`'s trend/range vote into a 5-step phase. `deadband_pct` is the
 /// minimum `|slope_pct|` to call it `Up`/`Down` instead of `Flat` — keeps
-/// noise from flipping direction every bar. `None` until there are enough
-/// bars to look `len` bars back.
+/// noise from flipping direction every bar. `None` until the kernel has
+/// published `len + 1` values, or for a zero reference value;
+/// `slope_pct = 100 · (s_last / s_(last-len) - 1)` over those published values.
 #[allow(clippy::too_many_arguments)]
 pub fn trend_reading(
     bars: &[Bar],

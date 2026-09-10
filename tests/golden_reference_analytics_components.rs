@@ -6,7 +6,8 @@ use kestrel_chartkit::{
 };
 const GOLDEN: &str = include_str!("fixtures/golden_analytics_components.txt");
 fn check(key: &str, actual: f64) {
-    common::assert_close(actual, common::golden_value(GOLDEN, key), 1e-9, key);
+    let tolerance = common::golden_value(GOLDEN, "analytics_components_tolerance");
+    common::assert_close(actual, common::golden_value(GOLDEN, key), tolerance, key);
 }
 fn ramp() -> Vec<Bar> {
     (0..120)
@@ -79,4 +80,39 @@ fn independent_fear_and_volume_components() {
             .volume_percentile
             .unwrap(),
     );
+}
+
+/// 120 Kerzen um eine Gerade der Steigung `step` mit fünfteiligem Rücksetzermuster; Eröffnung =
+/// vorheriger Schluss, Dochte über den Körper hinaus. Auf der Rampe liegt jedes Trendmaß an seiner
+/// Grenze; diese Reihen lösen sie davon.
+fn shaped(step: f64, wick: f64) -> Vec<Bar> {
+    const OFFSETS: [f64; 5] = [0.0, 1.5, -1.0, 0.8, -0.6];
+    let mut previous = 100.0;
+    (0..120usize)
+        .map(|i| {
+            let close = 100.0 + step * i as f64 + OFFSETS[i % 5];
+            let high = f64::max(previous, close) + wick + 0.1 * (i % 3) as f64;
+            let low = f64::min(previous, close) - wick - 0.1 * (i % 2) as f64;
+            let bar = Bar::new(i as i64, previous, high, low, close, 1.);
+            previous = close;
+            bar
+        })
+        .collect()
+}
+
+#[test]
+fn independent_trend_components_off_the_ramp() {
+    for (prefix, bars) in [("noisy", shaped(0.2, 0.3)), ("drift", shaped(0.05, 0.2))] {
+        let r = classify_trend_regime(&bars, 14, 20).unwrap();
+        check(&format!("{prefix}_adx"), r.adx);
+        check(&format!("{prefix}_chop"), r.choppiness);
+        check(&format!("{prefix}_efficiency"), r.efficiency);
+        check(&format!("{prefix}_votes"), f64::from(r.trend_votes));
+        let p = trend_persistence_reading(&bars).unwrap();
+        check(&format!("{prefix}_r2_score"), p.r2_score);
+        check(&format!("{prefix}_er_score"), p.er_score);
+        check(&format!("{prefix}_fdi_score"), p.fdi_score);
+    }
+    let p = price_summary(&shaped(0.05, 0.2), 14, 1.5).unwrap();
+    check("drift_atr_percentile", p.atr_percentile);
 }

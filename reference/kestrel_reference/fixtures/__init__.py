@@ -3,6 +3,8 @@ either `build()`, which returns the header lines and the case blocks, or — whi
 fixture is derived — `PARTIAL = True`, `derive()` and `CONSTANTS`."""
 
 from . import (
+    analytics_components,
+    analytics_composites,
     bond_diff,
     business_days,
     composite,
@@ -34,4 +36,6 @@ ALL = (
     volume,
     family_math,
     composite,
+    analytics_components,
+    analytics_composites,
 )

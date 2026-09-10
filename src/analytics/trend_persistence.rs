@@ -56,8 +56,7 @@ pub enum TrendPersistenceDirection {
 }
 
 /// Which of the four sensors currently drives (`driver`) or drags down
-/// (`drag`) the composite score — the original's "why did this change"
-/// explanation, without the log-on-state-change machinery.
+/// (`drag`) the composite score, to explain a change of the score.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
@@ -161,7 +160,7 @@ fn sub_scores_at(bars: &[Bar], idx: usize) -> SubScores {
 
 /// ADX strength+slope sub-score (undamped — the structure-dead damp depends
 /// on the R²/ER sensors, computed separately at each needed index) for every
-/// bar, via the already-ported `Adx` indicator fed from the start of `bars`.
+/// bar, via the `Adx` indicator fed from the start of `bars`.
 /// `None` until the indicator has warmed up *and* a previous ADX value
 /// exists to derive the slope from.
 fn adx_score_series(bars: &[Bar]) -> Vec<Option<f64>> {
@@ -235,6 +234,27 @@ fn driver_and_drag(
 /// current bar last). `None` until enough bars exist to seed the four
 /// sensors' `LEN`-bar window, the `SMOOTH_LEN`-bar composite smoothing, and
 /// the `Adx` indicator's own warmup.
+///
+/// For each of the last 5 bars, over the 35 bars ending there:
+///
+/// - `r2_score = 100 · corr²`, `corr` the Pearson correlation of the last 34 closes with their
+///   index (0 without variance);
+/// - `er_score = 100 · ER`, the efficiency ratio over the 35 closes (0 when nothing moved);
+/// - `fdi_score = 100 · (1 - norm(fdi, 1.20, 1.65))` with `fdi = 1 + ln(path / range) / ln(34)`,
+///   `path` the summed absolute close changes and `range` the highest high minus the lowest low
+///   (`fdi = 1.5` when either is zero);
+/// - `adx_score = 100 · (0.7 · norm(ADX, 12, 35) + 0.3 · norm(slope, -1, 1.5))`, the ADX from
+///   [`Adx::new`]`(14, 14, 3, 20)` fed from the first bar and `slope` a first-sample EMA(3) of its
+///   bar-to-bar changes; multiplied by 0.35 when both `r2_score` and `er_score` are below 20.
+///
+/// `norm(x, lo, hi) = clamp((x - lo) / (hi - lo), 0, 1)`. Each bar's raw score is
+/// `(40 · r2 + 25 · er + 20 · adx + 15 · fdi) / 100`; `score` is a first-sample EMA(5) over the
+/// five raw scores, seeded with the first. `transition_risk = 0.7 · (100 - score) + 0.3 · (100 -
+/// er_score)`. States from `score`: strong `>= 75`, healthy `>= 60`, transition `>= 45`, weak
+/// `>= 30`, else dead. Direction from the last `corr`: up above 0.15, down below -0.15, else
+/// flat. `driver`/`drag` name the highest/lowest of the four last sub-scores; on a tie the
+/// driver is the later and the drag the earlier in the order regression, efficiency, ADX,
+/// fractal.
 pub fn trend_persistence_reading(bars: &[Bar]) -> Option<TrendPersistenceReading> {
     if bars.len() < LEN + SMOOTH_LEN {
         return None;

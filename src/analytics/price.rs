@@ -31,8 +31,15 @@ pub struct PriceSummary {
 }
 
 /// Builds the summary from `bars` (oldest first). `atr_len` is the Wilder ATR
-/// period, `stop_mult` the ATR multiple for the suggested stop. `None` until
-/// there are enough bars to seed the ATR.
+/// period, `stop_mult` the ATR multiple for the suggested stop. `None` for
+/// fewer than `atr_len + 1` bars.
+///
+/// `change_pct = 100 · (last - prev_close) / prev_close` (0 for a zero previous close); the
+/// window extremes span every supplied bar. The ATR is Wilder's average of the true range (the
+/// first bar's `high - low`), seeded with the mean of the first `atr_len` values and published
+/// from bar `atr_len` on; `atr_percentile` is the share of that published series, the current
+/// value included, at or below the current value; `atr_pct = 100 · atr / last` (0 for a zero
+/// last close).
 pub fn price_summary(bars: &[Bar], atr_len: usize, stop_mult: f64) -> Option<PriceSummary> {
     if atr_len < 1 || bars.len() < atr_len + 1 {
         return None;
@@ -80,9 +87,8 @@ pub fn price_summary(bars: &[Bar], atr_len: usize, stop_mult: f64) -> Option<Pri
 }
 
 /// Wilder ATR (RMA of true range) as a series, one value per bar once the
-/// seed window has filled — mirrors the ported `Atr` indicator's kernel but
-/// returns absolute price units (not the `ATR%` display mode) and keeps the
-/// whole series so `atr_percentile` has something to rank against.
+/// seed window has filled, in absolute price units; the whole series is kept
+/// so `atr_percentile` has something to rank against.
 fn wilder_atr_series(bars: &[Bar], len: usize) -> Vec<f64> {
     let mut smoother = crate::indicator::smoothing::Rma::new(len);
     let mut prev_close = None;

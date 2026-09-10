@@ -20,6 +20,10 @@ pub struct ActivityReading {
 /// `PriceSummary::atr_percentile`. `use_volume` toggles the volume
 /// component; `window` bounds how far back "recent history" reaches for the
 /// volume percentile.
+///
+/// `volume_percentile` is the share of the last `window` bars (at least one) whose volume is at
+/// or below the last bar's, `None` when disabled or when every volume in that window is zero;
+/// `score` is the mean of `atr_percentile` and `volume_percentile`, or `atr_percentile` alone.
 pub fn activity_reading(
     bars: &[Bar],
     atr_percentile: f64,

@@ -10,8 +10,11 @@ fn expected(key: &str) -> f64 {
 fn base(key: &str) -> f64 {
     common::golden_value(BASE, key)
 }
+fn tolerance() -> f64 {
+    expected("analytics_composites_tolerance")
+}
 fn check(key: &str, value: f64) {
-    common::assert_close(value, expected(key), 1e-9, key);
+    common::assert_close(value, expected(key), tolerance(), key);
 }
 #[test]
 fn persistence_and_trend_from_confirmed_components() {
@@ -89,7 +92,7 @@ fn window_levels_match_analytical_prices() {
         common::assert_close(
             l.distance_pct,
             100. * (expected(key) / 119. - 1.),
-            1e-9,
+            tolerance(),
             "distance",
         );
     }
@@ -137,4 +140,77 @@ fn neutral_position_alignment_and_atr_distance() {
     assert_eq!(atr_distance(100., 104., 2.), Some(2.));
     assert_eq!(atr_distance(104., 100., 2.), Some(2.));
     assert_eq!(atr_distance(100., 104., 0.), None);
+}
+
+/// 120 Kerzen um eine Gerade der Steigung `step` mit fünfteiligem Rücksetzermuster; Eröffnung =
+/// vorheriger Schluss, Dochte über den Körper hinaus. Auf der Rampe liegt jedes Trendmaß an seiner
+/// Grenze; diese Reihen lösen sie davon.
+fn shaped(step: f64, wick: f64) -> Vec<Bar> {
+    const OFFSETS: [f64; 5] = [0.0, 1.5, -1.0, 0.8, -0.6];
+    let mut previous = 100.0;
+    (0..120usize)
+        .map(|i| {
+            let close = 100.0 + step * i as f64 + OFFSETS[i % 5];
+            let high = f64::max(previous, close) + wick + 0.1 * (i % 3) as f64;
+            let low = f64::min(previous, close) - wick - 0.1 * (i % 2) as f64;
+            let bar = Bar::new(i as i64, previous, high, low, close, 1.);
+            previous = close;
+            bar
+        })
+        .collect()
+}
+
+#[test]
+fn persistence_and_sentiment_off_the_ramp() {
+    for (prefix, bars) in [("noisy", shaped(0.2, 0.3)), ("drift", shaped(0.05, 0.2))] {
+        let p = trend_persistence_reading(&bars).unwrap();
+        check(&format!("{prefix}_persistence_adx_score"), p.adx_score);
+        check(&format!("{prefix}_persistence_score"), p.score);
+        check(&format!("{prefix}_persistence_risk"), p.transition_risk);
+    }
+    // Zirkularitätsverbot: die Teil-Lesungen stammen aus den Fixtures, nicht aus einem Testlauf.
+    // Felder, die das Sentiment nicht liest, sind NaN, damit ein versehentliches Lesen auffällt.
+    let votes = base("drift_votes");
+    assert!(votes < 2., "die Drift-Reihe muss seitwärts eingestuft sein");
+    let regime = RegimeReading {
+        state: RegimeState::Ranging,
+        adx: base("drift_adx"),
+        choppiness: base("drift_chop"),
+        efficiency: base("drift_efficiency"),
+        trend_votes: votes as u8,
+    };
+    let price = PriceSummary {
+        last: f64::NAN,
+        prev_close: f64::NAN,
+        change_abs: f64::NAN,
+        change_pct: f64::NAN,
+        window_high: f64::NAN,
+        window_low: f64::NAN,
+        range_position: f64::NAN,
+        atr: f64::NAN,
+        atr_pct: f64::NAN,
+        atr_percentile: base("drift_atr_percentile"),
+        stop_distance: f64::NAN,
+    };
+    let persistence = TrendPersistenceReading {
+        score: expected("drift_persistence_score"),
+        state: TrendPersistenceState::Dead,
+        direction: TrendPersistenceDirection::Flat,
+        transition_risk: f64::NAN,
+        r2_score: f64::NAN,
+        er_score: f64::NAN,
+        adx_score: f64::NAN,
+        fdi_score: f64::NAN,
+        driver: TrendPersistenceSensor::Regression,
+        drag: TrendPersistenceSensor::Regression,
+    };
+    let f = fear_greed_reading(
+        &shaped(0.05, 0.2),
+        Some(&regime),
+        Some(&price),
+        None,
+        Some(&persistence),
+    )
+    .unwrap();
+    check("fear_greed_drift", f.score);
 }

@@ -39,6 +39,16 @@ pub struct RegimeReading {
 /// exist to seed all three measures. `adx_len` also drives the ADX smoothing
 /// window (Wilder default: both 14); `window` is the lookback for Choppiness
 /// and the Efficiency Ratio.
+///
+/// - `adx`: the last value of [`Adx::new`]`(adx_len, adx_len, 3, 20)` fed from the first bar;
+/// - `choppiness = 100 · log10(sum TR / (highest high - lowest low)) / log10(window)` over the
+///   last `window` bars, the first true range against the close before them, so `window + 1`
+///   bars are needed; `None` for a window without range. Not clamped to `0..=100`;
+/// - `efficiency = |close_t - close_(t-window)| / sum |close changes|` over the last
+///   `window + 1` closes, `None` when nothing moved.
+///
+/// They vote "trending" at `adx >= 25`, `choppiness <= 38.2` and `efficiency >= 0.5`; two or
+/// more votes make the state [`RegimeState::Trending`].
 pub fn classify_regime(bars: &[Bar], adx_len: usize, window: usize) -> Option<RegimeReading> {
     if window < 2 || adx_len < 1 {
         return None;
@@ -67,9 +77,8 @@ pub fn classify_regime(bars: &[Bar], adx_len: usize, window: usize) -> Option<Re
     })
 }
 
-/// Feeds every bar through the ported `Adx` and returns its last value —
-/// reuses the exact Wilder DMI/ADX already parity-checked rather than
-/// re-deriving it here.
+/// Feeds every bar through `Adx` and returns its last value, so the vote uses
+/// the same Wilder DMI/ADX as the indicator rather than re-deriving it here.
 fn latest_adx(bars: &[Bar], adx_len: usize) -> Option<f64> {
     let mut adx = Adx::new(adx_len, adx_len, 3, 20.0);
     let mut last = None;

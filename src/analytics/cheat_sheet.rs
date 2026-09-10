@@ -50,6 +50,31 @@ pub struct CheatSheetReading {
     pub levels: Vec<CheatSheetLevel>,
 }
 
+/// Price levels around the last close, from the last `window` bars (120 for 0, at least 2, at
+/// most all). `None` for fewer than 2 bars, a window without range, or a non-positive last close.
+///
+/// Each level carries `distance_pct = 100 · (price / last - 1)`, a side (above beyond +0.05 %,
+/// below beyond -0.05 %, else at) and a strength clamped to `0..=1`; levels with a non-finite or
+/// non-positive price are dropped. `H`/`L` are the window's highest high and lowest low.
+///
+/// - `S1`..`S3`, `R1`..`R3`: swing lows (a low at or below the two lows on either side) and the
+///   window's lowest low as supports at or below the close, swing highs and the highest high as
+///   resistances at or above it; nearest first, a level within the tolerance
+///   `max(1.5 % of (H - L), 0.1 % of last)` of a nearer one dropped. Strength: touches / 6, the
+///   touches being the bars with a high or low within the tolerance (1 for the window extremes).
+/// - Pivots with `P = (H + L + last) / 3`: `Pivot` P (0.8), `Pivot S1` 2P - H and `Pivot R1`
+///   2P - L (0.65), `Pivot S2` P - (H - L) and `Pivot R2` P + (H - L) (0.45).
+/// - `Fib x%`: `H - (H - L) · x` for 23.6, 38.2, 50, 61.8 and 78.6 % (0.5).
+/// - `SMA20`, `SMA50`, `SMA200` of the closes when the window holds that many bars (0.55), and
+///   `SMA20/50 Stall` at the mean of the first two when they lie within
+///   `max(2.5 % of (H - L), 0.25 % of last)` of each other (0.8).
+/// - `RSI 30`, `RSI 50`, `RSI 70`: the next close that brings Wilder's RSI(14) over the window's
+///   closes to that level in one bar (0.5). With `RS = t / (100 - t)` and the averages after the
+///   last close, the close changes by `13 · (RS · avg_loss - avg_gain)` when that is not
+///   negative (a rise), otherwise by `13 · (avg_loss - avg_gain / RS)` (a fall); kept only when
+///   the resulting price is positive.
+///
+/// Sorted by absolute distance, then label.
 pub fn cheat_sheet(bars: &[Bar], window: usize) -> Option<CheatSheetReading> {
     if bars.len() < 2 {
         return None;

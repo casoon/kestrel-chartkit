@@ -44,6 +44,17 @@ pub struct FearGaugeReading {
 /// Reads the current fear/complacency state from `bars` (oldest first,
 /// current bar last). `None` until enough bars exist to seed the WVF window
 /// and its spike band (`WVF_LEN + BAND_LEN - 1`).
+///
+/// With `hc`/`lc` the highest/lowest close of the 22 bars ending at bar `i`,
+/// `wvf_i = 100 · (hc - low_i) / hc` and `bwvf_i = 100 · (high_i - lc) / lc` (0 for a zero
+/// extreme). A gauge spikes when its current value reaches `mean + 2 · sd` of its last 20
+/// values, `sd` the population standard deviation; a fear spike takes precedence over a
+/// complacency spike.
+///
+/// `absorbed` flags a spike on a stalled price: `wvf` rose by more than 2 over the last 5 bars
+/// while `|close - close 5 bars ago|` stayed below half the mean true range of the last 14 bars,
+/// each against its previous close (a zero mean counts as no move). Always `false` for
+/// [`FearGaugeState::Neutral`].
 pub fn fear_gauge_reading(bars: &[Bar]) -> Option<FearGaugeReading> {
     if bars.len() < WVF_LEN + BAND_LEN - 1 {
         return None;
@@ -98,9 +109,9 @@ pub fn fear_gauge_reading(bars: &[Bar]) -> Option<FearGaugeReading> {
     })
 }
 
-/// `wvfRaw`/`bwvfRaw` at bar `i` — `(ta.highest(close, WVF_LEN) - low) /
-/// ta.highest(close, WVF_LEN) * 100` and its lowest/high mirror. Requires
-/// `i >= WVF_LEN - 1`.
+/// `wvf`/`bwvf` at bar `i`: `100 · (hc - low_i) / hc` and `100 · (high_i - lc) / lc`,
+/// with `hc`/`lc` the highest/lowest close of the `WVF_LEN` bars ending at `i`.
+/// Requires `i >= WVF_LEN - 1`.
 fn wvf_at(bars: &[Bar], i: usize) -> (f64, f64) {
     let window = &bars[i + 1 - WVF_LEN..=i];
     let hc = window
@@ -129,11 +140,9 @@ fn spike_band(values: &[f64]) -> f64 {
     mean + BAND_MULT * variance.sqrt()
 }
 
-/// A plain trailing-average true range ending at bar `end` — a simplified
-/// stand-in for a Wilder-smoothed ATR(14) seeded from the start of
-/// history. Acceptable here: this only feeds the soft
-/// stall/absorption qualifier on an already-display-only read-out, not a
-/// numerically exact port target.
+/// A plain trailing-average true range ending at bar `end`, deliberately not a
+/// Wilder average seeded from the start of history: it only feeds the soft
+/// stall/absorption qualifier of a display-only read-out.
 fn simple_atr(bars: &[Bar], end: usize, len: usize) -> Option<f64> {
     if end < len {
         return None;

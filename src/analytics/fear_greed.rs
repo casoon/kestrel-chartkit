@@ -50,6 +50,23 @@ pub struct FearGreedReading {
     pub drag: FearGreedDriver,
 }
 
+/// Instrument sentiment `0..=100` from five component scores, each `0..=100` and 50 while its
+/// reading is missing:
+///
+/// - fear gauge (weight 0.30): 15 in a fear spike, 85 in a complacency spike, otherwise
+///   `50 + 1.25 · clamp(bwvf - wvf, -20, 20)`; an absorbed spike is pulled halfway to 50;
+/// - volatility (0.20): `100 · (1 - atr_percentile)`;
+/// - flow (0.20), always from `bars`: `50 · (m + 1)`, `m` the mean close location value
+///   `((close - low) - (high - close)) / (high - low)`, clamped to `-1..=1`, over the last 34
+///   bars, weighted by volume, or equally when no bar in that window has volume; bars without
+///   range or weight are skipped, and it is 50 when none remain;
+/// - trend persistence (0.20): its `score`;
+/// - regime (0.10): `55 + 25 · votes / 3` when trending, `45 + 15 · votes / 3` when ranging.
+///
+/// `score` is the weighted sum, clamped to `0..=100`. States: extreme fear below 25, fear below
+/// 45, neutral below 55, greed below 75, else extreme greed. `driver`/`drag` name the highest and
+/// lowest component; on a tie the driver is the later and the drag the earlier in the order
+/// above. `None` for fewer than 2 bars.
 pub fn fear_greed_reading(
     bars: &[Bar],
     regime: Option<&RegimeReading>,
