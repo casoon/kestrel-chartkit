@@ -6,8 +6,20 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::HashMap;
 
-/// Composite Multi-Factor Market Score Engine (-1.0 .. +1.0).
-/// Combines Trend Quality, Momentum (RSI), Volume/Pressure, and Volatility Regime.
+/// Multi-Factor Market Score: trend, momentum and pressure combined, damped in a squeeze,
+/// `-1..=1`.
+///
+/// With every input over the same `period`:
+///
+/// - `trend_factor = trend_quality / 100` ([`TrendQualityScoreEngine`]);
+/// - `rsi_factor = (rsi - 50) / 50`, `rsi` the value of [`Rsi::with_period`]`(period)`: the
+///   EMA(3) line over the raw Wilder RSI, not the raw RSI;
+/// - `pressure_factor = pressure / 100` ([`BuySellPressureEstimator`]);
+/// - `volatility_factor`: the state code of [`VolatilityRegimeDetector`]`(period, 2, 1.5)`.
+///
+/// `raw = 0.35 · trend_factor + 0.25 · rsi_factor + 0.40 · pressure_factor`, halved while the
+/// volatility state is squeeze (`-1`), then clamped to `-1..=1`. The four factors are in `extra`
+/// under the names above. First output once all four inputs have one.
 #[derive(Debug, Clone)]
 pub struct MultiFactorMarketScore {
     trend: TrendQualityScoreEngine,

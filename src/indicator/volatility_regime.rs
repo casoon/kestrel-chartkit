@@ -17,7 +17,22 @@ pub enum VolatilityState {
     Expansion,
 }
 
-/// Volatility Regime & Bollinger Squeeze Detector Engine.
+/// Volatility regime: Bollinger Bands against a Keltner Channel.
+///
+/// Bollinger Bands over `period` closes at `bb_mult` population standard deviations
+/// ([`BollingerBands`]); a Keltner Channel with an EMA(`period`) basis and bands at `kc_mult`
+/// times the plain mean of the last 10 true ranges ([`KeltnerChannelEngine`]`(period, 10,
+/// kc_mult)`). Then
+///
+/// - squeeze (`value = -1`): both Bollinger bands inside the channel, `bb_upper <= kc_upper`
+///   and `bb_lower >= kc_lower`;
+/// - otherwise expansion (`value = 1`): `bb_width > 1.3 · kc_width`;
+/// - otherwise normal (`value = 0`).
+///
+/// Widths are `upper - lower`, the channel's at least `1e-8`; both are in `extra` (`bb_width`,
+/// `kc_width`), with `extra["squeeze"]` as 1 or 0. The two middles differ (SMA against EMA), so on
+/// a drifting series the bands can leave the channel on one side without the width test firing.
+/// First output once both have one: with bar `max(period, 10)`.
 #[derive(Debug, Clone)]
 pub struct VolatilityRegimeDetector {
     period: usize,
@@ -75,7 +90,7 @@ impl Indicator for VolatilityRegimeDetector {
 
         // Squeeze when Bollinger Bands are completely inside Keltner Channel
         let is_squeeze = bb_upper <= kc_upper && bb_lower >= kc_lower;
-        // Expansion when BB bandwidth expands beyond 1.5x Keltner width
+        // Expansion when the Bollinger width exceeds 1.3x the Keltner width
         let bb_width = bb_upper - bb_lower;
         let kc_width = (kc_upper - kc_lower).max(1e-8);
         let is_expansion = bb_width > kc_width * 1.3;

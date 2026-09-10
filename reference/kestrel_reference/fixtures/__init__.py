@@ -5,6 +5,7 @@ fixture is derived — `PARTIAL = True`, `derive()` and `CONSTANTS`."""
 from . import (
     bond_diff,
     business_days,
+    composite,
     curve_diff,
     family_math,
     moving_averages,
@@ -32,4 +33,5 @@ ALL = (
     volatility,
     volume,
     family_math,
+    composite,
 )

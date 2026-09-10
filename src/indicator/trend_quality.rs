@@ -6,8 +6,22 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::HashMap;
 
-/// Trend Quality Score Engine (0..100).
-/// Formula: Score = Direction * Efficiency * Persistence * Strength * Participation
+/// Trend Quality Score: a signed product of four trend factors, `-100..=100`.
+///
+/// All four inputs run on every bar with the same `period`:
+///
+/// - `direction`: `+1` if the EMA(`period`) of the close (first-sample seeded, see
+///   [`EmaEngine`]) rose against the previous bar's, `ema > prev`; otherwise `-1`. A flat EMA
+///   counts as `-1`, and so does the first output, which has no previous value to compare with.
+/// - `efficiency`: the Kaufman Efficiency Ratio over `period` ([`LegEfficiencyEngine`]), `0..=1`.
+/// - `strength`: `clamp(ADX / 50, 0, 1)`, the ADX from [`Adx::with_period`]`(period)`: Wilder DI
+///   and ADX smoothing both over `period`.
+/// - `participation`: `clamp(RVOL / 2, 0.2, 1)` with [`RvolEngine`]`(period)`.
+///
+/// `value = clamp(direction · efficiency · strength · participation · 100, -100, 100)`, the four
+/// factors in `extra` under their names. There is no separate persistence factor.
+///
+/// First output once all four inputs have one, which the ADX sets: with bar `2 · period`.
 #[derive(Debug, Clone)]
 pub struct TrendQualityScoreEngine {
     ema: EmaEngine,
