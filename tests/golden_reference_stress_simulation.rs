@@ -1,6 +1,6 @@
 //! Independent golden-reference and hand-calculation tests for StressScenario,
 //! stop-gap slippage execution, synchronized multi-asset block bootstrapping, and deterministic
-//! equity path simulations per plan/07-stress-und-ausfuehrungsunsicherheit.md and CLAUDE.md.
+//! equity path simulations.
 
 use kestrel_chartkit::contract::{ContractSpec, Currency, InstrumentType};
 use kestrel_chartkit::execution::ExecutionCosts;

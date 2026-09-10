@@ -1,6 +1,6 @@
 //! Independent golden-reference and analytical hand-calculation tests for European vanilla
 //! option pricing, Black-Scholes-Merton, Black-76, Greeks, implied volatility solver, and
-//! put-call parity per plan/08-optionen-und-bewertung.md and CLAUDE.md.
+//! put-call parity.
 
 use kestrel_chartkit::option::{
     black_76, black_scholes_merton, implied_volatility, verify_put_call_parity, BlackScholesInputs,
@@ -9,7 +9,7 @@ use kestrel_chartkit::option::{
 
 #[test]
 fn test_golden_black_scholes_analytical_reference() {
-    // Standard Hull reference case:
+    // At-the-money reference case:
     // Spot S = 100.0, Strike K = 100.0 (ATM)
     // Time T = 1.0 year, Risk-free rate r = 0.05, Dividend yield q = 0.0
     // Volatility sigma = 0.20

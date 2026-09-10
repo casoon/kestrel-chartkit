@@ -1,6 +1,6 @@
 //! Independent golden-reference and analytical hand-calculation tests for financial day-count
 //! conventions, cashflow discounting, bond pricing, duration, DV01, and YTM inversion
-//! per plan/09-finanzkonventionen-und-kurven.md and CLAUDE.md.
+//!.
 
 use kestrel_chartkit::finance::{
     discount_factor, price_bond, year_fraction, yield_to_maturity, BondSpec, BusinessCalendar,
@@ -86,6 +86,13 @@ fn test_golden_bond_pricing_par_bond_hand_calc() {
     // Macaulay duration of a 5-year 5% par bond:
     // Macaulay duration is strictly less than 5.0 (approx 4.546 years).
     assert!(res.macaulay_duration > 4.50 && res.macaulay_duration < 4.60);
+    // Hand calculation: 30/360 puts the annual coupon dates exactly 1..5 years out, so
+    // Macaulay = sum(t * CF_t / 1.05^t) / sum(CF_t / 1.05^t) with CF = 5, 5, 5, 5, 105.
+    let flows = [(1.0, 5.0), (2.0, 5.0), (3.0, 5.0), (4.0, 5.0), (5.0, 105.0)];
+    let pv = |(t, cf): (f64, f64)| cf / 1.05_f64.powf(t);
+    let expected_macaulay =
+        flows.iter().map(|&f| f.0 * pv(f)).sum::<f64>() / flows.iter().map(|&f| pv(f)).sum::<f64>();
+    assert!((res.macaulay_duration - expected_macaulay).abs() < 1e-12);
 
     // Modified duration = Macaulay / (1 + 0.05)
     let expected_mod_dur = res.macaulay_duration / 1.05;

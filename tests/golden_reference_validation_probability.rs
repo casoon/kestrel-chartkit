@@ -1,6 +1,5 @@
 //! Independent golden-reference and hand-calculation tests for out-of-sample data splits
-//! (purging & embargo), frozen probability calibration, Brier Skill Score, and ECE per
-//! plan/05-validierung-und-signalwahrscheinlichkeiten.md and CLAUDE.md.
+//! (purging & embargo), frozen probability calibration, Brier Skill Score, and ECE.
 
 use kestrel_chartkit::evaluation::probability::{
     block_bootstrap_brier, compute_calibration_metrics, IsotonicCalibrator,

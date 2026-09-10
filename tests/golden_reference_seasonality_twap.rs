@@ -109,6 +109,14 @@ fn test_month_statistics_are_hand_checkable() {
         "Anteil positiver Monate",
     );
     assert!(february.stdev_return_pct.is_some());
+    // Stichprobenstreuung von +10, −5, +15: Mittel 20/3, Quadratsumme (100 + 1225 + 625)/9 = 650/3,
+    // geteilt durch n − 1 = 2.
+    common::assert_close(
+        february.stdev_return_pct.unwrap(),
+        (325.0_f64 / 3.0).sqrt(),
+        1e-12,
+        "Stichprobenstreuung",
+    );
 }
 
 /// Mit nur einer Beobachtung gibt es keine Streuung — `None` statt einer Null, die Sicherheit

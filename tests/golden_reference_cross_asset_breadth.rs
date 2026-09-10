@@ -1,6 +1,6 @@
 //! Independent golden-reference and hand-calculation tests for rolling beta,
 //! market breadth snapshots, pair spreads, and signal redundancy correlation matrices
-//! per plan/06-marktuebergreifende-analysen.md and CLAUDE.md.
+//!.
 
 use kestrel_chartkit::cross_asset::{
     compute_market_breadth, compute_pair_spread, compute_rolling_beta,
@@ -150,6 +150,10 @@ fn test_golden_pair_spread_and_residual_z_score() {
     let a_div = [100.0, 102.0, 104.0, 106.0, 114.0];
     let spread_div = compute_pair_spread(&a_div, &b).unwrap();
     assert!(spread_div.residual_z_score > 1.0); // positive divergence manifests as high z-score
+                                                // Hand calculation: hedge ratio = cov / var = 32 / 10 = 3.2; spread = [-60, -61.2, -62.4,
+                                                // -63.6, -58.8], mean -61.2, population variance 14.4 / 5 = 2.88; z = 2.4 / sqrt(2.88) = sqrt(2).
+    assert!((spread_div.hedge_ratio - 3.2).abs() < 1e-12);
+    assert!((spread_div.residual_z_score - 2.0_f64.sqrt()).abs() < 1e-12);
 }
 
 #[test]
@@ -172,6 +176,10 @@ fn test_golden_signal_correlation_matrix_detects_redundancy() {
         .find(|c| c.signal_a == "MACD" && c.signal_b == "Supertrend")
         .unwrap();
     assert!(macd_st.correlation > 0.95);
+    // Hand calculation from the centred sums: cov = 1611/5000, sums of squares 41/125 (MACD) and
+    // 994/3125 (Supertrend).
+    let expected_st = (1611.0 / 5000.0) / ((41.0 / 125.0) * (994.0 / 3125.0_f64)).sqrt();
+    assert!((macd_st.correlation - expected_st).abs() < 1e-12);
     assert!(macd_st.is_redundant); // Identified as redundant!
 
     // Check MACD vs MeanReversion
@@ -180,6 +188,9 @@ fn test_golden_signal_correlation_matrix_detects_redundancy() {
         .find(|c| c.signal_a == "MACD" && c.signal_b == "MeanReversion")
         .unwrap();
     assert!(macd_mr.correlation < -0.90);
+    // cov = -81/100, sums of squares 41/125 (MACD) and 103/50 (MeanReversion).
+    let expected_mr = (-81.0 / 100.0) / ((41.0 / 125.0) * (103.0 / 50.0_f64)).sqrt();
+    assert!((macd_mr.correlation - expected_mr).abs() < 1e-12);
     // Negative correlation > 0.85 in absolute magnitude is also collinear/redundant in information space
     assert!(macd_mr.is_redundant);
 }

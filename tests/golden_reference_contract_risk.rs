@@ -9,7 +9,7 @@ use kestrel_chartkit::risk::{position_size_contract, AccountRisk};
 
 #[test]
 fn test_golden_hand_calc_fdax_future_leverage_capped() {
-    // Exact hand calculation from plan/03-instrument-und-geldmodell.md:
+    // Exact hand calculation:
     // Equity: 100,000 EUR
     // Risk: 1% (= 1,000 EUR)
     // Future price: 20,000 pts

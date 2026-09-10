@@ -1,6 +1,6 @@
 //! Independent golden-reference and hand-calculation tests for PortfolioSnapshot,
 //! exposures, cashflow-adjusted equity returns, drawdowns, and historical VaR/Expected Shortfall
-//! per plan/04-portfolio-risiko-und-equity.md and CLAUDE.md.
+//!.
 
 use kestrel_chartkit::contract::{ContractSpec, Currency, InstrumentType};
 use kestrel_chartkit::portfolio::{
@@ -210,10 +210,16 @@ fn test_golden_sharpe_and_sortino_hand_calc() {
     // Mean = 0.01
     // Annualized with 252 periods:
     // Annual rf = 0.0
+    // Sample variance ((-0.03)^2 + 0.03^2) / 1 = 0.0018, so Sharpe = 0.01 / sqrt(0.0018) * sqrt(252)
+    // = sqrt(0.0252 / 0.0018) = sqrt(14). Downside variance (0.02^2 + 0) / 2 = 0.0002, so
+    // Sortino = sqrt(0.0252 / 0.0002) = sqrt(126); annualized volatility sqrt(0.0018 * 252).
     let returns = vec![-0.02, 0.04];
     let metrics = calculate_return_metrics(&returns, 0.0, 252.0).unwrap();
     assert_eq!(metrics.mean_return, 0.01);
     assert_eq!(metrics.sample_count, 2);
     assert!(metrics.sharpe_ratio > 0.0);
     assert!(metrics.sortino_ratio > 0.0);
+    assert!((metrics.sharpe_ratio - 14.0_f64.sqrt()).abs() < 1e-12);
+    assert!((metrics.sortino_ratio - 126.0_f64.sqrt()).abs() < 1e-12);
+    assert!((metrics.annualized_volatility - (0.0018_f64 * 252.0).sqrt()).abs() < 1e-12);
 }
