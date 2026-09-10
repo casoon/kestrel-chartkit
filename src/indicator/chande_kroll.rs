@@ -40,10 +40,10 @@ use super::{Indicator, IndicatorOutput};
 /// - `value` and `extra["stop_long"]`: the long stop.
 /// - `extra["stop_short"]`: the short stop.
 ///
-/// First output: after `atr_len + stop_len` bars — `atr_len` for the first stage (the Wilder seed
-/// needs `atr_len` true ranges, and the first bar of a series has no previous close), then
-/// `stop_len` first-stage values for the second. [`Indicator::reset`] clears both stages, so the
-/// next series starts deterministically.
+/// First output: with bar `atr_len + stop_len - 1` — the first stage has its first value with bar
+/// `atr_len` (the Wilder seed takes `atr_len` true ranges, the first bar's being its
+/// `high - low`), and the second stage needs `stop_len` of those values. [`Indicator::reset`]
+/// clears both stages, so the next series starts deterministically.
 #[derive(Debug, Clone)]
 pub struct ChandeKrollStop {
     atr_len: usize,

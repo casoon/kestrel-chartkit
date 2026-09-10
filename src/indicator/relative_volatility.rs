@@ -16,7 +16,7 @@ use super::{Indicator, IndicatorOutput};
     serde(rename_all = "snake_case")
 )]
 pub enum RelativeVolatilityVariant {
-    /// The closing price alone. The original construction.
+    /// The closing price alone, as the index was first defined.
     #[default]
     Close,
     /// The same measurement run separately on highs and on lows, then averaged. The later
@@ -53,8 +53,8 @@ pub enum RelativeVolatilityVariant {
 /// which nothing moved at all leaves both averages at zero; the documented convention there is
 /// `50`, the same neutral reading this crate's RSI uses.
 ///
-/// First output: once both the deviation window and the Wilder averages are ready, i.e. after
-/// `stdev_len + smooth_len` bars. [`Indicator::reset`] clears the window and both averages.
+/// First output: once both the deviation window and the Wilder averages are ready, i.e. with bar
+/// `stdev_len + smooth_len - 1`. [`Indicator::reset`] clears the window and both averages.
 #[derive(Debug, Clone)]
 pub struct RelativeVolatilityIndex {
     stdev_len: usize,
