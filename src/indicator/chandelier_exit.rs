@@ -21,6 +21,13 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Reusable Chandelier Exit engine. `length` sizes both the highest-high/lowest-low lookback and
 /// the internal ATR; `atr_mult` scales the ATR offset from those extremes.
+///
+/// The ATR is Wilder's ([`Rma`], first true range `high - low`). A stop only tightens while the
+/// previous close was on its side of the previous stop. The direction starts long, turns long on a
+/// close above the previous short stop and short on a close below the previous long stop.
+/// `value` is the stop of the current direction, `secondary` the other one; `extra["long_stop"]`
+/// and `extra["short_stop"]` carry both, `state` is `long` or `short`. First output: with the
+/// `length`-th bar. [`Indicator::reset`] clears all state.
 #[derive(Debug, Clone)]
 pub struct ChandelierExitEngine {
     length: usize,

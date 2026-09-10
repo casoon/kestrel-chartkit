@@ -3,7 +3,11 @@ use std::collections::{HashMap, VecDeque};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// True Range Indicator (raw price units).
+/// True Range in price units.
+///
+/// `max(high - low, |high - prev_close|, |low - prev_close|)`, and `high - low` on the first bar,
+/// which has no previous close. First output: with the first bar. [`Indicator::reset`] forgets the
+/// previous close.
 pub struct TrueRangeEngine {
     prev_close: Option<f64>,
     alerts: Vec<IndicatorAlert>,
@@ -56,7 +60,16 @@ impl Indicator for TrueRangeEngine {
     }
 }
 
-/// Keltner Channel Indicator (EMA Basis +/- Multiplier * ATR).
+/// Keltner Channel: an EMA basis with bands at a multiple of the average true range.
+///
+/// `basis` is an exponential average of the close, `alpha = 2/(ema_period + 1)`, seeded with the
+/// first close and running from the first bar. `ATR` is the **plain mean** of the last
+/// `atr_period` true ranges (the first `high - low`), not a Wilder average;
+/// `upper/lower = basis ± multiplier * ATR`.
+///
+/// `value`: the basis; `extra["upper"]`, `extra["lower"]`, `extra["atr"]`. The registry accepts
+/// `ma_period` as a legacy alias for `ema_period`. First output: with the `atr_period`-th bar.
+/// [`Indicator::reset`] clears the average and the window.
 #[derive(Debug, Clone)]
 pub struct KeltnerChannelEngine {
     ema_period: usize,
@@ -164,7 +177,10 @@ impl Indicator for KeltnerChannelEngine {
     }
 }
 
-/// Donchian Channel Indicator (Highest High / Lowest Low over lookback).
+/// Donchian Channel: the highest high and lowest low of the last `period` bars.
+///
+/// `value` is their midpoint; `extra["upper"]`, `extra["lower"]` and `extra["width"]`. First
+/// output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct DonchianChannelEngine {
     period: usize,
     bars: VecDeque<Bar>,
@@ -237,7 +253,13 @@ impl Indicator for DonchianChannelEngine {
     }
 }
 
-/// Historical / Realized Volatility (Annualized Standard Deviation of Log Returns).
+/// Historical volatility: the annualised standard deviation of log returns, in percent.
+///
+/// Over the last `period + 1` closes, the `period` log returns `ln(close_t / close_{t-1})` (0 for a
+/// non-positive price) give a **sample** standard deviation (divisor `period - 1`, at least 1),
+/// annualised with `sqrt(252)` and scaled by 100.
+///
+/// First output: with the `period + 1`-th bar. [`Indicator::reset`] clears the window.
 pub struct HistoricalVolatilityEngine {
     period: usize,
     closes: VecDeque<f64>,
@@ -304,7 +326,13 @@ impl Indicator for HistoricalVolatilityEngine {
     }
 }
 
-/// Garman-Klass Volatility Estimator (OHLC Volatility).
+/// Garman-Klass volatility from open, high, low and close, annualised, in percent.
+///
+/// Per bar `0.5 * ln(high/low)^2 - (2 ln 2 - 1) * ln(close/open)^2`, floored at zero and skipped
+/// for non-positive prices; the mean over the last `period` bars is rooted, annualised with
+/// `sqrt(252)` and scaled by 100.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct GarmanKlassVolatilityEngine {
     period: usize,
     bars: VecDeque<Bar>,

@@ -3,7 +3,17 @@ use std::collections::{HashMap, VecDeque};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Directional Movement Index (DMI: +DI and -DI).
+/// Directional Movement Index: +DI and -DI over plain sums.
+///
+/// Per bar from the second one on, +DM, -DM and TR as in [`super::adx::Adx`]. Unlike the ADX they
+/// are **summed** over the last `period` bars rather than Wilder-smoothed:
+/// `+DI = 100 * sum(+DM) / sum(TR)`, `-DI = 100 * sum(-DM) / sum(TR)` (0 without range).
+///
+/// `value`: `+DI - -DI` — the difference of the two lines, **not** the directional index DX that
+/// [`super::adx::Adx`] computes. `extra["plus_di"]` and `extra["minus_di"]` (each clamped to
+/// `0..=100`) and `extra["di_diff"]`. Alerts fire when one line leads the other by more than 10.
+///
+/// First output: with the `period + 1`-th bar. [`Indicator::reset`] clears the windows.
 pub struct DmiEngine {
     period: usize,
     prev_bar: Option<Bar>,
@@ -121,7 +131,17 @@ impl Indicator for DmiEngine {
     }
 }
 
-/// Aroon Indicator (Aroon Up, Aroon Down, Oscillator).
+/// Aroon: how recently the highest high and the lowest low of the last `period + 1` bars
+/// occurred.
+///
+/// Within the window the most recent bar holding the highest high respectively the lowest low
+/// counts (ties go to the later bar). With `bars_since` its distance from the current bar,
+/// `Aroon Up = (period - bars_since_high) / period * 100`, `Aroon Down` likewise for the low, and
+/// the oscillator is `Up - Down`.
+///
+/// `value`: the oscillator; `extra["aroon_up"]`, `extra["aroon_down"]` (clamped to `0..=100`) and
+/// `extra["oscillator"]`. First output: with the `period + 1`-th bar. [`Indicator::reset`] clears
+/// the window.
 pub struct AroonEngine {
     period: usize,
     bars: VecDeque<Bar>,
@@ -199,7 +219,22 @@ impl Indicator for AroonEngine {
     }
 }
 
-/// Parabolic SAR Indicator.
+/// Parabolic SAR.
+///
+/// Starts long on the first bar with `SAR = low`, `EP = high`, `AF = step`, and publishes that
+/// first SAR. On every following bar the next SAR is `SAR + AF * (EP - SAR)`:
+///
+/// - Long: a low below it reverses to short — the SAR becomes the EP, the EP this bar's low, and
+///   `AF = step`. Otherwise a new high moves the EP and raises `AF` by `step` up to `max_step`,
+///   and the SAR is held at or below the previous and the current low.
+/// - Short: symmetric, with highs.
+///
+/// The hold uses the **previous** bar's extreme only (the current one is already excluded by the
+/// reversal check before it). The original rule holds the SAR beyond the extremes of the two
+/// previous bars, so after a sharp two-bar move this SAR can sit closer to price.
+///
+/// `value`: the SAR; `extra["is_long"]` (`1`/`0`) and `extra["af"]`. First output: with the first
+/// bar. [`Indicator::reset`] returns to the long start.
 pub struct ParabolicSarEngine {
     step: f64,
     max_step: f64,
@@ -309,7 +344,18 @@ impl Indicator for ParabolicSarEngine {
     }
 }
 
-/// Supertrend Indicator (ATR-based trailing stop).
+/// Supertrend: a trailing band that flips with the close.
+///
+/// `ATR` is the **plain mean** of the last `period` true ranges (the first `high - low`), not a
+/// Wilder average. Basic bands are `(high + low) / 2 ± multiplier * ATR`. A final band only moves
+/// against the trend when the previous close crossed it: the upper band takes the new basic value
+/// if that is lower or the previous close was above the old band, the lower band if it is higher or
+/// the previous close was below. The trend starts up and flips when the close falls below the final
+/// lower band (in an uptrend) or rises above the final upper band (in a downtrend).
+///
+/// `value`: the lower band in an uptrend, the upper band in a downtrend; `extra["trend"]`
+/// (`1`/`-1`), `extra["upper"]`, `extra["lower"]`. First output: with the `period`-th bar.
+/// [`Indicator::reset`] clears the window and the bands.
 pub struct SupertrendEngine {
     period: usize,
     multiplier: f64,

@@ -2,8 +2,14 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
 
-/// Choppiness Index Engine (0..100).
-/// Formula: 100 * log10( Sum(ATR(1), N) / (Highest(H, N) - Lowest(L, N)) ) / log10(N)
+/// Choppiness Index, `0..=100`.
+///
+/// `CHOP = 100 * log10(sum(TR) / (HH - LL)) / log10(period)` over the last `period` bars, the true
+/// ranges with `high - low` on the first bar and the range floored at `1e-8`, clamped to
+/// `0..=100`. High values mean the bars overlap (chop), low values that they line up (trend).
+/// `period` is at least 2.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the windows.
 #[derive(Debug, Clone)]
 pub struct ChoppinessIndexEngine {
     period: usize,

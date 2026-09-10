@@ -499,6 +499,71 @@ fn test_golden_vortex_reference_values() {
     );
 }
 
+/// Auf ihren Eingaben halten ADX (streng steigend, DX überall 100) und Mass Index (konstante
+/// Spanne, Quotient 1) nur einen Grenzwert fest. Diese Reihe bewegt sich in beide Richtungen mit
+/// wechselnder Spanne, damit beide Formeln tatsächlich greifen.
+fn shaped_bars() -> Vec<Bar> {
+    [
+        100.0, 102.0, 101.0, 104.0, 103.0, 106.0, 105.0, 103.0, 104.0, 101.0, 102.0, 99.0, 100.0,
+        98.0,
+    ]
+    .iter()
+    .enumerate()
+    .map(|(i, &c)| {
+        Bar::new(
+            i as i64 * 60,
+            c,
+            c + 1.0 + 0.3 * (i % 3) as f64,
+            c - 1.0 - 0.2 * (i % 4) as f64,
+            c,
+            1000.0,
+        )
+    })
+    .collect()
+}
+
+#[test]
+fn test_golden_adx_and_mass_index_on_shaped_bars() {
+    let bars = shaped_bars();
+
+    let mut adx = Adx::new(3, 3, 2, 20.0);
+    let adx_value = bars
+        .iter()
+        .filter_map(|bar| adx.on_bar(bar))
+        .last()
+        .expect("ADX gab nichts aus")
+        .value;
+    common::assert_close(
+        adx_value,
+        expected("adx3_shaped_last"),
+        expected("adx_tolerance"),
+        "ADX(3,3), geformt",
+    );
+    assert!(
+        adx_value < 99.0,
+        "die Reihe muss die DX-Werte bewegen: {adx_value}"
+    );
+
+    let mut mass =
+        build_checked("mass_index", &HashMap::from([("period".to_string(), 5.0)])).unwrap();
+    let mass_value = bars
+        .iter()
+        .filter_map(|bar| mass.on_bar(bar))
+        .last()
+        .expect("Mass Index gab nichts aus")
+        .value;
+    common::assert_close(
+        mass_value,
+        expected("mass_index5_shaped_last"),
+        expected("vol_tolerance"),
+        "Mass Index(5), geformt",
+    );
+    assert!(
+        (mass_value - 5.0).abs() > 1e-3,
+        "die Reihe muss die Spanne bewegen: {mass_value}"
+    );
+}
+
 // --- Paket 29: Chande Kroll Stop ------------------------------------------------------------
 
 /// (open, high, low, close) — Aufwärtsbewegung mit Rücksetzern und einer Abwärtsphase am Ende,

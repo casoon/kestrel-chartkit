@@ -3,7 +3,12 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::HashMap;
 
-/// Moving Average Envelopes Engine (% upper and lower bands around SMA).
+/// Moving-average envelope: an SMA with bands a fixed percentage away.
+///
+/// `basis = SMA(period)` of the close; `upper/lower = basis ± basis * percent / 100`.
+///
+/// `value` and `extra["basis"]`: the basis; `extra["upper"]` and `extra["lower"]`. First output:
+/// with the `period`-th bar. [`Indicator::reset`] clears the average.
 #[derive(Debug, Clone)]
 pub struct EnvelopeEngine {
     period: usize,

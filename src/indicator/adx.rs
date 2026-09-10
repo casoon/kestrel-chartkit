@@ -5,6 +5,25 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Average Directional Index (ADX) with the directional indicators and a signal line.
+///
+/// From the second bar on, with `up = high - prev_high` and `down = prev_low - low`: `+DM = up` if
+/// `up > down` and `up > 0`, else 0; `-DM = down` if `down > up` and `down > 0`, else 0; and
+/// `TR = max(high - low, |high - prev_close|, |low - prev_close|)`. TR, +DM and -DM are
+/// Wilder-smoothed over `di_len` ([`Rma`], seeded with the SMA of their first values):
+///
+/// ```text
+/// DI+ = 100 * +DM_avg / TR_avg        DI- = 100 * -DM_avg / TR_avg     (0 for TR_avg = 0)
+/// DX  = 100 * |DI+ - DI-| / (DI+ + DI-)                                 (0 for a zero sum)
+/// ADX = Wilder average of DX over adx_smooth
+/// ```
+///
+/// `value`: the ADX; `extra["di_plus"]`, `extra["di_minus"]`, and `extra["signal"]`, an
+/// `Ema(sig_len)` over the ADX with its first-sample seed. Alerts fire on DI crosses and when the
+/// ADX crosses `level_weak`.
+///
+/// First output: once the DX average exists, i.e. with the `di_len + adx_smooth`-th bar.
+/// [`Indicator::reset`] clears all averages.
 #[derive(Debug, Clone)]
 pub struct Adx {
     level_weak: f64,

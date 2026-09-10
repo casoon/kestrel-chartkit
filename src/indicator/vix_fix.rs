@@ -4,8 +4,15 @@ use crate::indicator::smoothing::{ExtremeWindow, Sma};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Williams VIX Fix Advanced indicator.
-/// Measures market synthetic fear/volatility spikes to identify market bottoms.
+/// Williams VIX Fix: how far the low sits below the recent highest close, in percent.
+///
+/// `WVF = (highest_close - low) / highest_close * 100`, `highest_close` over the last `pd` closes —
+/// the current close until `pd` closes have been seen. The spike band is
+/// `SMA(bband_len)(WVF) + mult * sd`, `sd` the population deviation of the last `bband_len` WVF
+/// values around that SMA; a WVF at or above it raises an alert.
+///
+/// `value`: the WVF; `secondary`: the upper band. First output: once the band exists, i.e. with the
+/// `2 * bband_len - 1`-th bar. [`Indicator::reset`] clears all windows.
 pub struct WilliamsVixFix {
     bband_len: usize,
     mult: f64,

@@ -3,8 +3,15 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
 
-/// Mass Index Engine.
-/// Mass Index = Sum(EMA(High - Low, 9) / EMA(EMA(High - Low, 9), 9), 25)
+/// Mass Index: the summed ratio of a single to a double exponential average of the bar range.
+///
+/// `range = high - low` (floored at `1e-8`); `e1 = Ema(9)(range)` and `e2 = Ema(9)(e1)`, both with
+/// the first-sample seed and running from the first bar; `ratio = e1 / e2` (`1` for a vanishing
+/// `e2`). The index is the sum of the last `period` ratios (default 25). A constant range gives
+/// exactly `period`; widening ranges push it up.
+///
+/// First output: with the `period`-th bar. [`Indicator::warmup_period`] nonetheless reports
+/// `period + 18`. [`Indicator::reset`] clears both averages and the window.
 #[derive(Debug, Clone)]
 pub struct MassIndexEngine {
     period: usize,

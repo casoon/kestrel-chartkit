@@ -2,7 +2,14 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
 
-/// Vortex Indicator (+VI and -VI) Engine.
+/// Vortex Indicator: +VI and -VI.
+///
+/// From the second bar on, `VM+ = |high - prev_low|`, `VM- = |low - prev_high|` and the true
+/// range; `+VI = sum(VM+) / sum(TR)` and `-VI = sum(VM-) / sum(TR)` over the last `period` bars,
+/// the sum of true ranges floored at `1e-8`.
+///
+/// `value` and `extra["vi_plus"]`: +VI; `extra["vi_minus"]`: -VI. First output: with the
+/// `period + 1`-th bar. [`Indicator::reset`] clears the windows.
 #[derive(Debug, Clone)]
 pub struct VortexEngine {
     period: usize,
