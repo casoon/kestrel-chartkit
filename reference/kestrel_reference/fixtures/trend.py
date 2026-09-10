@@ -4,6 +4,7 @@ import math
 
 from ..fixture import provenance
 from ..smoothing import ema_first_sample, rma
+from ..indicators import efficiency_ratio as _efficiency
 
 NAME = "golden_trend"
 
@@ -62,13 +63,6 @@ def _alligator(bars):
     last = len(bars) - 1
     offsets = {"jaw": 8, "teeth": 5, "lips": 3}
     return {name: lines[name][max(first, last - offsets[name])] for name in lines}
-
-
-def _efficiency(closes, length):
-    window = closes[-(length + 1):]
-    change = abs(window[-1] - window[0])
-    path = sum(abs(b - a) for a, b in zip(window, window[1:]))
-    return change / path if path > 0 else 0.0
 
 
 def _midas(bars, maturity):

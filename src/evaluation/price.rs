@@ -113,7 +113,10 @@ pub struct PriceStats {
     pub total_pnl: f64,
 }
 impl PriceStats {
-    /// NULL outcomes count as closed, but do not enter the mean, matching stored legacy rows.
+    /// `closed_count` counts every value, `None` included; `win_rate = wins / closed_count`, a win
+    /// being a value `> 0`; `total_pnl` sums the present values and `avg_pnl = total_pnl / present
+    /// count`. NULL outcomes thus count as closed (and not won), but do not enter the mean,
+    /// matching stored legacy rows. All zero for no values.
     pub fn compute(values: impl IntoIterator<Item = Option<f64>>) -> Self {
         let (mut n, mut present, mut wins, mut total) = (0, 0, 0, 0.0);
         for p in values {
@@ -137,7 +140,10 @@ impl PriceStats {
             total_pnl: total,
         }
     }
-    /// Merge disjoint summaries in the same price unit.
+    /// Merge disjoint summaries in the same price unit: counts and totals add up, `win_rate` is
+    /// weighted by `closed_count`, and `avg_pnl = total_pnl / closed_count`. The present count is
+    /// not kept in a summary, so where the inputs held `None` values this mean differs from
+    /// [`PriceStats::compute`] over the combined values, which divides by the present count.
     pub fn merge(values: impl IntoIterator<Item = Self>) -> Self {
         let (mut n, mut wins, mut total) = (0, 0.0, 0.0);
         for v in values {

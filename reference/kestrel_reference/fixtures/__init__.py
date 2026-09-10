@@ -6,6 +6,7 @@ from . import (
     bond_diff,
     business_days,
     curve_diff,
+    family_math,
     moving_averages,
     option_diff,
     oscillators,
@@ -30,4 +31,5 @@ ALL = (
     oscillators,
     volatility,
     volume,
+    family_math,
 )

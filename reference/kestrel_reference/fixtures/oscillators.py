@@ -7,6 +7,7 @@ from ..smoothing import ema_published, published, rma
 from ..exact import average_ranks, bollinger, correlation, sqrt
 from ..fixture import provenance
 from ..smoothing import ema_alpha, ema_first_sample
+from ..indicators import clamp as _clamp, raw_rsi as _raw_rsi, rsi_from_averages as _rsi_from_averages, rsi_lines as _rsi_lines
 
 NAME = "golden_oscillators"
 TOLERANCES = {
@@ -109,47 +110,6 @@ def _pmo(closes, length_1, length_2, signal_len):
     stage_1 = ema_alpha(roc, 2.0 / length_1)
     line = ema_alpha([10.0 * x for x in stage_1], 2.0 / length_2)[length_1 + length_2 - 2:]
     return line, ema_first_sample(line, signal_len)
-
-
-def _rsi_from_averages(gain, loss):
-    """100 - 100 / (1 + gain / loss), with 50 when nothing moved, 100 without losses and 0 without
-    gains."""
-    if gain == 0.0 and loss == 0.0:
-        return 50.0
-    if loss == 0.0:
-        return 100.0
-    if gain == 0.0:
-        return 0.0
-    return 100.0 - 100.0 / (1.0 + gain / loss)
-
-
-def _raw_rsi(closes, length, smoothing="wilder"):
-    """Published raw RSI values. Up and down moves of the close are averaged Wilder's way
-    (SMA-seeded, alpha 1/N) or exponentially (alpha 2/(N+1), seeded with the first change); both
-    publish from the N-th change on."""
-    changes = [b - a for a, b in zip(closes, closes[1:])]
-    gains = [max(c, 0.0) for c in changes]
-    losses = [max(-c, 0.0) for c in changes]
-    if smoothing == "wilder":
-        g, l = rma(gains, length), rma(losses, length)
-    else:
-        g, l = ema_published(gains, length), ema_published(losses, length)
-    return [_rsi_from_averages(a, b) for a, b in zip(g, l) if a is not None]
-
-
-def _clamp(x, low=0.0, high=100.0):
-    return min(max(x, low), high)
-
-
-def _rsi_lines(closes, length, avg_len, sig_len, ctx_len=None, smoothing="wilder"):
-    """The RSI indicator's outputs: line = EMA(avg_len) of the raw RSI, signal = EMA(sig_len) of the
-    line, context = EMA(avg_len) of the raw RSI over ctx_len; all EMAs first-sample-seeded on
-    their first input, lines clamped to 0..100."""
-    raw = _raw_rsi(closes, length, smoothing)
-    line = [_clamp(x) for x in ema_first_sample(raw, avg_len)]
-    signal = [_clamp(x) for x in ema_first_sample(line, sig_len)]
-    ctx = ema_first_sample(_raw_rsi(closes, ctx_len, smoothing), avg_len) if ctx_len else None
-    return line, signal, ctx
 
 
 def _windows(values, length):

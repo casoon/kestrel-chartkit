@@ -1,16 +1,15 @@
+mod common;
+
 use kestrel_chartkit::*;
+
+const GOLDEN: &str = include_str!("fixtures/golden_family_math.txt");
+
 fn golden(name: &str) -> f64 {
-    include_str!("fixtures/golden_family_math.txt")
-        .lines()
-        .filter(|s| !s.starts_with('#'))
-        .find_map(|s| {
-            let mut p = s.split_whitespace();
-            (p.next() == Some(name)).then(|| p.next().unwrap().parse().unwrap())
-        })
-        .unwrap()
+    common::golden_value(GOLDEN, name)
 }
 fn near(a: f64, b: f64) {
-    assert!((a - b).abs() < 1e-10, "{a} != {b}");
+    let tolerance = golden("family_math_tolerance");
+    assert!((a - b).abs() <= tolerance, "{a} != {b} ± {tolerance}");
 }
 fn statement(tf: u8, direction: SignalDirection, strength: f64) -> DirectionalStatement<u8> {
     DirectionalStatement {

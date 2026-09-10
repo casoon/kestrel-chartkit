@@ -6,6 +6,7 @@ import math
 from ..exact import population_std
 from ..fixture import provenance
 from ..smoothing import ema_first_sample, ema_published, published, rma, sma, wma
+from ..indicators import adx as _adx, directional as _directional, keltner as _keltner, true_ranges as _true_ranges
 
 NAME = "golden_volatility"
 TOLERANCES = {
@@ -43,18 +44,6 @@ SHAPED_CLOSES = [100.0, 102.0, 101.0, 104.0, 103.0, 106.0, 105.0, 103.0, 104.0, 
 SHAPED = [(c, c + 1.0 + 0.3 * (i % 3), c - 1.0 - 0.2 * (i % 4), c)
           for i, c in enumerate(SHAPED_CLOSES)]
 ULCER_PRICES = [100.0, 102.0, 104.0, 101.0, 96.0, 92.0, 95.0, 99.0, 103.0, 106.0, 104.0, 105.0]
-
-
-def _true_ranges(bars):
-    """TR_1 = high - low; TR_t = max(high - low, |high - close_(t-1)|, |low - close_(t-1)|)."""
-    out = []
-    for index, (_, high, low, _) in enumerate(bars):
-        if index == 0:
-            out.append(high - low)
-        else:
-            previous = bars[index - 1][3]
-            out.append(max(high - low, abs(high - previous), abs(low - previous)))
-    return out
 
 
 def _atr_with_signal(bars, atr_len, sig_len):
@@ -124,31 +113,6 @@ def _relative_volatility(prices, stdev_len, smooth_len):
     return out
 
 
-def _directional(bars):
-    """+DM, -DM and TR per bar from the second one on: up = high - prev_high, down = prev_low - low;
-    +DM = up if up > down and up > 0, -DM = down if down > up and down > 0."""
-    plus, minus, tr = [], [], []
-    for prev, bar in zip(bars, bars[1:]):
-        up, down = bar[1] - prev[1], prev[2] - bar[2]
-        plus.append(up if up > down and up > 0.0 else 0.0)
-        minus.append(down if down > up and down > 0.0 else 0.0)
-        tr.append(max(bar[1] - bar[2], abs(bar[1] - prev[3]), abs(bar[2] - prev[3])))
-    return plus, minus, tr
-
-
-def _adx(bars, di_len, smooth):
-    """Wilder averages of TR, +DM, -DM over di_len; DI = 100 DM_avg / TR_avg;
-    DX = 100 |DI+ - DI-| / (DI+ + DI-); ADX = Wilder average of DX over `smooth`."""
-    plus, minus, tr = _directional(bars)
-    dx = []
-    for p, m, t in zip(rma(plus, di_len), rma(minus, di_len), rma(tr, di_len)):
-        if t is None:
-            continue
-        di_p, di_m = (100.0 * p / t, 100.0 * m / t) if t != 0.0 else (0.0, 0.0)
-        dx.append(100.0 * abs(di_p - di_m) / (di_p + di_m) if di_p + di_m != 0.0 else 0.0)
-    return published(rma(dx, smooth))
-
-
 def _aroon(bars, period):
     """Over the last period + 1 bars: the most recent highest high and lowest low (ties go to the
     later bar); up/down = (period - bars since it) / period * 100; oscillator up - down."""
@@ -193,14 +157,6 @@ def _historical_volatility(closes, period):
     mean = sum(returns) / len(returns)
     variance = sum((r - mean) ** 2 for r in returns) / max(len(returns) - 1, 1)
     return math.sqrt(variance) * math.sqrt(252.0) * 100.0
-
-
-def _keltner(bars, ema_period, atr_period, mult):
-    """Basis = first-sample EMA of the close from the first bar; ATR = plain mean of the last
-    atr_period true ranges; bands basis +/- mult ATR."""
-    basis = ema_first_sample([b[3] for b in bars], ema_period)[-1]
-    atr = sum(_true_ranges(bars)[-atr_period:]) / atr_period
-    return basis, basis + mult * atr, basis - mult * atr
 
 
 def _mass_index(bars, period):

@@ -37,6 +37,9 @@ pub struct RelativeStrength {
 /// edges (gaps, differing seed depth), so aligning on `ts` avoids correlating
 /// misaligned rows. `lookback` caps how many of the most recent aligned
 /// returns are used. A pair with fewer than 3 common returns is omitted.
+/// Returns are `(c_t - c_{t-1}) / c_{t-1}` over consecutive common timestamps, a pair of closes
+/// with a zero base skipped; `corr` is the Pearson correlation of the last `lookback` of them,
+/// clamped to `-1..=1`, and a pair with a flat return series is omitted.
 /// For compatibility, lookbacks below 3 leave the full aligned history in use.
 pub fn correlation_matrix(
     series: &[(String, Vec<CloseSample>)],
@@ -73,8 +76,10 @@ pub fn correlation_matrix(
 }
 
 /// Ranks instruments by percentage change of close over the last `lookback`
-/// bars (each `(epic, bars)`, bars oldest first), strongest first. Instruments
-/// without enough bars are dropped.
+/// bars (each `(epic, bars)`, bars oldest first), strongest first:
+/// `change_pct = 100 · (close_last - close_base) / close_base` with the base `lookback` bars
+/// before the last. Instruments without enough bars, or with a zero base close, are dropped;
+/// a `lookback` of 0 drops all.
 pub fn relative_strength(
     series: &[(String, Vec<CloseSample>)],
     lookback: usize,
