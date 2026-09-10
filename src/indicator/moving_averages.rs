@@ -4,7 +4,12 @@ use crate::indicator::smoothing::{Ema, EmaInit};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Simple Moving Average (SMA).
+/// Simple Moving Average (SMA) over the closing price.
+///
+/// `SMA_t = (close_t + ... + close_{t-period+1}) / period`, the plain mean of the last `period`
+/// closes.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct SmaEngine {
     period: usize,
     closes: VecDeque<f64>,
@@ -127,7 +132,12 @@ impl Indicator for EmaEngine {
     }
 }
 
-/// Weighted Moving Average (WMA).
+/// Weighted Moving Average (WMA) over the closing price.
+///
+/// Linearly weighted over the last `period` closes: weight `period` on the most recent close down
+/// to `1` on the oldest, divided by the weight sum `period * (period + 1) / 2`.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct WmaEngine {
     period: usize,
     closes: VecDeque<f64>,
@@ -190,7 +200,12 @@ impl Indicator for WmaEngine {
     }
 }
 
-/// Volume-Weighted Moving Average (VWMA).
+/// Volume-Weighted Moving Average (VWMA) over the closing price.
+///
+/// `sum(close * volume) / sum(volume)` over the last `period` bars. A window without any volume
+/// has nothing to weight by; the value is then the current close rather than a division by zero.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct VwmaEngine {
     period: usize,
     bars: VecDeque<Bar>,
@@ -252,7 +267,15 @@ impl Indicator for VwmaEngine {
     }
 }
 
-/// Hull Moving Average (HMA).
+/// Hull Moving Average (HMA) over the closing price.
+///
+/// `HMA = WMA(2 * WMA(half) - WMA(period), root)` with `half = floor(period / 2)` and
+/// `root = round(sqrt(period))`, both at least 1, the rounding half away from zero. The inner
+/// difference is formed once both inner averages exist — from the `period`-th bar on — and the
+/// outer average runs over that difference series.
+///
+/// First output: once the outer average holds `root` differences, i.e. with the
+/// `period + root - 1`-th bar. [`Indicator::reset`] clears all three averages.
 pub struct HmaEngine {
     period: usize,
     wma_half: WmaEngine,
@@ -310,7 +333,18 @@ impl Indicator for HmaEngine {
     }
 }
 
-/// Double Exponential Moving Average (DEMA).
+/// Double Exponential Moving Average (DEMA) over the closing price.
+///
+/// `DEMA = 2 * e1 - e2`. `e1` is this crate's EMA of the closes ([`EmaEngine`]: seeded with the
+/// first close, published from the `period`-th bar on); `e2` is the same EMA taken over the
+/// *published* values of `e1`, so the second stage starts with the first published value of the
+/// first rather than with the first close.
+///
+/// That chaining differs from [`super::tema::TemaEngine`], whose three stages all run from the
+/// first close. The two produce different early values and converge as the seeds decay.
+///
+/// First output: once `e2` publishes, i.e. with the `2 * period - 1`-th bar.
+/// [`Indicator::reset`] clears both averages.
 pub struct DemaEngine {
     period: usize,
     ema1: EmaEngine,
@@ -365,7 +399,22 @@ impl Indicator for DemaEngine {
     }
 }
 
-/// Kaufman's Adaptive Moving Average (KAMA).
+/// Kaufman's Adaptive Moving Average (KAMA) over the closing price.
+///
+/// Over the last `period + 1` closes the efficiency ratio is net movement over path length,
+/// `ER = |close_t - close_{t-period}| / sum(|close_i - close_{i-1}|)`, and `0` when nothing moved.
+/// It places the smoothing constant between a fast and a slow exponential constant:
+///
+/// ```text
+/// sc   = (ER * (2/(fast_period+1) - 2/(slow_period+1)) + 2/(slow_period+1))^2
+/// KAMA = KAMA_{t-1} + sc * (close_t - KAMA_{t-1})
+/// ```
+///
+/// The first value is the close of the first bar with a full window; there is no separate seed.
+/// Registry defaults: `period = 10`, `fast_period = 2`, `slow_period = 30`.
+///
+/// First output: with the `period + 1`-th bar. [`Indicator::reset`] clears the window and the
+/// average.
 pub struct KamaEngine {
     period: usize,
     fast_period: usize,

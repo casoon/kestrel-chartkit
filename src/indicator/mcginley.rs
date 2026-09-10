@@ -1,8 +1,20 @@
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// McGinley Dynamic Moving Average Engine.
-/// McGinley Dynamic adapts its smoothing factor dynamically based on price speed relative to the average.
+/// McGinley Dynamic over the closing price.
+///
+/// A moving average whose effective length adapts to how fast price moves away from it:
+///
+/// ```text
+/// MD_t = MD_{t-1} + (close_t - MD_{t-1}) / (period * (close_t / MD_{t-1})^4)
+/// ```
+///
+/// This is the form with `period` itself in the denominator. Some descriptions scale the length
+/// by a constant `0.6`; this type does not.
+///
+/// The first value is the first close, and output starts with the first bar — the recursion needs
+/// no window. [`Indicator::warmup_period`] nonetheless reports `period`. [`Indicator::reset`]
+/// clears the average.
 #[derive(Debug, Clone)]
 pub struct McGinleyDynamicEngine {
     period: usize,

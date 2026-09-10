@@ -2,8 +2,18 @@ use super::smoothing::Ema;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Triple Exponential Moving Average (TEMA) Engine.
-/// TEMA = 3 * EMA1 - 3 * EMA2 + EMA3
+/// Triple Exponential Moving Average (TEMA) over the closing price.
+///
+/// `TEMA = 3 * e1 - 3 * e2 + e3` over three chained exponential averages of `period` — `e1` over
+/// the close, `e2` over `e1`, `e3` over `e2` — each the shared [`Ema`] with its first-sample
+/// seed. All three run from the first close; only the output is withheld until the `period`-th
+/// bar.
+///
+/// That chaining differs from [`super::moving_averages::DemaEngine`], whose second stage starts
+/// with the first *published* value of the first. The two produce different early values and
+/// converge as the seeds decay.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears all three averages.
 #[derive(Debug, Clone)]
 pub struct TemaEngine {
     period: usize,

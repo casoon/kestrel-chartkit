@@ -5,8 +5,8 @@ def render(header, blocks):
     """Renders a fixture: `# `-prefixed header lines, then one block per case.
 
     `blocks` is a sequence of `(prefix, comment, case)`; every entry of `case` becomes a line
-    `<prefix>_<key>=<repr(value)>`. Values are floats, dates included, because that is what the
-    Rust side parses.
+    `<prefix>_<key>=<repr(value)>`, or `<key>=<repr(value)>` when the prefix is `None`. Values are
+    floats, dates included, because that is what the Rust side parses.
     """
     lines = [f"# {line}".rstrip() for line in header]
     for prefix, comment, case in blocks:
@@ -14,7 +14,8 @@ def render(header, blocks):
         if comment:
             lines.append(f"# {comment}")
         for key, value in case.items():
-            lines.append(f"{prefix}_{key}={value!r}")
+            name = key if prefix is None else f"{prefix}_{key}"
+            lines.append(f"{name}={value!r}")
     return "\n".join(lines) + "\n"
 
 
