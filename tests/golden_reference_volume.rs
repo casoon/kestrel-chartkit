@@ -177,6 +177,30 @@ fn test_golden_extended_volume_profile_reference_values() {
         expected("volume_tolerance"),
         "Ext VPOC",
     );
+    // Die Value Area steht im Profil-Artefakt. Die beiden Werte lagen früher ungeprüft in der
+    // Fixture — und waren falsch, ohne dass es auffiel.
+    let profile = out
+        .artifacts
+        .iter()
+        .find_map(|artifact| match artifact {
+            kestrel_chartkit::artifact::Artifact::Profile(p) if p.kind == "volume_profile" => {
+                Some(p)
+            }
+            _ => None,
+        })
+        .expect("Ext VP liefert sein Profil als Artefakt");
+    common::assert_close(
+        profile.value_area_high,
+        expected("ext_vah"),
+        expected("volume_tolerance"),
+        "Ext VAH",
+    );
+    common::assert_close(
+        profile.value_area_low,
+        expected("ext_val"),
+        expected("volume_tolerance"),
+        "Ext VAL",
+    );
 }
 
 #[test]
@@ -309,6 +333,59 @@ fn test_golden_volume_profile_contract_boundary_reset() {
     let out_roll = vp.on_bar_with_boundary(&roll_bar, true);
     // Since lookback is 3, resetting state means only 1 bar is present, so None is returned until warmup finishes
     assert!(out_roll.is_none());
+}
+
+/// Die gemeinsame Reihe legt den Schluss immer in die Kerzenmitte und lässt das Volumen nur
+/// steigen: A/D, CMF, CVD und HiRes-Flow sind darauf identisch null, NVI bleibt beim Startwert.
+/// Die Werte dort halten diese Invarianz fest. Diese Reihe tut beides nicht, damit die Formeln
+/// tatsächlich greifen.
+const SHAPED_BARS: [(f64, f64, f64, f64, f64); 8] = [
+    (10.0, 10.8, 9.6, 10.6, 1200.0),
+    (10.6, 11.2, 10.2, 10.3, 900.0),
+    (10.3, 10.9, 10.0, 10.8, 1500.0),
+    (10.8, 11.0, 10.1, 10.2, 700.0),
+    (10.2, 10.7, 9.9, 10.6, 1100.0),
+    (10.6, 11.4, 10.5, 11.3, 1600.0),
+    (11.3, 11.5, 10.9, 11.0, 800.0),
+    (11.0, 11.6, 10.8, 11.5, 1300.0),
+];
+
+fn run_shaped(name: &str, params: &HashMap<String, f64>) -> f64 {
+    let mut ind = build_checked(name, params).unwrap();
+    let mut last = None;
+    for (i, &(o, h, l, c, v)) in SHAPED_BARS.iter().enumerate() {
+        if let Some(out) = ind.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, v)) {
+            last = Some(out.value);
+        }
+    }
+    last.expect("keine Ausgabe auf der geformten Reihe")
+}
+
+#[test]
+fn test_golden_money_flow_and_volume_index_on_shaped_bars() {
+    let tolerance = expected("volume_tolerance");
+    for (name, params, key) in [
+        ("acc_dist", HashMap::new(), "acc_dist_shaped_last"),
+        (
+            "cmf",
+            HashMap::from([("period".to_string(), 5.0)]),
+            "cmf5_shaped_last",
+        ),
+        ("cvd", HashMap::new(), "cvd_shaped_last"),
+        (
+            "hires_volume_flow",
+            HashMap::from([("window_len".to_string(), 5.0)]),
+            "hires_flow_shaped_last",
+        ),
+        ("nvi", HashMap::new(), "nvi_shaped_last"),
+    ] {
+        common::assert_close(run_shaped(name, &params), expected(key), tolerance, name);
+    }
+    // Die Reihe muss die Formeln bewegen, sonst prüfte dieser Test wieder nur eine Invarianz.
+    assert!(expected("acc_dist_shaped_last").abs() > 1.0);
+    assert!(expected("cmf5_shaped_last").abs() > 0.01);
+    assert!(expected("cvd_shaped_last").abs() > 1.0);
+    assert!((expected("nvi_shaped_last") - 1000.0).abs() > 1.0);
 }
 
 // --- Paket 21: Elder's Force Index -----------------------------------------------------------

@@ -26,8 +26,23 @@ impl fmt::Display for VolumeProfileConfigError {
 
 impl std::error::Error for VolumeProfileConfigError {}
 
-/// Volume Profile Engine.
-/// Computes Volume-by-Price distribution over lookback window, identifying POC (Point of Control), VAH (Value Area High), and VAL (Value Area Low).
+/// Volume Profile over the last `lookback` bars: volume by price, Point of Control and a 70 %
+/// value area.
+///
+/// The window's own range `[min low, max high]` is split into `num_bins` equal bins of width
+/// `step`. Each bar's volume — its range when it carries no volume — is spread evenly over the
+/// bins from `floor((low - min) / step)` to `floor((high - min) / step)`, both clamped to the last
+/// bin. The **POC** is the first bin with the largest volume, priced at its centre. The **value
+/// area** grows from the POC one bin at a time towards the larger neighbour (upwards on a tie)
+/// until it holds 70 % of the window's volume; **VAH** is the upper edge of its top bin, **VAL**
+/// the lower edge of its bottom bin.
+///
+/// `value` and `extra["vpoc"]`: the POC; further `extra["vah"]`, `extra["val"]`,
+/// `extra["total_volume"]`, `extra["vpoc_density"]` (POC volume over total),
+/// `extra["current_density"]` (the close's bin over total) and `extra["lvn_width"]` (`2 * step`).
+/// A window without range publishes the close.
+///
+/// First output: with the `lookback`-th bar. [`Indicator::reset`] clears the window.
 pub struct VolumeProfileEngine {
     lookback: usize,
     num_bins: usize,

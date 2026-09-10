@@ -2,8 +2,20 @@ use super::smoothing::Sma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Ease of Movement (EOM) Engine.
-/// EOM = SMA( (Midpoint_t - Midpoint_{t-1}) / (Volume / (High - Low)), period )
+/// Ease of Movement (EOM), smoothed over `period` bars.
+///
+/// ```text
+/// distance = (high + low) / 2 - (prev_high + prev_low) / 2
+/// box      = (volume / volume_divisor) / (high - low)        (range floored at 1e-8)
+/// raw      = distance / box                                  (0 for box <= 1e-8)
+/// EOM      = SMA(period) of raw
+/// ```
+///
+/// `volume_divisor` (default `10000`) only rescales volume into a readable unit. The first bar has
+/// no predecessor and produces no raw value.
+///
+/// First output: with the `period + 1`-th bar. [`Indicator::reset`] clears the midpoint and the
+/// average.
 #[derive(Debug, Clone)]
 pub struct EomEngine {
     period: usize,

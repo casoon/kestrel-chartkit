@@ -28,7 +28,25 @@ pub enum ZeroVolumePolicy {
     EqualWeight,
 }
 
-/// Anchored VWAP Engine with volume-weighted stddev bands.
+/// Anchored VWAP: a cumulative volume-weighted average price since the last anchor, with
+/// volume-weighted standard-deviation bands.
+///
+/// From the anchor on, `VWAP = sum(typical * volume) / sum(volume)` with
+/// `typical = (high + low + close) / 3`, and
+/// `stddev = sqrt(sum(typical^2 * volume) / sum(volume) - VWAP^2)`, floored at zero; the bands sit
+/// at `mult1` and `mult2` standard deviations. A bar without volume counts with weight `1` under
+/// [`ZeroVolumePolicy::EqualWeight`] (the default) and is skipped under
+/// [`ZeroVolumePolicy::Skip`].
+///
+/// The anchor is chosen by [`VwapAnchorKind`]. The default, `Session`, restarts at the open of
+/// each session of the configured [`SessionConfig`]; the default config has the same start and end
+/// (`00:00`), which makes the session the whole day — every bar is in session and the VWAP restarts
+/// at 00:00 UTC. Bars outside a configured session produce no output. `Day`, `Week` and `Month`
+/// restart at the calendar boundary (shifted by the UTC offset), `ManualTimestamp` starts with the
+/// first bar at or after its timestamp, `External` on the caller's anchor events.
+///
+/// `value` and `extra["vwap"]`: the VWAP; `extra["stddev"]` and the four band edges. First output:
+/// with the first bar inside an active anchor. [`Indicator::reset`] clears the accumulation.
 #[derive(Debug, Clone)]
 pub struct AnchoredVwapEngine {
     anchor_kind: VwapAnchorKind,

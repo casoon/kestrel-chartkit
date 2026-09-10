@@ -11,6 +11,12 @@ use std::collections::HashMap;
 /// high. That is a documented estimate, not a measurement of the aggressor, and it remains this
 /// crate's default. [`super::cvd_intrabar::IntrabarCvd`] offers the finer estimate from
 /// lower-timeframe bars without replacing this one.
+///
+/// Per bar, with the range floored at `1e-8`: `share = (close - low) / (high - low)`,
+/// `buy = volume * share`, `sell = volume * (1 - share)`, `delta = buy - sell`. `value` is the
+/// running total of the deltas; `extra` carries this bar's `delta`, `buy_volume` and
+/// `sell_volume`. First output: with the first bar. [`Indicator::reset`] returns the total to
+/// zero.
 #[derive(Debug, Clone)]
 pub struct CvdEngine {
     cum_cvd: f64,
@@ -64,7 +70,25 @@ impl Indicator for CvdEngine {
     }
 }
 
-/// Klinger Volume Force Engine.
+/// Klinger Volume Oscillator (KVO) over the volume force.
+///
+/// Per bar, with `dm = high - low`:
+///
+/// ```text
+/// trend = +1 if high + low + close rose against the previous bar, -1 if it fell,
+///         the previous trend if unchanged, +1 on the first bar
+/// cm    = dm on the first bar; cm + dm while the trend holds; prev_dm + dm when it flips
+/// vf    = volume * |2 * dm / cm - 1| * trend * 100          (the ratio is 0 for cm ~ 0)
+/// KVO   = Ema(fast_len)(vf) - Ema(slow_len)(vf)
+/// ```
+///
+/// Both averages are the shared [`Ema`] with its first-sample seed and run from the first bar;
+/// the line is published from the `slow_len`-th bar on. `extra["signal"]` is an
+/// `Ema(signal_len)` over the published KVO values, seeded with the first of them;
+/// `extra["hist"]` is `KVO - signal` and `extra["volume_force"]` this bar's `vf`. Defaults
+/// `34`/`55`/`13`.
+///
+/// First output: with the `slow_len`-th bar. [`Indicator::reset`] clears all state.
 #[derive(Debug, Clone)]
 pub struct KlingerVolumeForceEngine {
     fast_len: usize,

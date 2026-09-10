@@ -24,7 +24,19 @@ pub enum VolumeNodeClass {
     Lvn,
 }
 
-/// Extended price/volume profile engine.
+/// Extended volume profile over the last `lookback` bars.
+///
+/// Bins, POC and value area follow the rules of
+/// [`super::volume_profile::VolumeProfileEngine`]: the window's own range in `num_bins` equal
+/// bins, each bar's volume spread evenly over the bins it spans, the POC at the centre of the first
+/// largest bin, a 70 % value area grown towards the larger neighbour. `value` is the POC. The full
+/// profile with its value area, and a delta profile — buy minus sell volume per bin, split by the
+/// close's position in each bar's range — come as [`ProfileArtifact`]s; runs of high- and
+/// low-volume bins (at least `1.5x` resp. at most `0.5x` the mean bin volume by default) as
+/// [`ZoneArtifact`]s.
+///
+/// A window without range produces no output. First output: with the `lookback`-th bar.
+/// [`Indicator::reset`] clears the window.
 pub struct ExtendedVolumeProfileEngine {
     lookback: usize,
     num_bins: usize,

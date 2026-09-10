@@ -1,8 +1,13 @@
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Negative Volume Index (NVI) Engine.
-/// Updates index value only on days when volume decreases.
+/// Negative Volume Index (NVI).
+///
+/// Starts at `1000` and moves only on bars whose volume *fell* against the previous bar: there
+/// it changes by the close's relative change, `NVI += NVI * (close - prev_close) / prev_close`
+/// (no change for a non-positive previous close). On every other bar it stays where it was.
+///
+/// First output: with the first bar. [`Indicator::reset`] returns it to `1000`.
 #[derive(Debug, Clone)]
 pub struct NviEngine {
     nvi: f64,
@@ -65,8 +70,13 @@ impl Indicator for NviEngine {
     }
 }
 
-/// Positive Volume Index (PVI) Engine.
-/// Updates index value only on days when volume increases.
+/// Positive Volume Index (PVI).
+///
+/// Starts at `1000` and moves only on bars whose volume *rose* against the previous bar: there
+/// it changes by the close's relative change, `PVI += PVI * (close - prev_close) / prev_close`
+/// (no change for a non-positive previous close). On every other bar it stays where it was.
+///
+/// First output: with the first bar. [`Indicator::reset`] returns it to `1000`.
 #[derive(Debug, Clone)]
 pub struct PviEngine {
     pvi: f64,

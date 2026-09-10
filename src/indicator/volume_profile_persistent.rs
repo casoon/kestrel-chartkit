@@ -51,6 +51,17 @@ pub struct AbsorptionBin {
     pub last_touched_ts: i64,
 }
 
+/// Persistent volume profile over the last `lookback` bars on a fixed price grid.
+///
+/// A bin is `[k * bin_width, (k + 1) * bin_width)` with `k = floor(price / bin_width)`. Each bar's
+/// volume — its range when it carries no volume — is spread evenly over the bins from its low's
+/// key to its high's key; when the bar leaves the window exactly that contribution is taken back,
+/// and a bin with no touches or no volume left is removed. `value` is the POC: the centre of the
+/// first (lowest-priced) live bin with the largest volume. The profile and a per-bin absorption
+/// profile come as [`ProfileArtifact`]s; bins whose volume per touch is a robust outlier (median
+/// plus `absorption_k` scaled MAD, `2.5` by default) additionally as [`ZoneArtifact`]s.
+///
+/// First output: with the `lookback`-th bar. [`Indicator::reset`] clears bins and window.
 pub struct PersistentVolumeProfileEngine {
     lookback: usize,
     bin_width: f64,

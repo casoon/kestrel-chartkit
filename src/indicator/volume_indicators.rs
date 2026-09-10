@@ -3,7 +3,14 @@ use std::collections::{HashMap, VecDeque};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Volume & Average Volume Indicator.
+/// Bar volume with its moving average.
+///
+/// `value` is the bar's own volume. Once `ma_period` volumes have been seen, `extra` adds
+/// `avg_volume` — the plain mean of the last `ma_period` volumes, this bar included — and
+/// `volume_ratio = volume / avg_volume` (`1` for a zero average); a volume above twice the average
+/// raises an alert. Before that, only the volume itself is published.
+///
+/// First output: with the first bar. [`Indicator::reset`] clears the window.
 pub struct VolumeEngine {
     ma_period: usize,
     volumes: VecDeque<f64>,
@@ -70,7 +77,14 @@ impl Indicator for VolumeEngine {
     }
 }
 
-/// Relative Volume (RVOL) Indicator.
+/// Relative Volume (RVOL): this bar's volume against the recent average.
+///
+/// `RVOL = volume / avg`, where `avg` is the plain mean of the last `period` volumes **including
+/// this bar's own**, and `1` for a zero average. Including the current bar damps the ratio: a
+/// spike raises its own reference. For the comparison against the same time of day on earlier
+/// days see [`super::rvat::RelativeVolumeAtTime`].
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 #[derive(Debug, Clone)]
 pub struct RvolEngine {
     period: usize,
@@ -133,7 +147,13 @@ impl Indicator for RvolEngine {
     }
 }
 
-/// On-Balance Volume (OBV) Indicator.
+/// On-Balance Volume (OBV): a running total of volume signed by the direction of the close.
+///
+/// Starting at `0`, each bar adds its volume when the close rose against the previous close,
+/// subtracts it when the close fell, and leaves the total unchanged when the close is equal. The
+/// first bar has no previous close and contributes nothing.
+///
+/// First output: with the first bar. [`Indicator::reset`] returns the total to zero.
 pub struct ObvEngine {
     prev_close: Option<f64>,
     cum_obv: f64,
@@ -189,7 +209,14 @@ impl Indicator for ObvEngine {
     }
 }
 
-/// Chaikin Money Flow (CMF) Indicator.
+/// Chaikin Money Flow (CMF) over `period` bars.
+///
+/// Each bar's money-flow multiplier places the close in its range,
+/// `MFM = ((close - low) - (high - close)) / (high - low)` (`0` for a range below `1e-8`), and its
+/// money-flow volume is `MFM * volume`. CMF is the sum of the last `period` money-flow volumes over
+/// the sum of their volumes (`0` without volume), clamped to `-1..=1`.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears both windows.
 pub struct CmfEngine {
     period: usize,
     mf_volumes: VecDeque<f64>,
@@ -276,7 +303,13 @@ impl Indicator for CmfEngine {
     }
 }
 
-/// Accumulation / Distribution Line (A/D) Indicator.
+/// Accumulation/Distribution Line (A/D): a running total of money-flow volume.
+///
+/// Each bar adds `MFM * volume` with the money-flow multiplier of [`CmfEngine`],
+/// `((close - low) - (high - close)) / (high - low)` (`0` for a range below `1e-8`). A close in
+/// the middle of its range therefore adds nothing, however large the volume.
+///
+/// First output: with the first bar. [`Indicator::reset`] returns the total to zero.
 #[derive(Debug, Clone)]
 pub struct AccDistEngine {
     cum_ad: f64,

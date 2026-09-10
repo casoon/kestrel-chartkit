@@ -48,7 +48,20 @@ pub struct HiResVolumeFlowOutput {
     pub absorption: bool,
 }
 
-/// Streaming high-resolution volume flow engine.
+/// Streaming volume flow: a cumulative buy-minus-sell delta with an absorption flag.
+///
+/// Through [`Indicator::on_bar`] the split is estimated from the bar's shape: the buy share is the
+/// close's position in its range, `(close - low) / (high - low)` clamped to `0..=1`, so
+/// `delta = volume * (2 * share - 1)`. [`HiResVolumeFlowEngine::on_bar_with_aggressor`] takes a
+/// known split instead, and [`HiResVolumeFlowEngine::on_intrabar_group`] sums the children's own
+/// estimates. `value` is the running total of the deltas, `extra["delta"]` this bar's, and
+/// `extra["is_estimated"]` is `1` on the estimated path.
+///
+/// A bar is flagged as absorption (`state = "absorption"`) when its volume exceeds the upper band
+/// of a rolling robust threshold (factor `2.5`) over the last `window_len` volumes while its range
+/// stays at or below the rolling median range.
+///
+/// First output: with the first bar. [`Indicator::reset`] clears the total and both thresholds.
 pub struct HiResVolumeFlowEngine {
     cumulative_delta: f64,
     volume_threshold: RollingRobustThreshold,

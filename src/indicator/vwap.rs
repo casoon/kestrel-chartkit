@@ -7,6 +7,14 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Rolling Volume Weighted Average Price with standard-deviation bands and slope.
 ///
+/// Over the last `window` bars, `VWAP = sum(typical * volume) / sum(volume)` with
+/// `typical = (high + low + close) / 3`; no output while the window holds no volume.
+/// `extra["sigma"]` is the volume-weighted standard deviation of the typical prices around it,
+/// `sqrt(sum(volume * (typical - VWAP)^2) / sum(volume))`, with bands at one and two sigma
+/// (`upper_1sigma` .. `lower_2sigma`). `extra["slope"]` is `(VWAP - VWAP_{t-k}) / k` for
+/// `k = slope_lookback`, present once `k + 1` values exist. First output: with the first bar that
+/// carries volume.
+///
 /// Note: this is a rolling VWAP over `window` bars, not a session-anchored VWAP — the
 /// `Bar` model carries no session-boundary marker, so a true session-reset VWAP needs to be
 /// driven by the consumer (e.g. calling `reset()` on session open). See plan Anhang A,
