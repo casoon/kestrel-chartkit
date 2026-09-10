@@ -3,8 +3,17 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
 
-/// Williams Alligator Engine (Jaw, Teeth, Lips).
-/// Jaw = 13 SMMA (RMA) on hl2, Teeth = 8 SMMA on hl2, Lips = 5 SMMA on hl2.
+/// Williams Alligator: three smoothed averages of the median price, shifted forward.
+///
+/// Jaw, teeth and lips are Wilder averages ([`Rma`], seeded with the SMA of their first values)
+/// of `(high + low) / 2` over 13, 8 and 5 bars, shifted forward by 8, 5 and 3 bars: the value
+/// published for a line is the one it had that many outputs earlier. The shift is applied through
+/// a window that only starts filling once all three averages exist, so right after the first
+/// output it is still zero and reaches its full length after 8, 5 and 3 further outputs.
+///
+/// `value` and `extra["lips"]`: the lips; `extra["jaw"]` and `extra["teeth"]`. First output: with
+/// the 13th bar, when the jaw's average exists. [`Indicator::reset`] clears the averages and the
+/// shift windows.
 #[derive(Debug, Clone)]
 pub struct AlligatorEngine {
     jaw_rma: Rma,

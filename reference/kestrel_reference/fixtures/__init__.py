@@ -12,6 +12,7 @@ from . import (
     revaluation_diff,
     surface_diff,
     transforms,
+    trend,
     volatility,
     volume,
 )
@@ -24,6 +25,7 @@ ALL = (
     surface_diff,
     revaluation_diff,
     transforms,
+    trend,
     moving_averages,
     oscillators,
     volatility,

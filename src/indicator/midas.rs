@@ -47,6 +47,18 @@ pub struct MidasOutput {
     pub state: MidasState,
 }
 
+/// MIDAS curve with a Topfinder or Bottomfinder projection.
+///
+/// `curve = cum(price * volume) / cum(volume)` since the first bar, `price` taken from `source`.
+/// A new extreme is a high above the running one (Topfinder) or a low below it (Bottomfinder);
+/// the first bar sets the first. From the first bar *after* the latest extreme on, the projection
+/// is `extreme - (extreme - curve_at_extreme) * sqrt(cum_volume_at_extreme / cum_volume)`; a new
+/// extreme restarts it. After `maturity_bars` bars without a new extreme the state is `exhausted`.
+///
+/// `value`: the curve; `secondary`: the projection, or the curve while there is none;
+/// `extra["projection"]` only while it exists; `state`: `launch`, `projecting` or `exhausted`.
+/// First output: with the first bar that carries volume. [`Indicator::reset`] clears the
+/// accumulation and the extreme.
 pub struct MidasCurveEngine {
     mode: MidasMode,
     source: Source,

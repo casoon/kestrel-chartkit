@@ -3,8 +3,13 @@ use crate::model::Bar;
 use crate::stats::{rolling_mean, rolling_stddev};
 use std::collections::VecDeque;
 
-/// Rolling Z-Score Engine.
-/// Z = (Price - Mean) / StdDev
+/// Rolling z-score of the close.
+///
+/// `Z = (close - mean) / sd` over the last `period` closes, this one included, with the
+/// **population** standard deviation (divisor `period`); `0` when the deviation is below `1e-8`.
+/// `period` is at least 2.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 #[derive(Debug, Clone)]
 pub struct ZScoreEngine {
     period: usize,

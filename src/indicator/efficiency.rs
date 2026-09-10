@@ -3,8 +3,13 @@ use std::collections::HashMap;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Leg Efficiency Engine (Kaufman Efficiency Ratio & Noise Filter).
-/// Measures structural trend cleanliness vs. random market chop.
+/// Kaufman Efficiency Ratio: net movement over path length.
+///
+/// Over the last `len + 1` closes, `ER = |close_t - close_{t-len}| / sum(|close_i - close_{i-1}|)`,
+/// and `0` when nothing moved. `1` means the closes went straight from one end to the other, values
+/// near `0` that they travelled far and arrived nowhere. Alerts fire at `>= 0.65` and `<= 0.20`.
+///
+/// First output: with the `len + 1`-th bar. [`Indicator::reset`] clears the window.
 #[derive(Debug, Clone)]
 pub struct LegEfficiencyEngine {
     len: usize,

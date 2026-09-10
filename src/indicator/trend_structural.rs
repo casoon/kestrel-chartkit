@@ -442,7 +442,16 @@ impl Indicator for SupertrendEngine {
     }
 }
 
-/// Ichimoku Kinko Hyo Cloud Indicator (Tenkan-sen, Kijun-sen, Senkou A, Senkou B, Chikou).
+/// Ichimoku Kinko Hyo: tenkan-sen, kijun-sen and the two cloud spans.
+///
+/// A line's value is the midpoint of the highest high and the lowest low over its window:
+/// `tenkan` over `tenkan_p` bars, `kijun` over `kijun_p`, `senkou_b` over `senkou_b_p`, and
+/// `senkou_a = (tenkan + kijun) / 2`. The spans are published **unshifted**, on the bar they are
+/// computed for; drawing them `kijun_p` bars ahead, as the cloud is usually shown, is left to the
+/// consumer. There is no chikou span.
+///
+/// `value`: `tenkan - kijun`; `extra` carries all four lines. First output: with the
+/// `senkou_b_p`-th bar. [`Indicator::reset`] clears the window.
 pub struct IchimokuEngine {
     tenkan_p: usize,
     kijun_p: usize,

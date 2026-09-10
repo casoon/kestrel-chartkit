@@ -154,3 +154,77 @@ fn test_golden_zscore_reference_values() {
         "Z-Score(5)",
     );
 }
+
+/// Auf einer Geraden ist die Effizienz für jedes Fenster 1, und die MIDAS-Projektion greift nie,
+/// weil jede Kerze ein neues Hoch setzt. Diese beiden Reihen prüfen, was die Gerade nicht prüfen
+/// kann.
+const ZIGZAG: [f64; 8] = [10.0, 11.0, 10.5, 11.5, 11.0, 12.0, 11.2, 12.4];
+const PULLBACK: [(f64, f64); 10] = [
+    (100.0, 1000.0),
+    (101.0, 1200.0),
+    (102.0, 900.0),
+    (103.0, 1500.0),
+    (104.0, 1100.0),
+    (105.0, 1300.0),
+    (104.0, 800.0),
+    (103.5, 1000.0),
+    (103.0, 1400.0),
+    (102.5, 900.0),
+];
+
+#[test]
+fn test_golden_efficiency_and_midas_projection_off_the_straight_line() {
+    let tol = expected("trend_tolerance");
+
+    let mut er = build_checked("efficiency", &HashMap::from([("len".to_string(), 5.0)])).unwrap();
+    let mut last = None;
+    for (i, &c) in ZIGZAG.iter().enumerate() {
+        last = er
+            .on_bar(&Bar::new(i as i64 * 60, c, c + 0.3, c - 0.3, c, 1000.0))
+            .or(last);
+    }
+    let efficiency = last.expect("Efficiency gab nichts aus").value;
+    common::assert_close(
+        efficiency,
+        expected("efficiency5_shaped_last"),
+        tol,
+        "Efficiency(5), Zickzack",
+    );
+    assert!(
+        efficiency > 0.0 && efficiency < 1.0,
+        "die Reihe muss die Kennzahl bewegen: {efficiency}"
+    );
+
+    let mut midas = build_checked(
+        "midas",
+        &HashMap::from([("maturity_bars".to_string(), 5.0)]),
+    )
+    .unwrap();
+    let mut last = None;
+    for (i, &(c, v)) in PULLBACK.iter().enumerate() {
+        last = midas
+            .on_bar(&Bar::new(i as i64 * 60, c, c + 0.5, c - 0.5, c, v))
+            .or(last);
+    }
+    let out = last.expect("MIDAS gab nichts aus");
+    common::assert_close(
+        out.value,
+        expected("midas5_shaped_curve"),
+        tol,
+        "MIDAS-Kurve",
+    );
+    let projection = *out
+        .extra
+        .get("projection")
+        .expect("nach dem Rücksetzer muss die Projektion greifen");
+    common::assert_close(
+        projection,
+        expected("midas5_shaped_projection"),
+        tol,
+        "MIDAS-Projektion",
+    );
+    assert!(
+        (projection - out.value).abs() > 0.1,
+        "die Projektion muss sich von der Kurve unterscheiden"
+    );
+}

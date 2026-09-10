@@ -35,6 +35,11 @@ impl TrendRelation {
 
 /// Compares a fast and a slow [`Smoother`] fed the same source series, classifying the
 /// relationship as [`TrendRelation`] and alerting on fast/slow crossovers.
+///
+/// Both smoothers run from the first close. `value` is `fast - slow`, `secondary` the slow line,
+/// `extra["fast"]`/`extra["slow"]` both lines, and `state` the relation. Through the registry both
+/// are EMAs with their first-sample seed, so output starts with the first bar; other smoother kinds
+/// start when their own seed is ready. [`Indicator::reset`] clears both smoothers.
 pub struct AdaptiveTrendRelationship {
     fast: Box<dyn Smoother>,
     slow: Box<dyn Smoother>,
