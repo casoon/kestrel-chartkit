@@ -3,8 +3,14 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
 
-/// Know Sure Thing (KST) Engine.
-/// KST = SMA(ROC(10),10)*1 + SMA(ROC(15),10)*2 + SMA(ROC(20),10)*3 + SMA(ROC(30),15)*4
+/// Know Sure Thing with fixed windows.
+///
+/// `KST = SMA10(ROC10) + 2 SMA10(ROC15) + 3 SMA10(ROC20) + 4 SMA15(ROC30)`, each ROC in percent of
+/// its past close; `extra["signal"]` is `SMA9(KST)`, `extra["hist"]` is `KST - signal` and
+/// `extra["kst"]` repeats the value. There are no parameters.
+///
+/// First output: once the signal exists, i.e. with the 53rd bar. [`Indicator::reset`] clears all
+/// averages.
 #[derive(Debug, Clone)]
 pub struct KstEngine {
     closes: VecDeque<f64>,

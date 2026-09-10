@@ -5,6 +5,16 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Money Flow Index, smoothed, with a signal line.
+///
+/// Per bar the raw money flow is `typical * volume`, `typical = (high + low + close) / 3`; it counts
+/// as positive when the typical price rose against the previous bar, negative when it fell, and not
+/// at all on the first bar or when unchanged. Over the last `mfi_len` bars
+/// `raw = 100 - 100 / (1 + positive / negative)`, with `50` without any flow, `100` without negative
+/// and `0` without positive flow. **`value` is the line**, `Ema(avg_len)` of the raw MFI with the
+/// first-sample seed; `extra["signal"]` is `Ema(sig_len)` of the line. Alerts require volume.
+///
+/// First output: with the `mfi_len`-th bar. [`Indicator::reset`] clears the window and averages.
 pub struct Mfi {
     mfi_len: usize,
     mid_line: f64,

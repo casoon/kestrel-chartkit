@@ -2,8 +2,10 @@ use super::smoothing::Sma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Balance of Power (BOP) Engine.
-/// BOP = SMA((Close - Open) / (High - Low), period)
+/// Balance of Power: `SMA(period)((close - open) / (high - low))`, the range floored at `1e-8`,
+/// clamped to `-1..=1`; on bars with `open == close` it is `0`.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the average.
 #[derive(Debug, Clone)]
 pub struct BalanceOfPowerEngine {
     period: usize,

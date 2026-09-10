@@ -3,7 +3,14 @@ use std::collections::{HashMap, VecDeque};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Classic Stochastic Oscillator (%K and %D).
+/// Stochastic Oscillator: %K and %D.
+///
+/// `%K = 100 * (close - LL) / (HH - LL)` over the last `k_period` bars, `50` for a window without
+/// range, clamped to `0..=100`; `%D = SMA(d_period)` of %K. `value` and `extra["percent_k"]`: %K,
+/// the raw ("fast") one, not smoothed; `extra["percent_d"]`: %D.
+///
+/// First output: with the `k_period + d_period - 1`-th bar. [`Indicator::reset`] clears the
+/// windows.
 pub struct StochasticEngine {
     k_period: usize,
     d_period: usize,
@@ -97,7 +104,11 @@ impl Indicator for StochasticEngine {
     }
 }
 
-/// Rate of Change (ROC) / Momentum.
+/// Rate of Change in percent.
+///
+/// `ROC = 100 * (close - close_{t-period}) / close_{t-period}`, `0` for a non-positive past close;
+/// `extra["abs_momentum"]` is the plain difference. First output: with the `period + 1`-th bar.
+/// [`Indicator::reset`] clears the window.
 pub struct RocEngine {
     period: usize,
     closes: VecDeque<f64>,
@@ -157,7 +168,13 @@ impl Indicator for RocEngine {
     }
 }
 
-/// Ultimate Oscillator (UO: multi-timeframe momentum).
+/// Ultimate Oscillator over three windows.
+///
+/// Per bar `BP = close - min(low, prev_close)` and `TR = max(high, prev_close) - min(low,
+/// prev_close)`; `A_n = sum(BP) / sum(TR)` over the last `n` bars (`0` without range), and
+/// `UO = 100 * (4 A_period1 + 2 A_period2 + A_period3) / 7`, clamped to `0..=100`.
+///
+/// First output: with the `period3 + 1`-th bar. [`Indicator::reset`] clears the window.
 pub struct UltimateOscillatorEngine {
     period1: usize,
     period2: usize,
@@ -240,7 +257,10 @@ impl Indicator for UltimateOscillatorEngine {
     }
 }
 
-/// Awesome Oscillator (AO: SMA(HL/2, 5) - SMA(HL/2, 34)).
+/// Awesome Oscillator: `SMA(fast_period) - SMA(slow_period)` of the median price
+/// `(high + low) / 2`.
+///
+/// First output: with the `slow_period`-th bar. [`Indicator::reset`] clears the window.
 pub struct AwesomeOscillatorEngine {
     fast_period: usize,
     slow_period: usize,
@@ -303,7 +323,14 @@ impl Indicator for AwesomeOscillatorEngine {
     }
 }
 
-/// Percentage Price Oscillator (PPO: (EMA(fast) - EMA(slow)) / EMA(slow) * 100).
+/// Percentage Price Oscillator.
+///
+/// `PPO = 100 * (EMA(fast) - EMA(slow)) / EMA(slow)`, `0` for a non-positive slow average; both
+/// averages are seeded with the first close and run from the first bar, and the line is published
+/// from the `slow_period`-th bar on. `extra["signal"]` is an EMA over the published PPO values,
+/// seeded with the first, and `extra["hist"]` is `PPO - signal`.
+///
+/// First output: with the `slow_period`-th bar. [`Indicator::reset`] clears all averages.
 pub struct PpoEngine {
     fast_period: usize,
     slow_period: usize,
@@ -396,7 +423,12 @@ impl Indicator for PpoEngine {
     }
 }
 
-/// Chande Momentum Oscillator (CMO).
+/// Chande Momentum Oscillator.
+///
+/// Over the last `period` changes of the close,
+/// `CMO = 100 * (sum(up) - sum(down)) / (sum(up) + sum(down))`, `0` when nothing moved.
+///
+/// First output: with the `period + 1`-th bar. [`Indicator::reset`] clears the windows.
 #[derive(Debug, Clone)]
 pub struct CmoEngine {
     period: usize,
@@ -476,7 +508,13 @@ impl Indicator for CmoEngine {
     }
 }
 
-/// Elder Ray Index (Bull Power & Bear Power).
+/// Elder Ray: bull and bear power against an EMA of the close.
+///
+/// The EMA is the shared [`crate::indicator::smoothing::Ema`] of `period` with its first-sample
+/// seed, running from the first bar; `bull = high - EMA`, `bear = low - EMA`. `value` and
+/// `extra["bull_power"]`: bull power; `extra["bear_power"]` and `extra["ema"]`.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the average.
 pub struct ElderRayEngine {
     ema_period: usize,
     ema: crate::indicator::smoothing::Ema,

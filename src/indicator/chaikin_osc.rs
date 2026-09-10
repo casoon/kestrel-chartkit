@@ -3,8 +3,15 @@ use super::volume_indicators::AccDistEngine;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Chaikin Oscillator Engine.
-/// Chaikin Oscillator = EMA(ADL, 3) - EMA(ADL, 10)
+/// Chaikin Oscillator: `Ema(fast_len) - Ema(slow_len)` of the Accumulation/Distribution line.
+///
+/// The A/D line is [`super::volume_indicators::AccDistEngine`]'s; both averages are the shared
+/// [`Ema`] with its first-sample seed and run from the first bar; the value is published from the
+/// `slow_len`-th bar on. Where every close sits mid-range the A/D line stays at zero, and so does
+/// this.
+///
+/// First output: with the `slow_len`-th bar. [`Indicator::reset`] clears the line and both
+/// averages.
 #[derive(Debug, Clone)]
 pub struct ChaikinOscillatorEngine {
     fast_len: usize,

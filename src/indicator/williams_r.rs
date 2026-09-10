@@ -6,6 +6,19 @@ use super::divergence::SlopeDivergence;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Williams %R on an **ascending** `0..=100` scale, smoothed, with a signal and a context line.
+///
+/// Raw: `100 * (close - lowest_low) / (highest_high - lowest_low)` over the last `wpr_len` bars,
+/// `50` for a window without range. The widely used form runs `-100..=0` with `0` at the high; this
+/// type puts `100` at the high instead — convert with `conventional = value - 100`. The registry
+/// defaults `oversold = 20` / `overbought = 80` are on this ascending scale.
+///
+/// **`value` is the line**: `Ema(avg_len)` over the raw value with the first-sample seed.
+/// `extra["signal"]` is `Ema(sig_len)` over the line; the context line runs over `ctx_len` bars.
+/// Alerts fire on line/signal crosses inside the extreme zones, on crosses of `mid_line` and on
+/// divergences.
+///
+/// First output: with the `wpr_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct WilliamsR {
     wpr_len: usize,
     mid_line: f64,

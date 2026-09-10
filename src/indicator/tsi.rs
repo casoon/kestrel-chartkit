@@ -6,6 +6,15 @@ use super::divergence::SlopeDivergence;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// True Strength Index with a signal and a context line.
+///
+/// With `m = close - prev_close`,
+/// `TSI = 100 * Ema(short)(Ema(long)(m)) / Ema(short)(Ema(long)(|m|))`, `0` for a zero denominator;
+/// all averages are the shared [`Ema`] with its first-sample seed, running from the first change.
+/// `extra["signal"]` is `Ema(sig_len)` over the TSI; `extra["ctx"]` the same construction over the
+/// context lengths.
+///
+/// First output: with the second bar. [`Indicator::reset`] clears all averages.
 pub struct Tsi {
     mid_line: f64,
     oversold: f64,

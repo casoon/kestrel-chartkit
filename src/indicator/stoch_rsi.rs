@@ -6,6 +6,16 @@ use super::divergence::SlopeDivergence;
 use super::smoothing::{crossed_over, crossed_under, ExtremeWindow, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Stochastic RSI with a smoothed %K and a %D signal.
+///
+/// The raw Wilder RSI over `rsi_len` changes — not the smoothed line of [`super::rsi::Rsi`] — is
+/// placed in the range of its last `stoch_len` values, `100 * (rsi - min) / (max - min)`, `50` for a
+/// flat range. `value` is `%K`, an `SMA(k_len)` of that; `extra["signal"]` is `%D`, an
+/// `SMA(d_len)` of `%K`; both clamped to `0..=100`. A context line over longer windows serves the
+/// divergence alerts.
+///
+/// First output: with the `rsi_len + stoch_len + k_len - 1`-th bar. [`Indicator::reset`] clears all
+/// state.
 pub struct StochRsi {
     mid_line: f64,
     oversold: f64,

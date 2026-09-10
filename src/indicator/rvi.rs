@@ -3,8 +3,15 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::HashMap;
 
-/// Relative Vigor Index (RVI) Engine.
-/// RVI = SMA((Close - Open) / (High - Low), period)
+/// Vigor index: the close-open span relative to the range, averaged.
+///
+/// `RVI = SMA(period)((close - open) / (high - low))`, the range floored at `1e-8`;
+/// `extra["signal"]` is `SMA(4)` of the RVI and `extra["rvi"]` repeats the value. This is a plain
+/// average, not the symmetrically weighted four-bar numerator and denominator of the usual
+/// Relative Vigor Index; on bars with `open == close` it is `0`.
+///
+/// First output: once the signal exists, i.e. with the `period + 3`-th bar. [`Indicator::reset`]
+/// clears both averages.
 #[derive(Debug, Clone)]
 pub struct RviEngine {
     period: usize,

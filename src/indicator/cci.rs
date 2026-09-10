@@ -5,6 +5,15 @@ use crate::model::Bar;
 use super::divergence::SlopeDivergence;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Commodity Channel Index with a smoothed line, a signal and a context line.
+///
+/// Over the last `cci_len` typical prices `(high + low + close) / 3` the raw CCI is
+/// `(price - SMA) / (0.015 * mean_abs_deviation)`, `0` for a zero deviation. **`value` is the
+/// line**: an exponential average over `avg_len` of the raw CCI, seeded with its first value.
+/// `extra["signal"]` is the same average over `sig_len` of the line; the context line uses
+/// `ctx_len`. Alerts fire on line/signal and zero crosses and on divergences.
+///
+/// First output: with the `cci_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct Cci {
     cci_len: usize,
     avg_len: usize,

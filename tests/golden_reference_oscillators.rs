@@ -1484,3 +1484,70 @@ fn test_pmo_reset_restarts_deterministically() {
     pmo.reset();
     assert_eq!(first, run(&mut pmo));
 }
+
+/// Auf der gemeinsamen Reihe (open = close, Schluss in Kerzenmitte) sind BOP, Chaikin-Oszillator
+/// und RVI identisch null. Diese Reihe legt den Schluss abseits von Eröffnung und Kerzenmitte.
+const SHAPED_BARS: [(f64, f64, f64, f64, f64); 10] = [
+    (10.0, 10.8, 9.6, 10.6, 1200.0),
+    (10.6, 11.2, 10.2, 10.3, 900.0),
+    (10.3, 10.9, 10.0, 10.8, 1500.0),
+    (10.8, 11.0, 10.1, 10.2, 700.0),
+    (10.2, 10.7, 9.9, 10.6, 1100.0),
+    (10.6, 11.4, 10.5, 11.3, 1600.0),
+    (11.3, 11.5, 10.9, 11.0, 800.0),
+    (11.0, 11.6, 10.8, 11.5, 1300.0),
+    (11.5, 11.9, 11.1, 11.2, 1000.0),
+    (11.2, 11.4, 10.7, 10.9, 1400.0),
+];
+
+fn run_shaped(
+    name: &str,
+    params: &HashMap<String, f64>,
+) -> kestrel_chartkit::indicator::IndicatorOutput {
+    let mut ind = build_checked(name, params).unwrap();
+    let mut last = None;
+    for (i, &(o, h, l, c, v)) in SHAPED_BARS.iter().enumerate() {
+        if let Some(out) = ind.on_bar(&Bar::new(i as i64 * 60, o, h, l, c, v)) {
+            last = Some(out);
+        }
+    }
+    last.expect("keine Ausgabe auf der geformten Reihe")
+}
+
+#[test]
+fn test_golden_bop_chaikin_and_rvi_on_shaped_bars() {
+    let tol = expected("osc_tolerance");
+    let period5 = HashMap::from([("period".to_string(), 5.0)]);
+
+    let bop = run_shaped("bop", &period5).value;
+    common::assert_close(bop, expected("bop5_shaped_last"), tol, "BOP(5), geformt");
+
+    let chaikin = run_shaped(
+        "chaikin_oscillator",
+        &HashMap::from([("fast_len".to_string(), 3.0), ("slow_len".to_string(), 5.0)]),
+    )
+    .value;
+    common::assert_close(
+        chaikin,
+        expected("chaikin_osc_shaped_last"),
+        tol,
+        "Chaikin(3,5), geformt",
+    );
+
+    let rvi = run_shaped("rvi", &period5);
+    common::assert_close(rvi.value, expected("rvi_shaped_line"), tol, "RVI, geformt");
+    common::assert_close(
+        rvi.extra["signal"],
+        expected("rvi_shaped_signal"),
+        tol,
+        "RVI-Signal, geformt",
+    );
+
+    // Die Reihe muss die Formeln bewegen, sonst prüfte der Test wieder nur die Null.
+    for (name, value) in [("BOP", bop), ("Chaikin", chaikin), ("RVI", rvi.value)] {
+        assert!(
+            value.abs() > 1e-6,
+            "{name} ist auf der geformten Reihe null"
+        );
+    }
+}

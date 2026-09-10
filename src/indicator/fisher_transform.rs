@@ -6,6 +6,21 @@ use super::divergence::SlopeDivergence;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Fisher Transform of the median price, smoothed, with a signal and a context line.
+///
+/// Over the last `fish_len` values of `(high + low) / 2`, both recursions starting at 0:
+///
+/// ```text
+/// v    = clamp(0.66 * ((x - lowest) / (highest - lowest) - 0.5) + 0.67 * v_prev, -0.999, 0.999)
+/// fish = 0.5 * ln((1 + v) / (1 - v)) + 0.5 * fish_prev
+/// ```
+///
+/// (the normalised term is `0` for a flat window). **`value` is the line**, `Ema(avg_len)` of `fish`
+/// with the first-sample seed; `extra["signal"]` is `Ema(sig_len)` of the line. The registry fixes
+/// `avg_len = 2` and `sig_len = 3` and reads only `fish_len`.
+///
+/// First output: with the `fish_len`-th bar. [`Indicator::reset`] clears windows, recursions and
+/// averages.
 pub struct FisherTransform {
     fish_len: usize,
     mid_line: f64,

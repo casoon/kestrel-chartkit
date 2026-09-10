@@ -5,6 +5,14 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Ema};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
+/// Moving Average Convergence Divergence.
+///
+/// `MACD = Ema(fast_len)(close) - Ema(slow_len)(close)`, both the shared [`Ema`] with its
+/// first-sample seed, running from the first bar; the line is published from the `slow_len`-th bar
+/// on. `extra["signal"]` is an `Ema(signal_len)` over the published MACD values, seeded with the
+/// first of them, and `extra["hist"]` is `MACD - signal`. Alerts fire on signal and zero crosses.
+///
+/// First output: with the `slow_len`-th bar. [`Indicator::reset`] clears all three averages.
 pub struct Macd {
     fast_ema: Ema,
     slow_ema: Ema,

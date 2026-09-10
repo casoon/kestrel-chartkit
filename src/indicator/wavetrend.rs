@@ -16,7 +16,19 @@ pub struct WaveTrendAlerts {
     pub oversold_cross: bool,
 }
 
-/// WaveTrend Oscillator Engine (classic formulation).
+/// WaveTrend oscillator.
+///
+/// ```text
+/// ap  = (high + low + close) / 3
+/// esa = Ema(n1)(ap)          d = Ema(n1)(|ap - esa|)
+/// ci  = (ap - esa) / (0.015 * d)                        (0 for d <= 1e-8)
+/// wt1 = Ema(n2)(ci)          wt2 = SMA(4)(wt1)
+/// ```
+///
+/// All EMAs are the shared [`Ema`] with its first-sample seed, running from the first bar.
+/// `value` and `extra["wt1"]`: wt1; `extra["wt2"]`, `extra["hist"]` (`wt1 - wt2`) and the two
+/// levels. First output: with the fourth bar, once `wt2` exists. [`Indicator::reset`] clears all
+/// averages.
 #[derive(Debug, Clone)]
 pub struct WaveTrendEngine {
     n1: usize,

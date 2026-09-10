@@ -2,8 +2,13 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
 
-/// Detrended Price Oscillator (DPO) Engine.
-/// DPO = Close[N/2 + 1] - SMA(Close, N)
+/// Detrended Price Oscillator.
+///
+/// `DPO = close_{t - floor(period/2)} - SMA(period)_t`: the close `floor(period/2)` bars ago against
+/// the current simple average of the last `period` closes. The common construction compares the
+/// current close with an average shifted `period/2 + 1` bars back instead; the values differ.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 #[derive(Debug, Clone)]
 pub struct DpoEngine {
     period: usize,

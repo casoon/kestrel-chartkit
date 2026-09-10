@@ -4,8 +4,21 @@ use crate::model::Bar;
 use crate::stats::percent_rank;
 use std::collections::VecDeque;
 
-/// Connors RSI Engine.
-/// Connors RSI = (RSI(close, 3) + RSI(Streak, 2) + PercentRank(ROC(1), 100)) / 3
+/// Connors RSI: the mean of a price RSI, a streak RSI and a percentile rank of the one-bar return.
+///
+/// As implemented, and in each point different from the usual definition:
+///
+/// - The price RSI and the streak RSI are the **lines** of [`super::rsi::Rsi`] (an `Ema(3)` over
+///   the raw RSI), not raw RSI values.
+/// - The streak counts consecutive higher (positive) or lower (negative) closes and is `0` on an
+///   unchanged close. Streak and one-bar return only start updating on the bar *after* the price
+///   RSI first exists; the streak RSI runs over the streak values from the price RSI's first bar.
+/// - The percentile rank is `100 * count(r <= last) / count` over all one-bar returns seen so far,
+///   at most the last 100. **`rank_len` has no effect.**
+///
+/// `CRSI = (rsi_close + rsi_streak + rank) / 3`, clamped to `0..=100`.
+///
+/// First output: once the streak RSI exists. [`Indicator::reset`] clears all state.
 #[derive(Debug, Clone)]
 pub struct ConnorsRsiEngine {
     rsi_close: Rsi,

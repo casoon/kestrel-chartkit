@@ -75,6 +75,24 @@ impl ChangeSmoother {
     }
 }
 
+/// Relative Strength Index with a smoothed line, a signal line and a slower context line.
+///
+/// The raw RSI averages the up and down moves of the close over `rsi_len` changes — Wilder's way
+/// by default, exponentially under [`RsiSmoothing::Ema`] — and is `100 - 100 / (1 + up / down)`,
+/// with `50` when nothing moved, `100` without down moves and `0` without up moves.
+///
+/// **`value` is not that raw RSI.** It is the line: an `Ema(avg_len)` over the raw RSI with the
+/// first-sample seed of the shared [`Ema`], clamped to `0..=100`. With the registry default
+/// `avg_len = 3` the published RSI lags and deviates from the raw figure; `avg_len = 1` gives the
+/// raw RSI itself.
+///
+/// `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
+/// `ctx_len` changes (default 100), present once that many changes exist; divergences are judged
+/// between line and context. Alerts fire on line/signal crosses (inside the extreme zones when
+/// `require_extreme_zone` is set), on crosses of `mid_line` and on divergences.
+///
+/// First output: once `rsi_len` changes exist, i.e. with the `rsi_len + 1`-th bar.
+/// [`Indicator::reset`] clears all averages.
 #[derive(Debug, Clone)]
 pub struct Rsi {
     mid_line: f64,

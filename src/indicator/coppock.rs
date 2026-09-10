@@ -3,8 +3,10 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
 
-/// Coppock Curve Engine.
-/// Coppock Curve = WMA(10) of (ROC(14) + ROC(11))
+/// Coppock Curve with fixed windows: `WMA10(ROC14 + ROC11)`, both ROCs in percent.
+///
+/// First output: once the WMA is full, i.e. with the 24th bar. [`Indicator::reset`] clears the
+/// window and the average.
 #[derive(Debug, Clone)]
 pub struct CoppockCurveEngine {
     wma10: Wma,
