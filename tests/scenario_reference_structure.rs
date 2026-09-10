@@ -5,6 +5,14 @@ use kestrel_chartkit::indicator::Indicator;
 use kestrel_chartkit::model::Bar;
 use std::collections::HashMap;
 
+/// Pool-, Pivot- und ZigZag-Werte der handgebauten Folgen, hergeleitet in
+/// `reference/kestrel_reference/structure.py`.
+const STRUCTURE: &str = include_str!("fixtures/scenario_structure.txt");
+
+fn expected(key: &str) -> f64 {
+    common::golden_value(STRUCTURE, key)
+}
+
 // ============================================================================
 // 1. Break of Structure (BOS) / Change of Character (CHoCH)
 // ============================================================================
@@ -618,9 +626,9 @@ fn test_scenario_liquidity_pools() {
     )
     .unwrap();
 
-    // Traced bar-by-bar against `LiquidityPoolEngine` (pivot_len=2 => 5-bar pivot window,
-    // tolerance_pct=0.5% => 0.005 relative merge tolerance), independently confirmed via a
-    // from-scratch Python re-implementation of the exact algorithm:
+    // Traced bar-by-bar (pivot_len=2 => 5-bar pivot window, tolerance_pct=0.5% => 0.005 relative
+    // merge tolerance); the same values come out of the reference implementation in
+    // `reference/kestrel_reference/structure.py` and stand in `scenario_structure.txt`:
     //   - Bar idx4 (window bars 0..4, mid=bar2 H=110.0): bar2 is a pivot high (no bar in the
     //     window has a higher high) => registers a BSL pool at 110.0. active_count=1.
     //   - Bar idx6 (window bars 2..6, mid=bar4 L=100.0): bar4 is a pivot low => registers an SSL
@@ -663,23 +671,21 @@ fn test_scenario_liquidity_pools() {
 
     assert_eq!(
         stop_hunts.len(),
-        2,
+        expected("liquidity_pools_stop_hunt_count") as usize,
         "Must record exactly two stop hunts (BSL@110.0 then BSL@110.2): {stop_hunts:?}"
     );
-    assert!(
-        stop_hunts[0].contains("110.0000"),
-        "First stop hunt must be the original BSL pool at 110.0000: {}",
-        stop_hunts[0]
-    );
-    assert!(
-        stop_hunts[1].contains("110.2000"),
-        "Second stop hunt must be the later, independently-formed BSL pool at 110.2000: {}",
-        stop_hunts[1]
-    );
+    for (i, note) in stop_hunts.iter().enumerate() {
+        let price = expected(&format!("liquidity_pools_stop_hunt_{}_price", i + 1));
+        assert!(
+            note.contains(&format!("{price:.4}")),
+            "Stop hunt {} must be the BSL pool at {price:.4}: {note}",
+            i + 1
+        );
+    }
     common::assert_close(
         last_active_count.expect("liquidity_pools should have produced output"),
-        1.0,
-        1e-9,
+        expected("liquidity_pools_active_last"),
+        expected("scenario_structure_tolerance"),
         "Final active pool count (only SSL@100.0 remains Active)",
     );
 }
@@ -861,9 +867,9 @@ fn test_scenario_pivots_structure() {
     )
     .unwrap();
 
-    // Traced bar-by-bar against `PivotStructureEngine` (left_bars=2, right_bars=2 =>
-    // candidate_idx = bars.len()-1-right_bars over the ever-growing bar history, not a fixed
-    // sliding window), independently confirmed via a from-scratch Python re-implementation:
+    // Traced bar-by-bar (left_bars=2, right_bars=2 => candidate_idx = bars.len()-1-right_bars
+    // over the growing bar history, not a fixed sliding window); the same values come out of the
+    // reference implementation in `reference/kestrel_reference/structure.py`:
     //   - At bars.len()=5 (bar idx4), candidate_idx=2 (bar2, H=110.0) is the first-ever pivot
     //     high. It only *seeds* `last_high` (no prior high to compare against yet) => no score
     //     contribution.
@@ -897,23 +903,17 @@ fn test_scenario_pivots_structure() {
 
     assert_eq!(
         scores.len(),
-        6,
+        expected("pivots_structure_output_count") as usize,
         "Expected one output per bar from bars.len()>=5 onward"
     );
-    for &s in &scores[..scores.len() - 1] {
+    for (i, &s) in scores.iter().enumerate() {
         common::assert_close(
             s,
-            0.0,
-            1e-9,
-            "Score must stay exactly 0.0 before the second pivot",
+            expected(&format!("pivots_structure_score_{}", i + 1)),
+            expected("scenario_structure_tolerance"),
+            "0.0 before the second pivot, then 2.0/(score_window*2.0)*100 after the Higher High",
         );
     }
-    common::assert_close(
-        *scores.last().unwrap(),
-        2.0 / 6.0 * 100.0,
-        1e-9,
-        "Final score must be exactly 2.0/(score_window*2.0)*100 after the Higher-High pivot",
-    );
 }
 
 // ============================================================================
@@ -1115,9 +1115,9 @@ fn test_scenario_zigzag_advanced() {
         120.0, 115.0,
     ];
 
-    // Traced bar-by-bar against `AdvancedZigZagEngine` (depth=2 => mid_idx=2 of a 5-bar window,
-    // backstep=1, deviation_pct=2.0 => 2% threshold), independently confirmed via a from-scratch
-    // Python re-implementation:
+    // Traced bar-by-bar (depth=2 => mid_idx=2 of a 5-bar window, backstep=1, deviation_pct=2.0
+    // => 2% threshold); the same values come out of the reference implementation in
+    // `reference/kestrel_reference/structure.py`:
     //   - idx4 (mid=bar2, H=115.5=price+0.5): first-ever pivot high, seeds a running (unconfirmed)
     //     high node at 115.5. Stays unchanged through idx5..idx8 (no further pivot beats it).
     //   - idx9 (mid=bar7, L=89.5=price-0.5): pivot low with |89.5-115.5|/115.5=22.5% >> 2%
@@ -1143,15 +1143,31 @@ fn test_scenario_zigzag_advanced() {
     }
 
     let out = last_out.expect("Advanced ZigZag should produce output");
-    common::assert_close(out.value, 125.5, 1e-9, "Final running leg price");
+    common::assert_close(
+        out.value,
+        expected("zigzag_advanced_value_last"),
+        expected("scenario_structure_tolerance"),
+        "Final running leg price",
+    );
+    let running = expected("zigzag_advanced_running_last") == 1.0;
     assert_eq!(
         out.state.as_deref(),
-        Some("running"),
+        Some(if running { "running" } else { "confirmed" }),
         "Final bar starts a new unconfirmed leg, so state must be 'running'"
     );
     assert_eq!(
+        confirm_alerts.len(),
+        expected("zigzag_advanced_confirmations") as usize,
+        "{confirm_alerts:?}"
+    );
+    let low = expected("zigzag_advanced_last_confirms_low") == 1.0;
+    assert_eq!(
         confirm_alerts.last().map(String::as_str),
-        Some("ZigZag confirmed a swing low"),
+        Some(if low {
+            "ZigZag confirmed a swing low"
+        } else {
+            "ZigZag confirmed a swing high"
+        }),
         "Last bar must confirm the prior running swing low: {confirm_alerts:?}"
     );
 }

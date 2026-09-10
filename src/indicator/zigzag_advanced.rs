@@ -33,6 +33,24 @@ pub struct ZigZagNode {
 }
 
 /// Advanced ZigZag engine with backstep, ATR-mode deviation, and explicit confirmation status.
+///
+/// Over the last `2 · depth + 1` bars the middle bar is a pivot high when no other high is above
+/// its own and a pivot low when no other low is below its own; ties count, and one bar can be
+/// both. A pivot of the same kind as the running (unconfirmed) node — or the very first pivot —
+/// extends the leg: the running node moves to it if it is more extreme, and a first pivot starts
+/// one. A pivot of the other kind confirms the running node and starts a new running node at its
+/// own price, once `|price - running| / |running|` reaches the threshold and the pivot bar lies at
+/// least `backstep` bars after the pivot bar of the last confirmation (checked once per bar,
+/// before either pivot is applied). Each confirmation raises a `zigzag_pivot_confirmed` alert.
+///
+/// The threshold is `pct / 100` in [`ZigZagDeviationMode::Percent`]. In
+/// [`ZigZagDeviationMode::AtrMultiple`] it is `mult · ATR`, a Wilder ATR over `atr_len` (infinite
+/// until the ATR exists) — an absolute price distance compared with the same relative change, so
+/// this mode does not scale the way its name suggests.
+///
+/// `value`: the price of the newest node, or the middle bar's close before any; `state`:
+/// `"running"` while the newest node is unconfirmed, `"confirmed"` otherwise. First output with
+/// bar `2 · depth + 1`.
 pub struct AdvancedZigZagEngine {
     depth: usize,
     backstep: usize,

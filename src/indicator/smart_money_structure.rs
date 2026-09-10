@@ -50,6 +50,19 @@ pub struct LiquidityPool {
 
 /// Detects BSL/SSL pools from Equal High/Low pivot clusters and classifies every interaction as a
 /// stop hunt, a breakout, or (for a previously broken pool) a reclaim.
+///
+/// Over the last `2 · pivot_len + 1` bars (`pivot_len` at least 2) the middle bar is a pivot high
+/// when no other bar's high is above its own and a pivot low when no other low is below its own;
+/// ties count. A pivot high joins the first active BSL pool whose price lies within
+/// `tolerance_pct` percent of it (relative to the pool's price): the pool gains a touch and moves
+/// to `(pool + pivot) / 2`. Without such a pool the pivot forms a new one. Pivot lows form SSL
+/// pools the same way.
+///
+/// Then every pool is checked against the current bar, including one formed on this bar. An
+/// active BSL pool whose price the high exceeds is stop-hunted when the close is back below it
+/// and broken through otherwise; a broken-through BSL pool is reclaimed once a close falls back
+/// below it. SSL pools mirror this with the low and closes above. `value`: the number of active
+/// pools. First output with bar `2 · pivot_len + 1`.
 pub struct LiquidityPoolEngine {
     pivot_len: usize,
     tolerance_pct: f64,

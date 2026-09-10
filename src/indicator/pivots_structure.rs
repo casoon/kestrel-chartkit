@@ -3,8 +3,19 @@ use std::collections::HashMap;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Market Structure & Pivot Points Engine.
-/// Detects pivot highs/lows (HH/HL/LH/LL) and computes bounded structure score (-100..+100).
+/// Market structure score from confirmed pivots, `-100..=100`.
+///
+/// The engine keeps the last `4 · (left_bars + right_bars + 1)` bars. On every bar the one
+/// `right_bars` before the newest is the candidate: a pivot high when its high is strictly above
+/// the high of every other bar from `left_bars` before to `right_bars` after it, a pivot low when
+/// its low is strictly below every other low there. Each pivot is compared with the previous one
+/// of its kind: a higher high scores +2, an equal or lower high -1, a higher low +1, an equal or
+/// lower low -2; the first pivot of each kind only seeds the comparison. A bar that scored adds
+/// the sum of its comparisons to a window of the last `score_window` such sums, and
+/// `value = clamp(100 · sum / (2 · score_window), -100, 100)` — 0 while nothing has scored.
+///
+/// Alerts at `value >= 50` (bullish bias) and `value <= -50` (bearish bias). First output with bar
+/// `left_bars + right_bars + 1`.
 pub struct PivotStructureEngine {
     left_bars: usize,
     right_bars: usize,
