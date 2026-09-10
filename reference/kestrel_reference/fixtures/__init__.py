@@ -1,6 +1,31 @@
 """One module per generated fixture. Each exposes `NAME` (the file stem under tests/fixtures/) and
-`build()`, which returns the header lines and the case blocks."""
+either `build()`, which returns the header lines and the case blocks, or — while only part of a
+fixture is derived — `PARTIAL = True`, `derive()` and `CONSTANTS`."""
 
-from . import bond_diff, business_days, curve_diff, option_diff, revaluation_diff, surface_diff
+from . import (
+    bond_diff,
+    business_days,
+    curve_diff,
+    moving_averages,
+    option_diff,
+    oscillators,
+    revaluation_diff,
+    surface_diff,
+    transforms,
+    volatility,
+    volume,
+)
 
-ALL = (option_diff, bond_diff, curve_diff, business_days, surface_diff, revaluation_diff)
+ALL = (
+    option_diff,
+    bond_diff,
+    curve_diff,
+    business_days,
+    surface_diff,
+    revaluation_diff,
+    transforms,
+    moving_averages,
+    oscillators,
+    volatility,
+    volume,
+)

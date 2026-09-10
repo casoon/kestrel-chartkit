@@ -35,10 +35,13 @@ use super::{Indicator, IndicatorOutput};
 /// A window whose high equals its low has no range to place the close in; the line is `0` there
 /// by convention rather than a division by zero.
 ///
-/// First output: once the window is full and the two smoothing stages have seen
-/// `smooth_1 + smooth_2 - 1` observations between them, i.e. after
-/// `len + smooth_1 + smooth_2 - 2` bars. [`Indicator::reset`] clears the window and all four
-/// averages.
+/// Both smoothing stages run from the first full window on: the first is seeded with the first
+/// `distance` (respectively `range`) value, the second with the first output of the first, and
+/// each takes every value the stage before it produces — the second stage does not wait for the
+/// first to be published. Publication waits instead: the line appears once
+/// `smooth_1 + smooth_2 - 1` windows have passed through both stages, i.e. with the
+/// `len + smooth_1 + smooth_2 - 2`-th bar. The signal line only ever sees published values.
+/// [`Indicator::reset`] clears the window and all four averages.
 #[derive(Debug, Clone)]
 pub struct StochasticMomentumIndex {
     len: usize,

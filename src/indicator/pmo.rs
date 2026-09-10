@@ -63,9 +63,13 @@ impl DirectAlphaEma {
 /// - `value`: the PMO line.
 /// - `extra["signal"]`: present from the `signal_len`-th published value on.
 ///
-/// First output: after the two stages have seen `length_1 + length_2 - 1` returns between them,
-/// i.e. `length_1 + length_2` bars. There is no output on the first bar of a series, since a
-/// return needs a predecessor. [`Indicator::reset`] clears both stages and the signal average.
+/// Both stages run from the first return on: the first is seeded with the first return, the
+/// second with ten times the first output of the first, and each takes every value the stage
+/// before it produces. Publication waits instead: the line appears once
+/// `length_1 + length_2 - 1` returns have passed through both stages, i.e. with the
+/// `length_1 + length_2`-th bar. There is no output on the first bar of a series, since a return
+/// needs a predecessor. The signal line only ever sees published values. [`Indicator::reset`]
+/// clears both stages and the signal average.
 #[derive(Debug, Clone)]
 pub struct PriceMomentumOscillator {
     length_1: usize,

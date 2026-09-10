@@ -35,3 +35,14 @@ def date_keys(prefix, day):
         f"{prefix}_m": float(day.month),
         f"{prefix}_d": float(day.day),
     }
+
+
+def parse_values(text):
+    """The `key=value` lines of a rendered fixture as a dict of floats; comments are skipped."""
+    values = {}
+    for line in text.splitlines():
+        if line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key] = float(value)
+    return values
