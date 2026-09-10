@@ -2,30 +2,30 @@
 //! option pricing, Black-Scholes-Merton, Black-76, Greeks, implied volatility solver, and
 //! put-call parity.
 
+mod common;
+
 use kestrel_chartkit::option::{
     black_76, black_scholes_merton, implied_volatility, verify_put_call_parity, BlackScholesInputs,
     OptionError, OptionType,
 };
 
+const GOLDEN: &str = include_str!("fixtures/golden_option_pricing.txt");
+
+/// Absolute floor plus a share of the reference value, both stated in the fixture.
+fn close_enough(actual: f64, key: &str) {
+    let reference = common::golden_value(GOLDEN, key);
+    let tolerance = common::golden_value(GOLDEN, "option_pricing_abs_floor")
+        + common::golden_value(GOLDEN, "option_pricing_rel") * reference.abs();
+    common::assert_close(actual, reference, tolerance, key);
+}
+
 #[test]
 fn test_golden_black_scholes_analytical_reference() {
-    // At-the-money reference case:
-    // Spot S = 100.0, Strike K = 100.0 (ATM)
-    // Time T = 1.0 year, Risk-free rate r = 0.05, Dividend yield q = 0.0
-    // Volatility sigma = 0.20
-    //
-    // Hand calculation:
-    // d1 = (ln(100/100) + (0.05 + 0.5 * 0.04) * 1) / (0.2 * 1) = 0.07 / 0.2 = 0.35
-    // d2 = d1 - 0.2 = 0.15
-    // N(0.35) = 0.63683065
-    // N(0.15) = 0.55961769
-    // N(-0.35) = 0.36316935
-    // N(-0.15) = 0.44038231
-    // e^(-0.05) = 0.95122942
-    // Call = 100 * N(0.35) - 100 * e^(-0.05) * N(0.15)
-    //      = 63.683065 - 95.122942 * 0.55961769 = 63.683065 - 53.232483 = 10.450582
-    // Put  = 100 * e^(-0.05) * N(-0.15) - 100 * N(-0.35)
-    //      = 95.122942 * 0.44038231 - 36.316935 = 41.890458 - 36.316935 = 5.573523
+    // At-the-money reference case: S = K = 100, T = 1 year, r = 0.05, q = 0, sigma = 0.20, so
+    // d1 = (ln(100/100) + (0.05 + 0.5 * 0.04) * 1) / (0.2 * 1) = 0.35 and d2 = 0.15.
+    // Call = 100 * N(0.35) - 100 * e^(-0.05) * N(0.15), put = 100 * e^(-0.05) * N(-0.15) -
+    // 100 * N(-0.35); to eight digits 10.450582 and 5.573523. The full-precision prices and
+    // Greeks are generated in golden_option_pricing.txt from the same formulas.
     let inputs = BlackScholesInputs {
         spot: 100.0,
         strike: 100.0,
@@ -39,8 +39,8 @@ fn test_golden_black_scholes_analytical_reference() {
     let put = black_scholes_merton(OptionType::Put, &inputs).unwrap();
 
     // Verify analytical price
-    assert!((call.price - 10.450582).abs() < 1e-4);
-    assert!((put.price - 5.573523).abs() < 1e-4);
+    close_enough(call.price, "atm_call_price");
+    close_enough(put.price, "atm_put_price");
 
     // Verify intrinsic and time value
     assert_eq!(call.intrinsic_value, 0.0);
@@ -49,21 +49,18 @@ fn test_golden_black_scholes_analytical_reference() {
     assert!((put.time_value - put.price).abs() < 1e-12);
 
     // Verify Greeks
-    // Delta Call = N(d1) = 0.63683
-    assert!((call.greeks.delta - 0.63683).abs() < 1e-4);
-    // Delta Put = N(d1) - 1 = -0.36317
-    assert!((put.greeks.delta - (-0.36317)).abs() < 1e-4);
+    // Delta Call = N(d1), Delta Put = N(d1) - 1
+    close_enough(call.greeks.delta, "atm_call_delta");
+    close_enough(put.greeks.delta, "atm_put_delta");
     // Delta Call - Delta Put == 1.0 (with q=0)
     assert!((call.greeks.delta - put.greeks.delta - 1.0).abs() < 1e-12);
 
-    // Gamma: phi(d1) / (S * sigma * sqrt(T)) = phi(0.35) / (100 * 0.2 * 1)
-    // phi(0.35) = 1/sqrt(2pi) * e^(-0.35^2 / 2) = 0.39894228 * 0.940588 = 0.37524
-    // Gamma = 0.37524 / 20 = 0.018762
-    assert!((call.greeks.gamma - 0.018762).abs() < 1e-4);
+    // Gamma = phi(d1) / (S * sigma * sqrt(T)) = phi(0.35) / 20
+    close_enough(call.greeks.gamma, "atm_gamma");
     assert_eq!(call.greeks.gamma, put.greeks.gamma);
 
-    // Vega = S * sqrt(T) * phi(d1) = 100 * 1 * 0.37524 = 37.524
-    assert!((call.greeks.vega - 37.524).abs() < 1e-2);
+    // Vega = S * sqrt(T) * phi(d1) = 100 * phi(0.35)
+    close_enough(call.greeks.vega, "atm_vega");
     assert_eq!(call.greeks.vega, put.greeks.vega);
 }
 

@@ -199,7 +199,9 @@ pub enum DayCountConvention {
     Actual360,
     /// Fixed year convention: Actual calendar days divided by 365.
     Actual365Fixed,
-    /// US 30/360 Bond Basis (ISMA-30/360 / BMA). Assumes 30 days per month.
+    /// 30/360 Bond Basis: `360 · (Y2 - Y1) + 30 · (M2 - M1) + (D2 - D1)` days over 360, where a
+    /// start day of 31 counts as 30 and an end day of 31 counts as 30 once the start day is 30
+    /// or 31. There is no separate end-of-February rule.
     Thirty360,
     /// Actual/Actual ISDA: Splits leap years and normal years proportionally.
     ActualActualISDA,

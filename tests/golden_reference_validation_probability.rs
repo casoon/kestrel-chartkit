@@ -1,11 +1,15 @@
 //! Independent golden-reference and hand-calculation tests for out-of-sample data splits
 //! (purging & embargo), frozen probability calibration, Brier Skill Score, and ECE.
 
+mod common;
+
 use kestrel_chartkit::evaluation::probability::{
     block_bootstrap_brier, compute_calibration_metrics, IsotonicCalibrator,
     ValidationExperimentManifest,
 };
 use kestrel_chartkit::evaluation::split::{split_trades_purged, PurgedSplitConfig, TradeSpan};
+
+const GOLDEN: &str = include_str!("fixtures/golden_validation_probability.txt");
 
 #[test]
 fn test_golden_frozen_calibrator_invariant_to_test_data() {
@@ -104,7 +108,8 @@ fn test_golden_hand_calc_brier_score_and_brier_skill_score() {
     //
     // Brier Skill Score = 1.0 - (0.0750 / 0.2500) = 1.0 - 0.30 = 0.7000 (70% skill)
     //
-    // Log-loss = -1/4 * [ln(0.8) + ln(0.7) + ln(0.6) + ln(0.9)] = 0.29900116
+    // Log-loss = -1/4 * [ln(0.8) + ln(0.7) + ln(0.6) + ln(0.9)], about 0.29900116; generated in
+    // golden_validation_probability.txt.
     //
     // ECE across 2 bins ([0..0.5), [0.5..1.0]):
     // Bin 0: preds 0.4, 0.1 -> mean 0.25, actual winrate 0.0 -> gap 0.25 (weight 0.5)
@@ -115,7 +120,12 @@ fn test_golden_hand_calc_brier_score_and_brier_skill_score() {
     assert!((metrics.brier_score - 0.075).abs() < 1e-12);
     assert!((metrics.baseline_brier_score - 0.25).abs() < 1e-12);
     assert!((metrics.brier_skill_score - 0.70).abs() < 1e-12);
-    assert!((metrics.log_loss - 0.29900116).abs() < 1e-6);
+    common::assert_close(
+        metrics.log_loss,
+        common::golden_value(GOLDEN, "log_loss"),
+        common::golden_value(GOLDEN, "validation_probability_tolerance"),
+        "Log-Loss",
+    );
     assert!((metrics.expected_calibration_error - 0.25).abs() < 1e-12);
     assert_eq!(metrics.sample_size, 4);
 }

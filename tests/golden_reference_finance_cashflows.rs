@@ -2,11 +2,19 @@
 //! conventions, cashflow discounting, bond pricing, duration, DV01, and YTM inversion
 //!.
 
+mod common;
+
 use kestrel_chartkit::finance::{
     discount_factor, price_bond, year_fraction, yield_to_maturity, BondSpec, BusinessCalendar,
     BusinessDayConvention, Compounding, CouponSchedule, Date, DayCountConvention, FixedRateBond,
     ScheduleStub, Weekday,
 };
+
+const GOLDEN: &str = include_str!("fixtures/golden_finance_cashflows.txt");
+
+fn golden(key: &str) -> f64 {
+    common::golden_value(GOLDEN, key)
+}
 
 #[test]
 fn test_golden_day_count_conventions_and_fractions() {
@@ -118,9 +126,13 @@ fn test_golden_bond_pricing_premium_and_discount() {
         DayCountConvention::Thirty360,
     )
     .unwrap();
-    // Hand calculation for 2-year 8% coupon at 4% YTM:
-    // PV = 8 / 1.04 + 108 / 1.04^2 = 7.692308 + 99.852071 = 107.544379
-    assert!((res_premium.clean_price - 107.544379).abs() < 1e-4);
+    // PV = 8 / 1.04 + 108 / 1.04^2, about 107.544379; generated in golden_finance_cashflows.txt.
+    common::assert_close(
+        res_premium.clean_price,
+        golden("bond2y_premium_clean"),
+        golden("finance_cashflows_tolerance"),
+        "Premium-Anleihe",
+    );
 
     // Discount bond: coupon 2% < YTM 4% -> Clean price < 100
     let res_discount = price_bond(
@@ -133,8 +145,13 @@ fn test_golden_bond_pricing_premium_and_discount() {
         DayCountConvention::Thirty360,
     )
     .unwrap();
-    // PV = 2 / 1.04 + 102 / 1.04^2 = 1.923077 + 94.304734 = 96.227811
-    assert!((res_discount.clean_price - 96.227811).abs() < 1e-4);
+    // PV = 2 / 1.04 + 102 / 1.04^2, about 96.227811; generated in golden_finance_cashflows.txt.
+    common::assert_close(
+        res_discount.clean_price,
+        golden("bond2y_discount_clean"),
+        golden("finance_cashflows_tolerance"),
+        "Discount-Anleihe",
+    );
 }
 
 #[test]
