@@ -176,6 +176,68 @@ pub fn linear_regression(slice: &[f64]) -> Option<LinearRegressionResult> {
     })
 }
 
+/// A binomial proportion with its confidence bounds, all in `0.0..=1.0`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProportionInterval {
+    /// `successes / trials`.
+    pub estimate: f64,
+    pub lower: f64,
+    pub upper: f64,
+}
+
+/// Wilson score interval for `successes` out of `trials`.
+///
+/// With `p = successes / trials`, `n = trials` and the normal quantile `z`
+/// (1.959963984540054 for 95 %):
+///
+/// ```text
+/// centre     = (p + z²/(2n)) / (1 + z²/n)
+/// half_width = z · sqrt(p(1 − p)/n + z²/(4n²)) / (1 + z²/n)
+/// ```
+///
+/// Chosen over the Wald interval `p ± z·sqrt(p(1 − p)/n)` because Wald
+/// collapses to zero width at `p = 0` or `p = 1` and leaves `0..=1` for small
+/// `n` — exactly the samples where the uncertainty matters most. Bounds are
+/// clamped to `0..=1` against rounding.
+///
+/// `None` for `trials == 0`, `successes > trials`, or a `z` that is not a
+/// positive finite number.
+pub fn wilson_interval(successes: usize, trials: usize, z: f64) -> Option<ProportionInterval> {
+    if trials == 0 || successes > trials || !z.is_finite() || z <= 0.0 {
+        return None;
+    }
+    let n = trials as f64;
+    let p = successes as f64 / n;
+    let z2 = z * z;
+    let denominator = 1.0 + z2 / n;
+    let centre = (p + z2 / (2.0 * n)) / denominator;
+    let half_width = z * (p * (1.0 - p) / n + z2 / (4.0 * n * n)).sqrt() / denominator;
+    Some(ProportionInterval {
+        estimate: p,
+        lower: (centre - half_width).clamp(0.0, 1.0),
+        upper: (centre + half_width).clamp(0.0, 1.0),
+    })
+}
+
+/// Length of the longest unbroken run of consecutive elements for which
+/// `predicate` holds; `0` if it never does.
+///
+/// The longest losing streak of a trade list is
+/// `longest_run(&pnl, |p| *p < 0.0)`.
+pub fn longest_run<T>(values: &[T], mut predicate: impl FnMut(&T) -> bool) -> usize {
+    let mut longest = 0;
+    let mut current = 0;
+    for value in values {
+        if predicate(value) {
+            current += 1;
+            longest = longest.max(current);
+        } else {
+            current = 0;
+        }
+    }
+    longest
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

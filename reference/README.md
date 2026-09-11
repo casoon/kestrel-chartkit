@@ -34,6 +34,7 @@ Python 3.10 or newer; nothing else.
 | `golden_business_days` | `kestrel_reference/fixtures/business_days.py` |
 | `golden_surface_diff` | `kestrel_reference/fixtures/surface_diff.py` |
 | `golden_revaluation_diff` | `kestrel_reference/fixtures/revaluation_diff.py` |
+| `golden_sample_stats` | `kestrel_reference/fixtures/sample_stats.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

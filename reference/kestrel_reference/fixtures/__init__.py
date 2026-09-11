@@ -16,6 +16,7 @@ from . import (
     option_pricing,
     oscillators,
     revaluation_diff,
+    sample_stats,
     scenario_structure,
     surface_diff,
     transforms,
@@ -45,5 +46,6 @@ ALL = (
     finance_cashflows,
     option_pricing,
     validation_probability,
+    sample_stats,
     scenario_structure,
 )

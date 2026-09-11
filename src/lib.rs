@@ -79,7 +79,8 @@ pub mod series;
 pub mod session;
 /// Composite signal data types.
 pub mod signal;
-/// Rolling statistical primitives and linear regression.
+/// Rolling statistical primitives, linear regression, and sample statistics (Wilson interval,
+/// longest run).
 pub mod stats;
 /// Stress testing, multi-asset block bootstrapping, path simulation, and execution uncertainty.
 pub mod stress;
@@ -174,7 +175,7 @@ pub use scoring::{
 pub use series::{CumulativeSum, Series, SeriesEvents};
 pub use session::{SessionConfig, SessionConfigError, SessionTracker};
 pub use signal::{CompositeSignal, PermissionGrade, SignalDirection, SubScore};
-pub use stats::{correlation, linear_regression};
+pub use stats::{correlation, linear_regression, longest_run, wilson_interval, ProportionInterval};
 pub use stress::{
     apply_portfolio_stress, multi_asset_block_bootstrap, simulate_equity_paths,
     simulate_stop_gap_execution, PathSimulationSummary, StressError, StressScenario,
