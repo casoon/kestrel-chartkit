@@ -1,0 +1,56 @@
+---
+title: Installation
+description: Add the current version from the Git repository. crates.io carries an older release.
+order: 1
+---
+
+```sh
+cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.11.3
+```
+
+Or in `Cargo.toml`:
+
+```toml
+[dependencies]
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3" }
+```
+
+<Callout type="caution">
+  crates.io has kestrel-chartkit 0.1.1, published in early September 2026. This site documents
+  0.11.3, which is only available from the repository. Pin a tag rather than a branch: the crate is
+  pre-1.0, and a breaking change raises the minor version.
+</Callout>
+
+## Cargo features
+
+| Feature    | Default | Adds                                                                    |
+| ---------- | ------- | ----------------------------------------------------------------------- |
+| `serde`    | yes     | `Serialize` and `Deserialize` for public data types                     |
+| `calendar` | no      | `ExchangeCalendar`: IANA-timezone-aware trading sessions, via `chrono-tz` |
+
+Without default features the crate has no dependencies at all:
+
+```toml
+[dependencies]
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3", default-features = false }
+```
+
+## Requirements
+
+Rust 1.87 or newer (`rust-version` in `Cargo.toml`).
+
+## Try the examples
+
+The repository contains runnable examples:
+
+```sh
+git clone https://github.com/casoon/kestrel-chartkit
+cd kestrel-chartkit
+cargo run --example basic_indicator
+cargo run --example synthetic_patterns
+cargo run --example site_showcase   # writes the SVG charts shown on this site
+```
+
+## Next steps
+
+Continue with the [Quickstart](../quickstart/) to stream bars through an indicator.

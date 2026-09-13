@@ -1,0 +1,117 @@
+---
+import {
+  Badge,
+  Badges,
+  BuildOutput,
+  CodeBlock,
+  Facts,
+  Features,
+  Hero,
+  Install,
+  Quickstart,
+} from '@casoon/pages-theme/components';
+import Base from '@casoon/pages-theme/layouts/Base.astro';
+import catalog from '../../../examples/site/catalog.txt?raw';
+import { figure } from '../showcase';
+
+// Written by `cargo run --example site_showcase`: one line per entry of `catalog()`.
+const indicatorCount = catalog.trim().split('\n').length;
+const goldenSuites = Object.keys(import.meta.glob('../../../tests/golden_reference_*.rs', { query: '?raw' })).length;
+
+const hero = figure('market-regime-hero', 'Market regime chart');
+const bollinger = figure('bollinger-bands', 'Bollinger Bands chart');
+
+const cargoToml = `[dependencies]
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3" }`;
+
+const mainRs = `use kestrel_chartkit::{build_checked, Bar, Indicator};
+use std::collections::HashMap;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut params = HashMap::new();
+    params.insert("rsi_len".to_string(), 14.0);
+    let mut rsi = build_checked("rsi", &params)?;
+
+    let bar = Bar::try_new(1700000000, 100.0, 105.0, 95.0, 104.0, 1000.0)?;
+    if let Some(output) = rsi.on_bar(&bar) {
+        println!("RSI Value: {:.2}", output.value);
+    }
+    Ok(())
+}`;
+---
+
+<Base>
+  <Hero
+    title="Indicator math, market regimes and signals, one bar at a time."
+    lead="kestrel-chartkit is a Rust library for technical analysis. It streams bars through indicators, classifies the market regime, weighs indicator readings into one composite signal and draws the result as static SVG."
+  >
+    <Install
+      commands={[
+        {
+          label: 'cargo',
+          command: 'cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.11.3',
+        },
+      ]}
+    />
+    <Badges>
+      <Badge>BUSL-1.1</Badge>
+      <Badge tone="brand">pre-1.0</Badge>
+      <Badge>v0.11.3</Badge>
+      <Badge>Rust 1.87+</Badge>
+    </Badges>
+    <div slot="output" set:html={hero} />
+  </Hero>
+
+  <Facts
+    items={[
+      { value: String(indicatorCount), label: 'indicators in the registry, built by name' },
+      { value: String(goldenSuites), label: 'golden-reference test suites' },
+      { value: '4', label: 'market regimes, from fixed and documented rules' },
+      { value: '0', label: 'required dependencies without default features' },
+    ]}
+  />
+
+  <Features
+    items={[
+      {
+        title: 'Streaming by design',
+        body: 'Every indicator implements one trait, consumes one bar at a time and returns nothing until its warmup is complete.',
+      },
+      {
+        title: 'Built from configuration',
+        body: '<code>catalog()</code> lists every indicator with its default parameters; <code>build_checked</code> rejects invalid periods and thresholds with an error instead of a panic.',
+      },
+      {
+        title: 'Signals you can explain',
+        body: 'Regime and composite score follow a handful of fixed thresholds. A direction against the regime is vetoed, and every signal carries its subscores.',
+      },
+      {
+        title: 'Pinned against independent references',
+        body: 'Numeric results are checked against values derived outside the crate: a second implementation, exact arithmetic or an unambiguous case.',
+      },
+      {
+        title: 'SVG without a front end',
+        body: 'Candles, indicator lines, zones and markers render to a self-contained SVG string. Colours can be CSS variables, so one chart serves light and dark pages.',
+      },
+    ]}
+  />
+
+  <BuildOutput
+    caption="Every chart on this site is an SVG written by the crate's own renderer: cargo run --example site_showcase streams synthetic bars with fixed seeds through the indicators."
+    file="examples/site/bollinger-bands.svg"
+  >
+    <Fragment set:html={bollinger} />
+  </BuildOutput>
+
+  <Quickstart
+    lead="Add the crate from the repository, build an indicator by name and feed it bars. The full walkthrough lives in the documentation."
+    steps={[
+      'Add the dependency, pinned to a release tag.',
+      'Build an indicator from the registry with <code>build_checked</code>.',
+      'Stream validated bars through <code>on_bar</code> and read the output.',
+    ]}
+  >
+    <CodeBlock code={cargoToml} lang="toml" title="Cargo.toml" label="Cargo.toml" />
+    <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
+  </Quickstart>
+</Base>
