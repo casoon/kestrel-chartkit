@@ -9,7 +9,8 @@ keywords = ["trading", "technical-analysis", "indicators", "charting", "signals"
 categories = ["finance", "visualization"]
 readme = "README.md"
 # The reference generator only produces tests/fixtures/; it is not part of the library.
-exclude = ["reference/"]
+# site/, docs/ and examples/site/ make up the project website.
+exclude = ["reference/", "site/", "docs/", "examples/site/"]
 rust-version = "1.87"
 
 [dependencies]

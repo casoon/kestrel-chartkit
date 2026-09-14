@@ -4,6 +4,8 @@ High-performance Rust technical analysis library for streaming indicator math, m
 classification, composite signal scoring, trade evaluation, instrument valuation, and static SVG
 visualization.
 
+**Website and documentation:** [casoon.github.io/kestrel-chartkit](https://casoon.github.io/kestrel-chartkit/)
+
 The crate is at **0.5**, pre-1.0. Root-level re-exports are the preferred consumer API;
 lower-level modules remain public for advanced composition but may change before 1.0. Breaking
 changes are marked with `!` in the commit subject and raise the minor version.
