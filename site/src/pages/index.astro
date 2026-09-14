@@ -22,7 +22,7 @@ const hero = figure('market-regime-hero', 'Market regime chart');
 const bollinger = figure('bollinger-bands', 'Bollinger Bands chart');
 
 const cargoToml = `[dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3" }`;
+kestrel-chartkit = "0.11"`;
 
 const mainRs = `use kestrel_chartkit::{build_checked, Bar, Indicator};
 use std::collections::HashMap;
@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       commands={[
         {
           label: 'cargo',
-          command: 'cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.11.3',
+          command: 'cargo add kestrel-chartkit',
         },
       ]}
     />
