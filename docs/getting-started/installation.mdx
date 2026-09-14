@@ -1,24 +1,23 @@
 ---
 title: Installation
-description: Add the current version from the Git repository. crates.io carries an older release.
+description: Add kestrel-chartkit from crates.io and choose its Cargo features.
 order: 1
 ---
 
 ```sh
-cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.11.3
+cargo add kestrel-chartkit
 ```
 
 Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3" }
+kestrel-chartkit = "0.11"
 ```
 
-<Callout type="caution">
-  crates.io has kestrel-chartkit 0.1.1, published in early September 2026. This site documents
-  0.11.3, which is only available from the repository. Pin a tag rather than a branch: the crate is
-  pre-1.0, and a breaking change raises the minor version.
+<Callout type="note">
+  The crate is pre-1.0, and a breaking change raises the minor version. `"0.11"` takes 0.11.x
+  patch releases but not 0.12; move to a new minor version deliberately.
 </Callout>
 
 ## Cargo features
@@ -32,7 +31,7 @@ Without default features the crate has no dependencies at all:
 
 ```toml
 [dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit", tag = "v0.11.3", default-features = false }
+kestrel-chartkit = { version = "0.11", default-features = false }
 ```
 
 ## Requirements

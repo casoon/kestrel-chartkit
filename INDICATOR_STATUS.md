@@ -1,6 +1,6 @@
 # Indicator Status
 
-As of: 2026-09-09
+As of: 2026-09-14
 
 Overview of all indicators/detectors from `src/indicator/registry.rs`: name and whether it has
 been verified (✅) or is still open (❌). Only the verification status — not what it was
@@ -151,4 +151,5 @@ is complete.
 
 ---
 
-**Total: 89/89 verified.**
+**Total: 105/105 verified** — the same 105 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 12 structure/pattern detectors.

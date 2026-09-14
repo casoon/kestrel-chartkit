@@ -6,13 +6,13 @@ visualization.
 
 **Website and documentation:** [casoon.github.io/kestrel-chartkit](https://casoon.github.io/kestrel-chartkit/)
 
-The crate is at **0.5**, pre-1.0. Root-level re-exports are the preferred consumer API;
+The crate is at **0.11**, pre-1.0. Root-level re-exports are the preferred consumer API;
 lower-level modules remain public for advanced composition but may change before 1.0. Breaking
 changes are marked with `!` in the commit subject and raise the minor version.
 
 ## Features
 
-- **96 Streaming Technical Indicators:** RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `indicator::registry::catalog()` for the full, validated list).
+- **105 Streaming Indicators and Detectors:** 89 technical indicators, 4 composite scores and 12 structure/pattern detectors, all built by name and streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
 - **Dynamic Catalog Registry:** Parameter validation and dynamic instantiation via `catalog()` and `build_checked(name, params)`.
 - **Market Regime Alignment:** Automatic regime classification (`BullishExpansion`, `BearishExpansion`, `Consolidation`, `Transition`) with permission grading (`ClearToTrade`, `Caution`, `Veto`).
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
@@ -74,6 +74,15 @@ println!("clean {:.4}, accrued {:.4}", priced.clean_price, priced.accrued_intere
 See `examples/bond_contract.rs` (`cargo run --example bond_contract`) for the same walk through
 coupon dates, business-day adjustment and sensitivities.
 
+## Installation
+
+```toml
+[dependencies]
+kestrel-chartkit = "0.11"
+```
+
+or `cargo add kestrel-chartkit`. Requires Rust 1.87 or newer.
+
 ## Quickstart
 
 ```rust
@@ -118,7 +127,7 @@ The default `serde` feature derives `Serialize` and `Deserialize` for public DTO
 smaller dependency graph:
 
 ```toml
-kestrel-chartkit = { version = "0.5", default-features = false }
+kestrel-chartkit = { version = "0.11", default-features = false }
 ```
 
 The optional `calendar` feature adds `src/calendar.rs` (`ExchangeCalendar`): IANA-timezone/DST-aware
@@ -127,7 +136,7 @@ crate carries no timezone-database dependency. It is about *trading hours*; the 
 a bond schedule needs are supplied as a `BusinessCalendar` instead:
 
 ```toml
-kestrel-chartkit = { version = "0.5", features = ["calendar"] }
+kestrel-chartkit = { version = "0.11", features = ["calendar"] }
 ```
 
 ## Testing & Quality

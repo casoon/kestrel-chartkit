@@ -5,12 +5,24 @@ edition = "2021"
 description = "High-performance Rust technical analysis library for indicator math, market regime classification, composite scoring, and SVG visualization."
 license = "BUSL-1.1"
 repository = "https://github.com/casoon/kestrel-chartkit"
+homepage = "https://casoon.github.io/kestrel-chartkit/"
+documentation = "https://docs.rs/kestrel-chartkit"
 keywords = ["trading", "technical-analysis", "indicators", "charting", "signals"]
 categories = ["finance", "visualization"]
 readme = "README.md"
 # The reference generator only produces tests/fixtures/; it is not part of the library.
-# site/, docs/ and examples/site/ make up the project website.
-exclude = ["reference/", "site/", "docs/", "examples/site/"]
+# site/, docs/ and examples/site/ make up the project website. .judge/, judge.md, CLAUDE.md and
+# .github/ are repository tooling.
+exclude = [
+    "reference/",
+    "site/",
+    "docs/",
+    "examples/site/",
+    ".judge/",
+    "judge.md",
+    "CLAUDE.md",
+    ".github/",
+]
 rust-version = "1.87"
 
 [dependencies]
@@ -31,3 +43,7 @@ criterion = { version = "0.8.2", features = ["html_reports"] }
 [[bench]]
 name = "indicators"
 harness = false
+
+# Document the optional `calendar` module (ExchangeCalendar) on docs.rs as well.
+[package.metadata.docs.rs]
+all-features = true
