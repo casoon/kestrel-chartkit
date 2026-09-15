@@ -10,7 +10,8 @@
 #              (tf 2, bearish, 0.9); agreement = winning weight / total weight of the
 #              non-neutral statements, weight 1 (Majority) or the strength (WeightedByStrength).
 #   PriceStats::compute  values [10, -2, 0, None]: closed_count counts None too,
-#              win_rate = values > 0 / closed_count, avg_pnl = total / present values.
+#              wins = values > 0, win_rate = wins / closed_count, avg_pnl = total / present
+#              values.
 #   correlation_matrix  closes A [100, 110, 132, 118.8], B [100, 90, 72, 79.2] on common
 #              timestamps: returns (c_t - c_(t-1)) / c_(t-1), Pearson over the last 3, computed
 #              exactly from the binary inputs.
@@ -23,6 +24,7 @@ majority=0.6666666666666666
 weighted=0.6428571428571429
 
 # PriceStats::compute
+wins=1.0
 win_rate=0.25
 average=2.6666666666666665
 total=8.0

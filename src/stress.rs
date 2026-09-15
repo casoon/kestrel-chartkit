@@ -313,11 +313,29 @@ pub struct PathSimulationSummary {
     pub terminal_equity_quantiles: (f64, f64, f64, f64, f64),
     /// Quantiles of maximum drawdown across paths: `(p05, median, p95)`.
     pub max_drawdown_quantiles: (f64, f64, f64),
-    /// Probability that maximum drawdown exceeds a given threshold during the path.
+    /// Mean terminal equity across all paths.
     pub empirical_mean_terminal_equity: f64,
+    /// Terminal equity of every path, ascending; the quantiles above are read from it.
+    pub terminal_equities: Vec<f64>,
+    /// Maximum drawdown of every path as a fraction of its running peak, ascending — the input
+    /// [`PathSimulationSummary::probability_drawdown_exceeds`] takes.
+    pub max_drawdowns: Vec<f64>,
 }
 
 impl PathSimulationSummary {
+    /// Percentile rank of `value` among the simulated terminal equities, in `0.0..=1.0`: the
+    /// share of paths ending below it, paths ending exactly at it counted half. Tells where an
+    /// observed result lies among the orderings the same returns could have taken.
+    pub fn terminal_rank(&self, value: f64) -> f64 {
+        let n = self.terminal_equities.len();
+        if n == 0 {
+            return 0.5;
+        }
+        let below = self.terminal_equities.partition_point(|e| *e < value);
+        let not_above = self.terminal_equities.partition_point(|e| *e <= value);
+        (below as f64 + 0.5 * (not_above - below) as f64) / n as f64
+    }
+
     /// Calculates the empirical fraction of paths where maximum drawdown exceeded `threshold_pct` (e.g. 0.20 for 20%).
     pub fn probability_drawdown_exceeds(all_max_drawdowns: &[f64], threshold_pct: f64) -> f64 {
         if all_max_drawdowns.is_empty() {
@@ -431,5 +449,7 @@ pub fn simulate_equity_paths(
         terminal_equity_quantiles: (p05, p25, median, p75, p95),
         max_drawdown_quantiles: (dd_p05, dd_med, dd_p95),
         empirical_mean_terminal_equity: mean_terminal,
+        terminal_equities,
+        max_drawdowns,
     })
 }

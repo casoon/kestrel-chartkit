@@ -89,6 +89,7 @@ fn aligned_returns_and_rank_golden() {
 fn price_stats_null_and_merge_golden() {
     let v = PriceStats::compute([Some(10.), Some(-2.), Some(0.), None]);
     assert_eq!(v.closed_count, 4);
+    assert_eq!(v.wins, golden("wins") as i64);
     near(v.win_rate, golden("win_rate"));
     near(v.avg_pnl, golden("average"));
     near(v.total_pnl, golden("total"));
@@ -97,6 +98,7 @@ fn price_stats_null_and_merge_golden() {
         PriceStats::compute([Some(0.)]),
     ]);
     near(merged.avg_pnl, 8. / 3.);
+    assert_eq!(merged.wins, 1);
     near(merged.win_rate, 1. / 3.);
     assert_eq!(PriceStats::compute([]).closed_count, 0);
 }

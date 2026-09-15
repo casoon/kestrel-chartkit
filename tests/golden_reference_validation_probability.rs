@@ -158,6 +158,58 @@ fn test_golden_isotonic_calibrator_monotonicity() {
     }
 }
 
+/// Tied scores must end up in one block with their common win rate, and a score must map to one
+/// probability. Ties are the rule, not the exception: many indicators report a strength of exactly
+/// 1.0. Curves and predictions from the fixture's stack-based reference PAVA.
+#[test]
+fn test_golden_isotonic_calibrator_pools_tied_scores() {
+    let tolerance = common::golden_value(GOLDEN, "validation_probability_tolerance");
+    let cases = common::golden_value(GOLDEN, "meta_isotonic_case_count") as usize;
+    assert!(cases > 0);
+    for i in 0..cases {
+        let key = |name: &str| common::golden_value(GOLDEN, &format!("iso{i}_{name}"));
+        let samples: Vec<(f64, bool)> = (0..key("n") as usize)
+            .map(|j| (key(&format!("score{j}")), key(&format!("won{j}")) == 1.0))
+            .collect();
+        let calibrator = IsotonicCalibrator::fit(&samples).unwrap();
+
+        let blocks = key("blocks") as usize;
+        assert_eq!(
+            calibrator.thresholds.len(),
+            blocks,
+            "iso{i}: {:?}",
+            calibrator.thresholds
+        );
+        assert!(
+            calibrator.thresholds.windows(2).all(|w| w[0] < w[1]),
+            "iso{i}: thresholds must be strictly ascending, got {:?}",
+            calibrator.thresholds
+        );
+        for k in 0..blocks {
+            common::assert_close(
+                calibrator.thresholds[k],
+                key(&format!("threshold{k}")),
+                tolerance,
+                &format!("iso{i}_threshold{k}"),
+            );
+            common::assert_close(
+                calibrator.probabilities[k],
+                key(&format!("probability{k}")),
+                tolerance,
+                &format!("iso{i}_probability{k}"),
+            );
+        }
+        for m in 0..key("queries") as usize {
+            common::assert_close(
+                calibrator.predict(key(&format!("query{m}"))),
+                key(&format!("predicted{m}")),
+                tolerance,
+                &format!("iso{i}_predicted{m}"),
+            );
+        }
+    }
+}
+
 #[test]
 fn test_golden_low_sample_size_visibility() {
     // Acceptance criterion 4: geringe Stichprobe bleibt sichtbar.

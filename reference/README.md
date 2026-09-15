@@ -35,6 +35,7 @@ Python 3.10 or newer; nothing else.
 | `golden_surface_diff` | `kestrel_reference/fixtures/surface_diff.py` |
 | `golden_revaluation_diff` | `kestrel_reference/fixtures/revaluation_diff.py` |
 | `golden_sample_stats` | `kestrel_reference/fixtures/sample_stats.py` |
+| `golden_cross_asset_alignment` | `kestrel_reference/fixtures/cross_asset_alignment.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

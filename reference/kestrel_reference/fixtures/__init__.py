@@ -8,6 +8,7 @@ from . import (
     bond_diff,
     business_days,
     composite,
+    cross_asset_alignment,
     curve_diff,
     family_math,
     finance_cashflows,
@@ -48,4 +49,5 @@ ALL = (
     validation_probability,
     sample_stats,
     scenario_structure,
+    cross_asset_alignment,
 )

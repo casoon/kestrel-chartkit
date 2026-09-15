@@ -92,17 +92,132 @@ pub fn relative_strength(
             }
             let last = bars[bars.len() - 1].close;
             let base = bars[bars.len() - 1 - lookback].close;
-            if base == 0.0 {
-                return None;
-            }
             Some(RelativeStrength {
                 instrument: epic.clone(),
-                change_pct: 100.0 * (last - base) / base,
+                change_pct: change_pct(base, last)?,
             })
         })
         .collect();
     out.sort_by(|a, b| b.change_pct.total_cmp(&a.change_pct));
     out
+}
+
+/// `100 · (last - base) / base`; `None` for a zero base.
+fn change_pct(base: f64, last: f64) -> Option<f64> {
+    (base != 0.0).then(|| 100.0 * (last - base) / base)
+}
+
+/// Close series cut down to the timestamps every one of them has.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct AlignedCloses {
+    /// The shared timestamps, ascending.
+    pub timestamps: Vec<i64>,
+    /// Per instrument, in input order, its close at each shared timestamp.
+    pub closes: Vec<(String, Vec<f64>)>,
+}
+
+/// Aligns `series` (each `(epic, bars)`) on the timestamps present in every series. Without the
+/// cut, a series with one missing bar would be compared period by period against the wrong
+/// periods of the others. Where a series holds a timestamp twice, the later sample counts. No
+/// series gives no timestamps.
+pub fn align_closes(series: &[(String, Vec<CloseSample>)]) -> AlignedCloses {
+    let maps: Vec<BTreeMap<i64, f64>> = series
+        .iter()
+        .map(|(_, bars)| bars.iter().map(|b| (b.timestamp, b.close)).collect())
+        .collect();
+    let timestamps: Vec<i64> = match maps.split_first() {
+        Some((first, rest)) => first
+            .keys()
+            .filter(|ts| rest.iter().all(|m| m.contains_key(ts)))
+            .copied()
+            .collect(),
+        None => Vec::new(),
+    };
+    let closes = series
+        .iter()
+        .zip(&maps)
+        .map(|((epic, _), map)| (epic.clone(), timestamps.iter().map(|ts| map[ts]).collect()))
+        .collect();
+    AlignedCloses { timestamps, closes }
+}
+
+/// Percentage returns of aligned series.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct AlignedReturns {
+    /// Timestamp of the closing sample of each return, ascending.
+    pub timestamps: Vec<i64>,
+    /// Per instrument, in input order, its returns at those timestamps.
+    pub returns: Vec<(String, Vec<f64>)>,
+}
+
+/// Percentage returns `100 · (c_t - c_{t-1}) / c_{t-1}` over consecutive shared timestamps of
+/// [`align_closes`], the last `lookback` of them. A period in which any series has a zero base
+/// close is dropped for every series, so the rows stay aligned.
+pub fn aligned_returns(series: &[(String, Vec<CloseSample>)], lookback: usize) -> AlignedReturns {
+    let aligned = align_closes(series);
+    let mut timestamps = Vec::new();
+    let mut returns: Vec<Vec<f64>> = vec![Vec::new(); aligned.closes.len()];
+    for t in 1..aligned.timestamps.len() {
+        let row: Option<Vec<f64>> = aligned
+            .closes
+            .iter()
+            .map(|(_, closes)| change_pct(closes[t - 1], closes[t]))
+            .collect();
+        if let Some(row) = row {
+            timestamps.push(aligned.timestamps[t]);
+            for (column, value) in returns.iter_mut().zip(row) {
+                column.push(value);
+            }
+        }
+    }
+    let skip = timestamps.len().saturating_sub(lookback);
+    AlignedReturns {
+        timestamps: timestamps.split_off(skip),
+        returns: aligned
+            .closes
+            .into_iter()
+            .zip(returns)
+            .map(|((epic, _), mut column)| (epic, column.split_off(skip)))
+            .collect(),
+    }
+}
+
+/// [`compute_market_breadth`] over close series aligned with [`align_closes`], so every member is
+/// measured over the same periods.
+///
+/// The window is the last `lookback + 1` shared closes, or all of them when fewer are shared; it
+/// needs at least two. Per member, `period_return` is the change from the first to the last
+/// close of the window, `100 · (last - first) / first` as in [`relative_strength`],
+/// `current_price` the last close and `ma_reference` the mean of the window's closes. A member
+/// with a zero first close is left out. `None` when the window is too short or no member
+/// remains.
+pub fn market_breadth_from_closes(
+    series: &[(String, Vec<CloseSample>)],
+    lookback: usize,
+) -> Option<MarketBreadthSnapshot> {
+    let aligned = align_closes(series);
+    let window = aligned.timestamps.len().min(lookback.saturating_add(1));
+    if window < 2 {
+        return None;
+    }
+    let members: Vec<UniverseMemberObservation> = aligned
+        .closes
+        .into_iter()
+        .filter_map(|(symbol, closes)| {
+            let recent = &closes[closes.len() - window..];
+            let first = recent[0];
+            let last = recent[window - 1];
+            Some(UniverseMemberObservation {
+                symbol,
+                period_return: change_pct(first, last)?,
+                current_price: last,
+                ma_reference: Some(recent.iter().sum::<f64>() / window as f64),
+            })
+        })
+        .collect();
+    compute_market_breadth(&members)
 }
 
 /// Pearson correlation of percentage returns over the common timestamps of

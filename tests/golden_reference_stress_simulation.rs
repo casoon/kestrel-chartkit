@@ -238,3 +238,71 @@ fn test_golden_drawdown_exceedance_probability_calculation() {
     let prob_50 = PathSimulationSummary::probability_drawdown_exceeds(&drawdowns, 0.50);
     assert_eq!(prob_50, 0.0);
 }
+
+#[test]
+fn test_golden_terminal_rank_hand_calculation() {
+    // Hand calculation over five paths ending at [90, 100, 100, 110, 120]:
+    //   rank(100) = (1 below + 0.5 · 2 equal) / 5 = 0.4
+    //   rank(105) = 3 below / 5 = 0.6, rank(90) = 0.5 · 1 equal / 5 = 0.1
+    //   rank(80) = 0, rank(130) = 1
+    let summary = PathSimulationSummary {
+        initial_equity: 100.0,
+        horizon_steps: 1,
+        num_simulations: 5,
+        seed: 0,
+        terminal_equity_quantiles: (90.0, 100.0, 100.0, 110.0, 120.0),
+        max_drawdown_quantiles: (0.0, 0.0, 0.0),
+        empirical_mean_terminal_equity: 104.0,
+        terminal_equities: vec![90.0, 100.0, 100.0, 110.0, 120.0],
+        max_drawdowns: vec![0.0; 5],
+    };
+    for (value, expected) in [
+        (100.0, 0.4),
+        (105.0, 0.6),
+        (90.0, 0.1),
+        (80.0, 0.0),
+        (130.0, 1.0),
+    ] {
+        assert!(
+            (summary.terminal_rank(value) - expected).abs() < 1e-12,
+            "rank({value}) = {}, expected {expected}",
+            summary.terminal_rank(value)
+        );
+    }
+}
+
+/// The summary carries every path, sorted, and the quantiles are read from exactly those values —
+/// which also gives `probability_drawdown_exceeds` the per-path input it needs.
+#[test]
+fn test_golden_path_simulation_keeps_every_path() {
+    let returns = vec![0.01, -0.005, 0.02, -0.015, 0.008, 0.012, -0.02, 0.005];
+    let summary = simulate_equity_paths(10_000.0, &returns, 2, 20, 100, 7).unwrap();
+
+    assert_eq!(summary.terminal_equities.len(), 100);
+    assert_eq!(summary.max_drawdowns.len(), 100);
+    assert!(summary.terminal_equities.windows(2).all(|w| w[0] <= w[1]));
+    assert!(summary.max_drawdowns.windows(2).all(|w| w[0] <= w[1]));
+    // floor(0.05 · 100) = 5, floor(0.5 · 100) = 50, floor(0.95 · 100) = 95
+    assert_eq!(
+        summary.terminal_equity_quantiles.0,
+        summary.terminal_equities[5]
+    );
+    assert_eq!(
+        summary.terminal_equity_quantiles.2,
+        summary.terminal_equities[50]
+    );
+    assert_eq!(
+        summary.terminal_equity_quantiles.4,
+        summary.terminal_equities[95]
+    );
+    assert_eq!(summary.max_drawdown_quantiles.1, summary.max_drawdowns[50]);
+
+    let at_median = PathSimulationSummary::probability_drawdown_exceeds(
+        &summary.max_drawdowns,
+        summary.max_drawdown_quantiles.1,
+    );
+    assert!(
+        at_median >= 0.5,
+        "at least half the paths reach the median: {at_median}"
+    );
+}

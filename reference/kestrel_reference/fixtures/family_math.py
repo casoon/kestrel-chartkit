@@ -24,7 +24,8 @@ HEADER = [
     "             (tf 2, bearish, 0.9); agreement = winning weight / total weight of the",
     "             non-neutral statements, weight 1 (Majority) or the strength (WeightedByStrength).",
     "  PriceStats::compute  values [10, -2, 0, None]: closed_count counts None too,",
-    "             win_rate = values > 0 / closed_count, avg_pnl = total / present values.",
+    "             wins = values > 0, win_rate = wins / closed_count, avg_pnl = total / present",
+    "             values.",
     "  correlation_matrix  closes A [100, 110, 132, 118.8], B [100, 90, 72, 79.2] on common",
     "             timestamps: returns (c_t - c_(t-1)) / c_(t-1), Pearson over the last 3, computed",
     "             exactly from the binary inputs.",
@@ -58,6 +59,7 @@ def derive():
     return {
         "majority": _agreement(STATEMENTS, by_strength=False),
         "weighted": _agreement(STATEMENTS, by_strength=True),
+        "wins": float(sum(1 for v in present if v > 0.0)),
         "win_rate": sum(1 for v in present if v > 0.0) / len(OUTCOMES),
         "average": total / len(present),
         "total": total,
@@ -68,7 +70,7 @@ def derive():
 
 SECTIONS = [
     ("aggregate_agreement", ["majority", "weighted"]),
-    ("PriceStats::compute", ["win_rate", "average", "total"]),
+    ("PriceStats::compute", ["wins", "win_rate", "average", "total"]),
     ("correlation_matrix and relative_strength_ranking", ["correlation", "relative_strength"]),
     (None, ["family_math_tolerance"]),
 ]

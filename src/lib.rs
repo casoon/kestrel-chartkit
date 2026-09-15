@@ -202,10 +202,11 @@ pub use valuation::{
 /// Cross-instrument return analysis over aligned close samples.
 pub mod cross_asset;
 pub use cross_asset::{
-    compute_market_breadth, compute_pair_spread, compute_rolling_beta,
-    compute_signal_correlation_matrix, correlation_matrix,
-    relative_strength as relative_strength_ranking, CloseSample, MarketBreadthSnapshot,
-    PairSpreadResult, RollingBetaResult, SignalCorrelationCell, UniverseMemberObservation,
+    align_closes, aligned_returns, compute_market_breadth, compute_pair_spread,
+    compute_rolling_beta, compute_signal_correlation_matrix, correlation_matrix,
+    market_breadth_from_closes, relative_strength as relative_strength_ranking, AlignedCloses,
+    AlignedReturns, CloseSample, MarketBreadthSnapshot, PairSpreadResult, RollingBetaResult,
+    SignalCorrelationCell, UniverseMemberObservation,
 };
 pub use scoring::agreement::{
     aggregate_agreement, Agreement, AgreementStrategy, DirectionalStatement,

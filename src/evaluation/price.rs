@@ -108,15 +108,18 @@ impl ForwardPriceOutcome {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PriceStats {
     pub closed_count: i64,
+    /// Number of wins, the count behind `win_rate` — for anything that needs the integer, such as
+    /// an interval around the rate.
+    pub wins: i64,
     pub win_rate: f64,
     pub avg_pnl: f64,
     pub total_pnl: f64,
 }
 impl PriceStats {
-    /// `closed_count` counts every value, `None` included; `win_rate = wins / closed_count`, a win
-    /// being a value `> 0`; `total_pnl` sums the present values and `avg_pnl = total_pnl / present
-    /// count`. NULL outcomes thus count as closed (and not won), but do not enter the mean,
-    /// matching stored legacy rows. All zero for no values.
+    /// `closed_count` counts every value, `None` included; `wins` counts the values `> 0` and
+    /// `win_rate = wins / closed_count`; `total_pnl` sums the present values and `avg_pnl =
+    /// total_pnl / present count`. NULL outcomes thus count as closed (and not won), but do not
+    /// enter the mean, matching stored legacy rows. All zero for no values.
     pub fn compute(values: impl IntoIterator<Item = Option<f64>>) -> Self {
         let (mut n, mut present, mut wins, mut total) = (0, 0, 0, 0.0);
         for p in values {
@@ -131,6 +134,7 @@ impl PriceStats {
         }
         Self {
             closed_count: n,
+            wins,
             win_rate: if n > 0 { wins as f64 / n as f64 } else { 0.0 },
             avg_pnl: if present > 0 {
                 total / present as f64
@@ -140,15 +144,15 @@ impl PriceStats {
             total_pnl: total,
         }
     }
-    /// Merge disjoint summaries in the same price unit: counts and totals add up, `win_rate` is
-    /// weighted by `closed_count`, and `avg_pnl = total_pnl / closed_count`. The present count is
-    /// not kept in a summary, so where the inputs held `None` values this mean differs from
+    /// Merge disjoint summaries in the same price unit: counts, wins and totals add up, `win_rate
+    /// = wins / closed_count`, and `avg_pnl = total_pnl / closed_count`. The present count is not
+    /// kept in a summary, so where the inputs held `None` values this mean differs from
     /// [`PriceStats::compute`] over the combined values, which divides by the present count.
     pub fn merge(values: impl IntoIterator<Item = Self>) -> Self {
-        let (mut n, mut wins, mut total) = (0, 0.0, 0.0);
+        let (mut n, mut wins, mut total) = (0, 0, 0.0);
         for v in values {
             n += v.closed_count;
-            wins += v.win_rate * v.closed_count as f64;
+            wins += v.wins;
             total += v.total_pnl;
         }
         if n == 0 {
@@ -156,7 +160,8 @@ impl PriceStats {
         }
         Self {
             closed_count: n,
-            win_rate: wins / n as f64,
+            wins,
+            win_rate: wins as f64 / n as f64,
             avg_pnl: total / n as f64,
             total_pnl: total,
         }
@@ -176,6 +181,8 @@ pub struct PriceOutcomeSample {
 #[derive(Debug, Clone, Default)]
 pub struct PriceOutcomeStats {
     pub n: i64,
+    /// Outcomes with a return `> 0`; `hit_rate = hits / n`.
+    pub hits: i64,
     pub hit_rate: f64,
     pub avg_ret_pct: Option<f64>,
     pub avg_ret_atr: Option<f64>,
@@ -202,13 +209,14 @@ impl PriceOutcomeStats {
                     .map(|(r, a)| r / a)
             })
             .collect();
+        let hits = values
+            .iter()
+            .filter(|v| v.return_value.is_some_and(|r| r > 0.0))
+            .count();
         Self {
             n: values.len() as i64,
-            hit_rate: values
-                .iter()
-                .filter(|v| v.return_value.is_some_and(|r| r > 0.0))
-                .count() as f64
-                / n,
+            hits: hits as i64,
+            hit_rate: hits as f64 / n,
             avg_ret_pct: (!returns.is_empty())
                 .then(|| returns.iter().sum::<f64>() / returns.len() as f64),
             avg_ret_atr: (!atr.is_empty()).then(|| atr.iter().sum::<f64>() / atr.len() as f64),

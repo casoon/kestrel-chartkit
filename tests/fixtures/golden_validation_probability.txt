@@ -9,10 +9,174 @@
 # mean of -ln p for a win and -ln(1 - p) for a loss, p clamped to [1e-15, 1 - 1e-15]:
 # -(ln 0.8 + ln 0.7 + ln 0.6 + ln 0.9) / 4.
 #
+# Isotonic calibration (IsotonicCalibrator). Samples with the same score form one block whose
+# value is their win rate. Adjacent blocks are pooled while a block's value is below its
+# predecessor's; a pooled block takes the weighted mean and its highest score as threshold.
+# Pooled here with a stack, not in place. Prediction: at or below the first threshold the
+# first probability, at or above the last the last one, on a threshold its probability, in
+# between linear between the neighbouring thresholds. iso<i>_score<j>/_won<j> are the samples,
+# _threshold<k>/_probability<k> the curve, _query<m>/_predicted<m> predictions from it.
+# Without pooling the ties first, iso0 would keep two blocks at score 0.5 (0.0 and 1.0).
+#
 # validation_probability_tolerance is the comparison tolerance the tests apply, stated rather
 # than derived.
 
 # calibration sample
 log_loss=0.2990011586691898
+
+# isotonic cases
+meta_isotonic_case_count=5.0
+
+iso0_n=4.0
+iso0_score0=0.2
+iso0_won0=0.0
+iso0_score1=0.5
+iso0_won1=0.0
+iso0_score2=0.5
+iso0_won2=1.0
+iso0_score3=0.9
+iso0_won3=1.0
+iso0_blocks=3.0
+iso0_threshold0=0.2
+iso0_probability0=0.0
+iso0_threshold1=0.5
+iso0_probability1=0.5
+iso0_threshold2=0.9
+iso0_probability2=1.0
+iso0_queries=7.0
+iso0_query0=0.1
+iso0_predicted0=0.0
+iso0_query1=0.2
+iso0_predicted1=0.0
+iso0_query2=0.35
+iso0_predicted2=0.24999999999999994
+iso0_query3=0.5
+iso0_predicted3=0.5
+iso0_query4=0.7
+iso0_predicted4=0.75
+iso0_query5=0.9
+iso0_predicted5=1.0
+iso0_query6=1.0
+iso0_predicted6=1.0
+
+iso1_n=7.0
+iso1_score0=1.0
+iso1_won0=1.0
+iso1_score1=1.0
+iso1_won1=0.0
+iso1_score2=1.0
+iso1_won2=1.0
+iso1_score3=0.6
+iso1_won3=1.0
+iso1_score4=0.6
+iso1_won4=0.0
+iso1_score5=0.3
+iso1_won5=0.0
+iso1_score6=1.0
+iso1_won6=1.0
+iso1_blocks=3.0
+iso1_threshold0=0.3
+iso1_probability0=0.0
+iso1_threshold1=0.6
+iso1_probability1=0.5
+iso1_threshold2=1.0
+iso1_probability2=0.75
+iso1_queries=5.0
+iso1_query0=0.3
+iso1_predicted0=0.0
+iso1_query1=0.45
+iso1_predicted1=0.25000000000000006
+iso1_query2=0.6
+iso1_predicted2=0.5
+iso1_query3=0.8
+iso1_predicted3=0.625
+iso1_query4=1.0
+iso1_predicted4=0.75
+
+iso2_n=6.0
+iso2_score0=0.4
+iso2_won0=1.0
+iso2_score1=0.4
+iso2_won1=1.0
+iso2_score2=0.7
+iso2_won2=0.0
+iso2_score3=0.7
+iso2_won3=0.0
+iso2_score4=0.7
+iso2_won4=1.0
+iso2_score5=0.9
+iso2_won5=1.0
+iso2_blocks=2.0
+iso2_threshold0=0.7
+iso2_probability0=0.6
+iso2_threshold1=0.9
+iso2_probability1=1.0
+iso2_queries=5.0
+iso2_query0=0.4
+iso2_predicted0=0.6
+iso2_query1=0.55
+iso2_predicted1=0.6
+iso2_query2=0.7
+iso2_predicted2=0.6
+iso2_query3=0.8
+iso2_predicted3=0.8
+iso2_query4=0.9
+iso2_predicted4=1.0
+
+iso3_n=3.0
+iso3_score0=0.8
+iso3_won0=1.0
+iso3_score1=0.8
+iso3_won1=0.0
+iso3_score2=0.8
+iso3_won2=0.0
+iso3_blocks=1.0
+iso3_threshold0=0.8
+iso3_probability0=0.3333333333333333
+iso3_queries=3.0
+iso3_query0=0.5
+iso3_predicted0=0.3333333333333333
+iso3_query1=0.8
+iso3_predicted1=0.3333333333333333
+iso3_query2=0.9
+iso3_predicted2=0.3333333333333333
+
+iso4_n=6.0
+iso4_score0=10.0
+iso4_won0=0.0
+iso4_score1=20.0
+iso4_won1=1.0
+iso4_score2=30.0
+iso4_won2=0.0
+iso4_score3=40.0
+iso4_won3=1.0
+iso4_score4=50.0
+iso4_won4=0.0
+iso4_score5=60.0
+iso4_won5=1.0
+iso4_blocks=4.0
+iso4_threshold0=10.0
+iso4_probability0=0.0
+iso4_threshold1=30.0
+iso4_probability1=0.5
+iso4_threshold2=50.0
+iso4_probability2=0.5
+iso4_threshold3=60.0
+iso4_probability3=1.0
+iso4_queries=7.0
+iso4_query0=0.0
+iso4_predicted0=0.0
+iso4_query1=15.0
+iso4_predicted1=0.125
+iso4_query2=25.0
+iso4_predicted2=0.375
+iso4_query3=35.0
+iso4_predicted3=0.5
+iso4_query4=45.0
+iso4_predicted4=0.5
+iso4_query5=55.0
+iso4_predicted5=0.75
+iso4_query6=75.0
+iso4_predicted6=1.0
 
 validation_probability_tolerance=1e-12

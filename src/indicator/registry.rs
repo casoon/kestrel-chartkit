@@ -155,9 +155,10 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "cci",
-            description: "Commodity Channel Index",
+            description: "Commodity Channel Index (value is the EMA(avg_len) of the raw CCI; avg_len = 1 gives the raw line)",
             default_params: [
                 ("cci_len".to_string(), 20.0),
+                ("avg_len".to_string(), 3.0),
                 ("overbought".to_string(), 100.0),
                 ("oversold".to_string(), -100.0),
             ]
@@ -165,9 +166,10 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "mfi",
-            description: "Money Flow Index",
+            description: "Money Flow Index (value is the EMA(avg_len) of the raw MFI; avg_len = 1 gives the raw line)",
             default_params: [
                 ("mfi_len".to_string(), 14.0),
+                ("avg_len".to_string(), 3.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
             ]
@@ -265,8 +267,13 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "atr",
-            description: "Average True Range (build_typed accepts smoothing=rma|sma|ema|wma for the true-range average; rma is the default and the signal line stays Wilder-smoothed)",
-            default_params: [("atr_len".to_string(), 14.0), ("sig_len".to_string(), 20.0)].into(),
+            description: "Average True Range (true-range average: build_typed accepts smoothing=rma|sma|ema|wma, build_checked the same as smoothing=0|1|2|3; rma is the default and the signal line stays Wilder-smoothed)",
+            default_params: [
+                ("atr_len".to_string(), 14.0),
+                ("sig_len".to_string(), 20.0),
+                ("smoothing".to_string(), 0.0),
+            ]
+            .into(),
         },
         IndicatorCatalogEntry {
             name: "chande_kroll",
@@ -322,9 +329,10 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "williams_r",
-            description: "Williams %R",
+            description: "Williams %R (0..100 convention; value is the EMA(avg_len) of the raw line, avg_len = 1 gives the raw line)",
             default_params: [
                 ("wpr_len".to_string(), 14.0),
+                ("avg_len".to_string(), 3.0),
                 ("overbought".to_string(), 80.0),
                 ("oversold".to_string(), 20.0),
             ]
@@ -342,9 +350,10 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "fisher_transform",
-            description: "Fisher Transform",
+            description: "Fisher Transform (value is the EMA(avg_len) of the raw transform; avg_len = 1 gives the raw line)",
             default_params: [
                 ("fish_len".to_string(), 10.0),
+                ("avg_len".to_string(), 2.0),
                 ("overbought".to_string(), 1.5),
                 ("oversold".to_string(), -1.5),
             ]
@@ -1182,20 +1191,22 @@ pub fn build_checked(
         }
         "cci" => {
             let cci_len = get_usize_p(params, "cci_len", 20, 1, 10000)?;
+            let avg_len = get_usize_p(params, "avg_len", 3, 1, 10000)?;
             let overbought = get_f64_p(params, "overbought", 100.0, -1000.0, 1000.0)?;
             let oversold = get_f64_p(params, "oversold", -100.0, -1000.0, 1000.0)?;
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(Cci::new(
-                cci_len, 3, 3, 5, oversold, overbought, true, 100, 4, 25.0,
+                cci_len, avg_len, 3, 5, oversold, overbought, true, 100, 4, 25.0,
             )))
         }
         "mfi" => {
             let mfi_len = get_usize_p(params, "mfi_len", 14, 1, 10000)?;
+            let avg_len = get_usize_p(params, "avg_len", 3, 1, 10000)?;
             let overbought = get_f64_p(params, "overbought", 80.0, 0.0, 100.0)?;
             let oversold = get_f64_p(params, "oversold", 20.0, 0.0, 100.0)?;
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(Mfi::new(
-                mfi_len, 3, 3, 50.0, overbought, oversold, 5, true,
+                mfi_len, avg_len, 3, 50.0, overbought, oversold, 5, true,
             )))
         }
         "twap" => {
@@ -1271,7 +1282,10 @@ pub fn build_checked(
             let ema_len = get_usize_p(params, "ema_len", 13, 1, 10000)?;
             Ok(Box::new(ElderForceIndex::new(ema_len)))
         }
-        "atr" => Ok(Box::new(build_atr(params, TrueRangeSmoothing::Rma)?)),
+        "atr" => Ok(Box::new(build_atr(
+            params,
+            true_range_smoothing_code(params)?,
+        )?)),
         "chande_kroll" | "cks" => {
             let atr_len = get_usize_p(params, "atr_len", 10, 1, 10000)?;
             let stop_len = get_usize_p(params, "stop_len", 9, 1, 10000)?;
@@ -1330,11 +1344,12 @@ pub fn build_checked(
         }
         "williams_r" | "wpr" => {
             let wpr_len = get_usize_p(params, "wpr_len", 14, 1, 10000)?;
+            let avg_len = get_usize_p(params, "avg_len", 3, 1, 10000)?;
             let overbought = get_f64_p(params, "overbought", 80.0, 0.0, 100.0)?;
             let oversold = get_f64_p(params, "oversold", 20.0, 0.0, 100.0)?;
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(WilliamsR::new(
-                wpr_len, 3, 3, 50.0, overbought, oversold, 5, true, 50, 4, 10.0,
+                wpr_len, avg_len, 3, 50.0, overbought, oversold, 5, true, 50, 4, 10.0,
             )))
         }
         "tsi" => {
@@ -1348,11 +1363,12 @@ pub fn build_checked(
         }
         "fisher_transform" | "fisher" => {
             let fish_len = get_usize_p(params, "fish_len", 10, 1, 10000)?;
+            let avg_len = get_usize_p(params, "avg_len", 2, 1, 10000)?;
             let overbought = get_f64_p(params, "overbought", 1.5, -100.0, 100.0)?;
             let oversold = get_f64_p(params, "oversold", -1.5, -100.0, 100.0)?;
             ensure_less("oversold", oversold, "overbought", overbought)?;
             Ok(Box::new(FisherTransform::new(
-                fish_len, 2, 3, 0.0, overbought, oversold, 5, true, 40, 4, 0.5,
+                fish_len, avg_len, 3, 0.0, overbought, oversold, 5, true, 40, 4, 0.5,
             )))
         }
         "order_block" | "ob" => {
@@ -1984,6 +2000,19 @@ fn build_atr(
     let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
     let sig_len = get_usize_p(params, "sig_len", 20, 1, 10000)?;
     Ok(Atr::new(atr_len, sig_len).with_smoothing(smoothing))
+}
+
+/// The ATR's true-range smoothing in [`build_checked`], which carries numbers only: `smoothing`
+/// `0` rma (the default), `1` sma, `2` ema, `3` wma — the choice [`build_typed`] takes by name.
+fn true_range_smoothing_code(
+    params: &HashMap<String, f64>,
+) -> Result<TrueRangeSmoothing, RegistryError> {
+    Ok(match get_usize_p(params, "smoothing", 0, 0, 3)? {
+        1 => TrueRangeSmoothing::Sma,
+        2 => TrueRangeSmoothing::Ema,
+        3 => TrueRangeSmoothing::Wma,
+        _ => TrueRangeSmoothing::Rma,
+    })
 }
 
 fn build_atr_typed(params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {

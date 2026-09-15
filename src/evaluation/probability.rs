@@ -36,6 +36,11 @@ pub struct IsotonicCalibrator {
 impl IsotonicCalibrator {
     /// Fits an isotonic calibrator from a slice of `(raw_score, actual_outcome)` pairs.
     ///
+    /// Samples with the same score form one initial block whose value is their win rate, so a
+    /// score maps to exactly one probability and `thresholds` are strictly ascending. Adjacent
+    /// blocks are then pooled while a block's value falls below its predecessor's (PAVA), each
+    /// pooled block taking the weighted mean of its members and its highest score as threshold.
+    ///
     /// Out-of-sample discipline: Call this method ONLY on training data!
     pub fn fit(samples: &[(f64, bool)]) -> Option<Self> {
         if samples.is_empty() {
@@ -46,15 +51,28 @@ impl IsotonicCalibrator {
         let mut sorted = samples.to_vec();
         sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-        // 2. Initialize PAVA blocks: (score, weight, value)
+        // 2. Initialize PAVA blocks: (score, weight, value), one per distinct score. Pooling only
+        //    where the value falls would leave tied scores with rising outcomes (0.5 -> loss,
+        //    0.5 -> win) as separate blocks under the same threshold, and `predict` would answer
+        //    with whichever of them it hit first.
         let mut scores: Vec<f64> = Vec::with_capacity(sorted.len());
         let mut weights: Vec<f64> = Vec::with_capacity(sorted.len());
         let mut values: Vec<f64> = Vec::with_capacity(sorted.len());
 
         for (score, outcome) in sorted {
-            scores.push(score);
-            weights.push(1.0);
-            values.push(if outcome { 1.0 } else { 0.0 });
+            let y = if outcome { 1.0 } else { 0.0 };
+            match scores.last() {
+                Some(&last) if last == score => {
+                    let i = scores.len() - 1;
+                    values[i] = (values[i] * weights[i] + y) / (weights[i] + 1.0);
+                    weights[i] += 1.0;
+                }
+                _ => {
+                    scores.push(score);
+                    weights.push(1.0);
+                    values.push(y);
+                }
+            }
         }
 
         // 3. Pool adjacent violators
