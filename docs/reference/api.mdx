@@ -23,6 +23,16 @@ order: 1
 
 <ApiEntry
   kind="fn"
+  name="output_unit"
+  signature={`pub fn output_unit(name: &str) -> IndicatorUnit`}
+>
+  What an indicator's primary output is quoted in: `Price`, `Ratio`, `Volume` or `Unitless`.
+  `Price` means a price level and belongs on the price axis; everything else needs its own scale.
+  Unknown names return `Unitless`.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
   name="build_checked"
   signature={`pub fn build_checked(
     name: &str,

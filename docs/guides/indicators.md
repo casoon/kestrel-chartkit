@@ -53,6 +53,24 @@ in `extra["raw"]`.
 `catalog()` returns one `IndicatorCatalogEntry` per indicator, with `name`, `description` and
 `default_params`. The current version has 105 entries.
 
+`output_unit(name)` says what the indicator's `value` is quoted in — `Price`, `Ratio`, `Volume`
+or `Unitless`. A charting consumer needs this to decide where the result belongs: `Price` means a
+price level and can be drawn on the price axis, everything else needs a scale of its own.
+
+```rust
+use kestrel_chartkit::{output_unit, IndicatorUnit};
+
+assert_eq!(output_unit("sma"), IndicatorUnit::Price);
+assert_eq!(output_unit("rsi"), IndicatorUnit::Ratio);
+// A difference, not a level — it shares no zero with the price axis.
+assert_eq!(output_unit("macd"), IndicatorUnit::Unitless);
+```
+
+Only the primary output is described. `ichimoku` is `Price` because its subject is
+`tenkan`/`kijun`/`senkou_*`, even though its `value` holds the cloud width; `atr` is `Ratio`
+because its `value` is a percentage, even though `extra["raw"]` is a price distance. Unknown
+names return `Unitless`, and the enum is `#[non_exhaustive]` — match with a `_` arm.
+
 `build_checked(name, &params)` builds an indicator from a name and a parameter map. Missing
 parameters take their defaults. Periods must be whole numbers in the supported range, and invalid
 thresholds or orderings return a `RegistryError`:

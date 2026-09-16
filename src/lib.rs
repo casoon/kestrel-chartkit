@@ -133,6 +133,7 @@ pub use indicator::cvd_intrabar::{
 pub use indicator::registry::{
     build, build_checked, build_typed, catalog, ParamValue, RegistryError, TypedParams,
 };
+pub use indicator::unit::{output_unit, IndicatorUnit};
 pub use indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 pub use intrabar::{IntrabarGroup, IntrabarGrouper};
 pub use lifecycle::{BarLifecycle, LifecycleError, LifecycleRunner};
