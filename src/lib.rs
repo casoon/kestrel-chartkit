@@ -181,7 +181,10 @@ pub use stress::{
     simulate_stop_gap_execution, PathSimulationSummary, StressError, StressScenario,
     StressedPortfolioResult,
 };
-pub use structure::{find_sr_zones, ManagedZone, ZoneRegistry, ZoneState};
+pub use structure::{
+    find_sr_zones, find_sr_zones_with_tolerance, ManagedZone, ZoneRegistry, ZoneState,
+    ZoneTolerance,
+};
 pub use synthetic::{
     bos_choch_swing_bars, random_walk_bars, trending_bars, wyckoff_schematic_bars, SimpleRng,
     SwingDirection, WyckoffGeneratorConfig,
