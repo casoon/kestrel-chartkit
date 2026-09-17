@@ -4,6 +4,77 @@ pub use zone_registry::*;
 
 use crate::model::{Bar, SupportResistanceZone, ZoneKind};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+/// Ein **bestätigter** Wendepunkt mit stabiler Identität.
+///
+/// Bestätigt heißt: erst `pivot_len` Bars nach der Kandidatenbar steht fest,
+/// dass es ein Hoch/Tief war. Bis dahin existiert er hier gar nicht — kein
+/// Repaint. Die Identität ist die Pivot-Bar selbst (`id` = Zeitstempel): eine
+/// Bar liegt eindeutig in der Zeit und ändert sich nicht, wenn neu gerechnet
+/// wird. Ist eine Bar zugleich Pivot-Hoch und -Tief (selten, etwa eine Doji in
+/// flacher Umgebung), erscheint sie zweimal; das Paar `(id, is_high)` bleibt
+/// eindeutig.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ConfirmedPivot {
+    /// Stabile Identität über Neuberechnungen: die Pivot-Bar in Sekunden.
+    pub id: i64,
+    /// Ereigniszeit: die Pivot-Bar (= `id`).
+    pub timestamp: i64,
+    /// Wissenszeit: die Bar, ab der der Pivot bestätigt war
+    /// (`timestamp + pivot_len` Bars später).
+    pub confirmed_at: i64,
+    pub price: f64,
+    pub is_high: bool,
+}
+
+/// Alle bestätigten Pivots über die Reihe, älteste zuerst.
+///
+/// Dieselbe Pivot-Erkennung wie [`find_sr_zones`] (nicht-strikt, `pivot_len`
+/// beiderseits) — damit Zonen und Swings dieselben Wendepunkte meinen und
+/// nicht zwei Definitionen nebeneinanderstehen. Anders als dort werden **alle**
+/// Pivots zurückgegeben, nicht nur die nächsten zwei je Art über/unter dem
+/// Kurs.
+pub fn confirmed_pivots(bars: &[Bar], pivot_len: usize) -> Vec<ConfirmedPivot> {
+    if pivot_len == 0 || bars.len() < pivot_len * 2 + 1 {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for i in pivot_len..(bars.len() - pivot_len) {
+        let bar = &bars[i];
+        let confirmed_at = bars[i + pivot_len].timestamp;
+        let high = bar.high;
+        if bars[i - pivot_len..=i + pivot_len]
+            .iter()
+            .all(|b| b.high <= high)
+        {
+            out.push(ConfirmedPivot {
+                id: bar.timestamp,
+                timestamp: bar.timestamp,
+                confirmed_at,
+                price: high,
+                is_high: true,
+            });
+        }
+        let low = bar.low;
+        if bars[i - pivot_len..=i + pivot_len]
+            .iter()
+            .all(|b| b.low >= low)
+        {
+            out.push(ConfirmedPivot {
+                id: bar.timestamp,
+                timestamp: bar.timestamp,
+                confirmed_at,
+                price: low,
+                is_high: false,
+            });
+        }
+    }
+    out
+}
+
 /// How wide a zone is drawn around its pivot, and how close two pivots may sit
 /// before they count as one — both in **price points**, not percent.
 ///
@@ -230,6 +301,37 @@ mod tests {
             zones.iter().any(|z| z.pivot_ts == 120),
             "keine Zone trägt die Pivot-Bar (Index 2 = 120): {zones:?}"
         );
+    }
+
+    /// Bestätigte Pivots tragen stabile IDs: dieselbe Bar, dieselbe Id, auch
+    /// bei erneuter Berechnung. Die Wissenszeit liegt `pivot_len` Bars nach
+    /// der Ereigniszeit.
+    #[test]
+    fn bestaetigte_pivots_haben_stabile_ids() {
+        let bars: Vec<Bar> = (0..7)
+            .map(|i| {
+                let close = if i == 2 { 90.0 } else { 100.0 };
+                Bar {
+                    timestamp: i as i64 * 60,
+                    open: close,
+                    high: close + 1.0,
+                    low: close - 1.0,
+                    close,
+                    volume: 0.0,
+                }
+            })
+            .collect();
+        let pivots = confirmed_pivots(&bars, 1);
+        assert!(!pivots.is_empty(), "das Tief bei Index 2 ist ein Pivot");
+
+        for p in &pivots {
+            assert_eq!(p.id, p.timestamp);
+            assert!(p.confirmed_at > p.timestamp, "{p:?}");
+            assert!(bars.iter().any(|b| b.timestamp == p.timestamp));
+        }
+        let a: Vec<i64> = confirmed_pivots(&bars, 1).iter().map(|p| p.id).collect();
+        let b: Vec<i64> = confirmed_pivots(&bars, 1).iter().map(|p| p.id).collect();
+        assert_eq!(a, b, "IDs müssen bei Neuberechnung gleich bleiben");
     }
 
     #[test]
