@@ -682,6 +682,11 @@ pub struct SupportResistanceZone {
     pub strength: f64, // 0.0 ..= 1.0
     pub distance_pct: f64,
     pub touches: u32,
+    /// Ereigniszeit: die Bar, auf der der Pivot lag, aus dem die Zone entstand
+    /// (Epoch-Sekunden wie `Bar::timestamp`). Beim Zusammenlegen mehrerer
+    /// Pivots bleibt der früheste erhalten. `0`, wenn keine bekannt ist — etwa
+    /// bei Zonen aus anderen Quellen (Order Block, Volumenprofil).
+    pub pivot_ts: i64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

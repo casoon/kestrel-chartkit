@@ -69,8 +69,11 @@ pub fn find_sr_zones_with_tolerance(
         return Vec::new();
     }
 
-    let mut supports = Vec::new();
-    let mut resistances = Vec::new();
+    // Pivots als `(Preis, Zeitstempel)`: die Zeit ist die **Ereigniszeit** der
+    // Zone — die Bar, auf der der Wendepunkt lag. Ohne sie wäre nur die
+    // Wissenszeit (wann die Zone gefunden wurde) belegbar.
+    let mut supports: Vec<(f64, i64)> = Vec::new();
+    let mut resistances: Vec<(f64, i64)> = Vec::new();
     let current_price = bars.last().map(|b| b.close).unwrap_or(1.0);
     let ZoneTolerance {
         half_width,
@@ -84,7 +87,7 @@ pub fn find_sr_zones_with_tolerance(
             .all(|b| b.high <= candidate_high);
 
         if is_pivot_high {
-            resistances.push(candidate_high);
+            resistances.push((candidate_high, bars[i].timestamp));
         }
 
         let candidate_low = bars[i].low;
@@ -93,17 +96,24 @@ pub fn find_sr_zones_with_tolerance(
             .all(|b| b.low >= candidate_low);
 
         if is_pivot_low {
-            supports.push(candidate_low);
+            supports.push((candidate_low, bars[i].timestamp));
         }
     }
 
     let mut zones = Vec::new();
 
-    // Sort supports descending (closest to price first)
-    supports.sort_by(|a, b| b.partial_cmp(a).unwrap());
-    supports.dedup_by(|a, b| (*a - *b).abs() < dedup_distance);
+    // Sort supports descending (closest to price first). Beim Zusammenlegen
+    // dicht beieinanderliegender Niveaus bleibt der **früheste** Pivot-Zeitpunkt
+    // erhalten: die Zone entstand, als der Bereich zuerst drehte, nicht beim
+    // letzten Test.
+    supports.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    let supports = dedup_pivots(supports, dedup_distance);
 
-    for sup in supports.into_iter().filter(|s| *s < current_price).take(2) {
+    for (sup, pivot_ts) in supports
+        .into_iter()
+        .filter(|(s, _)| *s < current_price)
+        .take(2)
+    {
         let dist = (sup - current_price) / current_price * 100.0;
         zones.push(SupportResistanceZone {
             kind: ZoneKind::Support,
@@ -113,16 +123,17 @@ pub fn find_sr_zones_with_tolerance(
             strength: 0.8,
             distance_pct: dist,
             touches: 1,
+            pivot_ts,
         });
     }
 
     // Sort resistances ascending (closest to price first)
-    resistances.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    resistances.dedup_by(|a, b| (*a - *b).abs() < dedup_distance);
+    resistances.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let resistances = dedup_pivots(resistances, dedup_distance);
 
-    for res in resistances
+    for (res, pivot_ts) in resistances
         .into_iter()
-        .filter(|r| *r > current_price)
+        .filter(|(r, _)| *r > current_price)
         .take(2)
     {
         let dist = (res - current_price) / current_price * 100.0;
@@ -134,10 +145,27 @@ pub fn find_sr_zones_with_tolerance(
             strength: 0.8,
             distance_pct: dist,
             touches: 1,
+            pivot_ts,
         });
     }
 
     zones
+}
+
+/// Legt Pivots dicht beieinanderliegender Preise zu einem zusammen und behält
+/// den **frühesten** Zeitstempel — die Ereigniszeit der Zone.
+fn dedup_pivots(pivots: Vec<(f64, i64)>, dedup_distance: f64) -> Vec<(f64, i64)> {
+    let mut out: Vec<(f64, i64)> = Vec::new();
+    for (price, ts) in pivots {
+        if let Some(last) = out.last_mut() {
+            if (last.0 - price).abs() < dedup_distance {
+                last.1 = last.1.min(ts);
+                continue;
+            }
+        }
+        out.push((price, ts));
+    }
+    out
 }
 
 #[cfg(test)]
@@ -169,6 +197,39 @@ mod tests {
         }
         bars.push(bar(104.0, 96.0, 100.0));
         bars
+    }
+
+    /// Die Zone trägt die **Ereigniszeit** ihres Pivots — die Bar, auf der der
+    /// Wendepunkt lag. Das ist die Voraussetzung dafür, dass Kestrel
+    /// `event_ts` von der Wissenszeit trennen kann.
+    #[test]
+    fn die_zone_traegt_die_ereigniszeit_ihres_pivots() {
+        // Ein ausgeprägtes Tief bei Index 2, sonst flach.
+        let bars: Vec<Bar> = (0..7)
+            .map(|i| {
+                let close = if i == 2 { 90.0 } else { 100.0 };
+                Bar {
+                    timestamp: i as i64 * 60,
+                    open: close,
+                    high: close + 1.0,
+                    low: close - 1.0,
+                    close,
+                    volume: 0.0,
+                }
+            })
+            .collect();
+        let zones = find_sr_zones_with_tolerance(
+            &bars,
+            1,
+            ZoneTolerance {
+                half_width: 1.0,
+                dedup_distance: 1.0,
+            },
+        );
+        assert!(
+            zones.iter().any(|z| z.pivot_ts == 120),
+            "keine Zone trägt die Pivot-Bar (Index 2 = 120): {zones:?}"
+        );
     }
 
     #[test]

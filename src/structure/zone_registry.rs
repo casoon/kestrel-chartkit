@@ -297,6 +297,12 @@ fn merge_zone_candidates(
             existing.zone.price_bottom = existing.zone.price_bottom.min(mz.zone.price_bottom);
             existing.zone.strength = existing.zone.strength.max(mz.zone.strength);
             existing.zone.touches = existing.zone.touches.saturating_add(mz.zone.touches);
+            // Ereigniszeit: der früheste Pivot gewinnt. `0` heißt unbekannt.
+            existing.zone.pivot_ts = match (existing.zone.pivot_ts, mz.zone.pivot_ts) {
+                (0, ts) => ts,
+                (ts, 0) => ts,
+                (a, b) => a.min(b),
+            };
             existing.confluence_score = existing.confluence_score.max(mz.confluence_score);
             existing.touch_count = existing.touch_count.saturating_add(mz.touch_count);
             existing.age_bars = existing.age_bars.max(mz.age_bars);
@@ -335,6 +341,7 @@ mod tests {
             strength: 0.8,
             distance_pct: 0.0,
             touches: 2,
+            pivot_ts: 0,
         };
 
         let id = reg.register(s_zone, 1000);
@@ -368,6 +375,7 @@ mod tests {
                 strength: 0.8,
                 distance_pct: 0.0,
                 touches: 1,
+                pivot_ts: 0,
             },
             0,
         );
@@ -392,6 +400,7 @@ mod tests {
             strength,
             distance_pct: 0.0,
             touches,
+            pivot_ts: 0,
         }
     }
 
