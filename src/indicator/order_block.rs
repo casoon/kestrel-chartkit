@@ -36,6 +36,15 @@ impl OrderBlockEngine {
             alerts: Vec::new(),
         }
     }
+
+    /// Alle noch aktiven Order-Block-Zonen.
+    ///
+    /// Die `extra`-Ausgabe führt nur die **letzte** als `active_ob_top`/
+    /// `active_ob_bottom`; für eine Zonen-Registry, die alle Bereiche als
+    /// Bänder braucht (Kestrel plan/43 §6 Stufe 5), reicht das nicht.
+    pub fn active_zones(&self) -> &[OrderBlockZone] {
+        &self.active_obs
+    }
 }
 
 impl Indicator for OrderBlockEngine {
