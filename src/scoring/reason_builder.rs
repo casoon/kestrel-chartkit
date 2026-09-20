@@ -66,9 +66,14 @@ pub fn score_indicator(
             "expansion" => {
                 reasons.push(alert.note.clone());
             }
-            "contraction" | "low_leg_efficiency" | "volatility" => {
-                // Volatility-state alerts (squeeze/expansion) describe market *condition*, not
-                // direction — context for the explanation, deliberately no score contribution.
+            "contraction"
+            | "low_leg_efficiency"
+            | "volatility_squeeze"
+            | "volatility_expansion" => {
+                // Volatility-state alerts describe market *condition*, not direction — context
+                // for the explanation, deliberately no score contribution. The two kinds were
+                // one (`volatility`) up to 0.15.0; they are listed separately here for the same
+                // reason they were split there, not because they score differently.
                 reasons.push(alert.note.clone());
             }
             _ => {

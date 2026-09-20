@@ -33,6 +33,12 @@ pub enum VolatilityState {
 /// `kc_width`), with `extra["squeeze"]` as 1 or 0. The two middles differ (SMA against EMA), so on
 /// a drifting series the bands can leave the channel on one side without the width test firing.
 /// First output once both have one: with bar `max(period, 10)`.
+///
+/// Alert kinds: `volatility_squeeze` and `volatility_expansion`. Up to and including 0.15.0 both
+/// states shared the kind `volatility`, which made the detector unusable as an alert rule — a
+/// rule could only say "the regime changed", never to what. Consumers matching on the old name
+/// see no alert from this indicator any more; the state is unchanged in `value` and
+/// `extra["squeeze"]`.
 #[derive(Debug, Clone)]
 pub struct VolatilityRegimeDetector {
     period: usize,
@@ -121,13 +127,13 @@ impl Indicator for VolatilityRegimeDetector {
         let mut alerts = Vec::new();
         if self.state == VolatilityState::Squeeze {
             alerts.push(IndicatorAlert::new(
-                "volatility",
+                "volatility_squeeze",
                 "Bollinger Squeeze in Effect",
                 0.7,
             ));
         } else if self.state == VolatilityState::Expansion {
             alerts.push(IndicatorAlert::new(
-                "volatility",
+                "volatility_expansion",
                 "Volatility Expansion Triggered",
                 0.8,
             ));
@@ -149,5 +155,40 @@ mod tests {
             out = vr.on_bar(&b);
         }
         assert!(out.is_some());
+    }
+
+    /// Squeeze and expansion must be distinguishable from the alert alone.
+    ///
+    /// Both carried the kind `volatility` up to 0.15.0, so a rule could match "this indicator
+    /// fired" but not which of its two opposite states — the single reason the detector was
+    /// unusable as an alert rule downstream. Asserting the two kinds are *different* would pass
+    /// again the moment someone renamed one of them to the other's name, so the test names both.
+    #[test]
+    fn squeeze_and_expansion_carry_their_own_alert_kind() {
+        // Wide bars, near-constant close: the Bollinger bands collapse inside the channel.
+        let mut vr = VolatilityRegimeDetector::with_defaults();
+        for i in 0..30 {
+            vr.on_bar(&Bar::new(
+                i,
+                100.0,
+                105.0,
+                95.0,
+                100.0 + (i % 2) as f64,
+                1000.0,
+            ));
+        }
+        assert_eq!(vr.state(), VolatilityState::Squeeze);
+        let kinds: Vec<String> = vr.alerts().iter().map(|a| a.kind.clone()).collect();
+        assert_eq!(kinds, vec!["volatility_squeeze".to_string()]);
+
+        // Narrow bars on a steady ramp: the window's spread dwarfs the true range.
+        let mut vr = VolatilityRegimeDetector::with_defaults();
+        for i in 0..30 {
+            let close = 100.0 + i as f64;
+            vr.on_bar(&Bar::new(i, close, close + 0.1, close - 0.1, close, 1000.0));
+        }
+        assert_eq!(vr.state(), VolatilityState::Expansion);
+        let kinds: Vec<String> = vr.alerts().iter().map(|a| a.kind.clone()).collect();
+        assert_eq!(kinds, vec!["volatility_expansion".to_string()]);
     }
 }
