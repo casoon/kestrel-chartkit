@@ -21,6 +21,7 @@ use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
+use super::double_pattern::DoublePattern;
 use super::dpo::DpoEngine;
 use super::efficiency::LegEfficiencyEngine;
 use super::envelope::EnvelopeEngine;
@@ -817,6 +818,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("tolerance_atr".to_string(), 0.25),
                 ("max_width_atr".to_string(), 2.0),
                 ("min_touches".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "double_pattern",
+            description: "Double bottom/top as a streaming event: forming on the second pivot (equal level within tolerance_atr, counter-swing ≥ min_depth_atr), confirmed on a close through the neckline; extra: neckline, target (measured move), wick (invalidation, natural stop)",
+            default_params: [
+                ("pivot_len".to_string(), 5.0),
+                ("atr_len".to_string(), 14.0),
+                ("tolerance_atr".to_string(), 0.5),
+                ("min_depth_atr".to_string(), 1.5),
+                ("max_gap".to_string(), 100.0),
+                ("max_wait".to_string(), 50.0),
             ]
             .into(),
         },
@@ -1788,6 +1802,17 @@ pub fn build_checked(
                 touches as u32,
             )))
         }
+        "double_pattern" => {
+            let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
+            let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
+            let tol = get_f64_p(params, "tolerance_atr", 0.5, 0.0, 100.0)?;
+            let depth = get_f64_p(params, "min_depth_atr", 1.5, 0.0, 100.0)?;
+            let gap = get_usize_p(params, "max_gap", 100, 2, 100000)?;
+            let wait = get_usize_p(params, "max_wait", 50, 1, 100000)?;
+            Ok(Box::new(DoublePattern::new(
+                p, atr_len, tol, depth, gap, wait,
+            )))
+        }
         "liquidity_pools" => {
             let p = get_usize_p(params, "pivot_len", 5, 2, 10000)?;
             let tol = get_f64_p(params, "tolerance_pct", 0.2, 0.001, 100.0)?;
@@ -1880,6 +1905,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "liquidity_sweeps",
     "sweeps",
     "zone_rejection",
+    "double_pattern",
     "liquidity_fvg",
     "fvg",
     "smc",
@@ -2632,6 +2658,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "bos_choch",
     "liquidity_sweeps",
     "zone_rejection",
+    "double_pattern",
     "liquidity_pools",
     "wyckoff",
     "trend_quality",
@@ -2667,8 +2694,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 106);
-        assert_eq!(catalog().len(), 106);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 107);
+        assert_eq!(catalog().len(), 107);
     }
 
     #[test]

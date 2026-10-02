@@ -106,6 +106,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("dema", IndicatorUnit::Price),
     ("dmi", IndicatorUnit::Ratio),
     ("donchian", IndicatorUnit::Price),
+    ("double_pattern", IndicatorUnit::Unitless),
     ("dpo", IndicatorUnit::Unitless),
     ("efficiency", IndicatorUnit::Ratio),
     ("efi", IndicatorUnit::Unitless),

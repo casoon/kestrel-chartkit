@@ -149,8 +149,9 @@ is complete.
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
 | zone_rejection | ✅ |
+| double_pattern | ✅ |
 
 ---
 
-**Total: 106/106 verified** — the same 106 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 13 structure/pattern detectors.
+**Total: 107/107 verified** — the same 107 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 14 structure/pattern detectors.

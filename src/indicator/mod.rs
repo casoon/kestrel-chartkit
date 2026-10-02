@@ -19,6 +19,7 @@ pub mod connors_rsi;
 pub mod coppock;
 pub mod cvd_intrabar;
 pub mod divergence;
+pub mod double_pattern;
 pub mod dpo;
 pub mod efficiency;
 pub mod elliott;

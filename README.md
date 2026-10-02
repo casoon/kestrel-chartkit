@@ -12,7 +12,7 @@ changes are marked with `!` in the commit subject and raise the minor version.
 
 ## Features
 
-- **106 Streaming Indicators and Detectors:** 89 technical indicators, 4 composite scores and 13 structure/pattern detectors, all built by name and streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
+- **107 Streaming Indicators and Detectors:** 89 technical indicators, 4 composite scores and 14 structure/pattern detectors, all built by name and streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
 - **Dynamic Catalog Registry:** Parameter validation and dynamic instantiation via `catalog()` and `build_checked(name, params)`.
 - **Market Regime Alignment:** Automatic regime classification (`BullishExpansion`, `BearishExpansion`, `Consolidation`, `Transition`) with permission grading (`ClearToTrade`, `Caution`, `Veto`).
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
@@ -88,7 +88,7 @@ or `cargo add kestrel-chartkit`. Requires Rust 1.87 or newer.
 > consumer therefore pins the git tag instead:
 >
 > ```toml
-> kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.17.1" }
+> kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.17.2" }
 > ```
 >
 > Which of the two becomes *the* documented route is an open decision, not an oversight.
