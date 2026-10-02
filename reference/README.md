@@ -37,6 +37,7 @@ Python 3.10 or newer; nothing else.
 | `golden_sample_stats` | `kestrel_reference/fixtures/sample_stats.py` |
 | `golden_cross_asset_alignment` | `kestrel_reference/fixtures/cross_asset_alignment.py` |
 | `golden_forward` | `kestrel_reference/fixtures/forward.py` |
+| `golden_deflated_sharpe` | `kestrel_reference/fixtures/deflated_sharpe.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

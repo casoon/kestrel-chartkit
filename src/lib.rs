@@ -176,7 +176,10 @@ pub use scoring::{
 pub use series::{CumulativeSum, Series, SeriesEvents};
 pub use session::{SessionConfig, SessionConfigError, SessionTracker};
 pub use signal::{CompositeSignal, PermissionGrade, SignalDirection, SubScore};
-pub use stats::{correlation, linear_regression, longest_run, wilson_interval, ProportionInterval};
+pub use stats::{
+    correlation, deflated_sharpe, linear_regression, longest_run, normal_quantile, wilson_interval,
+    DeflatedSharpe, ProportionInterval,
+};
 pub use stress::{
     apply_portfolio_stress, multi_asset_block_bootstrap, simulate_equity_paths,
     simulate_stop_gap_execution, PathSimulationSummary, StressError, StressScenario,

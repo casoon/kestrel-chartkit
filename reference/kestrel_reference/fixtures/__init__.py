@@ -10,6 +10,7 @@ from . import (
     composite,
     cross_asset_alignment,
     curve_diff,
+    deflated_sharpe,
     family_math,
     finance_cashflows,
     forward,
@@ -52,4 +53,5 @@ ALL = (
     scenario_structure,
     cross_asset_alignment,
     forward,
+    deflated_sharpe,
 )
