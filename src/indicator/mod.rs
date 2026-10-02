@@ -90,6 +90,7 @@ pub mod williams_r;
 pub mod wyckoff;
 pub mod zigzag;
 pub mod zigzag_advanced;
+pub mod zone_rejection;
 pub mod zscore;
 
 use std::collections::HashMap;

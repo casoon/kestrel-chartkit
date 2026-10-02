@@ -90,6 +90,7 @@ use super::wavetrend::WaveTrendEngine;
 use super::williams_r::WilliamsR;
 use super::zigzag::ZigZagEngine;
 use super::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
+use super::zone_rejection::ZoneRejection;
 use super::zscore::ZScoreEngine;
 use super::Indicator;
 
@@ -804,6 +805,18 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             default_params: [
                 ("pivot_len".to_string(), 5.0),
                 ("tolerance_pct".to_string(), 0.2),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "zone_rejection",
+            description: "Failed breakout at a confirmed pivot-cluster zone: wick through support/resistance, close back; extra[\"wick\"] is the wick tip (natural stop)",
+            default_params: [
+                ("pivot_len".to_string(), 5.0),
+                ("atr_len".to_string(), 14.0),
+                ("tolerance_atr".to_string(), 0.25),
+                ("max_width_atr".to_string(), 2.0),
+                ("min_touches".to_string(), 2.0),
             ]
             .into(),
         },
@@ -1761,6 +1774,20 @@ pub fn build_checked(
             let tol = get_f64_p(params, "tolerance_pct", 0.2, 0.01, 100.0)?;
             Ok(Box::new(LiquiditySweepEngine::new(p, tol)))
         }
+        "zone_rejection" => {
+            let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
+            let atr_len = get_usize_p(params, "atr_len", 14, 1, 10000)?;
+            let tol = get_f64_p(params, "tolerance_atr", 0.25, 0.0, 100.0)?;
+            let width = get_f64_p(params, "max_width_atr", 2.0, 0.0, 100.0)?;
+            let touches = get_usize_p(params, "min_touches", 2, 1, 1000)?;
+            Ok(Box::new(ZoneRejection::new(
+                p,
+                atr_len,
+                tol,
+                width,
+                touches as u32,
+            )))
+        }
         "liquidity_pools" => {
             let p = get_usize_p(params, "pivot_len", 5, 2, 10000)?;
             let tol = get_f64_p(params, "tolerance_pct", 0.2, 0.001, 100.0)?;
@@ -1823,6 +1850,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "atr",
+    "zone_rejection",
     "relative_volatility",
     "smi",
     "chande_kroll",
@@ -1851,6 +1879,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "liquidity_pools",
     "liquidity_sweeps",
     "sweeps",
+    "zone_rejection",
     "liquidity_fvg",
     "fvg",
     "smc",
@@ -2602,6 +2631,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "chaikin_oscillator",
     "bos_choch",
     "liquidity_sweeps",
+    "zone_rejection",
     "liquidity_pools",
     "wyckoff",
     "trend_quality",
@@ -2637,8 +2667,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 105);
-        assert_eq!(catalog().len(), 105);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 106);
+        assert_eq!(catalog().len(), 106);
     }
 
     #[test]

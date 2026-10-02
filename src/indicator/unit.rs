@@ -183,6 +183,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("wyckoff", IndicatorUnit::Unitless),
     ("zigzag", IndicatorUnit::Price),
     ("zigzag_advanced", IndicatorUnit::Price),
+    ("zone_rejection", IndicatorUnit::Unitless),
     ("zscore", IndicatorUnit::Ratio),
 ];
 

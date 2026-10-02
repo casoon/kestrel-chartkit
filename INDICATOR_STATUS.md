@@ -148,8 +148,9 @@ is complete.
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
+| zone_rejection | ✅ |
 
 ---
 
-**Total: 105/105 verified** — the same 105 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 12 structure/pattern detectors.
+**Total: 106/106 verified** — the same 106 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 13 structure/pattern detectors.
