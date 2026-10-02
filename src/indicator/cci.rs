@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
+use super::exhaustion::Exhaustion;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Commodity Channel Index with a smoothed line, a signal and a context line.
@@ -11,7 +12,9 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// `(price - SMA) / (0.015 * mean_abs_deviation)`, `0` for a zero deviation. **`value` is the
 /// line**: an exponential average over `avg_len` of the raw CCI, seeded with its first value.
 /// `extra["signal"]` is the same average over `sig_len` of the line; the context line uses
-/// `ctx_len`. Alerts fire on line/signal and zero crosses and on divergences.
+/// `ctx_len`. Alerts fire on line/signal and zero crosses, on divergences and on exhaustion of
+/// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history before
+/// it can fire).
 ///
 /// First output: with the `cci_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct Cci {
@@ -34,6 +37,7 @@ pub struct Cci {
     ctx_window: VecDeque<f64>,
     ctx_ema: Option<f64>,
     divergence: SlopeDivergence,
+    exhaustion: Exhaustion,
 
     alerts: CciAlerts,
 }
@@ -46,8 +50,11 @@ pub struct CciAlerts {
     pub bear_zero_cross: bool,
     pub bull_divergence: bool,
     pub bear_divergence: bool,
+    pub bull_exhaustion: bool,
+    pub bear_exhaustion: bool,
     pub extreme_strength: f64,
     pub divergence_strength: f64,
+    pub exhaustion_strength: f64,
 }
 
 impl Cci {
@@ -82,6 +89,7 @@ impl Cci {
             ctx_window: VecDeque::with_capacity(ctx_len),
             ctx_ema: None,
             divergence: SlopeDivergence::new(div_len, div_min),
+            exhaustion: Exhaustion::with_defaults(),
             alerts: CciAlerts::default(),
         }
     }
@@ -209,6 +217,11 @@ impl Indicator for Cci {
         self.prev_cci_line = Some(cci_line);
         self.prev_signal = Some(signal);
 
+        let exhaustion = self.exhaustion.update(cci_line, bar.high, bar.low);
+        self.alerts.bull_exhaustion = exhaustion.bull;
+        self.alerts.bear_exhaustion = exhaustion.bear;
+        self.alerts.exhaustion_strength = exhaustion.strength;
+
         let mut extra = HashMap::new();
         extra.insert("signal".to_string(), signal);
         if let Some(ctx_line) = ctx_line {
@@ -237,6 +250,7 @@ impl Indicator for Cci {
         self.ctx_window.clear();
         self.ctx_ema = None;
         self.divergence.reset();
+        self.exhaustion.reset();
         self.alerts = CciAlerts::default();
     }
 
@@ -283,6 +297,20 @@ impl Indicator for Cci {
                 kind: "bear_divergence".to_string(),
                 note: "CCI · BEAR DIVERGENCE".to_string(),
                 strength: a.divergence_strength,
+            });
+        }
+        if a.bull_exhaustion {
+            out.push(IndicatorAlert {
+                kind: "bull_exhaustion".to_string(),
+                note: "CCI · BULL EXHAUSTION".to_string(),
+                strength: a.exhaustion_strength,
+            });
+        }
+        if a.bear_exhaustion {
+            out.push(IndicatorAlert {
+                kind: "bear_exhaustion".to_string(),
+                note: "CCI · BEAR EXHAUSTION".to_string(),
+                strength: a.exhaustion_strength,
             });
         }
         out

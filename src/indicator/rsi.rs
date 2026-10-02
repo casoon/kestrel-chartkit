@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
+use super::exhaustion::Exhaustion;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -89,7 +90,9 @@ impl ChangeSmoother {
 /// `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
 /// `ctx_len` changes (default 100), present once that many changes exist; divergences are judged
 /// between line and context. Alerts fire on line/signal crosses (inside the extreme zones when
-/// `require_extreme_zone` is set), on crosses of `mid_line` and on divergences.
+/// `require_extreme_zone` is set), on crosses of `mid_line`, on divergences and on exhaustion of
+/// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history on top
+/// of the warmup before it can fire).
 ///
 /// First output: once `rsi_len` changes exist, i.e. with the `rsi_len + 1`-th bar.
 /// [`Indicator::reset`] clears all averages.
@@ -118,6 +121,7 @@ pub struct Rsi {
     ctx_avg_loss: ChangeSmoother,
     ctx_avg: Ema,
     divergence: SlopeDivergence,
+    exhaustion: Exhaustion,
 
     alerts: RsiAlerts,
 }
@@ -130,8 +134,11 @@ pub struct RsiAlerts {
     pub bear_mid_cross: bool,
     pub bull_divergence: bool,
     pub bear_divergence: bool,
+    pub bull_exhaustion: bool,
+    pub bear_exhaustion: bool,
     pub extreme_strength: f64,
     pub divergence_strength: f64,
+    pub exhaustion_strength: f64,
 }
 
 impl Rsi {
@@ -171,6 +178,7 @@ impl Rsi {
             ctx_avg_loss: ChangeSmoother::new(RsiSmoothing::Wilder, ctx_len),
             ctx_avg: Ema::new(avg_len),
             divergence: SlopeDivergence::new(div_len, div_min),
+            exhaustion: Exhaustion::with_defaults(),
             alerts: RsiAlerts::default(),
         }
     }
@@ -303,6 +311,11 @@ impl Indicator for Rsi {
         self.prev_rsi_line = Some(rsi_line);
         self.prev_signal = Some(signal);
 
+        let exhaustion = self.exhaustion.update(rsi_line, bar.high, bar.low);
+        self.alerts.bull_exhaustion = exhaustion.bull;
+        self.alerts.bear_exhaustion = exhaustion.bear;
+        self.alerts.exhaustion_strength = exhaustion.strength;
+
         let mut extra = HashMap::new();
         extra.insert("signal".to_string(), signal);
         if let Some(ctx_line) = ctx_line {
@@ -335,6 +348,7 @@ impl Indicator for Rsi {
         self.ctx_avg_loss.reset();
         self.ctx_avg.reset();
         self.divergence.reset();
+        self.exhaustion.reset();
         self.alerts = RsiAlerts::default();
     }
 
@@ -381,6 +395,20 @@ impl Indicator for Rsi {
                 kind: "bear_divergence".to_string(),
                 note: "RSI · BEAR DIVERGENCE".to_string(),
                 strength: a.divergence_strength,
+            });
+        }
+        if a.bull_exhaustion {
+            out.push(IndicatorAlert {
+                kind: "bull_exhaustion".to_string(),
+                note: "RSI · BULL EXHAUSTION".to_string(),
+                strength: a.exhaustion_strength,
+            });
+        }
+        if a.bear_exhaustion {
+            out.push(IndicatorAlert {
+                kind: "bear_exhaustion".to_string(),
+                note: "RSI · BEAR EXHAUSTION".to_string(),
+                strength: a.exhaustion_strength,
             });
         }
         out

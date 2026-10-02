@@ -24,6 +24,7 @@ pub mod efficiency;
 pub mod elliott;
 pub mod envelope;
 pub mod eom;
+pub mod exhaustion;
 pub mod fisher_transform;
 pub mod force_index;
 pub mod harmonics;
