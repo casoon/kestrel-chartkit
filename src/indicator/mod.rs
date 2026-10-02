@@ -58,6 +58,7 @@ pub mod relative_volatility;
 pub mod rsi;
 pub mod rvat;
 pub mod rvi;
+pub mod settle;
 pub mod smart_money_structure;
 pub mod smi;
 pub mod smoothing;

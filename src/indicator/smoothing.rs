@@ -252,12 +252,29 @@ impl ExtremeWindow {
     }
 }
 
-pub fn crossed_over(prev_a: f64, prev_b: f64, a: f64, b: f64) -> bool {
-    prev_a <= prev_b && a > b
+/// Relative distance below which two lines count as touching rather than crossed.
+///
+/// Without it a crossing fires on floating-point noise: a %K line clamped at 0 that sits at
+/// `1.6e-13` in one run and `0.0` in another "crosses" its flat signal line in one and not the
+/// other — an alert that depends on rounding, and on how much history preceded the bar. Scaled by
+/// the magnitude of the lines (at least 1), so it means the same on a 0–100 oscillator and on a
+/// price.
+pub const CROSS_TOLERANCE_REL: f64 = 1e-9;
+
+fn cross_tolerance(values: [f64; 4]) -> f64 {
+    CROSS_TOLERANCE_REL * values.iter().fold(1.0_f64, |m, v| m.max(v.abs()))
 }
 
+/// `a` was at or below `b` and is now clearly above it.
+pub fn crossed_over(prev_a: f64, prev_b: f64, a: f64, b: f64) -> bool {
+    let tol = cross_tolerance([prev_a, prev_b, a, b]);
+    prev_a <= prev_b + tol && a > b + tol
+}
+
+/// `a` was at or above `b` and is now clearly below it.
 pub fn crossed_under(prev_a: f64, prev_b: f64, a: f64, b: f64) -> bool {
-    prev_a >= prev_b && a < b
+    let tol = cross_tolerance([prev_a, prev_b, a, b]);
+    prev_a >= prev_b - tol && a < b - tol
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -822,6 +839,27 @@ mod kama_smoother_tests {
 
 #[cfg(test)]
 mod chain_tests {
+
+    /// A line resting on its signal at 0 must not "cross" it by rounding noise
+    /// (the stoch RSI case: 1.55e-13 against 0.0).
+    #[test]
+    fn rounding_noise_is_not_a_cross() {
+        assert!(!crossed_over(0.0, 0.0, 1.55e-13, 0.0));
+        assert!(!crossed_under(0.0, 0.0, -1.55e-13, 0.0));
+        assert!(!crossed_over(100.0, 100.0, 100.0 + 1e-11, 100.0));
+    }
+
+    #[test]
+    fn a_real_cross_still_counts() {
+        assert!(crossed_over(19.0, 20.0, 21.0, 20.0));
+        assert!(crossed_under(21.0, 20.0, 19.0, 20.0));
+        // From touching to clearly above is a cross; from clearly above to further above is not.
+        assert!(crossed_over(20.0, 20.0, 20.5, 20.0));
+        assert!(!crossed_over(21.0, 20.0, 22.0, 20.0));
+        // Noise on the previous bar does not suppress a real cross.
+        assert!(crossed_over(20.0 + 1e-12, 20.0, 20.5, 20.0));
+    }
+
     use super::*;
 
     #[test]
