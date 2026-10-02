@@ -219,6 +219,7 @@ pub use scoring::agreement::{
     aggregate_agreement, Agreement, AgreementStrategy, DirectionalStatement,
 };
 
+pub use evaluation::logistic::LogisticRegression;
 pub use evaluation::price::{
     ForwardPriceOutcome, PriceDirection, PriceObservation, PriceOutcomeSample, PriceOutcomeStats,
     PriceStats,

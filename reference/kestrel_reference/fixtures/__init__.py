@@ -14,6 +14,7 @@ from . import (
     family_math,
     finance_cashflows,
     forward,
+    logistic,
     moving_averages,
     option_diff,
     option_pricing,
@@ -54,4 +55,5 @@ ALL = (
     cross_asset_alignment,
     forward,
     deflated_sharpe,
+    logistic,
 )

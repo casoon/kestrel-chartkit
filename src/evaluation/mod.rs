@@ -288,6 +288,7 @@ impl ParameterOptimizationHook {
 }
 
 pub mod excursion;
+pub mod logistic;
 pub mod price;
 pub mod probability;
 pub mod split;
