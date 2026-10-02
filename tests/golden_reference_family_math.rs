@@ -43,7 +43,8 @@ fn agreement_golden_and_ordered_ties() {
     near(unresolved.agreement, 0.5);
     let resolved = aggregate_agreement(tie, &[], &[2, 1]);
     assert_eq!(resolved.direction, Bearish);
-    near(resolved.agreement, 1.);
+    // The hierarchy decides the direction, not the share: still an even split.
+    near(resolved.agreement, 0.5);
     assert!(!resolved.conflict);
     let empty = aggregate_agreement::<u8>(vec![], &[], &[]);
     assert_eq!(empty.direction, Neutral);

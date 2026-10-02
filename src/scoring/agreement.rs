@@ -58,7 +58,9 @@ pub enum AgreementStrategy {
 
 /// Applies `strategies` in order to `statements`, returning the resulting
 /// `Agreement`. `tf_order` is highest-priority timeframe first (e.g.
-/// `[Hour4, Hour1, Minute15]`); also used to break tally ties.
+/// `[Hour4, Hour1, Minute15]`); also used to break tally ties. A tie broken
+/// that way keeps its share as `agreement` (0.5 for an even split), so an
+/// agreement of exactly 0.5 with a direction means "the hierarchy decided".
 ///
 /// Empty `statements` (nothing active) yields `Neutral`/`0.0`, not an
 /// error — "no signal" is a valid, common state, not a degenerate one.
@@ -89,12 +91,20 @@ pub fn aggregate_agreement<T: Copy + Eq>(
     // strategies didn't already apply it. Only once that also fails to
     // produce a direction do we call it an unresolved conflict rather than
     // plain "no signal".
-    let tie_broken = tally(
-        &apply_top_down(statements.clone(), tf_order),
+    //
+    // The hierarchy picks the direction only; `agreement` stays the tally's
+    // share (0.5 for an even split). Until 0.18.0 the tie-broken tally was
+    // returned whole, and with the opposing statements filtered out that
+    // read 1.0 — a 2:2 split shown as unanimous.
+    let tie_broken = tally_direction(
+        apply_top_down(statements.clone(), tf_order).into_iter(),
         tally_by_strength,
     );
-    if tie_broken.direction != Direction::Neutral {
-        return tie_broken;
+    if tie_broken != Direction::Neutral {
+        return Agreement {
+            direction: tie_broken,
+            ..result
+        };
     }
 
     Agreement {
