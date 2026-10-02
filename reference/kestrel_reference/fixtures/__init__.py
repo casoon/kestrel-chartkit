@@ -12,6 +12,7 @@ from . import (
     curve_diff,
     family_math,
     finance_cashflows,
+    forward,
     moving_averages,
     option_diff,
     option_pricing,
@@ -50,4 +51,5 @@ ALL = (
     sample_stats,
     scenario_structure,
     cross_asset_alignment,
+    forward,
 )

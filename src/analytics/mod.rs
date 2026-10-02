@@ -7,6 +7,7 @@ mod activity;
 mod cheat_sheet;
 mod fear_gauge;
 mod fear_greed;
+pub mod forward;
 mod price;
 mod regime;
 mod seasonality;

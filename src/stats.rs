@@ -178,6 +178,7 @@ pub fn linear_regression(slice: &[f64]) -> Option<LinearRegressionResult> {
 
 /// A binomial proportion with its confidence bounds, all in `0.0..=1.0`.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ProportionInterval {
     /// `successes / trials`.
     pub estimate: f64,
