@@ -151,8 +151,9 @@ is complete.
 | zone_rejection | ✅ |
 | double_pattern | ✅ |
 | pivot_divergence | ✅ |
+| bottom_formation | ✅ |
 
 ---
 
-**Total: 108/108 verified** — the same 108 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 15 structure/pattern detectors.
+**Total: 109/109 verified** — the same 109 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 16 structure/pattern detectors.

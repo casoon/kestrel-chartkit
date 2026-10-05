@@ -90,6 +90,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("bollinger", IndicatorUnit::Price),
     ("bop", IndicatorUnit::Ratio),
     ("bos_choch", IndicatorUnit::Unitless),
+    ("bottom_formation", IndicatorUnit::Unitless),
     ("buy_sell_pressure", IndicatorUnit::Unitless),
     ("candle_story", IndicatorUnit::Unitless),
     ("cci", IndicatorUnit::Ratio),

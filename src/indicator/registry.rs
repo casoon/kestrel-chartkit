@@ -11,6 +11,7 @@ use super::bbtrend::BbTrend;
 use super::bollinger::{BollingerBands, VarianceConvention};
 use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
+use super::bottom_formation::BottomFormation;
 use super::buy_sell_pressure::BuySellPressureEstimator;
 use super::candle_story::{CandleStoryConfig, CandleStoryEngine};
 use super::cci::Cci;
@@ -831,6 +832,16 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_depth_atr".to_string(), 1.5),
                 ("max_gap".to_string(), 100.0),
                 ("max_wait".to_string(), 50.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "bottom_formation",
+            description: "Bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage",
+            default_params: [
+                ("pivot_len".to_string(), 5.0),
+                ("max_stage_bars".to_string(), 30.0),
+                ("retest_atr".to_string(), 0.5),
             ]
             .into(),
         },
@@ -1826,6 +1837,12 @@ pub fn build_checked(
                 p, atr_len, tol, depth, gap, wait,
             )))
         }
+        "bottom_formation" => {
+            let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
+            let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
+            let retest = get_f64_p(params, "retest_atr", 0.5, 0.0, 100.0)?;
+            Ok(Box::new(BottomFormation::new(p, max_stage, retest)))
+        }
         "pivot_divergence" => {
             let code = get_usize_p(params, "oscillator", 0, 0, 4)?;
             let left = get_usize_p(params, "left", 7, 1, 1000)?;
@@ -1943,6 +1960,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "sweeps",
     "zone_rejection",
     "double_pattern",
+    "bottom_formation",
     "pivot_divergence",
     "liquidity_fvg",
     "fvg",
@@ -2697,6 +2715,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "liquidity_sweeps",
     "zone_rejection",
     "double_pattern",
+    "bottom_formation",
     "pivot_divergence",
     "liquidity_pools",
     "wyckoff",
@@ -2733,8 +2752,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 108);
-        assert_eq!(catalog().len(), 108);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 109);
+        assert_eq!(catalog().len(), 109);
     }
 
     #[test]

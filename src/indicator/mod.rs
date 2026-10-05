@@ -6,6 +6,7 @@ pub mod bbtrend;
 pub mod bollinger;
 pub mod bop;
 pub mod bos_choch;
+pub mod bottom_formation;
 pub mod buy_sell_pressure;
 pub mod candle_story;
 pub mod cci;
