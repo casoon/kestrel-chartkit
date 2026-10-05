@@ -125,20 +125,36 @@ impl Indicator for WaveTrendEngine {
         self.alerts = WaveTrendAlerts::default();
     }
 
+    /// `bull_cross`/`bear_cross`: wt1 crosses wt2. `bull_extreme`/`bear_extreme`: the same cross
+    /// with wt1 at or beyond the oversold/overbought level (the classic WaveTrend entry dots).
     fn alerts(&self) -> Vec<IndicatorAlert> {
         let mut res = Vec::new();
         if self.alerts.bull_cross {
             res.push(IndicatorAlert::new(
-                "wt_bull_cross",
+                "bull_cross",
                 "WaveTrend Bullish Cross",
                 0.8,
             ));
         }
         if self.alerts.bear_cross {
             res.push(IndicatorAlert::new(
-                "wt_bear_cross",
+                "bear_cross",
                 "WaveTrend Bearish Cross",
                 0.8,
+            ));
+        }
+        if self.alerts.oversold_cross {
+            res.push(IndicatorAlert::new(
+                "bull_extreme",
+                "WaveTrend Bullish Cross in Oversold Zone",
+                1.0,
+            ));
+        }
+        if self.alerts.overbought_cross {
+            res.push(IndicatorAlert::new(
+                "bear_extreme",
+                "WaveTrend Bearish Cross in Overbought Zone",
+                1.0,
             ));
         }
         res

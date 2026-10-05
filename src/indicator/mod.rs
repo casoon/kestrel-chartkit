@@ -46,6 +46,7 @@ pub mod multi_factor;
 pub mod nvi_pvi;
 pub mod order_block;
 pub mod params;
+pub mod pivot_divergence;
 pub mod pivot_sets;
 pub mod pivots_structure;
 pub mod pmo;

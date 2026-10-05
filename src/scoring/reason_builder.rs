@@ -13,13 +13,13 @@ pub fn score_indicator(
     for alert in alerts {
         match alert.kind.as_str() {
             "bull_extreme" | "bull_cross" | "bull_mid_cross" | "bull_di_cross"
-            | "bull_zero_cross" | "wt_bull_cross" => {
+            | "bull_zero_cross" => {
                 let s = 0.5 + 0.5 * alert.strength.clamp(0.0, 1.0);
                 score += s;
                 reasons.push(alert.note.clone());
             }
             "bear_extreme" | "bear_cross" | "bear_mid_cross" | "bear_di_cross"
-            | "bear_zero_cross" | "wt_bear_cross" => {
+            | "bear_zero_cross" => {
                 let s = 0.5 + 0.5 * alert.strength.clamp(0.0, 1.0);
                 score -= s;
                 reasons.push(alert.note.clone());

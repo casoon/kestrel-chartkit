@@ -85,6 +85,9 @@ impl Indicator for VolumeEngine {
 /// days see [`super::rvat::RelativeVolumeAtTime`].
 ///
 /// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
+///
+/// A bar with unknown volume (`NaN`, e.g. outside the hours of the exchange a volume series comes
+/// from) is skipped: it neither enters the window nor produces a value.
 #[derive(Debug, Clone)]
 pub struct RvolEngine {
     period: usize,
@@ -117,13 +120,18 @@ impl Indicator for RvolEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.alerts.clear();
         let vol = bar.volume;
+        // Unbekanntes Volumen (`NaN`) ist keine Menge: die Bar bleibt aus dem
+        // Fenster und ergibt keinen Wert.
+        if !vol.is_finite() {
+            return None;
+        }
         self.volumes.push_back(vol);
         if self.volumes.len() > self.period {
             self.volumes.pop_front();
         }
 
-        self.alerts.clear();
         if self.volumes.len() < self.period {
             return None;
         }
@@ -154,6 +162,10 @@ impl Indicator for RvolEngine {
 /// first bar has no previous close and contributes nothing.
 ///
 /// First output: with the first bar. [`Indicator::reset`] returns the total to zero.
+///
+/// The level depends on where the series starts — only its changes and its slope mean anything.
+/// A bar with unknown volume (`NaN`) adds nothing and produces no value, but its close still
+/// serves as the previous close of the next bar.
 pub struct ObvEngine {
     prev_close: Option<f64>,
     cum_obv: f64,
@@ -192,16 +204,20 @@ impl Indicator for ObvEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        // Unbekanntes Volumen (`NaN`) ließe die laufende Summe für immer `NaN`
+        // bleiben. Die Bar trägt dann nichts bei und ergibt keinen Wert; ihr
+        // Schluss zählt für die nächste Richtung trotzdem.
+        let known = bar.volume.is_finite();
         if let Some(prev) = self.prev_close {
-            if bar.close > prev {
+            if known && bar.close > prev {
                 self.cum_obv += bar.volume;
-            } else if bar.close < prev {
+            } else if known && bar.close < prev {
                 self.cum_obv -= bar.volume;
             }
         }
         self.prev_close = Some(bar.close);
 
-        Some(IndicatorOutput::new(self.cum_obv))
+        known.then(|| IndicatorOutput::new(self.cum_obv))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -217,6 +233,10 @@ impl Indicator for ObvEngine {
 /// the sum of their volumes (`0` without volume), clamped to `-1..=1`.
 ///
 /// First output: with the `period`-th bar. [`Indicator::reset`] clears both windows.
+///
+/// Alerts: `bull_bias` above `0.20`, `bear_bias` below `-0.20` (the direction-prefixed names the
+/// other indicators use, so a consumer can read the direction from the kind). A bar with unknown
+/// volume (`NaN`) stays out of both windows and produces no value.
 pub struct CmfEngine {
     period: usize,
     mf_volumes: VecDeque<f64>,
@@ -251,6 +271,11 @@ impl Indicator for CmfEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.alerts.clear();
+        // Unbekanntes Volumen (`NaN`): die Bar bleibt aus beiden Fenstern.
+        if !bar.volume.is_finite() {
+            return None;
+        }
         let high_low = bar.high - bar.low;
         let mfm = if high_low > 1e-8 {
             ((bar.close - bar.low) - (bar.high - bar.close)) / high_low
@@ -267,7 +292,6 @@ impl Indicator for CmfEngine {
             self.volumes.pop_front();
         }
 
-        self.alerts.clear();
         if self.mf_volumes.len() < self.period {
             return None;
         }
@@ -283,13 +307,13 @@ impl Indicator for CmfEngine {
 
         if cmf > 0.20 {
             self.alerts.push(IndicatorAlert::new(
-                "cmf_bullish",
+                "bull_bias",
                 format!("Strong Buying Pressure (CMF: {:.2})", cmf),
                 0.80,
             ));
         } else if cmf < -0.20 {
             self.alerts.push(IndicatorAlert::new(
-                "cmf_bearish",
+                "bear_bias",
                 format!("Strong Selling Pressure (CMF: {:.2})", cmf),
                 0.80,
             ));

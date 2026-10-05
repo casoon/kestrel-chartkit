@@ -142,6 +142,9 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("order_block", IndicatorUnit::Unitless),
     ("parabolic_sar", IndicatorUnit::Price),
     ("persistent_volume_profile", IndicatorUnit::Price),
+    // The selected oscillator — RSI is a ratio, WaveTrend and CCI are not; the conservative
+    // answer covers all five.
+    ("pivot_divergence", IndicatorUnit::Unitless),
     ("pivot_sets", IndicatorUnit::Price),
     ("pivots_structure", IndicatorUnit::Unitless),
     ("pmo", IndicatorUnit::Ratio),

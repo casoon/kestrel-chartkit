@@ -835,6 +835,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
+            name: "pivot_divergence",
+            description: "Price-pivot-anchored divergence (regular and hidden) on a selectable oscillator (0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI); fires on the confirmation bar, extra[\"pivot_price\"] is the pivot (natural stop)",
+            default_params: [
+                ("oscillator".to_string(), 0.0),
+                ("left".to_string(), 7.0),
+                ("right".to_string(), 7.0),
+                ("min_distance".to_string(), 10.0),
+                ("max_distance".to_string(), 120.0),
+                ("max_prior_pivots".to_string(), 5.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
             name: "liquidity_pools",
             description: "BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)",
             default_params: [
@@ -1813,6 +1826,30 @@ pub fn build_checked(
                 p, atr_len, tol, depth, gap, wait,
             )))
         }
+        "pivot_divergence" => {
+            let code = get_usize_p(params, "oscillator", 0, 0, 4)?;
+            let left = get_usize_p(params, "left", 7, 1, 1000)?;
+            let right = get_usize_p(params, "right", 7, 1, 1000)?;
+            let min_distance = get_usize_p(params, "min_distance", 10, 1, 100000)?;
+            let max_distance = get_usize_p(params, "max_distance", 120, 1, 100000)?;
+            let priors = get_usize_p(params, "max_prior_pivots", 5, 1, 100)?;
+            ensure_less(
+                "min_distance",
+                min_distance as f64,
+                "max_distance",
+                max_distance as f64,
+            )?;
+            let oscillator = super::pivot_divergence::DivergenceOscillator::from_code(code as u32)
+                .expect("0..=4 checked above");
+            Ok(Box::new(super::pivot_divergence::PivotDivergence::new(
+                oscillator,
+                left,
+                right,
+                min_distance,
+                max_distance,
+                priors,
+            )))
+        }
         "liquidity_pools" => {
             let p = get_usize_p(params, "pivot_len", 5, 2, 10000)?;
             let tol = get_f64_p(params, "tolerance_pct", 0.2, 0.001, 100.0)?;
@@ -1906,6 +1943,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "sweeps",
     "zone_rejection",
     "double_pattern",
+    "pivot_divergence",
     "liquidity_fvg",
     "fvg",
     "smc",
@@ -2659,6 +2697,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "liquidity_sweeps",
     "zone_rejection",
     "double_pattern",
+    "pivot_divergence",
     "liquidity_pools",
     "wyckoff",
     "trend_quality",
@@ -2694,8 +2733,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 107);
-        assert_eq!(catalog().len(), 107);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 108);
+        assert_eq!(catalog().len(), 108);
     }
 
     #[test]

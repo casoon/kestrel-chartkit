@@ -150,8 +150,9 @@ is complete.
 | zigzag_advanced | ✅ |
 | zone_rejection | ✅ |
 | double_pattern | ✅ |
+| pivot_divergence | ✅ |
 
 ---
 
-**Total: 107/107 verified** — the same 107 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 14 structure/pattern detectors.
+**Total: 108/108 verified** — the same 108 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 15 structure/pattern detectors.
