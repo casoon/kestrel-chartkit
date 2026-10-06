@@ -10,7 +10,7 @@ and renders the results as static SVG. Everything runs in-process on data you pa
 
 ## What it covers
 
-- **Indicators:** 105 entries in the registry (`catalog()`), from moving averages and oscillators
+- **Indicators:** 110 entries in the registry (`catalog()`), from moving averages and oscillators
   to volume profiles and market-structure detectors. All of them implement one streaming trait.
 - **Market regime:** `classify_regime` sorts the current market into bullish expansion, bearish
   expansion, consolidation or transition.
@@ -19,10 +19,15 @@ and renders the results as static SVG. Everything runs in-process on data you pa
   plan.
 - **SVG output:** `render_chart_svg` draws candles, indicator lines, zones and markers;
   `render_scene_svg` draws a multi-pane scene.
+- **Structure and events:** confirmed pivots and zones with a known event time, and detectors
+  for failed breakouts, double bottoms and tops, bottom formation and divergences that alert on
+  the bar the event becomes known.
+- **Analytics and evaluation:** on-demand read-outs of the current market, forward paths of
+  comparable situations, and what followed a signal: excursions, R-multiples, calibration, the
+  deflated Sharpe ratio and a logistic model.
 
-The crate also contains trade statistics, option and bond valuation, portfolio risk and stress
-scenarios. This documentation focuses on the four areas above; the README and the API docs cover
-the rest.
+The crate also contains option and bond valuation, portfolio risk and stress scenarios. This
+documentation focuses on the areas above; the README and the API docs cover the rest.
 
 ## Where it stops
 
@@ -46,5 +51,6 @@ file is authoritative.
 ## How the docs are organised
 
 - **Getting started:** add the crate and stream a first indicator.
-- **Guides:** indicators, market regime, composite scoring and SVG charts.
+- **Guides:** indicators, market regime, composite scoring, SVG charts, structure and events,
+  analytics and evaluation.
 - **Reference:** overview of the public entry points and where the generated API docs live.

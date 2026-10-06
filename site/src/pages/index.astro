@@ -22,7 +22,7 @@ const hero = figure('market-regime-hero', 'Market regime chart');
 const bollinger = figure('bollinger-bands', 'Bollinger Bands chart');
 
 const cargoToml = `[dependencies]
-kestrel-chartkit = "0.11"`;
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.24.0" }`;
 
 const mainRs = `use kestrel_chartkit::{build_checked, Bar, Indicator};
 use std::collections::HashMap;
@@ -49,14 +49,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       commands={[
         {
           label: 'cargo',
-          command: 'cargo add kestrel-chartkit',
+          command: 'cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.24.0',
         },
       ]}
     />
     <Badges>
       <Badge>BUSL-1.1</Badge>
       <Badge tone="brand">pre-1.0</Badge>
-      <Badge>v0.11.3</Badge>
+      <Badge>v0.24.0</Badge>
       <Badge>Rust 1.87+</Badge>
     </Badges>
     <div slot="output" set:html={hero} />
@@ -90,8 +90,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         body: 'Numeric results are checked against values derived outside the crate: a second implementation, exact arithmetic or an unambiguous case.',
       },
       {
-        title: 'SVG without a front end',
-        body: 'Candles, indicator lines, zones and markers render to a self-contained SVG string. Colours can be CSS variables, so one chart serves light and dark pages.',
+        title: 'Events with a known time',
+        body: 'Pivots and zones carry when they formed and when they became known. Detectors for failed breakouts, double bottoms, bottom formation and divergences alert on the bar the event is confirmed, never earlier.',
       },
     ]}
   />

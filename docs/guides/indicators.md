@@ -51,7 +51,7 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per indicator, with `name`, `description` and
-`default_params`. The current version has 105 entries.
+`default_params`. The current version has 110 entries.
 
 `output_unit(name)` says what the indicator's `value` is quoted in — `Price`, `Ratio`, `Volume`
 or `Unitless`. A charting consumer needs this to decide where the result belongs: `Price` means a
@@ -97,7 +97,8 @@ description names them.
 | Volume                         | `obv`, `vwap`, `anchored_vwap`, `cmf`, `mfi`, `volume_profile`, `cvd` |
 | Trend                          | `ichimoku`, `alligator`, `efficiency`, `zscore`                     |
 | Composite scores               | `trend_quality`, `buy_sell_pressure`, `volatility_regime`, `multi_factor` |
-| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag` |
+| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `double_pattern`, `bottom_formation` |
+| Divergence                     | `pivot_divergence`, `oscillator_pivot_divergence`                   |
 
 Print the full list with `catalog()`, or see `examples/site/catalog.txt` in the repository, which
 `cargo run --example site_showcase` writes.

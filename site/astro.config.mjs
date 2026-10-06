@@ -12,7 +12,7 @@ export default defineConfig({
       description:
         'Rust technical analysis library: streaming indicators, market regime classification, composite scoring and SVG charts.',
       repo: 'casoon/kestrel-chartkit',
-      version: '0.11.3',
+      version: '0.24.0',
       license: 'BUSL-1.1',
       branch: 'master',
       packages: [

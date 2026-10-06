@@ -96,6 +96,11 @@ pvi
 chaikin_oscillator
 bos_choch
 liquidity_sweeps
+zone_rejection
+double_pattern
+bottom_formation
+pivot_divergence
+oscillator_pivot_divergence
 liquidity_pools
 wyckoff
 trend_quality
