@@ -79,6 +79,21 @@ pub enum OscillatorAnchor {
     WindowExtreme,
 }
 
+/// Which series the pivots are found in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PivotSource {
+    /// Strict pivots of the bar lows/highs; the oscillator is read per [`OscillatorAnchor`].
+    /// This engine's original, sole behavior.
+    #[default]
+    Price,
+    /// Strict pivots of the oscillator itself, price read at the same bar (low for a low
+    /// pivot, high for a high pivot) — how TradingView's divergence scripts find them
+    /// (`ta.pivotlow(osc, left, right)`). [`OscillatorAnchor`] has no effect: the oscillator
+    /// value is the pivot value.
+    Oscillator,
+}
+
 /// Enhanced Pivot-based Divergence Detection Engine across Price and Oscillator anchors.
 ///
 /// Ranks divergence candidates: each confirmed pivot is compared against up to
@@ -94,6 +109,7 @@ pub struct PivotDivergenceEngine {
     max_distance: usize,
     max_prior_pivots: usize,
     oscillator_anchor: OscillatorAnchor,
+    pivot_source: PivotSource,
     next_index: usize,
     window: VecDeque<PivotSample>,
     previous_lows: VecDeque<PivotAnchor>,
@@ -155,6 +171,7 @@ impl PivotDivergenceEngine {
             max_distance: max_distance.max(min_distance),
             max_prior_pivots: 5,
             oscillator_anchor: OscillatorAnchor::default(),
+            pivot_source: PivotSource::default(),
             next_index: 0,
             window: VecDeque::with_capacity(left_bars + right_bars + 1),
             previous_lows: VecDeque::new(),
@@ -173,6 +190,12 @@ impl PivotDivergenceEngine {
     /// [`OscillatorAnchor::WindowExtreme`].
     pub fn with_oscillator_anchor(mut self, anchor: OscillatorAnchor) -> Self {
         self.oscillator_anchor = anchor;
+        self
+    }
+
+    /// Which series the pivots are found in. Default [`PivotSource::Price`].
+    pub fn with_pivot_source(mut self, source: PivotSource) -> Self {
+        self.pivot_source = source;
         self
     }
 
@@ -196,21 +219,32 @@ impl PivotDivergenceEngine {
 
         let candidate_index = self.left_bars;
         let candidate = &self.window[candidate_index];
-        let is_low = self
-            .window
-            .iter()
-            .enumerate()
-            .all(|(index, sample)| index == candidate_index || sample.low > candidate.low);
-        let is_high = self
-            .window
-            .iter()
-            .enumerate()
-            .all(|(index, sample)| index == candidate_index || sample.high < candidate.high);
+        let others = || {
+            self.window
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != candidate_index)
+                .map(|(_, sample)| sample)
+        };
+        let (is_low, is_high) = match self.pivot_source {
+            PivotSource::Price => (
+                others().all(|sample| sample.low > candidate.low),
+                others().all(|sample| sample.high < candidate.high),
+            ),
+            PivotSource::Oscillator => (
+                others().all(|sample| sample.oscillator > candidate.oscillator),
+                others().all(|sample| sample.oscillator < candidate.oscillator),
+            ),
+        };
+        let anchor = match self.pivot_source {
+            PivotSource::Price => self.oscillator_anchor,
+            PivotSource::Oscillator => OscillatorAnchor::AtPivot,
+        };
 
         let mut events = Vec::with_capacity(2);
 
         if is_low {
-            let oscillator = match self.oscillator_anchor {
+            let oscillator = match anchor {
                 OscillatorAnchor::AtPivot => candidate.oscillator,
                 OscillatorAnchor::WindowExtreme => self
                     .window
@@ -232,7 +266,7 @@ impl PivotDivergenceEngine {
             push_bounded(&mut self.previous_lows, current, self.max_prior_pivots);
         }
         if is_high {
-            let oscillator = match self.oscillator_anchor {
+            let oscillator = match anchor {
                 OscillatorAnchor::AtPivot => candidate.oscillator,
                 OscillatorAnchor::WindowExtreme => self
                     .window
@@ -470,6 +504,38 @@ mod pivot_tests {
 
         assert_eq!(event.previous_price, winner_price);
         assert!((event.quality_score - score_a.max(score_b)).abs() < 1e-12);
+    }
+
+    /// Bar 3 is a low of the oscillator but not of price (bar 4 trades lower). Oscillator
+    /// pivots see a regular bullish divergence against bar 1; price pivots see none.
+    #[test]
+    fn oscillator_pivots_find_what_price_pivots_miss() {
+        let points = [
+            (10.0, 50.0),
+            (9.0, 30.0),
+            (9.5, 40.0),
+            (8.0, 35.0),
+            (7.5, 50.0),
+        ];
+        let run = |source: PivotSource| {
+            let mut engine =
+                PivotDivergenceEngine::with_confirmation(1, 1, 1, 10).with_pivot_source(source);
+            let mut events = Vec::new();
+            for (index, (low, oscillator)) in points.into_iter().enumerate() {
+                let bar = Bar::new(index as i64, low + 1.0, low + 2.0, low, low + 1.0, 1.0);
+                events.extend(engine.update(&bar, oscillator));
+            }
+            events
+        };
+
+        let osc = run(PivotSource::Oscillator);
+        assert_eq!(osc.len(), 1);
+        assert_eq!(osc[0].kind, DivergenceKind::RegularBullish);
+        assert_eq!(osc[0].pivot_timestamp, 3);
+        assert_eq!(osc[0].previous_timestamp, 1);
+        assert_eq!(osc[0].pivot_price, 8.0);
+        assert_eq!(osc[0].pivot_oscillator, 35.0);
+        assert!(run(PivotSource::Price).is_empty());
     }
 
     #[test]

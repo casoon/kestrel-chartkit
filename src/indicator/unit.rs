@@ -141,6 +141,8 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("nvi", IndicatorUnit::Unitless),
     ("obv", IndicatorUnit::Volume),
     ("order_block", IndicatorUnit::Unitless),
+    // Wie `pivot_divergence`: der gewählte Oszillator.
+    ("oscillator_pivot_divergence", IndicatorUnit::Unitless),
     ("parabolic_sar", IndicatorUnit::Price),
     ("persistent_volume_profile", IndicatorUnit::Price),
     // The selected oscillator — RSI is a ratio, WaveTrend and CCI are not; the conservative

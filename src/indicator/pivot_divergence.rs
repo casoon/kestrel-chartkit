@@ -1,5 +1,5 @@
 use super::cci::Cci;
-use super::divergence::{DivergenceKind, OscillatorAnchor, PivotDivergenceEngine};
+use super::divergence::{DivergenceKind, OscillatorAnchor, PivotDivergenceEngine, PivotSource};
 use super::rsi::Rsi;
 use super::stoch_rsi::StochRsi;
 use super::wavetrend::WaveTrendEngine;
@@ -77,8 +77,13 @@ impl DivergenceOscillator {
 /// - `direction`: `1` bullish, `-1` bearish.
 ///
 /// Should one bar report several divergences, `extra` describes the last of them.
+///
+/// [`PivotDivergence::oscillator_pivots`] finds the pivots in the oscillator instead
+/// (TradingView's divergence scripts) and reports as `oscillator_pivot_divergence`; then
+/// `pivot_price`/`previous_price` are the bar lows/highs at the two oscillator pivots.
 pub struct PivotDivergence {
     oscillator: DivergenceOscillator,
+    pivot_source: PivotSource,
     inner: Box<dyn Indicator>,
     engine: PivotDivergenceEngine,
     left: usize,
@@ -95,26 +100,65 @@ impl PivotDivergence {
         max_distance: usize,
         max_prior_pivots: usize,
     ) -> Self {
-        Self {
+        Self::with_source(
+            PivotSource::Price,
             oscillator,
-            inner: oscillator.build(),
-            engine: Self::engine(left, right, min_distance, max_distance, max_prior_pivots),
-            left: left.max(1),
-            right: right.max(1),
-            alerts: Vec::new(),
-        }
+            left,
+            right,
+            min_distance,
+            max_distance,
+            max_prior_pivots,
+        )
     }
 
-    fn engine(
+    /// Pivots of the oscillator rather than of price. With `max_prior_pivots` 1 each pivot is
+    /// compared with the immediately preceding one only — TradingView's RSI divergence
+    /// (`left`/`right` 5, range 5–60).
+    pub fn oscillator_pivots(
+        oscillator: DivergenceOscillator,
         left: usize,
         right: usize,
         min_distance: usize,
         max_distance: usize,
         max_prior_pivots: usize,
-    ) -> PivotDivergenceEngine {
-        PivotDivergenceEngine::with_confirmation(left, right, min_distance, max_distance)
+    ) -> Self {
+        Self::with_source(
+            PivotSource::Oscillator,
+            oscillator,
+            left,
+            right,
+            min_distance,
+            max_distance,
+            max_prior_pivots,
+        )
+    }
+
+    fn with_source(
+        pivot_source: PivotSource,
+        oscillator: DivergenceOscillator,
+        left: usize,
+        right: usize,
+        min_distance: usize,
+        max_distance: usize,
+        max_prior_pivots: usize,
+    ) -> Self {
+        Self {
+            oscillator,
+            pivot_source,
+            inner: oscillator.build(),
+            engine: PivotDivergenceEngine::with_confirmation(
+                left,
+                right,
+                min_distance,
+                max_distance,
+            )
             .with_max_prior_pivots(max_prior_pivots)
             .with_oscillator_anchor(OscillatorAnchor::AtPivot)
+            .with_pivot_source(pivot_source),
+            left: left.max(1),
+            right: right.max(1),
+            alerts: Vec::new(),
+        }
     }
 
     pub fn oscillator(&self) -> DivergenceOscillator {
@@ -124,7 +168,10 @@ impl PivotDivergence {
 
 impl Indicator for PivotDivergence {
     fn name(&self) -> &str {
-        "pivot_divergence"
+        match self.pivot_source {
+            PivotSource::Price => "pivot_divergence",
+            PivotSource::Oscillator => "oscillator_pivot_divergence",
+        }
     }
 
     fn warmup_period(&self) -> usize {
@@ -231,6 +278,66 @@ mod tests {
                 "previous pivot at bar {previous}"
             );
             assert_eq!(div.alerts()[0].kind.starts_with("bull"), bullish);
+        }
+        assert!(seen > 2, "the waves must produce divergences: {seen}");
+    }
+
+    /// Oscillator pivots: the reported pivot bar is a strict extreme of the oscillator over
+    /// `left`/`right` bars, and `pivot_price` is that bar's low or high — whether or not price
+    /// pivots there. Same two waves as above; the second one makes price and RSI disagree.
+    #[test]
+    fn oscillator_pivots_report_the_oscillator_extreme() {
+        let bars: Vec<Bar> = (0..800)
+            .map(|i| {
+                let x = i as f64;
+                let mid = 100.0 + (x / 7.0).sin() * 4.0 + (x / 61.0).cos() * 7.0 + x * 0.004;
+                Bar::new(
+                    1_700_000_000 + i * 900,
+                    mid,
+                    mid + 1.1,
+                    mid - 0.7,
+                    mid - 0.2,
+                    0.0,
+                )
+            })
+            .collect();
+        let mut rsi = DivergenceOscillator::Rsi.build();
+        let values: Vec<Option<f64>> = bars
+            .iter()
+            .map(|b| rsi.on_bar(b).map(|o| o.value))
+            .collect();
+        let mut div = PivotDivergence::oscillator_pivots(DivergenceOscillator::Rsi, 5, 5, 5, 60, 1);
+        assert_eq!(div.name(), "oscillator_pivot_divergence");
+        let mut seen = 0;
+        for (i, bar) in bars.iter().enumerate() {
+            let Some(out) = div.on_bar(bar) else {
+                continue;
+            };
+            let Some(&pivot_price) = out.extra.get("pivot_price") else {
+                continue;
+            };
+            seen += 1;
+            let pivot = i - out.extra["pivot_age"] as usize;
+            let bullish = out.extra["direction"] > 0.0;
+            let osc = |j: usize| values[j].expect("warm");
+            for j in pivot - 5..=pivot + 5 {
+                if j != pivot {
+                    assert!(
+                        if bullish {
+                            osc(j) > osc(pivot)
+                        } else {
+                            osc(j) < osc(pivot)
+                        },
+                        "bar {pivot} is no oscillator pivot against {j}"
+                    );
+                }
+            }
+            let at = if bullish {
+                bars[pivot].low
+            } else {
+                bars[pivot].high
+            };
+            assert_eq!(pivot_price, at);
         }
         assert!(seen > 2, "the waves must produce divergences: {seen}");
     }

@@ -859,6 +859,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
+            name: "oscillator_pivot_divergence",
+            description: "Divergence with the pivots found in the oscillator (TradingView's divergence scripts: ta.pivotlow/pivothigh of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence",
+            default_params: [
+                ("oscillator".to_string(), 0.0),
+                ("left".to_string(), 5.0),
+                ("right".to_string(), 5.0),
+                ("min_distance".to_string(), 5.0),
+                ("max_distance".to_string(), 60.0),
+                ("max_prior_pivots".to_string(), 1.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
             name: "liquidity_pools",
             description: "BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)",
             default_params: [
@@ -1843,13 +1856,21 @@ pub fn build_checked(
             let retest = get_f64_p(params, "retest_atr", 0.5, 0.0, 100.0)?;
             Ok(Box::new(BottomFormation::new(p, max_stage, retest)))
         }
-        "pivot_divergence" => {
+        "pivot_divergence" | "oscillator_pivot_divergence" => {
+            // Same knobs, different pivot series and defaults (TradingView's for the
+            // oscillator variant).
+            let osc_pivots = name.eq_ignore_ascii_case("oscillator_pivot_divergence");
+            let (l, r, min_d, max_d, pri) = if osc_pivots {
+                (5, 5, 5, 60, 1)
+            } else {
+                (7, 7, 10, 120, 5)
+            };
             let code = get_usize_p(params, "oscillator", 0, 0, 4)?;
-            let left = get_usize_p(params, "left", 7, 1, 1000)?;
-            let right = get_usize_p(params, "right", 7, 1, 1000)?;
-            let min_distance = get_usize_p(params, "min_distance", 10, 1, 100000)?;
-            let max_distance = get_usize_p(params, "max_distance", 120, 1, 100000)?;
-            let priors = get_usize_p(params, "max_prior_pivots", 5, 1, 100)?;
+            let left = get_usize_p(params, "left", l, 1, 1000)?;
+            let right = get_usize_p(params, "right", r, 1, 1000)?;
+            let min_distance = get_usize_p(params, "min_distance", min_d, 1, 100000)?;
+            let max_distance = get_usize_p(params, "max_distance", max_d, 1, 100000)?;
+            let priors = get_usize_p(params, "max_prior_pivots", pri, 1, 100)?;
             ensure_less(
                 "min_distance",
                 min_distance as f64,
@@ -1858,7 +1879,12 @@ pub fn build_checked(
             )?;
             let oscillator = super::pivot_divergence::DivergenceOscillator::from_code(code as u32)
                 .expect("0..=4 checked above");
-            Ok(Box::new(super::pivot_divergence::PivotDivergence::new(
+            let build = if osc_pivots {
+                super::pivot_divergence::PivotDivergence::oscillator_pivots
+            } else {
+                super::pivot_divergence::PivotDivergence::new
+            };
+            Ok(Box::new(build(
                 oscillator,
                 left,
                 right,
@@ -1962,6 +1988,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "double_pattern",
     "bottom_formation",
     "pivot_divergence",
+    "oscillator_pivot_divergence",
     "liquidity_fvg",
     "fvg",
     "smc",
@@ -2717,6 +2744,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "double_pattern",
     "bottom_formation",
     "pivot_divergence",
+    "oscillator_pivot_divergence",
     "liquidity_pools",
     "wyckoff",
     "trend_quality",
@@ -2752,8 +2780,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 109);
-        assert_eq!(catalog().len(), 109);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 110);
+        assert_eq!(catalog().len(), 110);
     }
 
     #[test]
