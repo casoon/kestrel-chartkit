@@ -127,6 +127,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("klinger", IndicatorUnit::Volume),
     ("kst", IndicatorUnit::Ratio),
     ("liquidity_fvg", IndicatorUnit::Unitless),
+    ("liquidity_hunter", IndicatorUnit::Unitless),
     ("liquidity_pools", IndicatorUnit::Unitless),
     ("liquidity_sweeps", IndicatorUnit::Unitless),
     ("lsma", IndicatorUnit::Price),

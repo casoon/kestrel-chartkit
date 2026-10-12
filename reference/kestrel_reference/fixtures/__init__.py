@@ -14,6 +14,7 @@ from . import (
     family_math,
     finance_cashflows,
     forward,
+    liquidity_hunter,
     logistic,
     market_average_relationship,
     moving_averages,
@@ -64,4 +65,5 @@ ALL = (
     swing_conviction_radar,
     structure_break_risk,
     reversal_engine_score,
+    liquidity_hunter,
 )

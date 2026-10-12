@@ -32,6 +32,7 @@ pub mod force_index;
 pub mod harmonics;
 pub mod kst;
 pub mod liquidity_fvg;
+pub mod liquidity_hunter;
 pub mod liquidity_sweeps;
 pub mod lsma;
 pub mod macd;

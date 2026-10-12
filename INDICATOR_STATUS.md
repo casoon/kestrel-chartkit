@@ -157,8 +157,9 @@ is complete.
 | swing_conviction_radar | ✅ |
 | structure_break_risk | ✅ |
 | reversal_engine_score | ✅ |
+| liquidity_hunter | ✅ |
 
 ---
 
-**Total: 114/114 verified** — the same 114 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 21 structure/pattern detectors.
+**Total: 115/115 verified** — the same 115 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 22 structure/pattern detectors.

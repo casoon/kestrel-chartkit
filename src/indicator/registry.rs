@@ -31,6 +31,7 @@ use super::fisher_transform::FisherTransform;
 use super::force_index::ElderForceIndex;
 use super::kst::KstEngine;
 use super::liquidity_fvg::LiquidityFvgEngine;
+use super::liquidity_hunter::{LiquidityHunter, LiquidityHunterConfig};
 use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
@@ -893,6 +894,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_quality_long".to_string(), 2.0),
                 ("min_quality_short".to_string(), 1.0),
                 ("cooldown".to_string(), 5.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "liquidity_hunter",
+            description: "Liquidity Hunter: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
+            default_params: [
+                ("pivot_len".to_string(), 8.0),
+                ("eq_tolerance_atr".to_string(), 0.12),
+                ("min_touches".to_string(), 2.0),
+                ("max_age".to_string(), 400.0),
+                ("max_distance_atr".to_string(), 8.0),
+                ("reclaim_bars".to_string(), 3.0),
+                ("min_volume_ratio".to_string(), 1.2),
+                ("alert_distance_atr".to_string(), 1.0),
             ]
             .into(),
         },
@@ -1969,6 +1985,20 @@ pub fn build_checked(
             };
             Ok(Box::new(ReversalEngineScore::new(cfg)))
         }
+        "liquidity_hunter" => {
+            let cfg = LiquidityHunterConfig {
+                pivot_len: get_usize_p(params, "pivot_len", 8, 1, 50)?,
+                eq_tolerance_atr: get_f64_p(params, "eq_tolerance_atr", 0.12, 0.0, 10.0)?,
+                min_touches: get_usize_p(params, "min_touches", 2, 1, 20)? as u32,
+                max_age: get_usize_p(params, "max_age", 400, 1, 100000)?,
+                max_distance_atr: get_f64_p(params, "max_distance_atr", 8.0, 0.1, 100.0)?,
+                reclaim_bars: get_usize_p(params, "reclaim_bars", 3, 0, 100)?,
+                min_volume_ratio: get_f64_p(params, "min_volume_ratio", 1.2, 0.0, 100.0)?,
+                alert_distance_atr: get_f64_p(params, "alert_distance_atr", 1.0, 0.0, 100.0)?,
+                ..LiquidityHunterConfig::default()
+            };
+            Ok(Box::new(LiquidityHunter::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2110,6 +2140,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "swing_conviction_radar",
     "structure_break_risk",
     "reversal_engine_score",
+    "liquidity_hunter",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2870,6 +2901,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "swing_conviction_radar",
     "structure_break_risk",
     "reversal_engine_score",
+    "liquidity_hunter",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2907,8 +2939,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 114);
-        assert_eq!(catalog().len(), 114);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 115);
+        assert_eq!(catalog().len(), 115);
     }
 
     #[test]
