@@ -87,6 +87,7 @@ is complete.
 | ulcer_index | ✅ |
 | vix_fix | ✅ |
 | vortex | ✅ |
+| compression_fractal_release | ✅ |
 
 ## Volume
 
@@ -160,5 +161,5 @@ is complete.
 
 ---
 
-**Total: 114/114 verified** — the same 114 names `catalog()` returns: 92 indicators (the first
+**Total: 115/115 verified** — the same 115 names `catalog()` returns: 93 indicators (the first
 five groups), 4 composite scores and 18 structure/pattern detectors.

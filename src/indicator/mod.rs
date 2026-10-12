@@ -16,6 +16,7 @@ pub mod chandelier_exit;
 pub mod chandelier_flip_radar;
 pub mod chart_patterns;
 pub mod choppiness;
+pub mod compression_fractal_release;
 pub mod connors_rsi;
 pub mod coppock;
 pub mod cvd_intrabar;

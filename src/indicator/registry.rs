@@ -20,6 +20,7 @@ use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
 use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
+use super::compression_fractal_release::{CfrConfig, CompressionFractalRelease};
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
 use super::double_pattern::DoublePattern;
@@ -895,6 +896,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("slope_lookback".to_string(), 3.0),
                 ("slope_threshold".to_string(), 0.05),
                 ("touches".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "compression_fractal_release",
+            description: "Compression Fractal Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (Pine: higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
+            default_params: [
+                ("len".to_string(), 34.0),
+                ("break_len".to_string(), 12.0),
+                ("ema_len".to_string(), 55.0),
+                ("slope_len".to_string(), 5.0),
+                ("thr_cont".to_string(), 0.45),
+                ("thr_base".to_string(), 0.55),
+                ("cooldown".to_string(), 8.0),
+                ("chop_veto".to_string(), 61.8),
             ]
             .into(),
         },
@@ -1976,6 +1992,20 @@ pub fn build_checked(
             };
             Ok(Box::new(SmoothTrendRadar::new(cfg)))
         }
+        "compression_fractal_release" => {
+            let cfg = CfrConfig {
+                len: get_usize_p(params, "len", 34, 10, 150)?,
+                break_len: get_usize_p(params, "break_len", 12, 3, 50)?,
+                ema_len: get_usize_p(params, "ema_len", 55, 2, 2000)?,
+                slope_len: get_usize_p(params, "slope_len", 5, 1, 200)?,
+                thr_cont: get_f64_p(params, "thr_cont", 0.45, 0.0, 1.0)?,
+                thr_base: get_f64_p(params, "thr_base", 0.55, 0.0, 1.0)?,
+                cooldown: get_usize_p(params, "cooldown", 8, 0, 100)?,
+                chop_veto: get_f64_p(params, "chop_veto", 61.8, 30.0, 80.0)?,
+                ..CfrConfig::default()
+            };
+            Ok(Box::new(CompressionFractalRelease::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2080,6 +2110,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "compression_fractal_release",
     "smooth_trend_radar",
     "exhaustion_scanner",
     "market_exhaustion",
@@ -2876,6 +2907,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "market_exhaustion",
     "exhaustion_scanner",
     "smooth_trend_radar",
+    "compression_fractal_release",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2914,8 +2946,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 114);
-        assert_eq!(catalog().len(), 114);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 115);
+        assert_eq!(catalog().len(), 115);
     }
 
     #[test]

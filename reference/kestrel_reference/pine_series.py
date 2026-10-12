@@ -331,3 +331,34 @@ def percentrank(s, n):
         if ok(*w):
             out[t] = 100.0 * sum(1 for v in w[:-1] if v <= w[-1]) / n
     return out
+
+
+def lcg_series(n_bars, seed=12345):
+    """A deterministic pseudo-random OHLCV walk with regimes, reproducible bit for bit in any
+    language: x <- (1664525 x + 1013904223) mod 2^32, u = x / 2^32, five draws per bar
+    (close, open, high, low, volume in that order). Regime k = (i // 75) % 6 with drift
+    (0.3, 0, -0.3, 0, 0.15, -0.15)[k] and vol (0.8, 1.5, 0.8, 0.25, 1.0, 1.0)[k];
+    close = prev + drift + 2 vol (u1 - 0.5), open = prev + 0.3 vol (u2 - 0.5),
+    high = max(open, close) + 0.5 vol u3, low = min(open, close) - 0.5 vol u4,
+    volume = 500 + 1000 u5; prev starts at 100."""
+    drifts = (0.3, 0.0, -0.3, 0.0, 0.15, -0.15)
+    vols = (0.8, 1.5, 0.8, 0.25, 1.0, 1.0)
+    x = seed
+    bars = []
+    prev = 100.0
+
+    def draw():
+        nonlocal x
+        x = (1664525 * x + 1013904223) % 4294967296
+        return x / 4294967296.0
+    for i in range(n_bars):
+        k = (i // 75) % 6
+        d, v = drifts[k], vols[k]
+        u1, u2, u3, u4, u5 = draw(), draw(), draw(), draw(), draw()
+        close = prev + d + 2.0 * v * (u1 - 0.5)
+        open_ = prev + 0.3 * v * (u2 - 0.5)
+        high = max(open_, close) + 0.5 * v * u3
+        low = min(open_, close) - 0.5 * v * u4
+        bars.append((open_, high, low, close, 500.0 + 1000.0 * u5))
+        prev = close
+    return bars

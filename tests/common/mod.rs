@@ -261,6 +261,39 @@ pub fn wave_series(count: usize) -> Vec<Bar> {
     bars
 }
 
+/// The pseudo-random OHLCV walk with regimes from
+/// `reference/kestrel_reference/pine_series.py::lcg_series`, reproducible bit for bit.
+pub fn lcg_series(count: usize, seed: u64) -> Vec<Bar> {
+    const DRIFTS: [f64; 6] = [0.3, 0.0, -0.3, 0.0, 0.15, -0.15];
+    const VOLS: [f64; 6] = [0.8, 1.5, 0.8, 0.25, 1.0, 1.0];
+    let mut x = seed;
+    let mut draw = || {
+        x = (1664525 * x + 1013904223) % 4294967296;
+        x as f64 / 4294967296.0
+    };
+    let mut bars = Vec::with_capacity(count);
+    let mut prev = 100.0f64;
+    for i in 0..count {
+        let k = (i / 75) % 6;
+        let (d, v) = (DRIFTS[k], VOLS[k]);
+        let (u1, u2, u3, u4, u5) = (draw(), draw(), draw(), draw(), draw());
+        let close = prev + d + 2.0 * v * (u1 - 0.5);
+        let open = prev + 0.3 * v * (u2 - 0.5);
+        let high = open.max(close) + 0.5 * v * u3;
+        let low = open.min(close) - 0.5 * v * u4;
+        bars.push(Bar::new(
+            i as i64 * 3600,
+            open,
+            high,
+            low,
+            close,
+            500.0 + 1000.0 * u5,
+        ));
+        prev = close;
+    }
+    bars
+}
+
 /// Vergleicht zwei Werte auf eine feste Toleranz, mit sprechender Fehlermeldung.
 ///
 /// Panics (via the internal `assert!`) on mismatch, so callers must not additionally wrap this in

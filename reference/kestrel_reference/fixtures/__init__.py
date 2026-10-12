@@ -7,6 +7,7 @@ from . import (
     analytics_composites,
     bond_diff,
     business_days,
+    compression_fractal_release,
     composite,
     cross_asset_alignment,
     curve_diff,
@@ -64,4 +65,5 @@ ALL = (
     market_exhaustion,
     exhaustion_scanner,
     smooth_trend_radar,
+    compression_fractal_release,
 )
