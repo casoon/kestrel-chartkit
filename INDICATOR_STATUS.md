@@ -160,8 +160,9 @@ is complete.
 | liquidity_hunter | ✅ |
 | market_motion_dna | ✅ |
 | vein_accumulation | ✅ |
+| vein_reversal_score | ✅ |
 
 ---
 
-**Total: 117/117 verified** — the same 117 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 24 structure/pattern detectors.
+**Total: 118/118 verified** — the same 118 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 25 structure/pattern detectors.

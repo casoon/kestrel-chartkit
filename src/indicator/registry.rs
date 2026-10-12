@@ -80,6 +80,7 @@ use super::tsi::Tsi;
 use super::twap::{AnchoredTwap, TwapAnchor, TwapWeighting};
 use super::ulcer::UlcerIndexEngine;
 use super::vein_accumulation::{VeinAccumulation, VeinAccumulationConfig};
+use super::vein_reversal_score::VeinReversalScore;
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -944,6 +945,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("atr_compress".to_string(), 0.8),
             ]
             .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "vein_reversal_score",
+            description: "Vein Reversal Score (Pine defaults, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict",
+            default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
             name: "bottom_formation",
@@ -2060,6 +2066,7 @@ pub fn build_checked(
             };
             Ok(Box::new(VeinAccumulation::new(cfg)))
         }
+        "vein_reversal_score" => Ok(Box::new(VeinReversalScore::new())),
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2204,6 +2211,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "liquidity_hunter",
     "market_motion_dna",
     "vein_accumulation",
+    "vein_reversal_score",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2967,6 +2975,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "liquidity_hunter",
     "market_motion_dna",
     "vein_accumulation",
+    "vein_reversal_score",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -3004,8 +3013,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 117);
-        assert_eq!(catalog().len(), 117);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 118);
+        assert_eq!(catalog().len(), 118);
     }
 
     #[test]

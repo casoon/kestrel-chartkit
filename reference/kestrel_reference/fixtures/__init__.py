@@ -33,6 +33,7 @@ from . import (
     trend,
     validation_probability,
     vein_accumulation,
+    vein_reversal_score,
     volatility,
     volume,
 )
@@ -70,4 +71,5 @@ ALL = (
     liquidity_hunter,
     market_motion_dna,
     vein_accumulation,
+    vein_reversal_score,
 )
