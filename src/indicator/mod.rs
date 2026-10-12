@@ -54,6 +54,7 @@ pub mod pivots_structure;
 pub mod pmo;
 pub mod price_levels;
 pub mod pvt;
+pub mod rank_channel;
 pub mod rci;
 pub mod registry;
 pub mod relative_strength;
