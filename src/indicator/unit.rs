@@ -131,6 +131,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("liquidity_sweeps", IndicatorUnit::Unitless),
     ("lsma", IndicatorUnit::Price),
     ("macd", IndicatorUnit::Unitless),
+    ("market_average_relationship", IndicatorUnit::Unitless),
     ("market_structure_breaks", IndicatorUnit::Unitless),
     ("mass_index", IndicatorUnit::Ratio),
     ("mcginley", IndicatorUnit::Price),

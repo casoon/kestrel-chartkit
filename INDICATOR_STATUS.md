@@ -153,8 +153,9 @@ is complete.
 | pivot_divergence | ✅ |
 | oscillator_pivot_divergence | ✅ |
 | bottom_formation | ✅ |
+| market_average_relationship | ✅ |
 
 ---
 
-**Total: 110/110 verified** — the same 110 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 17 structure/pattern detectors.
+**Total: 111/111 verified** — the same 111 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 18 structure/pattern detectors.

@@ -35,6 +35,7 @@ pub mod liquidity_fvg;
 pub mod liquidity_sweeps;
 pub mod lsma;
 pub mod macd;
+pub mod market_average_relationship;
 pub mod market_structure_breaks;
 pub mod mass_index;
 pub mod mcginley;

@@ -34,6 +34,7 @@ use super::liquidity_fvg::LiquidityFvgEngine;
 use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
+use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
@@ -832,6 +833,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_depth_atr".to_string(), 1.5),
                 ("max_gap".to_string(), 100.0),
                 ("max_wait".to_string(), 50.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_average_relationship",
+            description: "Market-Average Relationship Engine (MARE): price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down",
+            default_params: [
+                ("ma_len".to_string(), 50.0),
+                ("ma_kind".to_string(), 0.0),
+                ("atr_len".to_string(), 14.0),
+                ("cooldown".to_string(), 8.0),
+                ("turn_level".to_string(), 55.0),
+                ("turn_lookback".to_string(), 30.0),
             ]
             .into(),
         },
@@ -1850,6 +1864,24 @@ pub fn build_checked(
                 p, atr_len, tol, depth, gap, wait,
             )))
         }
+        "market_average_relationship" => {
+            let ma_kind = match get_usize_p(params, "ma_kind", 0, 0, 3)? {
+                0 => super::smoothing::SmootherKind::Ema,
+                1 => super::smoothing::SmootherKind::Sma,
+                2 => super::smoothing::SmootherKind::Rma,
+                _ => super::smoothing::SmootherKind::Alma,
+            };
+            let cfg = MareConfig {
+                ma_kind,
+                ma_len: get_usize_p(params, "ma_len", 50, 2, 1000)?,
+                atr_len: get_usize_p(params, "atr_len", 14, 2, 200)?,
+                cooldown: get_usize_p(params, "cooldown", 8, 0, 100)?,
+                turn_level: get_f64_p(params, "turn_level", 55.0, 10.0, 100.0)?,
+                turn_lookback: get_usize_p(params, "turn_lookback", 30, 5, 150)?,
+                ..MareConfig::default()
+            };
+            Ok(Box::new(MarketAverageRelationship::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -1987,6 +2019,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "zone_rejection",
     "double_pattern",
     "bottom_formation",
+    "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2743,6 +2776,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "zone_rejection",
     "double_pattern",
     "bottom_formation",
+    "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2780,8 +2814,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 110);
-        assert_eq!(catalog().len(), 110);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 111);
+        assert_eq!(catalog().len(), 111);
     }
 
     #[test]
