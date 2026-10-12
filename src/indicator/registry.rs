@@ -62,6 +62,7 @@ use super::pmo::PriceMomentumOscillator;
 use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
 use super::relative_volatility::{RelativeVolatilityIndex, RelativeVolatilityVariant};
+use super::roc_advanced::{RocAdvanced, RocAdvancedConfig};
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
@@ -926,6 +927,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_score".to_string(), 35.0),
                 ("min_touches".to_string(), 2.0),
                 ("watch_bars".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "roc_advanced",
+            description: "ROC Advanced: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
+            default_params: [
+                ("roc_len".to_string(), 12.0),
+                ("avg_len".to_string(), 3.0),
+                ("sig_len".to_string(), 9.0),
+                ("ma_kind".to_string(), 0.0),
+                ("ob_level".to_string(), 5.0),
+                ("os_level".to_string(), -5.0),
+                ("ctx_len".to_string(), 50.0),
+                ("stall_len".to_string(), 5.0),
             ]
             .into(),
         },
@@ -2034,6 +2050,25 @@ pub fn build_checked(
             };
             Ok(Box::new(CoilForgeZones::new(cfg)))
         }
+        "roc_advanced" => {
+            let ma_kind = match get_usize_p(params, "ma_kind", 0, 0, 2)? {
+                0 => super::smoothing::SmootherKind::Ema,
+                1 => super::smoothing::SmootherKind::Sma,
+                _ => super::smoothing::SmootherKind::Rma,
+            };
+            let cfg = RocAdvancedConfig {
+                ma_kind,
+                roc_len: get_usize_p(params, "roc_len", 12, 1, 1000)?,
+                avg_len: get_usize_p(params, "avg_len", 3, 1, 200)?,
+                sig_len: get_usize_p(params, "sig_len", 9, 1, 200)?,
+                ob_level: get_f64_p(params, "ob_level", 5.0, 0.01, 1000.0)?,
+                os_level: get_f64_p(params, "os_level", -5.0, -1000.0, -0.01)?,
+                ctx_len: get_usize_p(params, "ctx_len", 50, 2, 2000)?,
+                stall_len: get_usize_p(params, "stall_len", 5, 1, 200)?,
+                ..RocAdvancedConfig::default()
+            };
+            Ok(Box::new(RocAdvanced::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2938,6 +2973,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "smooth_trend_radar",
     "compression_fractal_release",
     "coilforge_zones",
+    "roc_advanced",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2976,8 +3012,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 116);
-        assert_eq!(catalog().len(), 116);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 117);
+        assert_eq!(catalog().len(), 117);
     }
 
     #[test]

@@ -162,6 +162,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("rci", IndicatorUnit::Ratio),
     ("relative_volatility", IndicatorUnit::Ratio),
     ("roc", IndicatorUnit::Ratio),
+    ("roc_advanced", IndicatorUnit::Ratio),
     ("rsi", IndicatorUnit::Ratio),
     ("rvat", IndicatorUnit::Ratio),
     ("rvi", IndicatorUnit::Ratio),

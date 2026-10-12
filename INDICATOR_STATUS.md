@@ -62,6 +62,7 @@ is complete.
 | wavetrend | ✅ |
 | market_exhaustion | ✅ |
 | exhaustion_scanner | ✅ |
+| roc_advanced | ✅ |
 
 ## Volatility
 
@@ -162,5 +163,5 @@ is complete.
 
 ---
 
-**Total: 116/116 verified** — the same 116 names `catalog()` returns: 93 indicators (the first
+**Total: 117/117 verified** — the same 117 names `catalog()` returns: 94 indicators (the first
 five groups), 4 composite scores and 19 structure/pattern detectors.

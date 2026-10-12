@@ -25,6 +25,7 @@ from . import (
     option_pricing,
     oscillators,
     revaluation_diff,
+    roc_advanced,
     sample_stats,
     scenario_structure,
     smooth_trend_radar,
@@ -68,4 +69,5 @@ ALL = (
     smooth_trend_radar,
     compression_fractal_release,
     coilforge_zones,
+    roc_advanced,
 )
