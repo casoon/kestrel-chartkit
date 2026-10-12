@@ -7,6 +7,7 @@ from . import (
     analytics_composites,
     bond_diff,
     business_days,
+    coilforge_zones,
     compression_fractal_release,
     composite,
     cross_asset_alignment,
@@ -66,4 +67,5 @@ ALL = (
     exhaustion_scanner,
     smooth_trend_radar,
     compression_fractal_release,
+    coilforge_zones,
 )

@@ -101,6 +101,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("choppiness", IndicatorUnit::Ratio),
     ("cmf", IndicatorUnit::Ratio),
     ("cmo", IndicatorUnit::Ratio),
+    ("coilforge_zones", IndicatorUnit::Ratio),
     ("compression_fractal_release", IndicatorUnit::Ratio),
     ("connors_rsi", IndicatorUnit::Ratio),
     ("coppock", IndicatorUnit::Ratio),

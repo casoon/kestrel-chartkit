@@ -44,6 +44,7 @@ Python 3.10 or newer; nothing else.
 | `golden_exhaustion_scanner` | `kestrel_reference/fixtures/exhaustion_scanner.py` |
 | `golden_smooth_trend_radar` | `kestrel_reference/fixtures/smooth_trend_radar.py` |
 | `golden_compression_fractal_release` | `kestrel_reference/fixtures/compression_fractal_release.py` |
+| `golden_coilforge_zones` | `kestrel_reference/fixtures/coilforge_zones.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

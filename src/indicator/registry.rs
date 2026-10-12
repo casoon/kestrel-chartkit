@@ -20,6 +20,7 @@ use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
 use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
+use super::coilforge_zones::{CoilForgeConfig, CoilForgeZones};
 use super::compression_fractal_release::{CfrConfig, CompressionFractalRelease};
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
@@ -911,6 +912,20 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("thr_base".to_string(), 0.55),
                 ("cooldown".to_string(), 8.0),
                 ("chop_veto".to_string(), 61.8),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "coilforge_zones",
+            description: "CoilForge Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
+            default_params: [
+                ("lookback".to_string(), 16.0),
+                ("min_zone_bars".to_string(), 5.0),
+                ("range_atr".to_string(), 4.2),
+                ("adx_max".to_string(), 27.0),
+                ("min_score".to_string(), 35.0),
+                ("min_touches".to_string(), 2.0),
+                ("watch_bars".to_string(), 20.0),
             ]
             .into(),
         },
@@ -2006,6 +2021,19 @@ pub fn build_checked(
             };
             Ok(Box::new(CompressionFractalRelease::new(cfg)))
         }
+        "coilforge_zones" => {
+            let cfg = CoilForgeConfig {
+                lookback: get_usize_p(params, "lookback", 16, 8, 100)?,
+                min_zone_bars: get_usize_p(params, "min_zone_bars", 5, 3, 50)?,
+                range_atr: get_f64_p(params, "range_atr", 4.2, 0.5, 20.0)?,
+                adx_max: get_f64_p(params, "adx_max", 27.0, 5.0, 60.0)?,
+                min_score: get_f64_p(params, "min_score", 35.0, 0.0, 80.0)?,
+                min_touches: get_usize_p(params, "min_touches", 2, 2, 20)?,
+                watch_bars: get_usize_p(params, "watch_bars", 20, 1, 200)?,
+                ..CoilForgeConfig::default()
+            };
+            Ok(Box::new(CoilForgeZones::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2110,6 +2138,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "coilforge_zones",
     "compression_fractal_release",
     "smooth_trend_radar",
     "exhaustion_scanner",
@@ -2908,6 +2937,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "exhaustion_scanner",
     "smooth_trend_radar",
     "compression_fractal_release",
+    "coilforge_zones",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2946,8 +2976,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 115);
-        assert_eq!(catalog().len(), 115);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 116);
+        assert_eq!(catalog().len(), 116);
     }
 
     #[test]
