@@ -21,6 +21,7 @@ from . import (
     option_pricing,
     oscillators,
     revaluation_diff,
+    reversal_engine_score,
     sample_stats,
     scenario_structure,
     structure_break_risk,
@@ -62,4 +63,5 @@ ALL = (
     market_average_relationship,
     swing_conviction_radar,
     structure_break_risk,
+    reversal_engine_score,
 )

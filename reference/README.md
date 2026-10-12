@@ -42,6 +42,7 @@ Python 3.10 or newer; nothing else.
 | `golden_market_average_relationship` | `kestrel_reference/fixtures/market_average_relationship.py` |
 | `golden_swing_conviction_radar` | `kestrel_reference/fixtures/swing_conviction_radar.py` |
 | `golden_structure_break_risk` | `kestrel_reference/fixtures/structure_break_risk.py` |
+| `golden_reversal_engine_score` | `kestrel_reference/fixtures/reversal_engine_score.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

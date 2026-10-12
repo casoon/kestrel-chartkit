@@ -59,6 +59,7 @@ pub mod rci;
 pub mod registry;
 pub mod relative_strength;
 pub mod relative_volatility;
+pub mod reversal_engine_score;
 pub mod rsi;
 pub mod rvat;
 pub mod rvi;

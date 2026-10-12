@@ -157,6 +157,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("pvt", IndicatorUnit::Volume),
     ("rci", IndicatorUnit::Ratio),
     ("relative_volatility", IndicatorUnit::Ratio),
+    ("reversal_engine_score", IndicatorUnit::Unitless),
     ("roc", IndicatorUnit::Ratio),
     ("rsi", IndicatorUnit::Ratio),
     ("rvat", IndicatorUnit::Ratio),

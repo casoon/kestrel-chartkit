@@ -58,6 +58,7 @@ use super::pmo::PriceMomentumOscillator;
 use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
 use super::relative_volatility::{RelativeVolatilityIndex, RelativeVolatilityVariant};
+use super::reversal_engine_score::{ReversalEngineConfig, ReversalEngineScore};
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
@@ -876,6 +877,22 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("rsi_len".to_string(), 14.0),
                 ("hold_bars".to_string(), 10.0),
                 ("smooth_len".to_string(), 3.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "reversal_engine_score",
+            description: "Reversal Engine Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (RSI > 50, no lower low / no higher high) against min_quality_long/short, cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
+            default_params: [
+                ("swing_len".to_string(), 10.0),
+                ("atr_len".to_string(), 14.0),
+                ("atr_base_len".to_string(), 50.0),
+                ("atr_low_factor".to_string(), 0.6),
+                ("rsi_len".to_string(), 14.0),
+                ("pivot_len".to_string(), 5.0),
+                ("min_quality_long".to_string(), 2.0),
+                ("min_quality_short".to_string(), 1.0),
+                ("cooldown".to_string(), 5.0),
             ]
             .into(),
         },
@@ -1937,6 +1954,21 @@ pub fn build_checked(
             };
             Ok(Box::new(StructureBreakRisk::new(cfg)))
         }
+        "reversal_engine_score" => {
+            let cfg = ReversalEngineConfig {
+                swing_len: get_usize_p(params, "swing_len", 10, 2, 500)?,
+                atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
+                atr_base_len: get_usize_p(params, "atr_base_len", 50, 1, 1000)?,
+                atr_low_factor: get_f64_p(params, "atr_low_factor", 0.6, 0.0, 10.0)?,
+                rsi_len: get_usize_p(params, "rsi_len", 14, 1, 500)?,
+                pivot_len: get_usize_p(params, "pivot_len", 5, 1, 50)?,
+                min_quality_long: get_usize_p(params, "min_quality_long", 2, 0, 2)? as u8,
+                min_quality_short: get_usize_p(params, "min_quality_short", 1, 0, 2)? as u8,
+                cooldown: get_usize_p(params, "cooldown", 5, 0, 500)?,
+                ..ReversalEngineConfig::default()
+            };
+            Ok(Box::new(ReversalEngineScore::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2077,6 +2109,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "market_average_relationship",
     "swing_conviction_radar",
     "structure_break_risk",
+    "reversal_engine_score",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2836,6 +2869,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "market_average_relationship",
     "swing_conviction_radar",
     "structure_break_risk",
+    "reversal_engine_score",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2873,8 +2907,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 113);
-        assert_eq!(catalog().len(), 113);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 114);
+        assert_eq!(catalog().len(), 114);
     }
 
     #[test]
