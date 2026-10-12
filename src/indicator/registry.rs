@@ -64,6 +64,7 @@ use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
+use super::smooth_trend_radar::{SmoothTrendRadar, SmoothTrendRadarConfig};
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
 use super::t3::T3;
@@ -879,6 +880,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_gap".to_string(), 8.0),
                 ("ema_len".to_string(), 50.0),
                 ("structure_len".to_string(), 80.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "smooth_trend_radar",
+            description: "Smooth Trend Radar: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)",
+            default_params: [
+                ("factor".to_string(), 12.0),
+                ("atr_len".to_string(), 90.0),
+                ("wma_len".to_string(), 40.0),
+                ("ema_len".to_string(), 14.0),
+                ("adx_threshold".to_string(), 25.0),
+                ("slope_lookback".to_string(), 3.0),
+                ("slope_threshold".to_string(), 0.05),
+                ("touches".to_string(), 2.0),
             ]
             .into(),
         },
@@ -1946,6 +1962,20 @@ pub fn build_checked(
             };
             Ok(Box::new(ExhaustionScanner::new(cfg)))
         }
+        "smooth_trend_radar" => {
+            let cfg = SmoothTrendRadarConfig {
+                factor: get_f64_p(params, "factor", 12.0, 0.5, 100.0)?,
+                atr_len: get_usize_p(params, "atr_len", 90, 1, 1000)?,
+                wma_len: get_usize_p(params, "wma_len", 40, 1, 1000)?,
+                ema_len: get_usize_p(params, "ema_len", 14, 1, 1000)?,
+                adx_threshold: get_f64_p(params, "adx_threshold", 25.0, 5.0, 50.0)?,
+                slope_lookback: get_usize_p(params, "slope_lookback", 3, 1, 100)?,
+                slope_threshold: get_f64_p(params, "slope_threshold", 0.05, 0.0, 10.0)?,
+                touches: get_usize_p(params, "touches", 2, 1, 5)?,
+                ..SmoothTrendRadarConfig::default()
+            };
+            Ok(Box::new(SmoothTrendRadar::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2050,6 +2080,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "smooth_trend_radar",
     "exhaustion_scanner",
     "market_exhaustion",
     "atr",
@@ -2844,6 +2875,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "bottom_formation",
     "market_exhaustion",
     "exhaustion_scanner",
+    "smooth_trend_radar",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2882,8 +2914,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 113);
-        assert_eq!(catalog().len(), 113);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 114);
+        assert_eq!(catalog().len(), 114);
     }
 
     #[test]

@@ -320,3 +320,14 @@ def barssince(cond, t):
         if cond[t - k]:
             return k
     return None
+
+
+def percentrank(s, n):
+    """Pine ta.percentrank: share (in %) of the previous n values that are less than or equal to
+    the current one; needs the current and all n previous values."""
+    out = [None] * len(s)
+    for t in range(n, len(s)):
+        w = s[t - n:t + 1]
+        if ok(*w):
+            out[t] = 100.0 * sum(1 for v in w[:-1] if v <= w[-1]) / n
+    return out

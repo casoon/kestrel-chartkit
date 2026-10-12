@@ -25,6 +25,7 @@ from . import (
     revaluation_diff,
     sample_stats,
     scenario_structure,
+    smooth_trend_radar,
     surface_diff,
     transforms,
     trend,
@@ -62,4 +63,5 @@ ALL = (
     market_average_relationship,
     market_exhaustion,
     exhaustion_scanner,
+    smooth_trend_radar,
 )

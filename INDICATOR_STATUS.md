@@ -124,6 +124,7 @@ is complete.
 | midas | ✅ |
 | trend_relationship | ✅ |
 | zscore | ✅ |
+| smooth_trend_radar | ✅ |
 
 ## Composite Scores
 
@@ -159,5 +160,5 @@ is complete.
 
 ---
 
-**Total: 113/113 verified** — the same 113 names `catalog()` returns: 91 indicators (the first
+**Total: 114/114 verified** — the same 114 names `catalog()` returns: 92 indicators (the first
 five groups), 4 composite scores and 18 structure/pattern detectors.

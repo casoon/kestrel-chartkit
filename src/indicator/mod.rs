@@ -67,6 +67,7 @@ pub mod rvi;
 pub mod settle;
 pub mod smart_money_structure;
 pub mod smi;
+pub mod smooth_trend_radar;
 pub mod smoothing;
 pub mod source_mapped;
 pub mod stoch_rsi;

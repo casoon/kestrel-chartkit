@@ -166,6 +166,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("rvol", IndicatorUnit::Ratio),
     ("sma", IndicatorUnit::Price),
     ("smi", IndicatorUnit::Ratio),
+    ("smooth_trend_radar", IndicatorUnit::Price),
     ("stoch_rsi", IndicatorUnit::Ratio),
     ("stochastic", IndicatorUnit::Ratio),
     ("supertrend", IndicatorUnit::Price),
