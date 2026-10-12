@@ -40,6 +40,7 @@ Python 3.10 or newer; nothing else.
 | `golden_deflated_sharpe` | `kestrel_reference/fixtures/deflated_sharpe.py` |
 | `golden_logistic` | `kestrel_reference/fixtures/logistic.py` |
 | `golden_market_average_relationship` | `kestrel_reference/fixtures/market_average_relationship.py` |
+| `golden_swing_conviction_radar` | `kestrel_reference/fixtures/swing_conviction_radar.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

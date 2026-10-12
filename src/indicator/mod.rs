@@ -68,6 +68,7 @@ pub mod smi;
 pub mod smoothing;
 pub mod source_mapped;
 pub mod stoch_rsi;
+pub mod swing_conviction_radar;
 pub mod swing_structure;
 pub mod t3;
 pub mod tema;

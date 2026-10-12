@@ -24,6 +24,7 @@ from . import (
     sample_stats,
     scenario_structure,
     surface_diff,
+    swing_conviction_radar,
     transforms,
     trend,
     validation_probability,
@@ -58,4 +59,5 @@ ALL = (
     deflated_sharpe,
     logistic,
     market_average_relationship,
+    swing_conviction_radar,
 )

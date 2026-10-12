@@ -64,6 +64,7 @@ use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
+use super::swing_conviction_radar::{SwingConvictionConfig, SwingConvictionRadar};
 use super::t3::T3;
 use super::tema::TemaEngine;
 use super::trend_quality::TrendQualityScoreEngine;
@@ -846,6 +847,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("cooldown".to_string(), 8.0),
                 ("turn_level".to_string(), 55.0),
                 ("turn_lookback".to_string(), 30.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "swing_conviction_radar",
+            description: "Swing Conviction Radar: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)",
+            default_params: [
+                ("pivot_left".to_string(), 5.0),
+                ("pivot_right".to_string(), 5.0),
+                ("max_leg".to_string(), 100.0),
+                ("atr_len".to_string(), 14.0),
+                ("speed_ref".to_string(), 1.0),
+                ("w_speed".to_string(), 0.4),
+                ("w_clean".to_string(), 0.4),
+                ("w_volume".to_string(), 0.2),
             ]
             .into(),
         },
@@ -1882,6 +1898,19 @@ pub fn build_checked(
             };
             Ok(Box::new(MarketAverageRelationship::new(cfg)))
         }
+        "swing_conviction_radar" => {
+            let cfg = SwingConvictionConfig {
+                pivot_left: get_usize_p(params, "pivot_left", 5, 1, 50)?,
+                pivot_right: get_usize_p(params, "pivot_right", 5, 1, 50)?,
+                max_leg: get_usize_p(params, "max_leg", 100, 1, 1000)?,
+                atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
+                speed_ref: get_f64_p(params, "speed_ref", 1.0, 0.01, 100.0)?,
+                w_speed: get_f64_p(params, "w_speed", 0.4, 0.0, 1.0)?,
+                w_clean: get_f64_p(params, "w_clean", 0.4, 0.0, 1.0)?,
+                w_volume: get_f64_p(params, "w_volume", 0.2, 0.0, 1.0)?,
+            };
+            Ok(Box::new(SwingConvictionRadar::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2020,6 +2049,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "double_pattern",
     "bottom_formation",
     "market_average_relationship",
+    "swing_conviction_radar",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2777,6 +2807,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "double_pattern",
     "bottom_formation",
     "market_average_relationship",
+    "swing_conviction_radar",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2814,8 +2845,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 111);
-        assert_eq!(catalog().len(), 111);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 112);
+        assert_eq!(catalog().len(), 112);
     }
 
     #[test]
