@@ -60,6 +60,7 @@ is complete.
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |
+| market_exhaustion | ✅ |
 
 ## Volatility
 
@@ -157,5 +158,5 @@ is complete.
 
 ---
 
-**Total: 111/111 verified** — the same 111 names `catalog()` returns: 89 indicators (the first
+**Total: 112/112 verified** — the same 112 names `catalog()` returns: 90 indicators (the first
 five groups), 4 composite scores and 18 structure/pattern detectors.

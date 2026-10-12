@@ -35,6 +35,7 @@ use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
 use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
+use super::market_exhaustion::{MarketExhaustion, MarketExhaustionConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
@@ -846,6 +847,22 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("cooldown".to_string(), 8.0),
                 ("turn_level".to_string(), 55.0),
                 ("turn_lookback".to_string(), 30.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_exhaustion",
+            description: "Market Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
+            default_params: [
+                ("mfi_len".to_string(), 14.0),
+                ("zone_lookback".to_string(), 200.0),
+                ("rsi_len".to_string(), 14.0),
+                ("stoch_len".to_string(), 14.0),
+                ("k_smooth".to_string(), 3.0),
+                ("jma_len".to_string(), 20.0),
+                ("confirm_bars".to_string(), 1.0),
+                ("pivot_len".to_string(), 7.0),
+                ("react_bars".to_string(), 10.0),
             ]
             .into(),
         },
@@ -1882,6 +1899,23 @@ pub fn build_checked(
             };
             Ok(Box::new(MarketAverageRelationship::new(cfg)))
         }
+        "market_exhaustion" => {
+            let pivot_len = get_usize_p(params, "pivot_len", 7, 1, 50)?;
+            let cfg = MarketExhaustionConfig {
+                mfi_len: get_usize_p(params, "mfi_len", 14, 2, 500)?,
+                zone_lookback: get_usize_p(params, "zone_lookback", 200, 10, 5000)?,
+                rsi_len: get_usize_p(params, "rsi_len", 14, 2, 500)?,
+                stoch_len: get_usize_p(params, "stoch_len", 14, 1, 500)?,
+                k_smooth: get_usize_p(params, "k_smooth", 3, 1, 100)?,
+                jma_len: get_usize_p(params, "jma_len", 20, 1, 500)?,
+                confirm_bars: get_usize_p(params, "confirm_bars", 1, 0, 5)?,
+                pivot_left: pivot_len,
+                pivot_right: pivot_len,
+                react_bars: get_usize_p(params, "react_bars", 10, 2, 100)?,
+                ..MarketExhaustionConfig::default()
+            };
+            Ok(Box::new(MarketExhaustion::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -1986,6 +2020,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "market_exhaustion",
     "atr",
     "zone_rejection",
     "relative_volatility",
@@ -2776,6 +2811,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "zone_rejection",
     "double_pattern",
     "bottom_formation",
+    "market_exhaustion",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2814,8 +2850,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 111);
-        assert_eq!(catalog().len(), 111);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 112);
+        assert_eq!(catalog().len(), 112);
     }
 
     #[test]

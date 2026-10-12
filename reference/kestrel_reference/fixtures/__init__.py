@@ -16,6 +16,7 @@ from . import (
     forward,
     logistic,
     market_average_relationship,
+    market_exhaustion,
     moving_averages,
     option_diff,
     option_pricing,
@@ -58,4 +59,5 @@ ALL = (
     deflated_sharpe,
     logistic,
     market_average_relationship,
+    market_exhaustion,
 )

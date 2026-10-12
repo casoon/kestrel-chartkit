@@ -223,6 +223,44 @@ pub fn golden_value(fixture_text: &str, key: &str) -> f64 {
         .unwrap_or_else(|_| panic!("invalid golden value: {key}"))
 }
 
+/// The OHLCV series shared by the WavesUnchained ports, as documented in
+/// `reference/kestrel_reference/pine_series.py::wave_series`.
+pub fn wave_series(count: usize) -> Vec<Bar> {
+    let mut bars = Vec::with_capacity(count);
+    let mut prev = 100.0f64;
+    for i in 0..count {
+        let x = i as f64;
+        let mut drift = if i < 220 {
+            0.18
+        } else if i < 380 {
+            -0.02
+        } else if i < 470 {
+            -0.30
+        } else {
+            0.12
+        };
+        let mut amp = 1.0;
+        if (560..650).contains(&i) {
+            drift = 0.0;
+            amp = 0.08;
+        } else if (650..690).contains(&i) {
+            drift = 0.45;
+        }
+        let base = prev + drift + amp * (0.9 * (x / 3.1).sin() + 0.6 * (x / 11.0).sin());
+        let close = base + amp * 0.35 * (x / 1.7).cos();
+        let open = prev + 0.2 * (x / 2.3).sin();
+        let high = open.max(close) + 0.4 + 0.3 * (x / 4.7).sin().abs();
+        let low = open.min(close) - 0.4 - 0.3 * (x / 5.3).cos().abs();
+        let volume = 1000.0
+            + 400.0 * (x / 5.3).sin()
+            + 250.0 * (x / 2.9).cos()
+            + 300.0 * (x / 17.0).sin().abs();
+        bars.push(Bar::new(i as i64 * 3600, open, high, low, close, volume));
+        prev = close;
+    }
+    bars
+}
+
 /// Vergleicht zwei Werte auf eine feste Toleranz, mit sprechender Fehlermeldung.
 ///
 /// Panics (via the internal `assert!`) on mismatch, so callers must not additionally wrap this in
