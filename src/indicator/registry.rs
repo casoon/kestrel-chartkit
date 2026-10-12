@@ -41,6 +41,7 @@ use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
 use super::market_exhaustion::{MarketExhaustion, MarketExhaustionConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
 use super::market_tradability_engine::{MarketTradabilityEngine, MteConfig};
+use super::markov_state_engine::{MarkovStateConfig, MarkovStateEngine};
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
 use super::mfi::Mfi;
@@ -972,6 +973,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("react_bars".to_string(), 8.0),
                 ("valid_bars".to_string(), 20.0),
                 ("atr_move".to_string(), 1.6),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "markov_state_engine",
+            description: "Markov State Engine: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
+            default_params: [
+                ("ema_len".to_string(), 55.0),
+                ("rank_len".to_string(), 100.0),
+                ("lookback".to_string(), 500.0),
+                ("min_dwell".to_string(), 2.0),
+                ("min_samples".to_string(), 20.0),
+                ("conf_th".to_string(), 55.0),
+                ("rel_th".to_string(), 40.0),
+                ("bias_margin".to_string(), 8.0),
             ]
             .into(),
         },
@@ -2131,6 +2147,20 @@ pub fn build_checked(
             };
             Ok(Box::new(TimeToReact::new(cfg)))
         }
+        "markov_state_engine" => {
+            let cfg = MarkovStateConfig {
+                ema_len: get_usize_p(params, "ema_len", 55, 10, 1000)?,
+                rank_len: get_usize_p(params, "rank_len", 100, 20, 2000)?,
+                lookback: get_usize_p(params, "lookback", 500, 50, 1500)?,
+                min_dwell: get_usize_p(params, "min_dwell", 2, 1, 50)?,
+                min_samples: get_usize_p(params, "min_samples", 20, 5, 1000)?,
+                conf_th: get_f64_p(params, "conf_th", 55.0, 0.0, 100.0)?,
+                rel_th: get_f64_p(params, "rel_th", 40.0, 0.0, 100.0)?,
+                bias_margin: get_f64_p(params, "bias_margin", 8.0, 0.0, 100.0)?,
+                ..MarkovStateConfig::default()
+            };
+            Ok(Box::new(MarkovStateEngine::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2235,6 +2265,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "markov_state_engine",
     "time_to_react",
     "market_tradability_engine",
     "coilforge_zones",
@@ -3040,6 +3071,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "roc_advanced",
     "market_tradability_engine",
     "time_to_react",
+    "markov_state_engine",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -3078,8 +3110,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 119);
-        assert_eq!(catalog().len(), 119);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 120);
+        assert_eq!(catalog().len(), 120);
     }
 
     #[test]

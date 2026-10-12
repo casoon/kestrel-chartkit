@@ -162,8 +162,9 @@ is complete.
 | market_average_relationship | ✅ |
 | coilforge_zones | ✅ |
 | market_tradability_engine | ✅ |
+| markov_state_engine | ✅ |
 
 ---
 
-**Total: 119/119 verified** — the same 119 names `catalog()` returns: 95 indicators (the first
-five groups), 4 composite scores and 20 structure/pattern detectors.
+**Total: 120/120 verified** — the same 120 names `catalog()` returns: 95 indicators (the first
+five groups), 4 composite scores and 21 structure/pattern detectors.

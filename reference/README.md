@@ -48,6 +48,7 @@ Python 3.10 or newer; nothing else.
 | `golden_roc_advanced` | `kestrel_reference/fixtures/roc_advanced.py` |
 | `golden_market_tradability_engine` | `kestrel_reference/fixtures/market_tradability_engine.py` |
 | `golden_time_to_react` | `kestrel_reference/fixtures/time_to_react.py` |
+| `golden_markov_state_engine` | `kestrel_reference/fixtures/markov_state_engine.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

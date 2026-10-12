@@ -42,6 +42,7 @@ pub mod market_average_relationship;
 pub mod market_exhaustion;
 pub mod market_structure_breaks;
 pub mod market_tradability_engine;
+pub mod markov_state_engine;
 pub mod mass_index;
 pub mod mcginley;
 pub mod mfi;

@@ -21,6 +21,7 @@ from . import (
     market_average_relationship,
     market_exhaustion,
     market_tradability_engine,
+    markov_state_engine,
     moving_averages,
     option_diff,
     option_pricing,
@@ -74,4 +75,5 @@ ALL = (
     roc_advanced,
     market_tradability_engine,
     time_to_react,
+    markov_state_engine,
 )
