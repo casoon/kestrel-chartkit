@@ -49,6 +49,17 @@ Python 3.10 or newer; nothing else.
 | `golden_vein_reversal_score` | `kestrel_reference/fixtures/vein_reversal_score.py` |
 | `golden_vein_structure_zones` | `kestrel_reference/fixtures/vein_structure_zones.py` |
 | `golden_structural_wave_field` | `kestrel_reference/fixtures/structural_wave_field.py` |
+| `golden_market_exhaustion` | `kestrel_reference/fixtures/market_exhaustion.py` |
+| `golden_exhaustion_scanner` | `kestrel_reference/fixtures/exhaustion_scanner.py` |
+| `golden_smooth_trend_radar` | `kestrel_reference/fixtures/smooth_trend_radar.py` |
+| `golden_compression_fractal_release` | `kestrel_reference/fixtures/compression_fractal_release.py` |
+| `golden_coilforge_zones` | `kestrel_reference/fixtures/coilforge_zones.py` |
+| `golden_roc_advanced` | `kestrel_reference/fixtures/roc_advanced.py` |
+| `golden_market_tradability_engine` | `kestrel_reference/fixtures/market_tradability_engine.py` |
+| `golden_time_to_react` | `kestrel_reference/fixtures/time_to_react.py` |
+| `golden_markov_state_engine` | `kestrel_reference/fixtures/markov_state_engine.py` |
+| `golden_oscillator_cycle_statistics` | `kestrel_reference/fixtures/oscillator_cycle_statistics.py` |
+| `golden_reversal_types` | `kestrel_reference/fixtures/reversal_types.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

@@ -56,7 +56,8 @@
 //! Conventions where Pine leaves them open (also in the golden fixture): ATR = Wilder average of
 //! the true range (first bar high - low), SMA-seeded, 0 where an ATR is read before it exists
 //! (Pine's `nz`); a missing ATR at the pivot bar blocks a new pivot; EMA seeded with the first
-//! close; `syminfo.mintick` floors replaced by `1e-12`; pivots strict on both sides.
+//! close; `syminfo.mintick` floors replaced by `1e-12`; pivots strict to the left, non-strict to
+//! the right (the first of equal extremes counts).
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/market_motion_dna.py`.
 
@@ -219,7 +220,8 @@ impl MarketMotionDna {
         &self.rows[b - first]
     }
 
-    /// Strict pivot centred `right` bars back, `left` bars before it.
+    /// Pivot centred `right` bars back, `left` bars before it: strictly beyond the left
+    /// neighbours, at least equal to the right ones (the first of equal extremes counts).
     fn pivot(&self, left: usize, right: usize, low_side: bool) -> Option<f64> {
         let n = self.rows.len();
         if n < left + right + 1 {
@@ -233,7 +235,13 @@ impl MarketMotionDna {
         };
         for k in (0..right).chain(right + 1..=right + left) {
             let r = at(k);
-            let ok = if low_side { v < r.low } else { v > r.high };
+            let rechts = k < right;
+            let ok = match (low_side, rechts) {
+                (true, true) => v <= r.low,
+                (true, false) => v < r.low,
+                (false, true) => v >= r.high,
+                (false, false) => v > r.high,
+            };
             if !ok {
                 return None;
             }

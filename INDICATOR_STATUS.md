@@ -60,6 +60,10 @@ is complete.
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |
+| market_exhaustion | ✅ |
+| exhaustion_scanner | ✅ |
+| roc_advanced | ✅ |
+| oscillator_cycle_statistics | ✅ |
 
 ## Volatility
 
@@ -85,6 +89,8 @@ is complete.
 | ulcer_index | ✅ |
 | vix_fix | ✅ |
 | vortex | ✅ |
+| compression_fractal_release | ✅ |
+| time_to_react | ✅ |
 
 ## Volume
 
@@ -122,6 +128,7 @@ is complete.
 | midas | ✅ |
 | trend_relationship | ✅ |
 | zscore | ✅ |
+| smooth_trend_radar | ✅ |
 
 ## Composite Scores
 
@@ -163,8 +170,11 @@ is complete.
 | vein_reversal_score | ✅ |
 | vein_structure_zones | ✅ |
 | structural_wave_field | ✅ |
+| coilforge_zones | ✅ |
+| market_tradability_engine | ✅ |
+| markov_state_engine | ✅ |
 
 ---
 
-**Total: 120/120 verified** — the same 120 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 27 structure/pattern detectors.
+**Total: 130/130 verified** — the same 130 names `catalog()` returns: 96 indicators (the first
+five groups), 4 composite scores and 30 structure/pattern detectors.

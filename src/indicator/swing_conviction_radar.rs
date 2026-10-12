@@ -15,7 +15,8 @@
 //! Without real volume (no bar so far carried volume) the volume weight is 0 and the other two
 //! renormalize. At most `max_leg` bars of a leg are scanned, counted back from the pivot.
 //!
-//! `value` is the conviction of the last up-leg (confirmed at a pivot high), `secondary` the
+//! Until both a scored up-leg and a scored down-leg exist, `value` and `secondary` are 0 and the
+//! leg fields are absent. `value` is the conviction of the last up-leg (confirmed at a pivot high), `secondary` the
 //! negated conviction of the last down-leg (as the Pine step lines); `extra`: `bull_last`,
 //! `bull_prev`, `bear_last`, `bear_prev` (each only once it exists) and, on a bar that fires an
 //! alert, `pivot_price` — the pivot, the natural stop. Output starts once both legs exist.
@@ -27,8 +28,9 @@
 //! | `bear_conviction_divergence` | pivot high above the previous scored pivot high, up-leg conviction below the previous one |
 //! | `bull_conviction_divergence` | pivot low below the previous scored pivot low, down-leg conviction below the previous one |
 //!
-//! Conventions where Pine leaves them open (also in the golden fixture): pivots strict on both
-//! sides; on a bar confirming both a high and a low the high is processed first (the low's leg
+//! Conventions where Pine leaves them open (also in the golden fixture): pivots strict to the
+//! left and non-strict to the right, so the first of two equal extremes counts (strict on both
+//! sides never fires on a flat top); on a bar confirming both a high and a low the high is processed first (the low's leg
 //! then has length 0 and is not scored); ATR = Wilder average of the true range (first bar
 //! high - low), SMA-seeded — while it is not yet available, speed counts as 0 (Pine's `na > 0` is
 //! false); "real volume" = the cumulative volume so far is positive — tick volume cannot be told
@@ -116,7 +118,8 @@ impl SwingConvictionRadar {
         self.rows.len().checked_sub(k + 1).map(|i| &self.rows[i])
     }
 
-    /// Strict pivot `pivot_right` bars back.
+    /// Pivot `pivot_right` bars back: strictly beyond the left neighbours, at least equal to the
+    /// right ones.
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let c = &self.cfg;
         let centre = self.at(c.pivot_right)?;
@@ -124,7 +127,14 @@ impl SwingConvictionRadar {
         let v = if low_side { centre.low } else { centre.high };
         for k in (0..c.pivot_right).chain(c.pivot_right + 1..=c.pivot_right + c.pivot_left) {
             let b = self.at(k)?;
-            let ok = if low_side { v < b.low } else { v > b.high };
+            // k < pivot_right: bars after the centre (right side), compared non-strictly.
+            let rechts = k < c.pivot_right;
+            let ok = match (low_side, rechts) {
+                (true, true) => v <= b.low,
+                (true, false) => v < b.low,
+                (false, true) => v >= b.high,
+                (false, false) => v > b.high,
+            };
             if !ok {
                 return None;
             }
@@ -258,7 +268,13 @@ impl Indicator for SwingConvictionRadar {
             self.last_low = Some((piv_bar, pl));
         }
 
-        let (bull, bear) = (self.bull_last?, self.bear_last?);
+        // Vor dem ersten bewerteten Bein je Seite: 0 ohne Beinfelder — wer die
+        // Konviktion liest, erkennt am fehlenden `bull_last`, dass noch nichts
+        // gemessen ist (Vertrag: nach dem Vorlauf liefert jede Bar einen Wert).
+        let (Some(bull), Some(bear)) = (self.bull_last, self.bear_last) else {
+            return (t >= self.warmup_period())
+                .then(|| IndicatorOutput::new(0.0).with_secondary(0.0));
+        };
         let mut extra = HashMap::new();
         extra.insert("bull_last".to_string(), bull.0);
         extra.insert("bear_last".to_string(), bear.0);

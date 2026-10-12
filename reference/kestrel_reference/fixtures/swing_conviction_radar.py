@@ -58,7 +58,8 @@ def _rma(src, n):
 
 
 def _pivot(vals, t, left, right, high):
-    """ta.pivothigh/pivotlow at bar t: the value `right` bars back, strictly beyond all neighbours."""
+    """ta.pivothigh/pivotlow at bar t: the value `right` bars back, strictly beyond the left
+    neighbours and at least equal to the right ones (the first of equal extremes counts)."""
     c = t - right
     if c - left < 0:
         return None
@@ -66,7 +67,10 @@ def _pivot(vals, t, left, right, high):
     for j in range(c - left, t + 1):
         if j == c:
             continue
-        if (high and not v > vals[j]) or (not high and not v < vals[j]):
+        strict = j < c
+        if high and not (v > vals[j] if strict else v >= vals[j]):
+            return None
+        if not high and not (v < vals[j] if strict else v <= vals[j]):
             return None
     return v
 
@@ -172,7 +176,7 @@ HEADER = [
     "",
     "Formula: the published Pine Script 'Swing Conviction Radar' (WavesUnchained, v1.2.2) with",
     "its defaults (pivots 5/5, max leg 100, weights 0.4/0.4/0.2, ATR 14, speed reference 1).",
-    "Conventions where Pine leaves them open: pivots strict on both sides, the pivot high of a bar",
+    "Conventions where Pine leaves them open: pivots strict to the left, non-strict to the right (the first of equal extremes counts), the pivot high of a bar",
     "processed before its pivot low, ATR = Wilder average of the true range (first bar high - low)",
     "seeded with an SMA, speed 0 while the ATR is not available, real volume = cumulative volume",
     "so far positive.",

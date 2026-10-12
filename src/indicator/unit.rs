@@ -101,6 +101,8 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("choppiness", IndicatorUnit::Ratio),
     ("cmf", IndicatorUnit::Ratio),
     ("cmo", IndicatorUnit::Ratio),
+    ("coilforge_zones", IndicatorUnit::Ratio),
+    ("compression_fractal_release", IndicatorUnit::Ratio),
     ("connors_rsi", IndicatorUnit::Ratio),
     ("coppock", IndicatorUnit::Ratio),
     ("cvd", IndicatorUnit::Volume),
@@ -115,6 +117,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("ema", IndicatorUnit::Price),
     ("envelope", IndicatorUnit::Price),
     ("eom", IndicatorUnit::Unitless),
+    ("exhaustion_scanner", IndicatorUnit::Ratio),
     ("extended_volume_profile", IndicatorUnit::Price),
     ("fisher_transform", IndicatorUnit::Ratio),
     ("garman_klass", IndicatorUnit::Ratio),
@@ -133,8 +136,11 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("lsma", IndicatorUnit::Price),
     ("macd", IndicatorUnit::Unitless),
     ("market_average_relationship", IndicatorUnit::Unitless),
+    ("market_exhaustion", IndicatorUnit::Ratio),
     ("market_motion_dna", IndicatorUnit::Ratio),
     ("market_structure_breaks", IndicatorUnit::Unitless),
+    ("market_tradability_engine", IndicatorUnit::Ratio),
+    ("markov_state_engine", IndicatorUnit::Ratio),
     ("mass_index", IndicatorUnit::Ratio),
     ("mcginley", IndicatorUnit::Price),
     ("mfi", IndicatorUnit::Ratio),
@@ -144,12 +150,10 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("nvi", IndicatorUnit::Unitless),
     ("obv", IndicatorUnit::Volume),
     ("order_block", IndicatorUnit::Unitless),
-    // Wie `pivot_divergence`: der gewählte Oszillator.
+    ("oscillator_cycle_statistics", IndicatorUnit::Ratio),
     ("oscillator_pivot_divergence", IndicatorUnit::Unitless),
     ("parabolic_sar", IndicatorUnit::Price),
     ("persistent_volume_profile", IndicatorUnit::Price),
-    // The selected oscillator — RSI is a ratio, WaveTrend and CCI are not; the conservative
-    // answer covers all five.
     ("pivot_divergence", IndicatorUnit::Unitless),
     ("pivot_sets", IndicatorUnit::Price),
     ("pivots_structure", IndicatorUnit::Unitless),
@@ -161,12 +165,14 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("relative_volatility", IndicatorUnit::Ratio),
     ("reversal_engine_score", IndicatorUnit::Unitless),
     ("roc", IndicatorUnit::Ratio),
+    ("roc_advanced", IndicatorUnit::Ratio),
     ("rsi", IndicatorUnit::Ratio),
     ("rvat", IndicatorUnit::Ratio),
     ("rvi", IndicatorUnit::Ratio),
     ("rvol", IndicatorUnit::Ratio),
     ("sma", IndicatorUnit::Price),
     ("smi", IndicatorUnit::Ratio),
+    ("smooth_trend_radar", IndicatorUnit::Price),
     ("stoch_rsi", IndicatorUnit::Ratio),
     ("stochastic", IndicatorUnit::Ratio),
     ("structural_wave_field", IndicatorUnit::Unitless),
@@ -175,6 +181,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("swing_conviction_radar", IndicatorUnit::Ratio),
     ("t3", IndicatorUnit::Price),
     ("tema", IndicatorUnit::Price),
+    ("time_to_react", IndicatorUnit::Ratio),
     ("trend_quality", IndicatorUnit::Unitless),
     ("trend_relationship", IndicatorUnit::Unitless),
     ("trix", IndicatorUnit::Ratio),
@@ -202,6 +209,9 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("zigzag_advanced", IndicatorUnit::Price),
     ("zone_rejection", IndicatorUnit::Unitless),
     ("zscore", IndicatorUnit::Ratio),
+    // The selected oscillator — RSI is a ratio, WaveTrend and CCI are not; the conservative
+    // Wie `pivot_divergence`: der gewählte Oszillator.
+    // answer covers all five.
 ];
 
 #[cfg(test)]

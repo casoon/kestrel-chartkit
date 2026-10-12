@@ -291,6 +291,7 @@ pub mod excursion;
 pub mod logistic;
 pub mod price;
 pub mod probability;
+pub mod reversal_types;
 pub mod split;
 
 pub use probability::{

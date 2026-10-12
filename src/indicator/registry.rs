@@ -20,6 +20,8 @@ use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
 use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
+use super::coilforge_zones::{CoilForgeConfig, CoilForgeZones};
+use super::compression_fractal_release::{CfrConfig, CompressionFractalRelease};
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
 use super::double_pattern::DoublePattern;
@@ -27,6 +29,7 @@ use super::dpo::DpoEngine;
 use super::efficiency::LegEfficiencyEngine;
 use super::envelope::EnvelopeEngine;
 use super::eom::EomEngine;
+use super::exhaustion_scanner::{ExhaustionScanner, ExhaustionScannerConfig};
 use super::fisher_transform::FisherTransform;
 use super::force_index::ElderForceIndex;
 use super::kst::KstEngine;
@@ -36,8 +39,11 @@ use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
 use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
+use super::market_exhaustion::{MarketExhaustion, MarketExhaustionConfig};
 use super::market_motion_dna::{MarketMotionDna, MotionDnaConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
+use super::market_tradability_engine::{MarketTradabilityEngine, MteConfig};
+use super::markov_state_engine::{MarkovStateConfig, MarkovStateEngine};
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
 use super::mfi::Mfi;
@@ -53,6 +59,7 @@ use super::moving_averages::{
 use super::multi_factor::MultiFactorMarketScore;
 use super::nvi_pvi::{NviEngine, PviEngine};
 use super::order_block::OrderBlockEngine;
+use super::oscillator_cycle_statistics::{CycleStatisticsConfig, OscillatorCycleStatistics};
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
@@ -61,10 +68,12 @@ use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
 use super::relative_volatility::{RelativeVolatilityIndex, RelativeVolatilityVariant};
 use super::reversal_engine_score::{ReversalEngineConfig, ReversalEngineScore};
+use super::roc_advanced::{RocAdvanced, RocAdvancedConfig};
 use super::rsi::{Rsi, RsiSmoothing};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
+use super::smooth_trend_radar::{SmoothTrendRadar, SmoothTrendRadarConfig};
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
 use super::structural_wave_field::StructuralWaveField;
@@ -72,6 +81,7 @@ use super::structure_break_risk::{StructureBreakRisk, StructureBreakRiskConfig};
 use super::swing_conviction_radar::{SwingConvictionConfig, SwingConvictionRadar};
 use super::t3::T3;
 use super::tema::TemaEngine;
+use super::time_to_react::{TimeToReact, TimeToReactConfig};
 use super::trend_quality::TrendQualityScoreEngine;
 use super::trend_structural::{
     AroonEngine, DmiEngine, IchimokuEngine, ParabolicSarEngine, SupertrendEngine,
@@ -842,6 +852,154 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_depth_atr".to_string(), 1.5),
                 ("max_gap".to_string(), 100.0),
                 ("max_wait".to_string(), 50.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_exhaustion",
+            description: "Market Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
+            default_params: [
+                ("mfi_len".to_string(), 14.0),
+                ("zone_lookback".to_string(), 200.0),
+                ("rsi_len".to_string(), 14.0),
+                ("stoch_len".to_string(), 14.0),
+                ("k_smooth".to_string(), 3.0),
+                ("jma_len".to_string(), 20.0),
+                ("confirm_bars".to_string(), 1.0),
+                ("pivot_len".to_string(), 7.0),
+                ("react_bars".to_string(), 10.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "exhaustion_scanner",
+            description: "Exhaustion Scanner: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+            default_params: [
+                ("w_stretch".to_string(), 40.0),
+                ("w_exhaust".to_string(), 35.0),
+                ("w_react".to_string(), 25.0),
+                ("base_threshold".to_string(), 40.0),
+                ("confirm".to_string(), 1.0),
+                ("min_gap".to_string(), 8.0),
+                ("ema_len".to_string(), 50.0),
+                ("structure_len".to_string(), 80.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "smooth_trend_radar",
+            description: "Smooth Trend Radar: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)",
+            default_params: [
+                ("factor".to_string(), 12.0),
+                ("atr_len".to_string(), 90.0),
+                ("wma_len".to_string(), 40.0),
+                ("ema_len".to_string(), 14.0),
+                ("adx_threshold".to_string(), 25.0),
+                ("slope_lookback".to_string(), 3.0),
+                ("slope_threshold".to_string(), 0.05),
+                ("touches".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "compression_fractal_release",
+            description: "Compression Fractal Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (Pine: higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
+            default_params: [
+                ("len".to_string(), 34.0),
+                ("break_len".to_string(), 12.0),
+                ("ema_len".to_string(), 55.0),
+                ("slope_len".to_string(), 5.0),
+                ("thr_cont".to_string(), 0.45),
+                ("thr_base".to_string(), 0.55),
+                ("cooldown".to_string(), 8.0),
+                ("chop_veto".to_string(), 61.8),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "coilforge_zones",
+            description: "CoilForge Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
+            default_params: [
+                ("lookback".to_string(), 16.0),
+                ("min_zone_bars".to_string(), 5.0),
+                ("range_atr".to_string(), 4.2),
+                ("adx_max".to_string(), 27.0),
+                ("min_score".to_string(), 35.0),
+                ("min_touches".to_string(), 2.0),
+                ("watch_bars".to_string(), 20.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "roc_advanced",
+            description: "ROC Advanced: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
+            default_params: [
+                ("roc_len".to_string(), 12.0),
+                ("avg_len".to_string(), 3.0),
+                ("sig_len".to_string(), 9.0),
+                ("ma_kind".to_string(), 0.0),
+                ("ob_level".to_string(), 5.0),
+                ("os_level".to_string(), -5.0),
+                ("ctx_len".to_string(), 50.0),
+                ("stall_len".to_string(), 5.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_tradability_engine",
+            description: "Market Tradability Engine (v1): no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
+            default_params: [
+                ("quality_len".to_string(), 20.0),
+                ("range_len".to_string(), 30.0),
+                ("baseline_len".to_string(), 34.0),
+                ("rank_len".to_string(), 150.0),
+                ("balance_threshold".to_string(), 58.0),
+                ("compression_threshold".to_string(), 62.0),
+                ("max_range_atr".to_string(), 7.0),
+                ("confirm_bars".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "time_to_react",
+            description: "Time-to-React + Volatility-Time: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
+            default_params: [
+                ("atr_len".to_string(), 14.0),
+                ("atr_base".to_string(), 50.0),
+                ("swing_len".to_string(), 10.0),
+                ("react_bars".to_string(), 8.0),
+                ("valid_bars".to_string(), 20.0),
+                ("atr_move".to_string(), 1.6),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "markov_state_engine",
+            description: "Markov State Engine: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
+            default_params: [
+                ("ema_len".to_string(), 55.0),
+                ("rank_len".to_string(), 100.0),
+                ("lookback".to_string(), 500.0),
+                ("min_dwell".to_string(), 2.0),
+                ("min_samples".to_string(), 20.0),
+                ("conf_th".to_string(), 55.0),
+                ("rel_th".to_string(), 40.0),
+                ("bias_margin".to_string(), 8.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "oscillator_cycle_statistics",
+            description: "Oscillator Cycle Statistics (RSI): cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
+            default_params: [
+                ("rsi_len".to_string(), 14.0),
+                ("overbought".to_string(), 70.0),
+                ("oversold".to_string(), 30.0),
+                ("max_cycle".to_string(), 150.0),
+                ("lookback".to_string(), 1000.0),
+                ("min_samples".to_string(), 20.0),
+                ("edge_th".to_string(), 15.0),
+                ("max_ci".to_string(), 40.0),
             ]
             .into(),
         },
@@ -2081,6 +2239,157 @@ pub fn build_checked(
         "vein_reversal_score" => Ok(Box::new(VeinReversalScore::new())),
         "vein_structure_zones" => Ok(Box::new(VeinStructureZones::new())),
         "structural_wave_field" => Ok(Box::new(StructuralWaveField::new())),
+        "market_exhaustion" => {
+            let pivot_len = get_usize_p(params, "pivot_len", 7, 1, 50)?;
+            let cfg = MarketExhaustionConfig {
+                mfi_len: get_usize_p(params, "mfi_len", 14, 2, 500)?,
+                zone_lookback: get_usize_p(params, "zone_lookback", 200, 10, 5000)?,
+                rsi_len: get_usize_p(params, "rsi_len", 14, 2, 500)?,
+                stoch_len: get_usize_p(params, "stoch_len", 14, 1, 500)?,
+                k_smooth: get_usize_p(params, "k_smooth", 3, 1, 100)?,
+                jma_len: get_usize_p(params, "jma_len", 20, 1, 500)?,
+                confirm_bars: get_usize_p(params, "confirm_bars", 1, 0, 5)?,
+                pivot_left: pivot_len,
+                pivot_right: pivot_len,
+                react_bars: get_usize_p(params, "react_bars", 10, 2, 100)?,
+                ..MarketExhaustionConfig::default()
+            };
+            Ok(Box::new(MarketExhaustion::new(cfg)))
+        }
+        "exhaustion_scanner" => {
+            let cfg = ExhaustionScannerConfig {
+                w_stretch: get_f64_p(params, "w_stretch", 40.0, 0.0, 100.0)?,
+                w_exhaust: get_f64_p(params, "w_exhaust", 35.0, 0.0, 100.0)?,
+                w_react: get_f64_p(params, "w_react", 25.0, 0.0, 100.0)?,
+                base_threshold: get_f64_p(params, "base_threshold", 40.0, 20.0, 80.0)?,
+                confirm: get_usize_p(params, "confirm", 1, 0, 1)? == 1,
+                min_gap: get_usize_p(params, "min_gap", 8, 0, 500)?,
+                ema_len: get_usize_p(params, "ema_len", 50, 2, 1000)?,
+                structure_len: get_usize_p(params, "structure_len", 80, 2, 2000)?,
+                ..ExhaustionScannerConfig::default()
+            };
+            Ok(Box::new(ExhaustionScanner::new(cfg)))
+        }
+        "smooth_trend_radar" => {
+            let cfg = SmoothTrendRadarConfig {
+                factor: get_f64_p(params, "factor", 12.0, 0.5, 100.0)?,
+                atr_len: get_usize_p(params, "atr_len", 90, 1, 1000)?,
+                wma_len: get_usize_p(params, "wma_len", 40, 1, 1000)?,
+                ema_len: get_usize_p(params, "ema_len", 14, 1, 1000)?,
+                adx_threshold: get_f64_p(params, "adx_threshold", 25.0, 5.0, 50.0)?,
+                slope_lookback: get_usize_p(params, "slope_lookback", 3, 1, 100)?,
+                slope_threshold: get_f64_p(params, "slope_threshold", 0.05, 0.0, 10.0)?,
+                touches: get_usize_p(params, "touches", 2, 1, 5)?,
+                ..SmoothTrendRadarConfig::default()
+            };
+            Ok(Box::new(SmoothTrendRadar::new(cfg)))
+        }
+        "compression_fractal_release" => {
+            let cfg = CfrConfig {
+                len: get_usize_p(params, "len", 34, 10, 150)?,
+                break_len: get_usize_p(params, "break_len", 12, 3, 50)?,
+                ema_len: get_usize_p(params, "ema_len", 55, 2, 2000)?,
+                slope_len: get_usize_p(params, "slope_len", 5, 1, 200)?,
+                thr_cont: get_f64_p(params, "thr_cont", 0.45, 0.0, 1.0)?,
+                thr_base: get_f64_p(params, "thr_base", 0.55, 0.0, 1.0)?,
+                cooldown: get_usize_p(params, "cooldown", 8, 0, 100)?,
+                chop_veto: get_f64_p(params, "chop_veto", 61.8, 30.0, 80.0)?,
+                ..CfrConfig::default()
+            };
+            Ok(Box::new(CompressionFractalRelease::new(cfg)))
+        }
+        "coilforge_zones" => {
+            let cfg = CoilForgeConfig {
+                lookback: get_usize_p(params, "lookback", 16, 8, 100)?,
+                min_zone_bars: get_usize_p(params, "min_zone_bars", 5, 3, 50)?,
+                range_atr: get_f64_p(params, "range_atr", 4.2, 0.5, 20.0)?,
+                adx_max: get_f64_p(params, "adx_max", 27.0, 5.0, 60.0)?,
+                min_score: get_f64_p(params, "min_score", 35.0, 0.0, 80.0)?,
+                min_touches: get_usize_p(params, "min_touches", 2, 2, 20)?,
+                watch_bars: get_usize_p(params, "watch_bars", 20, 1, 200)?,
+                ..CoilForgeConfig::default()
+            };
+            Ok(Box::new(CoilForgeZones::new(cfg)))
+        }
+        "roc_advanced" => {
+            let ma_kind = match get_usize_p(params, "ma_kind", 0, 0, 2)? {
+                0 => super::smoothing::SmootherKind::Ema,
+                1 => super::smoothing::SmootherKind::Sma,
+                _ => super::smoothing::SmootherKind::Rma,
+            };
+            let cfg = RocAdvancedConfig {
+                ma_kind,
+                roc_len: get_usize_p(params, "roc_len", 12, 1, 1000)?,
+                avg_len: get_usize_p(params, "avg_len", 3, 1, 200)?,
+                sig_len: get_usize_p(params, "sig_len", 9, 1, 200)?,
+                ob_level: get_f64_p(params, "ob_level", 5.0, 0.01, 1000.0)?,
+                os_level: get_f64_p(params, "os_level", -5.0, -1000.0, -0.01)?,
+                ctx_len: get_usize_p(params, "ctx_len", 50, 2, 2000)?,
+                stall_len: get_usize_p(params, "stall_len", 5, 1, 200)?,
+                ..RocAdvancedConfig::default()
+            };
+            Ok(Box::new(RocAdvanced::new(cfg)))
+        }
+        "market_tradability_engine" => {
+            let cfg = MteConfig {
+                quality_len: get_usize_p(params, "quality_len", 20, 8, 100)?,
+                range_len: get_usize_p(params, "range_len", 30, 10, 200)?,
+                baseline_len: get_usize_p(params, "baseline_len", 34, 5, 200)?,
+                rank_len: get_usize_p(params, "rank_len", 150, 50, 500)?,
+                balance_threshold: get_f64_p(params, "balance_threshold", 58.0, 30.0, 90.0)?,
+                compression_threshold: get_f64_p(
+                    params,
+                    "compression_threshold",
+                    62.0,
+                    30.0,
+                    95.0,
+                )?,
+                max_range_atr: get_f64_p(params, "max_range_atr", 7.0, 2.0, 20.0)?,
+                confirm_bars: get_usize_p(params, "confirm_bars", 2, 1, 10)?,
+                ..MteConfig::default()
+            };
+            Ok(Box::new(MarketTradabilityEngine::new(cfg)))
+        }
+        "time_to_react" => {
+            let cfg = TimeToReactConfig {
+                atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
+                atr_base: get_usize_p(params, "atr_base", 50, 5, 1000)?,
+                swing_len: get_usize_p(params, "swing_len", 10, 2, 100)?,
+                react_bars: get_usize_p(params, "react_bars", 8, 1, 500)?,
+                valid_bars: get_usize_p(params, "valid_bars", 20, 1, 1000)?,
+                atr_move: get_f64_p(params, "atr_move", 1.6, 0.1, 20.0)?,
+                ..TimeToReactConfig::default()
+            };
+            Ok(Box::new(TimeToReact::new(cfg)))
+        }
+        "markov_state_engine" => {
+            let cfg = MarkovStateConfig {
+                ema_len: get_usize_p(params, "ema_len", 55, 10, 1000)?,
+                rank_len: get_usize_p(params, "rank_len", 100, 20, 2000)?,
+                lookback: get_usize_p(params, "lookback", 500, 50, 1500)?,
+                min_dwell: get_usize_p(params, "min_dwell", 2, 1, 50)?,
+                min_samples: get_usize_p(params, "min_samples", 20, 5, 1000)?,
+                conf_th: get_f64_p(params, "conf_th", 55.0, 0.0, 100.0)?,
+                rel_th: get_f64_p(params, "rel_th", 40.0, 0.0, 100.0)?,
+                bias_margin: get_f64_p(params, "bias_margin", 8.0, 0.0, 100.0)?,
+                ..MarkovStateConfig::default()
+            };
+            Ok(Box::new(MarkovStateEngine::new(cfg)))
+        }
+        "oscillator_cycle_statistics" => {
+            let cfg = CycleStatisticsConfig {
+                rsi_len: get_usize_p(params, "rsi_len", 14, 2, 200)?,
+                overbought: get_f64_p(params, "overbought", 70.0, 51.0, 99.0)?,
+                oversold: get_f64_p(params, "oversold", 30.0, 1.0, 49.0)?,
+                max_cycle: get_usize_p(params, "max_cycle", 150, 5, 2000)?,
+                lookback: get_usize_p(params, "lookback", 1000, 100, 20000)?,
+                min_samples: get_usize_p(params, "min_samples", 20, 1, 500)?,
+                edge_th: get_f64_p(params, "edge_th", 15.0, 0.0, 100.0)?,
+                max_ci: get_f64_p(params, "max_ci", 40.0, 1.0, 100.0)?,
+                ..CycleStatisticsConfig::default()
+            };
+            Ok(Box::new(OscillatorCycleStatistics::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2185,6 +2494,14 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "markov_state_engine",
+    "time_to_react",
+    "market_tradability_engine",
+    "coilforge_zones",
+    "compression_fractal_release",
+    "smooth_trend_radar",
+    "exhaustion_scanner",
+    "market_exhaustion",
     "atr",
     "zone_rejection",
     "relative_volatility",
@@ -2984,6 +3301,16 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "zone_rejection",
     "double_pattern",
     "bottom_formation",
+    "market_exhaustion",
+    "exhaustion_scanner",
+    "smooth_trend_radar",
+    "compression_fractal_release",
+    "coilforge_zones",
+    "roc_advanced",
+    "market_tradability_engine",
+    "time_to_react",
+    "markov_state_engine",
+    "oscillator_cycle_statistics",
     "market_average_relationship",
     "swing_conviction_radar",
     "structure_break_risk",
@@ -3031,8 +3358,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 120);
-        assert_eq!(catalog().len(), 120);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 130);
+        assert_eq!(catalog().len(), 130);
     }
 
     #[test]

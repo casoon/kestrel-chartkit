@@ -72,6 +72,11 @@ fn check(prefix: &str, with_volume: bool) {
             }
         }
         let Some(out) = out else { continue };
+        // Vor dem ersten Beinpaar steht 0 ohne Beinfelder; „first“ ist die
+        // erste Bar mit beiden.
+        if !out.extra.contains_key("bull_last") {
+            continue;
+        }
         first.get_or_insert(t);
         if let Some((dir, conv)) = legs.get(&t) {
             let got = if *dir > 0.0 {

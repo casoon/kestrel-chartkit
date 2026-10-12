@@ -95,7 +95,12 @@ def _pivot(vals, t, left, right, high):
         return None
     v = vals[c]
     for j in range(c - left, t + 1):
-        if j != c and ((high and not v > vals[j]) or (not high and not v < vals[j])):
+        if j == c:
+            continue
+        # Strict to the left, non-strict to the right: the first of equal extremes counts.
+        if high and not (v > vals[j] if j < c else v >= vals[j]):
+            return None
+        if not high and not (v < vals[j] if j < c else v <= vals[j]):
             return None
     return v
 
@@ -323,8 +328,8 @@ HEADER = [
     "weights 20/15/12.5/10/7.5/10/5/7.5/7.5/5, thresholds 62/62, separation 18, buffer 5).",
     "Conventions where Pine leaves them open: ATR = Wilder average of the true range (first bar",
     "high - low) seeded with an SMA, read as 0 where missing (nz) and blocking a new pivot when",
-    "missing at the pivot bar; EMA seeded with the first close; mintick = 1e-12; pivots strict on",
-    "both sides.",
+    "missing at the pivot bar; EMA seeded with the first close; mintick = 1e-12; pivots strict to",
+    "the left and non-strict to the right (the first of equal extremes counts).",
     "",
     "Series: 700 bars in phases of 35 bars cycling through (drift, chop) = (1.0, 0.3),",
     "(-0.12, 0.9), (-1.0, 0.3), (0.10, 1.0); close = prev + drift + chop sin(1.3 i) +",
