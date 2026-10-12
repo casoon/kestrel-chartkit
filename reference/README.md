@@ -45,6 +45,7 @@ Python 3.10 or newer; nothing else.
 | `golden_reversal_engine_score` | `kestrel_reference/fixtures/reversal_engine_score.py` |
 | `golden_liquidity_hunter` | `kestrel_reference/fixtures/liquidity_hunter.py` |
 | `golden_market_motion_dna` | `kestrel_reference/fixtures/market_motion_dna.py` |
+| `golden_vein_accumulation` | `kestrel_reference/fixtures/vein_accumulation.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

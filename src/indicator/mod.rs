@@ -84,6 +84,7 @@ pub mod tsi;
 pub mod twap;
 pub mod ulcer;
 pub mod unit;
+pub mod vein_accumulation;
 pub mod vidya;
 pub mod vix_fix;
 pub mod volatility_indicators;

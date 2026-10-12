@@ -79,6 +79,7 @@ use super::trix::Trix;
 use super::tsi::Tsi;
 use super::twap::{AnchoredTwap, TwapAnchor, TwapWeighting};
 use super::ulcer::UlcerIndexEngine;
+use super::vein_accumulation::{VeinAccumulation, VeinAccumulationConfig};
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -926,6 +927,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("impulse_threshold".to_string(), 62.0),
                 ("correction_threshold".to_string(), 62.0),
                 ("change_buffer".to_string(), 5.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "vein_accumulation",
+            description: "Vein Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
+            default_params: [
+                ("atr_len".to_string(), 14.0),
+                ("lookback".to_string(), 20.0),
+                ("min_phase_bars".to_string(), 10.0),
+                ("pivot_left".to_string(), 3.0),
+                ("pivot_right".to_string(), 3.0),
+                ("er_range".to_string(), 0.3),
+                ("bbw_compress".to_string(), 0.7),
+                ("atr_compress".to_string(), 0.8),
             ]
             .into(),
         },
@@ -2031,6 +2047,19 @@ pub fn build_checked(
             };
             Ok(Box::new(MarketMotionDna::new(cfg)))
         }
+        "vein_accumulation" => {
+            let cfg = VeinAccumulationConfig {
+                atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
+                lookback: get_usize_p(params, "lookback", 20, 10, 500)?,
+                min_phase_bars: get_usize_p(params, "min_phase_bars", 10, 3, 500)?,
+                pivot_left: get_usize_p(params, "pivot_left", 3, 1, 50)?,
+                pivot_right: get_usize_p(params, "pivot_right", 3, 1, 50)?,
+                er_range: get_f64_p(params, "er_range", 0.3, 0.05, 1.0)?,
+                bbw_compress: get_f64_p(params, "bbw_compress", 0.7, 0.3, 5.0)?,
+                atr_compress: get_f64_p(params, "atr_compress", 0.8, 0.3, 5.0)?,
+            };
+            Ok(Box::new(VeinAccumulation::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2174,6 +2203,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "reversal_engine_score",
     "liquidity_hunter",
     "market_motion_dna",
+    "vein_accumulation",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2936,6 +2966,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "reversal_engine_score",
     "liquidity_hunter",
     "market_motion_dna",
+    "vein_accumulation",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2973,8 +3004,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 116);
-        assert_eq!(catalog().len(), 116);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 117);
+        assert_eq!(catalog().len(), 117);
     }
 
     #[test]

@@ -159,8 +159,9 @@ is complete.
 | reversal_engine_score | ✅ |
 | liquidity_hunter | ✅ |
 | market_motion_dna | ✅ |
+| vein_accumulation | ✅ |
 
 ---
 
-**Total: 116/116 verified** — the same 116 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 23 structure/pattern detectors.
+**Total: 117/117 verified** — the same 117 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 24 structure/pattern detectors.

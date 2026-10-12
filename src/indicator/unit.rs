@@ -182,6 +182,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("twap", IndicatorUnit::Price),
     ("ulcer_index", IndicatorUnit::Ratio),
     ("ultimate_oscillator", IndicatorUnit::Ratio),
+    ("vein_accumulation", IndicatorUnit::Unitless),
     ("vidya", IndicatorUnit::Price),
     ("vix_fix", IndicatorUnit::Ratio),
     ("volatility_regime", IndicatorUnit::Unitless),
