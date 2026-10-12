@@ -71,6 +71,7 @@ pub mod smi;
 pub mod smoothing;
 pub mod source_mapped;
 pub mod stoch_rsi;
+pub mod structural_wave_field;
 pub mod structure_break_risk;
 pub mod swing_conviction_radar;
 pub mod swing_structure;

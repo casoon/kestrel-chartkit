@@ -67,6 +67,7 @@ use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
+use super::structural_wave_field::StructuralWaveField;
 use super::structure_break_risk::{StructureBreakRisk, StructureBreakRiskConfig};
 use super::swing_conviction_radar::{SwingConvictionConfig, SwingConvictionRadar};
 use super::t3::T3;
@@ -955,6 +956,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         IndicatorCatalogEntry {
             name: "vein_structure_zones",
             description: "Vein Structure & Zones (Pine defaults): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
+            default_params: HashMap::new(),
+        },
+        IndicatorCatalogEntry {
+            name: "structural_wave_field",
+            description: "Structural Wave Field (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves",
             default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
@@ -2074,6 +2080,7 @@ pub fn build_checked(
         }
         "vein_reversal_score" => Ok(Box::new(VeinReversalScore::new())),
         "vein_structure_zones" => Ok(Box::new(VeinStructureZones::new())),
+        "structural_wave_field" => Ok(Box::new(StructuralWaveField::new())),
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2220,6 +2227,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "vein_accumulation",
     "vein_reversal_score",
     "vein_structure_zones",
+    "structural_wave_field",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2985,6 +2993,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "vein_accumulation",
     "vein_reversal_score",
     "vein_structure_zones",
+    "structural_wave_field",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -3022,8 +3031,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 119);
-        assert_eq!(catalog().len(), 119);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 120);
+        assert_eq!(catalog().len(), 120);
     }
 
     #[test]

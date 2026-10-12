@@ -162,8 +162,9 @@ is complete.
 | vein_accumulation | ✅ |
 | vein_reversal_score | ✅ |
 | vein_structure_zones | ✅ |
+| structural_wave_field | ✅ |
 
 ---
 
-**Total: 119/119 verified** — the same 119 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 26 structure/pattern detectors.
+**Total: 120/120 verified** — the same 120 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 27 structure/pattern detectors.

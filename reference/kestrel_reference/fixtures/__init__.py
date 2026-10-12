@@ -26,6 +26,7 @@ from . import (
     reversal_engine_score,
     sample_stats,
     scenario_structure,
+    structural_wave_field,
     structure_break_risk,
     surface_diff,
     swing_conviction_radar,
@@ -74,4 +75,5 @@ ALL = (
     vein_accumulation,
     vein_reversal_score,
     vein_structure_zones,
+    structural_wave_field,
 )

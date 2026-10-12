@@ -48,6 +48,7 @@ Python 3.10 or newer; nothing else.
 | `golden_vein_accumulation` | `kestrel_reference/fixtures/vein_accumulation.py` |
 | `golden_vein_reversal_score` | `kestrel_reference/fixtures/vein_reversal_score.py` |
 | `golden_vein_structure_zones` | `kestrel_reference/fixtures/vein_structure_zones.py` |
+| `golden_structural_wave_field` | `kestrel_reference/fixtures/structural_wave_field.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.
