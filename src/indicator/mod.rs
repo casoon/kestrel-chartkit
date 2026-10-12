@@ -86,6 +86,7 @@ pub mod ulcer;
 pub mod unit;
 pub mod vein_accumulation;
 pub mod vein_reversal_score;
+pub mod vein_structure_zones;
 pub mod vidya;
 pub mod vix_fix;
 pub mod volatility_indicators;

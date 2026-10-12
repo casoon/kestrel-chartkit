@@ -81,6 +81,7 @@ use super::twap::{AnchoredTwap, TwapAnchor, TwapWeighting};
 use super::ulcer::UlcerIndexEngine;
 use super::vein_accumulation::{VeinAccumulation, VeinAccumulationConfig};
 use super::vein_reversal_score::VeinReversalScore;
+use super::vein_structure_zones::VeinStructureZones;
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -949,6 +950,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         IndicatorCatalogEntry {
             name: "vein_reversal_score",
             description: "Vein Reversal Score (Pine defaults, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict",
+            default_params: HashMap::new(),
+        },
+        IndicatorCatalogEntry {
+            name: "vein_structure_zones",
+            description: "Vein Structure & Zones (Pine defaults): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
             default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
@@ -2067,6 +2073,7 @@ pub fn build_checked(
             Ok(Box::new(VeinAccumulation::new(cfg)))
         }
         "vein_reversal_score" => Ok(Box::new(VeinReversalScore::new())),
+        "vein_structure_zones" => Ok(Box::new(VeinStructureZones::new())),
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2212,6 +2219,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "market_motion_dna",
     "vein_accumulation",
     "vein_reversal_score",
+    "vein_structure_zones",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2976,6 +2984,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "market_motion_dna",
     "vein_accumulation",
     "vein_reversal_score",
+    "vein_structure_zones",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -3013,8 +3022,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 118);
-        assert_eq!(catalog().len(), 118);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 119);
+        assert_eq!(catalog().len(), 119);
     }
 
     #[test]

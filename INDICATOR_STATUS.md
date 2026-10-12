@@ -161,8 +161,9 @@ is complete.
 | market_motion_dna | ✅ |
 | vein_accumulation | ✅ |
 | vein_reversal_score | ✅ |
+| vein_structure_zones | ✅ |
 
 ---
 
-**Total: 118/118 verified** — the same 118 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 25 structure/pattern detectors.
+**Total: 119/119 verified** — the same 119 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 26 structure/pattern detectors.

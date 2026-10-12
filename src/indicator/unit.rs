@@ -184,6 +184,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("ultimate_oscillator", IndicatorUnit::Ratio),
     ("vein_accumulation", IndicatorUnit::Unitless),
     ("vein_reversal_score", IndicatorUnit::Unitless),
+    ("vein_structure_zones", IndicatorUnit::Unitless),
     ("vidya", IndicatorUnit::Price),
     ("vix_fix", IndicatorUnit::Ratio),
     ("volatility_regime", IndicatorUnit::Unitless),

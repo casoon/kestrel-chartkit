@@ -47,6 +47,7 @@ Python 3.10 or newer; nothing else.
 | `golden_market_motion_dna` | `kestrel_reference/fixtures/market_motion_dna.py` |
 | `golden_vein_accumulation` | `kestrel_reference/fixtures/vein_accumulation.py` |
 | `golden_vein_reversal_score` | `kestrel_reference/fixtures/vein_reversal_score.py` |
+| `golden_vein_structure_zones` | `kestrel_reference/fixtures/vein_structure_zones.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.

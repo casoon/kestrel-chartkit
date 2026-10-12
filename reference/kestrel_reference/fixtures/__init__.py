@@ -34,6 +34,7 @@ from . import (
     validation_probability,
     vein_accumulation,
     vein_reversal_score,
+    vein_structure_zones,
     volatility,
     volume,
 )
@@ -72,4 +73,5 @@ ALL = (
     market_motion_dna,
     vein_accumulation,
     vein_reversal_score,
+    vein_structure_zones,
 )
