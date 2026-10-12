@@ -11,6 +11,7 @@ from . import (
     cross_asset_alignment,
     curve_diff,
     deflated_sharpe,
+    exhaustion_scanner,
     family_math,
     finance_cashflows,
     forward,
@@ -60,4 +61,5 @@ ALL = (
     logistic,
     market_average_relationship,
     market_exhaustion,
+    exhaustion_scanner,
 )

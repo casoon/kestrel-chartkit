@@ -27,6 +27,7 @@ use super::dpo::DpoEngine;
 use super::efficiency::LegEfficiencyEngine;
 use super::envelope::EnvelopeEngine;
 use super::eom::EomEngine;
+use super::exhaustion_scanner::{ExhaustionScanner, ExhaustionScannerConfig};
 use super::fisher_transform::FisherTransform;
 use super::force_index::ElderForceIndex;
 use super::kst::KstEngine;
@@ -863,6 +864,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("confirm_bars".to_string(), 1.0),
                 ("pivot_len".to_string(), 7.0),
                 ("react_bars".to_string(), 10.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "exhaustion_scanner",
+            description: "Exhaustion Scanner: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+            default_params: [
+                ("w_stretch".to_string(), 40.0),
+                ("w_exhaust".to_string(), 35.0),
+                ("w_react".to_string(), 25.0),
+                ("base_threshold".to_string(), 40.0),
+                ("confirm".to_string(), 1.0),
+                ("min_gap".to_string(), 8.0),
+                ("ema_len".to_string(), 50.0),
+                ("structure_len".to_string(), 80.0),
             ]
             .into(),
         },
@@ -1916,6 +1932,20 @@ pub fn build_checked(
             };
             Ok(Box::new(MarketExhaustion::new(cfg)))
         }
+        "exhaustion_scanner" => {
+            let cfg = ExhaustionScannerConfig {
+                w_stretch: get_f64_p(params, "w_stretch", 40.0, 0.0, 100.0)?,
+                w_exhaust: get_f64_p(params, "w_exhaust", 35.0, 0.0, 100.0)?,
+                w_react: get_f64_p(params, "w_react", 25.0, 0.0, 100.0)?,
+                base_threshold: get_f64_p(params, "base_threshold", 40.0, 20.0, 80.0)?,
+                confirm: get_usize_p(params, "confirm", 1, 0, 1)? == 1,
+                min_gap: get_usize_p(params, "min_gap", 8, 0, 500)?,
+                ema_len: get_usize_p(params, "ema_len", 50, 2, 1000)?,
+                structure_len: get_usize_p(params, "structure_len", 80, 2, 2000)?,
+                ..ExhaustionScannerConfig::default()
+            };
+            Ok(Box::new(ExhaustionScanner::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2020,6 +2050,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "exhaustion_scanner",
     "market_exhaustion",
     "atr",
     "zone_rejection",
@@ -2812,6 +2843,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "double_pattern",
     "bottom_formation",
     "market_exhaustion",
+    "exhaustion_scanner",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -2850,8 +2882,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 112);
-        assert_eq!(catalog().len(), 112);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 113);
+        assert_eq!(catalog().len(), 113);
     }
 
     #[test]

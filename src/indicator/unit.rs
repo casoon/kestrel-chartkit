@@ -115,6 +115,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("ema", IndicatorUnit::Price),
     ("envelope", IndicatorUnit::Price),
     ("eom", IndicatorUnit::Unitless),
+    ("exhaustion_scanner", IndicatorUnit::Ratio),
     ("extended_volume_profile", IndicatorUnit::Price),
     ("fisher_transform", IndicatorUnit::Ratio),
     ("garman_klass", IndicatorUnit::Ratio),

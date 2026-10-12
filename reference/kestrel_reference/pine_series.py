@@ -282,3 +282,41 @@ def events_block(events, names, limit=6):
         for j, b in enumerate(bars[:limit]):
             ev[f"{name}_{j}"] = float(b)
     return ev
+
+
+def adx(h, lo, c, di_len, adx_len):
+    """Pine ta.dmi ADX: +DM/-DM/TR from the second bar (TR without a previous close is na),
+    Wilder averages seeded with an SMA, DI = 100 DM/TR (0 for TR = 0), DX = 100 |DI+ - DI-| /
+    (DI+ + DI-) (0 for a zero sum), ADX = Wilder average of DX."""
+    n = len(c)
+    up = [None] + [h[t] - h[t - 1] for t in range(1, n)]
+    dn = [None] + [lo[t - 1] - lo[t] for t in range(1, n)]
+    pdm = smap(lambda u, d: u if u > d and u > 0.0 else 0.0, up, dn)
+    mdm = smap(lambda u, d: d if d > u and d > 0.0 else 0.0, up, dn)
+    tr = [None] + [max(h[t] - lo[t], abs(h[t] - c[t - 1]), abs(lo[t] - c[t - 1]))
+                   for t in range(1, n)]
+    trr, pr, mr = rma(tr, di_len), rma(pdm, di_len), rma(mdm, di_len)
+
+    def dx(t, p, m):
+        dip, dim = (100.0 * p / t, 100.0 * m / t) if t != 0.0 else (0.0, 0.0)
+        return 100.0 * abs(dip - dim) / (dip + dim) if dip + dim != 0.0 else 0.0
+    return rma(smap(dx, trr, pr, mr), adx_len)
+
+
+def wavetrend(h, lo, c, n1, n2):
+    """WaveTrend of hlc3: esa = EMA(n1), de = EMA(n1) of |ap - esa|, ci = (ap - esa) /
+    (0.015 de) (0 for de <= 1e-8), wt1 = EMA(n2) of ci, wt2 = SMA(4) of wt1; first-sample EMAs."""
+    ap = [(h[t] + lo[t] + c[t]) / 3.0 for t in range(len(c))]
+    esa = ema(ap, n1)
+    de = ema([abs(a - e) for a, e in zip(ap, esa)], n1)
+    ci = [(a - e) / (0.015 * d) if d > 1e-8 else 0.0 for a, e, d in zip(ap, esa, de)]
+    wt1 = ema(ci, n2)
+    return wt1, sma(wt1, 4)
+
+
+def barssince(cond, t):
+    """Bars since cond was last True at or before t, None if never."""
+    for k in range(t + 1):
+        if cond[t - k]:
+            return k
+    return None

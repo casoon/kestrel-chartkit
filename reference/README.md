@@ -41,6 +41,7 @@ Python 3.10 or newer; nothing else.
 | `golden_logistic` | `kestrel_reference/fixtures/logistic.py` |
 | `golden_market_average_relationship` | `kestrel_reference/fixtures/market_average_relationship.py` |
 | `golden_market_exhaustion` | `kestrel_reference/fixtures/market_exhaustion.py` |
+| `golden_exhaustion_scanner` | `kestrel_reference/fixtures/exhaustion_scanner.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.
