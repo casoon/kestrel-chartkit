@@ -40,6 +40,7 @@ use super::macd::Macd;
 use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
 use super::market_exhaustion::{MarketExhaustion, MarketExhaustionConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
+use super::market_tradability_engine::{MarketTradabilityEngine, MteConfig};
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
 use super::mfi::Mfi;
@@ -942,6 +943,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("os_level".to_string(), -5.0),
                 ("ctx_len".to_string(), 50.0),
                 ("stall_len".to_string(), 5.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_tradability_engine",
+            description: "Market Tradability Engine (v1): no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
+            default_params: [
+                ("quality_len".to_string(), 20.0),
+                ("range_len".to_string(), 30.0),
+                ("baseline_len".to_string(), 34.0),
+                ("rank_len".to_string(), 150.0),
+                ("balance_threshold".to_string(), 58.0),
+                ("compression_threshold".to_string(), 62.0),
+                ("max_range_atr".to_string(), 7.0),
+                ("confirm_bars".to_string(), 2.0),
             ]
             .into(),
         },
@@ -2069,6 +2085,26 @@ pub fn build_checked(
             };
             Ok(Box::new(RocAdvanced::new(cfg)))
         }
+        "market_tradability_engine" => {
+            let cfg = MteConfig {
+                quality_len: get_usize_p(params, "quality_len", 20, 8, 100)?,
+                range_len: get_usize_p(params, "range_len", 30, 10, 200)?,
+                baseline_len: get_usize_p(params, "baseline_len", 34, 5, 200)?,
+                rank_len: get_usize_p(params, "rank_len", 150, 50, 500)?,
+                balance_threshold: get_f64_p(params, "balance_threshold", 58.0, 30.0, 90.0)?,
+                compression_threshold: get_f64_p(
+                    params,
+                    "compression_threshold",
+                    62.0,
+                    30.0,
+                    95.0,
+                )?,
+                max_range_atr: get_f64_p(params, "max_range_atr", 7.0, 2.0, 20.0)?,
+                confirm_bars: get_usize_p(params, "confirm_bars", 2, 1, 10)?,
+                ..MteConfig::default()
+            };
+            Ok(Box::new(MarketTradabilityEngine::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2173,6 +2209,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "market_tradability_engine",
     "coilforge_zones",
     "compression_fractal_release",
     "smooth_trend_radar",
@@ -2974,6 +3011,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "compression_fractal_release",
     "coilforge_zones",
     "roc_advanced",
+    "market_tradability_engine",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -3012,8 +3050,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 117);
-        assert_eq!(catalog().len(), 117);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 118);
+        assert_eq!(catalog().len(), 118);
     }
 
     #[test]

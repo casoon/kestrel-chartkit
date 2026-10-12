@@ -252,6 +252,43 @@ impl ExtremeWindow {
     }
 }
 
+/// Rolling percent rank as Pine's `ta.percentrank`: the share (in %) of the previous `n` values
+/// that are `<=` the newest one.
+#[derive(Debug, Clone)]
+pub(crate) struct PercentRank {
+    n: usize,
+    window: VecDeque<Option<f64>>,
+}
+
+impl PercentRank {
+    pub(crate) fn new(n: usize) -> Self {
+        Self {
+            n,
+            window: VecDeque::with_capacity(n + 2),
+        }
+    }
+
+    /// Feeds one value (`None` = not available); `None` until the newest value and the `n`
+    /// before it all exist.
+    pub(crate) fn update(&mut self, v: Option<f64>) -> Option<f64> {
+        self.window.push_back(v);
+        if self.window.len() > self.n + 1 {
+            self.window.pop_front();
+        }
+        if self.window.len() < self.n + 1 {
+            return None;
+        }
+        let cur = v?;
+        let mut count = 0usize;
+        for p in self.window.iter().take(self.n) {
+            if (*p)? <= cur {
+                count += 1;
+            }
+        }
+        Some(100.0 * count as f64 / self.n as f64)
+    }
+}
+
 /// Relative distance below which two lines count as touching rather than crossed.
 ///
 /// Without it a crossing fires on floating-point noise: a %K line clamped at 0 that sits at

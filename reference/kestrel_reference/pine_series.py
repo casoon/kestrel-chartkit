@@ -362,3 +362,19 @@ def lcg_series(n_bars, seed=12345):
         bars.append((open_, high, low, close, 500.0 + 1000.0 * u5))
         prev = close
     return bars
+
+
+def dmi(h, lo, c, di_len, adx_len):
+    """Pine ta.dmi: (DI+, DI-, ADX) with the conventions of `adx`."""
+    n = len(c)
+    up = [None] + [h[t] - h[t - 1] for t in range(1, n)]
+    dn = [None] + [lo[t - 1] - lo[t] for t in range(1, n)]
+    pdm = smap(lambda u, d: u if u > d and u > 0.0 else 0.0, up, dn)
+    mdm = smap(lambda u, d: d if d > u and d > 0.0 else 0.0, up, dn)
+    tr = [None] + [max(h[t] - lo[t], abs(h[t] - c[t - 1]), abs(lo[t] - c[t - 1]))
+                   for t in range(1, n)]
+    trr, pr, mr = rma(tr, di_len), rma(pdm, di_len), rma(mdm, di_len)
+    dip = smap(lambda t, p: 100.0 * p / t if t != 0.0 else 0.0, trr, pr)
+    dim = smap(lambda t, m: 100.0 * m / t if t != 0.0 else 0.0, trr, mr)
+    dx = smap(lambda p, m: 100.0 * abs(p - m) / (p + m) if p + m != 0.0 else 0.0, dip, dim)
+    return dip, dim, rma(dx, adx_len)

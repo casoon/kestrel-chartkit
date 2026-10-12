@@ -137,6 +137,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("market_average_relationship", IndicatorUnit::Unitless),
     ("market_exhaustion", IndicatorUnit::Ratio),
     ("market_structure_breaks", IndicatorUnit::Unitless),
+    ("market_tradability_engine", IndicatorUnit::Ratio),
     ("mass_index", IndicatorUnit::Ratio),
     ("mcginley", IndicatorUnit::Price),
     ("mfi", IndicatorUnit::Ratio),

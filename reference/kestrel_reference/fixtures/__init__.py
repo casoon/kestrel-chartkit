@@ -20,6 +20,7 @@ from . import (
     logistic,
     market_average_relationship,
     market_exhaustion,
+    market_tradability_engine,
     moving_averages,
     option_diff,
     option_pricing,
@@ -70,4 +71,5 @@ ALL = (
     compression_fractal_release,
     coilforge_zones,
     roc_advanced,
+    market_tradability_engine,
 )

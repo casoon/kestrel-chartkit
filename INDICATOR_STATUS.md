@@ -160,8 +160,9 @@ is complete.
 | bottom_formation | ✅ |
 | market_average_relationship | ✅ |
 | coilforge_zones | ✅ |
+| market_tradability_engine | ✅ |
 
 ---
 
-**Total: 117/117 verified** — the same 117 names `catalog()` returns: 94 indicators (the first
-five groups), 4 composite scores and 19 structure/pattern detectors.
+**Total: 118/118 verified** — the same 118 names `catalog()` returns: 94 indicators (the first
+five groups), 4 composite scores and 20 structure/pattern detectors.

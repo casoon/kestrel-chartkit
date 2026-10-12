@@ -41,7 +41,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::model::Bar;
 
 use super::adx::Adx;
-use super::smoothing::{Ema, Rma, Wma};
+use super::smoothing::{Ema, PercentRank, Rma, Wma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Parameters, defaults as in the Pine script (manual values).
@@ -88,40 +88,6 @@ struct Row {
     low: f64,
     base: Option<f64>,
     trend: i8,
-}
-
-/// Rolling percent rank: share of the previous `n` values `<=` the newest one.
-#[derive(Debug, Clone)]
-struct PercentRank {
-    n: usize,
-    window: VecDeque<Option<f64>>,
-}
-
-impl PercentRank {
-    fn new(n: usize) -> Self {
-        Self {
-            n,
-            window: VecDeque::with_capacity(n + 2),
-        }
-    }
-
-    fn update(&mut self, v: Option<f64>) -> Option<f64> {
-        self.window.push_back(v);
-        if self.window.len() > self.n + 1 {
-            self.window.pop_front();
-        }
-        if self.window.len() < self.n + 1 {
-            return None;
-        }
-        let cur = v?;
-        let mut count = 0usize;
-        for p in self.window.iter().take(self.n) {
-            if (*p)? <= cur {
-                count += 1;
-            }
-        }
-        Some(100.0 * count as f64 / self.n as f64)
-    }
 }
 
 /// Streaming Smooth Trend Radar; see the module documentation.
