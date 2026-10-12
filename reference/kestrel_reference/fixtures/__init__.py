@@ -17,6 +17,7 @@ from . import (
     liquidity_hunter,
     logistic,
     market_average_relationship,
+    market_motion_dna,
     moving_averages,
     option_diff,
     option_pricing,
@@ -66,4 +67,5 @@ ALL = (
     structure_break_risk,
     reversal_engine_score,
     liquidity_hunter,
+    market_motion_dna,
 )

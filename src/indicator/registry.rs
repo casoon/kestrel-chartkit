@@ -36,6 +36,7 @@ use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
 use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
+use super::market_motion_dna::{MarketMotionDna, MotionDnaConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
@@ -909,6 +910,22 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("reclaim_bars".to_string(), 3.0),
                 ("min_volume_ratio".to_string(), 1.2),
                 ("alert_distance_atr".to_string(), 1.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "market_motion_dna",
+            description: "Market Motion DNA: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
+            default_params: [
+                ("pivot_left".to_string(), 5.0),
+                ("pivot_right".to_string(), 5.0),
+                ("max_leg_bars".to_string(), 350.0),
+                ("min_leg_atr".to_string(), 0.5),
+                ("mature_bars".to_string(), 8.0),
+                ("ma_len".to_string(), 34.0),
+                ("impulse_threshold".to_string(), 62.0),
+                ("correction_threshold".to_string(), 62.0),
+                ("change_buffer".to_string(), 5.0),
             ]
             .into(),
         },
@@ -1999,6 +2016,21 @@ pub fn build_checked(
             };
             Ok(Box::new(LiquidityHunter::new(cfg)))
         }
+        "market_motion_dna" => {
+            let cfg = MotionDnaConfig {
+                pivot_left: get_usize_p(params, "pivot_left", 5, 1, 50)?,
+                pivot_right: get_usize_p(params, "pivot_right", 5, 1, 50)?,
+                max_leg_bars: get_usize_p(params, "max_leg_bars", 350, 20, 1500)?,
+                min_leg_atr: get_f64_p(params, "min_leg_atr", 0.5, 0.0, 10.0)?,
+                mature_bars: get_usize_p(params, "mature_bars", 8, 2, 100)?,
+                ma_len: get_usize_p(params, "ma_len", 34, 2, 500)?,
+                impulse_threshold: get_f64_p(params, "impulse_threshold", 62.0, 50.0, 95.0)?,
+                correction_threshold: get_f64_p(params, "correction_threshold", 62.0, 50.0, 95.0)?,
+                change_buffer: get_f64_p(params, "change_buffer", 5.0, 0.0, 25.0)?,
+                ..MotionDnaConfig::default()
+            };
+            Ok(Box::new(MarketMotionDna::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2141,6 +2173,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "structure_break_risk",
     "reversal_engine_score",
     "liquidity_hunter",
+    "market_motion_dna",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2902,6 +2935,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "structure_break_risk",
     "reversal_engine_score",
     "liquidity_hunter",
+    "market_motion_dna",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2939,8 +2973,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 115);
-        assert_eq!(catalog().len(), 115);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 116);
+        assert_eq!(catalog().len(), 116);
     }
 
     #[test]

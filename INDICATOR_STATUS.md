@@ -158,8 +158,9 @@ is complete.
 | structure_break_risk | ✅ |
 | reversal_engine_score | ✅ |
 | liquidity_hunter | ✅ |
+| market_motion_dna | ✅ |
 
 ---
 
-**Total: 115/115 verified** — the same 115 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 22 structure/pattern detectors.
+**Total: 116/116 verified** — the same 116 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 23 structure/pattern detectors.
