@@ -31,6 +31,7 @@ from . import (
     scenario_structure,
     smooth_trend_radar,
     surface_diff,
+    time_to_react,
     transforms,
     trend,
     validation_probability,
@@ -72,4 +73,5 @@ ALL = (
     coilforge_zones,
     roc_advanced,
     market_tradability_engine,
+    time_to_react,
 )

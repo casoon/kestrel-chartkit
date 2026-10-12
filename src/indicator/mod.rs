@@ -78,6 +78,7 @@ pub mod stoch_rsi;
 pub mod swing_structure;
 pub mod t3;
 pub mod tema;
+pub mod time_to_react;
 pub mod trend_quality;
 pub mod trend_relationship;
 pub mod trend_structural;

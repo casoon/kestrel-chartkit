@@ -73,6 +73,7 @@ use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
 use super::t3::T3;
 use super::tema::TemaEngine;
+use super::time_to_react::{TimeToReact, TimeToReactConfig};
 use super::trend_quality::TrendQualityScoreEngine;
 use super::trend_structural::{
     AroonEngine, DmiEngine, IchimokuEngine, ParabolicSarEngine, SupertrendEngine,
@@ -958,6 +959,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("compression_threshold".to_string(), 62.0),
                 ("max_range_atr".to_string(), 7.0),
                 ("confirm_bars".to_string(), 2.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "time_to_react",
+            description: "Time-to-React + Volatility-Time: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
+            default_params: [
+                ("atr_len".to_string(), 14.0),
+                ("atr_base".to_string(), 50.0),
+                ("swing_len".to_string(), 10.0),
+                ("react_bars".to_string(), 8.0),
+                ("valid_bars".to_string(), 20.0),
+                ("atr_move".to_string(), 1.6),
             ]
             .into(),
         },
@@ -2105,6 +2119,18 @@ pub fn build_checked(
             };
             Ok(Box::new(MarketTradabilityEngine::new(cfg)))
         }
+        "time_to_react" => {
+            let cfg = TimeToReactConfig {
+                atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
+                atr_base: get_usize_p(params, "atr_base", 50, 5, 1000)?,
+                swing_len: get_usize_p(params, "swing_len", 10, 2, 100)?,
+                react_bars: get_usize_p(params, "react_bars", 8, 1, 500)?,
+                valid_bars: get_usize_p(params, "valid_bars", 20, 1, 1000)?,
+                atr_move: get_f64_p(params, "atr_move", 1.6, 0.1, 20.0)?,
+                ..TimeToReactConfig::default()
+            };
+            Ok(Box::new(TimeToReact::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2209,6 +2235,7 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
 /// indicators are added.
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "time_to_react",
     "market_tradability_engine",
     "coilforge_zones",
     "compression_fractal_release",
@@ -3012,6 +3039,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "coilforge_zones",
     "roc_advanced",
     "market_tradability_engine",
+    "time_to_react",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -3050,8 +3078,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 118);
-        assert_eq!(catalog().len(), 118);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 119);
+        assert_eq!(catalog().len(), 119);
     }
 
     #[test]

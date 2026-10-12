@@ -176,6 +176,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("supertrend", IndicatorUnit::Price),
     ("t3", IndicatorUnit::Price),
     ("tema", IndicatorUnit::Price),
+    ("time_to_react", IndicatorUnit::Ratio),
     ("trend_quality", IndicatorUnit::Unitless),
     ("trend_relationship", IndicatorUnit::Unitless),
     ("trix", IndicatorUnit::Ratio),

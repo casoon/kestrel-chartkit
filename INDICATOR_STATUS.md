@@ -89,6 +89,7 @@ is complete.
 | vix_fix | ✅ |
 | vortex | ✅ |
 | compression_fractal_release | ✅ |
+| time_to_react | ✅ |
 
 ## Volume
 
@@ -164,5 +165,5 @@ is complete.
 
 ---
 
-**Total: 118/118 verified** — the same 118 names `catalog()` returns: 94 indicators (the first
+**Total: 119/119 verified** — the same 119 names `catalog()` returns: 95 indicators (the first
 five groups), 4 composite scores and 20 structure/pattern detectors.
