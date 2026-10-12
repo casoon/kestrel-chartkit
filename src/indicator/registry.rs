@@ -57,6 +57,7 @@ use super::moving_averages::{
 use super::multi_factor::MultiFactorMarketScore;
 use super::nvi_pvi::{NviEngine, PviEngine};
 use super::order_block::OrderBlockEngine;
+use super::oscillator_cycle_statistics::{CycleStatisticsConfig, OscillatorCycleStatistics};
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
@@ -988,6 +989,21 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("conf_th".to_string(), 55.0),
                 ("rel_th".to_string(), 40.0),
                 ("bias_margin".to_string(), 8.0),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "oscillator_cycle_statistics",
+            description: "Oscillator Cycle Statistics (RSI): cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
+            default_params: [
+                ("rsi_len".to_string(), 14.0),
+                ("overbought".to_string(), 70.0),
+                ("oversold".to_string(), 30.0),
+                ("max_cycle".to_string(), 150.0),
+                ("lookback".to_string(), 1000.0),
+                ("min_samples".to_string(), 20.0),
+                ("edge_th".to_string(), 15.0),
+                ("max_ci".to_string(), 40.0),
             ]
             .into(),
         },
@@ -2161,6 +2177,20 @@ pub fn build_checked(
             };
             Ok(Box::new(MarkovStateEngine::new(cfg)))
         }
+        "oscillator_cycle_statistics" => {
+            let cfg = CycleStatisticsConfig {
+                rsi_len: get_usize_p(params, "rsi_len", 14, 2, 200)?,
+                overbought: get_f64_p(params, "overbought", 70.0, 51.0, 99.0)?,
+                oversold: get_f64_p(params, "oversold", 30.0, 1.0, 49.0)?,
+                max_cycle: get_usize_p(params, "max_cycle", 150, 5, 2000)?,
+                lookback: get_usize_p(params, "lookback", 1000, 100, 20000)?,
+                min_samples: get_usize_p(params, "min_samples", 20, 1, 500)?,
+                edge_th: get_f64_p(params, "edge_th", 15.0, 0.0, 100.0)?,
+                max_ci: get_f64_p(params, "max_ci", 40.0, 1.0, 100.0)?,
+                ..CycleStatisticsConfig::default()
+            };
+            Ok(Box::new(OscillatorCycleStatistics::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -3072,6 +3102,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "market_tradability_engine",
     "time_to_react",
     "markov_state_engine",
+    "oscillator_cycle_statistics",
     "market_average_relationship",
     "pivot_divergence",
     "oscillator_pivot_divergence",
@@ -3110,8 +3141,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 120);
-        assert_eq!(catalog().len(), 120);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 121);
+        assert_eq!(catalog().len(), 121);
     }
 
     #[test]

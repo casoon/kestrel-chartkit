@@ -148,6 +148,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("nvi", IndicatorUnit::Unitless),
     ("obv", IndicatorUnit::Volume),
     ("order_block", IndicatorUnit::Unitless),
+    ("oscillator_cycle_statistics", IndicatorUnit::Ratio),
     // Wie `pivot_divergence`: der gewählte Oszillator.
     ("oscillator_pivot_divergence", IndicatorUnit::Unitless),
     ("parabolic_sar", IndicatorUnit::Price),

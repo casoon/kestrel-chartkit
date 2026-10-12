@@ -53,6 +53,7 @@ pub mod moving_averages;
 pub mod multi_factor;
 pub mod nvi_pvi;
 pub mod order_block;
+pub mod oscillator_cycle_statistics;
 pub mod params;
 pub mod pivot_divergence;
 pub mod pivot_sets;

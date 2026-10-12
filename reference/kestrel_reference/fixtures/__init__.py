@@ -25,6 +25,7 @@ from . import (
     moving_averages,
     option_diff,
     option_pricing,
+    oscillator_cycle_statistics,
     oscillators,
     revaluation_diff,
     roc_advanced,
@@ -76,4 +77,5 @@ ALL = (
     market_tradability_engine,
     time_to_react,
     markov_state_engine,
+    oscillator_cycle_statistics,
 )

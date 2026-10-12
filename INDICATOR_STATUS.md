@@ -63,6 +63,7 @@ is complete.
 | market_exhaustion | ✅ |
 | exhaustion_scanner | ✅ |
 | roc_advanced | ✅ |
+| oscillator_cycle_statistics | ✅ |
 
 ## Volatility
 
@@ -166,5 +167,5 @@ is complete.
 
 ---
 
-**Total: 120/120 verified** — the same 120 names `catalog()` returns: 95 indicators (the first
+**Total: 121/121 verified** — the same 121 names `catalog()` returns: 96 indicators (the first
 five groups), 4 composite scores and 21 structure/pattern detectors.
