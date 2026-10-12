@@ -23,6 +23,7 @@ from . import (
     revaluation_diff,
     sample_stats,
     scenario_structure,
+    structure_break_risk,
     surface_diff,
     swing_conviction_radar,
     transforms,
@@ -60,4 +61,5 @@ ALL = (
     logistic,
     market_average_relationship,
     swing_conviction_radar,
+    structure_break_risk,
 )

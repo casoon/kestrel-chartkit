@@ -155,8 +155,9 @@ is complete.
 | bottom_formation | ✅ |
 | market_average_relationship | ✅ |
 | swing_conviction_radar | ✅ |
+| structure_break_risk | ✅ |
 
 ---
 
-**Total: 112/112 verified** — the same 112 names `catalog()` returns: 89 indicators (the first
-five groups), 4 composite scores and 19 structure/pattern detectors.
+**Total: 113/113 verified** — the same 113 names `catalog()` returns: 89 indicators (the first
+five groups), 4 composite scores and 20 structure/pattern detectors.

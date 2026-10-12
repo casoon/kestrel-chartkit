@@ -166,6 +166,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("smi", IndicatorUnit::Ratio),
     ("stoch_rsi", IndicatorUnit::Ratio),
     ("stochastic", IndicatorUnit::Ratio),
+    ("structure_break_risk", IndicatorUnit::Ratio),
     ("supertrend", IndicatorUnit::Price),
     ("swing_conviction_radar", IndicatorUnit::Ratio),
     ("t3", IndicatorUnit::Price),

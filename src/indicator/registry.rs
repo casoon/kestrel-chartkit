@@ -64,6 +64,7 @@ use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
+use super::structure_break_risk::{StructureBreakRisk, StructureBreakRiskConfig};
 use super::swing_conviction_radar::{SwingConvictionConfig, SwingConvictionRadar};
 use super::t3::T3;
 use super::tema::TemaEngine;
@@ -862,6 +863,19 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("w_speed".to_string(), 0.4),
                 ("w_clean".to_string(), 0.4),
                 ("w_volume".to_string(), 0.2),
+            ]
+            .into(),
+        },
+        IndicatorCatalogEntry {
+            name: "structure_break_risk",
+            description: "Structure Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
+            default_params: [
+                ("bias_len".to_string(), 50.0),
+                ("pivot_len".to_string(), 5.0),
+                ("near_atr".to_string(), 1.5),
+                ("rsi_len".to_string(), 14.0),
+                ("hold_bars".to_string(), 10.0),
+                ("smooth_len".to_string(), 3.0),
             ]
             .into(),
         },
@@ -1911,6 +1925,18 @@ pub fn build_checked(
             };
             Ok(Box::new(SwingConvictionRadar::new(cfg)))
         }
+        "structure_break_risk" => {
+            let cfg = StructureBreakRiskConfig {
+                bias_len: get_usize_p(params, "bias_len", 50, 2, 1000)?,
+                pivot_len: get_usize_p(params, "pivot_len", 5, 1, 50)?,
+                near_atr: get_f64_p(params, "near_atr", 1.5, 0.01, 100.0)?,
+                rsi_len: get_usize_p(params, "rsi_len", 14, 2, 500)?,
+                hold_bars: get_usize_p(params, "hold_bars", 10, 1, 500)?,
+                smooth_len: get_usize_p(params, "smooth_len", 3, 1, 100)?,
+                ..StructureBreakRiskConfig::default()
+            };
+            Ok(Box::new(StructureBreakRisk::new(cfg)))
+        }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
             let max_stage = get_usize_p(params, "max_stage_bars", 30, 1, 100000)?;
@@ -2050,6 +2076,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "bottom_formation",
     "market_average_relationship",
     "swing_conviction_radar",
+    "structure_break_risk",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_fvg",
@@ -2808,6 +2835,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "bottom_formation",
     "market_average_relationship",
     "swing_conviction_radar",
+    "structure_break_risk",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
@@ -2845,8 +2873,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 112);
-        assert_eq!(catalog().len(), 112);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 113);
+        assert_eq!(catalog().len(), 113);
     }
 
     #[test]
