@@ -28,6 +28,7 @@ from . import (
     oscillator_cycle_statistics,
     oscillators,
     revaluation_diff,
+    reversal_types,
     roc_advanced,
     sample_stats,
     scenario_structure,
@@ -78,4 +79,5 @@ ALL = (
     time_to_react,
     markov_state_engine,
     oscillator_cycle_statistics,
+    reversal_types,
 )

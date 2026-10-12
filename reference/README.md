@@ -50,6 +50,7 @@ Python 3.10 or newer; nothing else.
 | `golden_time_to_react` | `kestrel_reference/fixtures/time_to_react.py` |
 | `golden_markov_state_engine` | `kestrel_reference/fixtures/markov_state_engine.py` |
 | `golden_oscillator_cycle_statistics` | `kestrel_reference/fixtures/oscillator_cycle_statistics.py` |
+| `golden_reversal_types` | `kestrel_reference/fixtures/reversal_types.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.
