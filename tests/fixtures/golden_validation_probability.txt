@@ -11,11 +11,14 @@
 #
 # Isotonic calibration (IsotonicCalibrator). Samples with the same score form one block whose
 # value is their win rate. Adjacent blocks are pooled while a block's value is below its
-# predecessor's; a pooled block takes the weighted mean and its highest score as threshold.
-# Pooled here with a stack, not in place. Prediction: at or below the first threshold the
-# first probability, at or above the last the last one, on a threshold its probability, in
-# between linear between the neighbouring thresholds. iso<i>_score<j>/_won<j> are the samples,
-# _threshold<k>/_probability<k> the curve, _query<m>/_predicted<m> predictions from it.
+# predecessor's; a pooled block takes the weighted mean of its members. Every block puts its
+# lowest score and, if different, its highest score on the curve, both with the block's value,
+# so a score inside a pooled block maps to that block's value. Pooled here with a stack, not
+# in place. Prediction: at or below the first threshold the first probability, at or above the
+# last the last one, on a threshold its probability, in between linear between the
+# neighbouring thresholds. iso<i>_score<j>/_won<j> are the samples, _blocks the number of
+# blocks, _points/_threshold<k>/_probability<k> the curve, _query<m>/_predicted<m> predictions
+# from it.
 # Without pooling the ties first, iso0 would keep two blocks at score 0.5 (0.0 and 1.0).
 #
 # validation_probability_tolerance is the comparison tolerance the tests apply, stated rather
@@ -37,6 +40,7 @@ iso0_won2=1.0
 iso0_score3=0.9
 iso0_won3=1.0
 iso0_blocks=3.0
+iso0_points=3.0
 iso0_threshold0=0.2
 iso0_probability0=0.0
 iso0_threshold1=0.5
@@ -75,6 +79,7 @@ iso1_won5=0.0
 iso1_score6=1.0
 iso1_won6=1.0
 iso1_blocks=3.0
+iso1_points=3.0
 iso1_threshold0=0.3
 iso1_probability0=0.0
 iso1_threshold1=0.6
@@ -107,10 +112,13 @@ iso2_won4=1.0
 iso2_score5=0.9
 iso2_won5=1.0
 iso2_blocks=2.0
-iso2_threshold0=0.7
+iso2_points=3.0
+iso2_threshold0=0.4
 iso2_probability0=0.6
-iso2_threshold1=0.9
-iso2_probability1=1.0
+iso2_threshold1=0.7
+iso2_probability1=0.6
+iso2_threshold2=0.9
+iso2_probability2=1.0
 iso2_queries=5.0
 iso2_query0=0.4
 iso2_predicted0=0.6
@@ -131,6 +139,7 @@ iso3_won1=0.0
 iso3_score2=0.8
 iso3_won2=0.0
 iso3_blocks=1.0
+iso3_points=1.0
 iso3_threshold0=0.8
 iso3_probability0=0.3333333333333333
 iso3_queries=3.0
@@ -155,21 +164,26 @@ iso4_won4=0.0
 iso4_score5=60.0
 iso4_won5=1.0
 iso4_blocks=4.0
+iso4_points=6.0
 iso4_threshold0=10.0
 iso4_probability0=0.0
-iso4_threshold1=30.0
+iso4_threshold1=20.0
 iso4_probability1=0.5
-iso4_threshold2=50.0
+iso4_threshold2=30.0
 iso4_probability2=0.5
-iso4_threshold3=60.0
-iso4_probability3=1.0
+iso4_threshold3=40.0
+iso4_probability3=0.5
+iso4_threshold4=50.0
+iso4_probability4=0.5
+iso4_threshold5=60.0
+iso4_probability5=1.0
 iso4_queries=7.0
 iso4_query0=0.0
 iso4_predicted0=0.0
 iso4_query1=15.0
-iso4_predicted1=0.125
+iso4_predicted1=0.25
 iso4_query2=25.0
-iso4_predicted2=0.375
+iso4_predicted2=0.5
 iso4_query3=35.0
 iso4_predicted3=0.5
 iso4_query4=45.0

@@ -173,10 +173,10 @@ fn test_golden_isotonic_calibrator_pools_tied_scores() {
             .collect();
         let calibrator = IsotonicCalibrator::fit(&samples).unwrap();
 
-        let blocks = key("blocks") as usize;
+        let points = key("points") as usize;
         assert_eq!(
             calibrator.thresholds.len(),
-            blocks,
+            points,
             "iso{i}: {:?}",
             calibrator.thresholds
         );
@@ -185,7 +185,7 @@ fn test_golden_isotonic_calibrator_pools_tied_scores() {
             "iso{i}: thresholds must be strictly ascending, got {:?}",
             calibrator.thresholds
         );
-        for k in 0..blocks {
+        for k in 0..points {
             common::assert_close(
                 calibrator.thresholds[k],
                 key(&format!("threshold{k}")),

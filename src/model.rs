@@ -703,6 +703,10 @@ impl RiskPlan {
     /// Rounds `entry`/`stop_loss`/`target_1`/`target_2` to `instrument`'s tick size and
     /// recomputes `risk_reward_ratio` from the rounded prices, so a plan built from raw
     /// ATR-derived math becomes tradable at the instrument's actual price granularity.
+    ///
+    /// The ratio always comes from the rounded prices, never from `self`: if rounding collapses
+    /// the stop onto the entry there is no risk to divide by, and `risk_reward_ratio` is `NaN`.
+    /// Check [`RiskPlan::is_valid`] before using a rounded plan.
     pub fn rounded_to(&self, instrument: &InstrumentMeta) -> Self {
         let entry = instrument.round_to_tick(self.entry);
         let stop_loss = instrument.round_to_tick(self.stop_loss);
@@ -711,11 +715,7 @@ impl RiskPlan {
 
         let risk = (entry - stop_loss).abs();
         let reward = (target_2 - entry).abs();
-        let risk_reward_ratio = if risk > 0.0 {
-            reward / risk
-        } else {
-            self.risk_reward_ratio
-        };
+        let risk_reward_ratio = if risk > 0.0 { reward / risk } else { f64::NAN };
 
         Self {
             entry,
@@ -724,6 +724,22 @@ impl RiskPlan {
             target_2,
             risk_reward_ratio,
         }
+    }
+
+    /// A plan is tradable when all prices are finite, the stop and the final target lie strictly
+    /// on opposite sides of the entry (non-zero risk and reward), and `risk_reward_ratio` is
+    /// finite. Tick rounding can break this by collapsing a level onto the entry.
+    pub fn is_valid(&self) -> bool {
+        let finite = [self.entry, self.stop_loss, self.target_1, self.target_2]
+            .iter()
+            .all(|p| p.is_finite());
+        let risk = self.entry - self.stop_loss;
+        let reward = self.target_2 - self.entry;
+        finite
+            && risk != 0.0
+            && reward != 0.0
+            && risk.signum() == reward.signum()
+            && self.risk_reward_ratio.is_finite()
     }
 }
 
@@ -753,5 +769,29 @@ mod risk_plan_tests {
 
         let expected_rrr = (103.0f64 - 100.25).abs() / (100.25f64 - 98.75).abs();
         assert!((rounded.risk_reward_ratio - expected_rrr).abs() < 1e-9);
+        assert!(rounded.is_valid());
+    }
+
+    /// N30: rounding that collapses the stop onto the entry must not keep the old ratio.
+    #[test]
+    fn test_risk_plan_collapsed_by_rounding_is_invalid() {
+        let plan = RiskPlan {
+            entry: 100.1,
+            stop_loss: 99.9,
+            target_1: 100.3,
+            target_2: 100.5,
+            risk_reward_ratio: 2.0,
+        };
+        assert!(plan.is_valid());
+        let instrument = InstrumentMeta {
+            tick_size: 1.0,
+            ..InstrumentMeta::default()
+        };
+        let rounded = plan.rounded_to(&instrument);
+        assert_eq!(rounded.entry, 100.0);
+        assert_eq!(rounded.stop_loss, 100.0);
+        assert_eq!(rounded.target_2, 101.0);
+        assert!(rounded.risk_reward_ratio.is_nan());
+        assert!(!rounded.is_valid());
     }
 }

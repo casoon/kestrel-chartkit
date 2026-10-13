@@ -75,6 +75,12 @@ impl SessionConfig {
 }
 
 /// Session membership and opening-range state for a stream of bars.
+///
+/// The session start and the opening range are separate: the first bar of a session marks the
+/// session as started, but only bars whose opening timestamp falls inside the ORB window
+/// (`orb_duration_mins` from the session open) contribute to the opening range. If the first bar
+/// received for a session lies after that window (a late start, a data gap), the session has no
+/// opening range and [`SessionTracker::orb_high`]/[`SessionTracker::orb_low`] stay `None`.
 #[derive(Debug, Clone)]
 pub struct SessionTracker {
     config: SessionConfig,
@@ -143,17 +149,22 @@ impl SessionTracker {
 
         if self.is_new_session_bar {
             self.session_open_ts = Some(session_open_utc);
-            self.orb_high = Some(bar.high);
-            self.orb_low = Some(bar.low);
+            self.orb_high = None;
+            self.orb_low = None;
         }
 
         let elapsed = bar.timestamp - session_open_utc;
         self.in_orb_window =
             elapsed >= 0 && elapsed < i64::from(self.config.orb_duration_mins).saturating_mul(60);
-        if self.in_orb_window && !self.is_new_session_bar {
+        if self.in_orb_window {
             self.orb_high = Some(self.orb_high.unwrap_or(bar.high).max(bar.high));
             self.orb_low = Some(self.orb_low.unwrap_or(bar.low).min(bar.low));
         }
+    }
+
+    /// The configuration this tracker was built with.
+    pub fn config(&self) -> &SessionConfig {
+        &self.config
     }
 
     pub fn is_new_session(&self) -> bool {
@@ -216,6 +227,35 @@ mod tests {
         tracker.on_bar(&bar(75_600, 110.0, 90.0));
         assert!(!tracker.in_session());
         assert!(!tracker.in_orb_window());
+    }
+
+    /// N20: the first bar arriving after the ORB window starts the session but must not form an
+    /// opening range.
+    #[test]
+    fn late_first_bar_starts_session_without_opening_range() {
+        let mut tracker = SessionTracker::new(SessionConfig {
+            start_hour: 9,
+            start_minute: 0,
+            end_hour: 17,
+            end_minute: 0,
+            orb_duration_mins: 30,
+            utc_offset_seconds: 0,
+        })
+        .unwrap();
+
+        tracker.on_bar(&bar(12 * 3_600, 105.0, 99.0));
+        assert!(tracker.in_session());
+        assert!(tracker.is_new_session());
+        assert_eq!(tracker.session_open_timestamp(), Some(9 * 3_600));
+        assert!(!tracker.in_orb_window());
+        assert_eq!(tracker.orb_high(), None);
+        assert_eq!(tracker.orb_low(), None);
+        assert_eq!(tracker.orb_range(), None);
+
+        // The next session, observed from its open, forms its range again.
+        tracker.on_bar(&bar(DAY_SECONDS + 9 * 3_600, 110.0, 101.0));
+        assert_eq!(tracker.orb_high(), Some(110.0));
+        assert_eq!(tracker.orb_low(), Some(101.0));
     }
 
     #[test]
