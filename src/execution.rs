@@ -157,8 +157,10 @@ pub struct FillSimulatorConfig {
     /// of that bar's volume (`None` = no cap, fill fully when price conditions are met). Models
     /// participation-rate-limited partial fills.
     pub max_fill_ratio_of_volume: Option<f64>,
-    /// Maximum number of same-direction fills accumulated into one position (pyramiding cap).
-    /// `None` = unlimited.
+    /// Maximum number of same-direction entry orders accumulated into one position (pyramiding
+    /// cap). Checked at submission and again at fill time, so orders submitted while flat cannot
+    /// jointly exceed it; an entry order that would exceed it when its fill conditions are met is
+    /// cancelled. Partial fills of one order count as one entry. `None` = unlimited.
     pub max_pyramid_entries: Option<u32>,
     /// Same-bar tie-break when a bracket's stop-loss and take-profit are both touched by the same
     /// OHLC bar. See [`IntrabarFillPolicy`].
@@ -224,7 +226,16 @@ impl FillSimulator {
         if quantity <= 0.0 {
             return None;
         }
-        let would_pyramid = self.position.quantity != 0.0
+        // Bracket exits close a position; the pyramid cap is about entries.
+        let is_exit = matches!(
+            bracket,
+            Some(BracketLink {
+                role: BracketRole::StopLoss | BracketRole::TakeProfit,
+                ..
+            })
+        );
+        let would_pyramid = !is_exit
+            && self.position.quantity != 0.0
             && self.position.quantity.signum() == side.sign()
             && self.pyramid_entries > 0;
         if would_pyramid {
@@ -332,16 +343,37 @@ impl FillSimulator {
             }
         }
         for (entry_id, (stop_id, target_id)) in brackets {
-            let ordered = match self.config.bracket_intrabar_policy {
-                IntrabarFillPolicy::StopFirst => [stop_id, target_id],
-                IntrabarFillPolicy::TargetFirst => [target_id, stop_id],
+            // An exit whose level the bar opened beyond was hit at the open, before the other;
+            // the policy only decides when the open lies between the two levels.
+            let gapped = |id: Option<u64>| {
+                id.and_then(|id| self.orders.iter().find(|o| o.id == id))
+                    .is_some_and(|o| crossed_at_open(o, bar))
+            };
+            let ordered = if gapped(target_id) {
+                [target_id, stop_id]
+            } else if gapped(stop_id) {
+                [stop_id, target_id]
+            } else {
+                match self.config.bracket_intrabar_policy {
+                    IntrabarFillPolicy::StopFirst => [stop_id, target_id],
+                    IntrabarFillPolicy::TargetFirst => [target_id, stop_id],
+                }
             };
             for id in ordered.into_iter().flatten() {
+                let Some(exit_side) = self.orders.iter().find(|o| o.id == id).map(|o| o.side)
+                else {
+                    continue;
+                };
+                // Bounded by the bracket's own budget and by the position it protects actually
+                // still being open: an exit never opens a new position the other way, e.g. after
+                // another order already closed it.
+                let protected = (-self.position.quantity * exit_side.sign()).max(0.0);
                 let capacity = self
                     .bracket_state
                     .get(&entry_id)
                     .map(|s| s.entry_filled - s.exit_closed)
-                    .unwrap_or(0.0);
+                    .unwrap_or(0.0)
+                    .min(protected);
                 if capacity <= 0.0 {
                     continue;
                 }
@@ -356,10 +388,33 @@ impl FillSimulator {
             }
         }
 
-        for fill in &bar_fills {
-            self.apply_fill(fill);
-        }
         self.fills.extend(bar_fills.iter().copied());
+
+        // Trailing stops ratchet only after the bar has been checked against the stop as it
+        // stood at the open: OHLC does not say whether the high came before the low, so a bar
+        // cannot both raise a stop and hit the raised level. A trailing stop therefore has no
+        // level (and cannot fill) on its first bar.
+        for order in &mut self.orders {
+            if !matches!(
+                order.status,
+                OrderStatus::Pending | OrderStatus::PartiallyFilled
+            ) {
+                continue;
+            }
+            if let OrderKind::Trailing { trail_amount } = order.kind {
+                // Sell (exits a long): stop trails below the high, ratcheting up only.
+                // Buy (exits/covers a short): stop trails above the low, ratcheting down only.
+                let candidate = match order.side {
+                    OrderSide::Sell => bar.high - trail_amount,
+                    OrderSide::Buy => bar.low + trail_amount,
+                };
+                order.trailing_stop_price = Some(match (order.trailing_stop_price, order.side) {
+                    (Some(prev), OrderSide::Sell) => prev.max(candidate),
+                    (Some(prev), OrderSide::Buy) => prev.min(candidate),
+                    (None, _) => candidate,
+                });
+            }
+        }
 
         // Once a bracket's exit capacity is exhausted (the position it protects is fully
         // closed), cancel the untouched sibling instead of leaving a dead resting order that can
@@ -390,6 +445,7 @@ impl FillSimulator {
         let Some(idx) = self.orders.iter().position(|o| o.id == order_id) else {
             return;
         };
+        let mut armed_before_bar = false;
 
         {
             let order = &mut self.orders[idx];
@@ -400,21 +456,8 @@ impl FillSimulator {
                 return;
             }
 
-            if let OrderKind::Trailing { trail_amount } = order.kind {
-                // Sell (exits a long): stop trails below the high, ratcheting up only.
-                // Buy (exits/covers a short): stop trails above the low, ratcheting down only.
-                let candidate = match order.side {
-                    OrderSide::Sell => bar.high - trail_amount,
-                    OrderSide::Buy => bar.low + trail_amount,
-                };
-                order.trailing_stop_price = Some(match (order.trailing_stop_price, order.side) {
-                    (Some(prev), OrderSide::Sell) => prev.max(candidate),
-                    (Some(prev), OrderSide::Buy) => prev.min(candidate),
-                    (None, _) => candidate,
-                });
-            }
-
             if let OrderKind::StopLimit { trigger, .. } = order.kind {
+                armed_before_bar = order.stop_triggered;
                 if !order.stop_triggered {
                     let crossed = match order.side {
                         OrderSide::Buy => bar.high >= trigger,
@@ -427,11 +470,16 @@ impl FillSimulator {
             }
         }
 
+        let Some(fill_price) = fill_price_for(&self.orders[idx], bar, armed_before_bar) else {
+            return;
+        };
+        if self.exceeds_pyramid_cap(&self.orders[idx]) {
+            self.cancel(order_id);
+            return;
+        }
+
         let (oid, side, bracket, executed_price, fill_qty, fee) = {
             let order = &self.orders[idx];
-            let Some(fill_price) = fill_price_for(order, bar) else {
-                return;
-            };
 
             let remaining = order.quantity - order.filled_quantity;
             let mut fill_qty = max_fill_qty
@@ -460,6 +508,7 @@ impl FillSimulator {
             )
         };
 
+        let first_fill = self.orders[idx].filled_quantity == 0.0;
         let new_status = {
             let order = &mut self.orders[idx];
             order.filled_quantity += fill_qty;
@@ -471,14 +520,18 @@ impl FillSimulator {
             order.status
         };
 
-        bar_fills.push(Fill {
+        let fill = Fill {
             order_id: oid,
             side,
             price: executed_price,
             quantity: fill_qty,
             fee,
             timestamp,
-        });
+        };
+        // Applied immediately, so a later order in the same bar sees the updated position and
+        // pyramid count.
+        self.apply_fill(&fill, first_fill);
+        bar_fills.push(fill);
 
         if let Some(link) = bracket {
             let state = self.bracket_state.entry(link.entry_id).or_default();
@@ -526,7 +579,20 @@ impl FillSimulator {
         }
     }
 
-    fn apply_fill(&mut self, fill: &Fill) {
+    /// Whether filling `order` now would add a new same-direction entry beyond
+    /// `max_pyramid_entries`. Continuation fills of an already partially filled order are not a
+    /// new entry.
+    fn exceeds_pyramid_cap(&self, order: &Order) -> bool {
+        let Some(max) = self.config.max_pyramid_entries else {
+            return false;
+        };
+        order.filled_quantity == 0.0
+            && self.position.quantity != 0.0
+            && self.position.quantity.signum() == order.side.sign()
+            && self.pyramid_entries >= max
+    }
+
+    fn apply_fill(&mut self, fill: &Fill, first_fill: bool) {
         let signed_qty = fill.quantity * fill.side.sign();
         let prev_qty = self.position.quantity;
         let new_qty = prev_qty + signed_qty;
@@ -542,7 +608,7 @@ impl FillSimulator {
             };
             if prev_qty == 0.0 {
                 self.pyramid_entries = 1;
-            } else {
+            } else if first_fill {
                 self.pyramid_entries += 1;
             }
         } else {
@@ -566,7 +632,22 @@ impl FillSimulator {
     }
 }
 
-fn fill_price_for(order: &Order, bar: &Bar) -> Option<f64> {
+/// Whether the bar opened beyond the order's level, so it was hit at the open (limit and stop
+/// kinds only).
+fn crossed_at_open(order: &Order, bar: &Bar) -> bool {
+    match (order.kind, order.side) {
+        (OrderKind::Limit { price }, OrderSide::Buy) => bar.open <= price,
+        (OrderKind::Limit { price }, OrderSide::Sell) => bar.open >= price,
+        (OrderKind::Stop { trigger }, OrderSide::Buy) => bar.open >= trigger,
+        (OrderKind::Stop { trigger }, OrderSide::Sell) => bar.open <= trigger,
+        _ => false,
+    }
+}
+
+/// `armed_before_bar`: for a stop-limit, whether its trigger had already been crossed before this
+/// bar opened. Otherwise it was crossed during this bar, and the limit only became active at the
+/// trigger price (or at the open, if the bar gapped through it).
+fn fill_price_for(order: &Order, bar: &Bar, armed_before_bar: bool) -> Option<f64> {
     match order.kind {
         OrderKind::Market => Some(bar.open),
         OrderKind::Limit { price } => match order.side {
@@ -579,16 +660,33 @@ fn fill_price_for(order: &Order, bar: &Bar) -> Option<f64> {
             OrderSide::Sell if bar.low <= trigger => Some(trigger.min(bar.open)),
             _ => None,
         },
-        OrderKind::StopLimit { limit, .. } => {
+        OrderKind::StopLimit { trigger, limit } => {
             // `order.stop_triggered` is updated (and persisted across bars) by the caller before
             // this is invoked, so a trigger crossed on an earlier bar still counts here even if
             // price has since retreated back through the trigger level.
             if !order.stop_triggered {
                 return None;
             }
+            // Once armed it is a plain limit order; like one, it fills at the price where it
+            // became active if that is already better than the limit — never at the limit when
+            // the bar did not trade there.
             match order.side {
-                OrderSide::Buy if bar.low <= limit => Some(limit),
-                OrderSide::Sell if bar.high >= limit => Some(limit),
+                OrderSide::Buy if bar.low <= limit => {
+                    let active_at = if armed_before_bar {
+                        bar.open
+                    } else {
+                        trigger.max(bar.open)
+                    };
+                    Some(limit.min(active_at))
+                }
+                OrderSide::Sell if bar.high >= limit => {
+                    let active_at = if armed_before_bar {
+                        bar.open
+                    } else {
+                        trigger.min(bar.open)
+                    };
+                    Some(limit.max(active_at))
+                }
                 _ => None,
             }
         }
@@ -836,6 +934,87 @@ mod tests {
         assert!((third[0].price - 106.0).abs() < 1e-9);
     }
 
+    /// A wide first bar cannot both set the trailing stop from its high and hit it with its low.
+    #[test]
+    fn test_trailing_stop_does_not_fill_on_the_bar_that_sets_it() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig::default());
+        sim.submit(
+            OrderSide::Sell,
+            OrderKind::Trailing { trail_amount: 5.0 },
+            1.0,
+        );
+        assert!(sim
+            .on_bar(&bar(100.0, 110.0, 95.0, 108.0, 1000.0), 0)
+            .is_empty());
+        // Stop now 105; the next bar trades through it.
+        let fills = sim.on_bar(&bar(107.0, 108.0, 104.0, 104.5, 1000.0), 60);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].price, 105.0);
+    }
+
+    /// A bar opening beyond the target filled the target at the open, whatever the policy.
+    #[test]
+    fn test_bracket_open_beyond_target_beats_stop_first_policy() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig::default());
+        let (_, stop_id, target_id) = submit_bracket(
+            &mut sim,
+            OrderSide::Buy,
+            1.0,
+            OrderKind::Market,
+            95.0,
+            105.0,
+        )
+        .unwrap();
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.0, 1000.0), 0);
+        let fills = sim.on_bar(&bar(106.0, 107.0, 94.0, 100.0, 1000.0), 60);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].order_id, target_id);
+        assert_eq!(fills[0].price, 106.0);
+        assert!(sim.open_orders().all(|o| o.id != stop_id));
+    }
+
+    /// Once another order has closed the position, a bracket exit must not open a reverse one.
+    #[test]
+    fn test_bracket_exit_does_not_reverse_a_position_closed_elsewhere() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig::default());
+        submit_bracket(
+            &mut sim,
+            OrderSide::Buy,
+            1.0,
+            OrderKind::Market,
+            95.0,
+            105.0,
+        )
+        .unwrap();
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.0, 1000.0), 0);
+        sim.submit(OrderSide::Sell, OrderKind::Market, 1.0);
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.0, 1000.0), 60);
+        assert_eq!(sim.position().quantity, 0.0);
+        let fills = sim.on_bar(&bar(98.0, 98.0, 90.0, 91.0, 1000.0), 120);
+        assert!(fills.is_empty());
+        assert_eq!(sim.position().quantity, 0.0);
+    }
+
+    /// The pyramid cap applies to entries; a bracket's exits must not be rejected by it.
+    #[test]
+    fn test_bracket_exits_not_rejected_by_pyramid_cap() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig {
+            max_pyramid_entries: Some(1),
+            ..Default::default()
+        });
+        sim.submit(OrderSide::Sell, OrderKind::Market, 1.0);
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.0, 1000.0), 0);
+        assert!(submit_bracket(
+            &mut sim,
+            OrderSide::Buy,
+            1.0,
+            OrderKind::Limit { price: 90.0 },
+            85.0,
+            95.0
+        )
+        .is_some());
+    }
+
     #[test]
     fn test_cancel_prevents_future_fills() {
         let mut sim = FillSimulator::new(FillSimulatorConfig::default());
@@ -1029,12 +1208,11 @@ mod tests {
         );
     }
 
-    /// Documents current, accepted behavior (not a bug fixed by finding 02): pending same-
-    /// direction entry orders are not counted against `max_pyramid_entries` while the position is
-    /// flat, only already-filled positions are. Two pending brackets can therefore both go on to
-    /// fill even with a pyramid cap of 1.
+    /// Same-direction entries submitted while flat are all accepted at submission, but the
+    /// pyramid cap is enforced again at fill time: with a cap of 1 only the first fills, the
+    /// second is cancelled.
     #[test]
-    fn test_pending_same_direction_entries_not_capped_by_pyramid_limit_while_flat() {
+    fn test_pending_same_direction_entries_capped_by_pyramid_limit_at_fill() {
         let mut sim = FillSimulator::new(FillSimulatorConfig {
             max_pyramid_entries: Some(1),
             ..Default::default()
@@ -1042,14 +1220,68 @@ mod tests {
         let first = sim.submit(OrderSide::Buy, OrderKind::Limit { price: 100.0 }, 5.0);
         let second = sim.submit(OrderSide::Buy, OrderKind::Limit { price: 100.0 }, 5.0);
         assert!(first.is_some());
-        assert!(
-            second.is_some(),
-            "pending pyramid cap is not yet enforced pre-fill"
-        );
+        assert!(second.is_some());
 
         let fills = sim.on_bar(&bar(100.0, 100.0, 99.0, 100.0, 1000.0), 0);
-        assert_eq!(fills.len(), 2);
-        assert_eq!(sim.position().quantity, 10.0);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].order_id, first.unwrap());
+        assert_eq!(sim.position().quantity, 5.0);
+        assert_eq!(sim.open_orders().count(), 0);
+    }
+
+    /// A partially filled entry keeps filling under the cap: its continuation fills are the same
+    /// entry, not a new pyramid level.
+    #[test]
+    fn test_partial_fills_of_one_order_count_as_one_pyramid_entry() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig {
+            max_pyramid_entries: Some(1),
+            max_fill_ratio_of_volume: Some(0.1),
+            ..Default::default()
+        });
+        sim.submit(OrderSide::Buy, OrderKind::Market, 100.0);
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.5, 500.0), 0);
+        sim.on_bar(&bar(100.0, 101.0, 99.0, 100.5, 500.0), 60);
+        assert_eq!(sim.position().quantity, 100.0);
+    }
+
+    /// An already armed stop-limit is a plain limit order: a buy fills at the open when the open
+    /// is below the limit, never at a limit price above the bar's high.
+    #[test]
+    fn test_armed_stop_limit_fills_inside_bar_range() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig::default());
+        sim.submit(
+            OrderSide::Buy,
+            OrderKind::StopLimit {
+                trigger: 105.0,
+                limit: 103.0,
+            },
+            1.0,
+        );
+        // Armed (high 106 >= 105), limit 103 not reached (low 104).
+        assert!(sim
+            .on_bar(&bar(104.5, 106.0, 104.0, 105.0, 1000.0), 0)
+            .is_empty());
+        let fills = sim.on_bar(&bar(100.0, 102.0, 99.0, 101.0, 1000.0), 60);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].price, 100.0);
+    }
+
+    /// Triggered within the bar with the limit above the trigger: the order becomes active at the
+    /// trigger and fills there, not at the (worse, untraded) limit.
+    #[test]
+    fn test_stop_limit_triggered_intrabar_fills_at_trigger_when_limit_is_looser() {
+        let mut sim = FillSimulator::new(FillSimulatorConfig::default());
+        sim.submit(
+            OrderSide::Sell,
+            OrderKind::StopLimit {
+                trigger: 95.0,
+                limit: 93.0,
+            },
+            1.0,
+        );
+        let fills = sim.on_bar(&bar(97.0, 98.0, 94.0, 94.5, 1000.0), 0);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].price, 95.0);
     }
 
     /// Fees/spread/slippage change fill *prices*, not the bracket linkage/capacity logic: the

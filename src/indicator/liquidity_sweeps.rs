@@ -103,6 +103,11 @@ impl Indicator for LiquiditySweepEngine {
             }
         }
 
+        // A level the bar traded beyond is taken — swept (reclaimed) or broken (accepted beyond);
+        // either way its resting liquidity is gone and it must not fire again.
+        self.pivot_highs.retain(|&ph| bar.high <= ph);
+        self.pivot_lows.retain(|&pl| bar.low >= pl);
+
         // Check for Equal Highs / Equal Lows cluster count
         let eqh_count = self
             .pivot_highs
@@ -148,6 +153,24 @@ impl Indicator for LiquiditySweepEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_level_broken_earlier_does_not_sweep_again() {
+        let mut sweep = LiquiditySweepEngine::new(2, 0.2);
+        // Pivot high 100 at bar 2, confirmed at bar 4.
+        let highs = [96.0, 98.0, 100.0, 98.0, 96.0];
+        for (i, h) in highs.iter().enumerate() {
+            sweep.on_bar(&Bar::new(i as i64, h - 1.0, *h, h - 2.0, h - 1.0, 1.0));
+        }
+        // Breakout: closes at 109, the level is taken.
+        sweep.on_bar(&Bar::new(5, 99.0, 110.0, 98.0, 109.0, 1.0));
+        sweep.on_bar(&Bar::new(6, 109.0, 109.5, 104.0, 105.0, 1.0));
+        // Pierces 100 again and closes below it: no longer a sweep of that level.
+        let out = sweep
+            .on_bar(&Bar::new(7, 101.0, 111.0, 99.0, 99.5, 1.0))
+            .unwrap();
+        assert_eq!(out.extra["sweep"], 0.0);
+    }
 
     #[test]
     fn test_liquidity_sweep_detection() {

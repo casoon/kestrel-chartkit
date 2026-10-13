@@ -52,8 +52,12 @@ impl Indicator for BuySellPressureEstimator {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         let range = (bar.high - bar.low).max(1e-8);
 
-        // Location of close within range (-1.0 .. +1.0)
-        let location = (2.0 * (bar.close - bar.low) / range) - 1.0;
+        // Location of close within range (-1.0 .. +1.0); neutral for a bar without range.
+        let location = if bar.high > bar.low {
+            (2.0 * (bar.close - bar.low) / range) - 1.0
+        } else {
+            0.0
+        };
 
         // Upper wick vs Lower wick ratio
         let upper_wick = bar.high - bar.high.min(bar.open.max(bar.close));

@@ -72,23 +72,30 @@ impl MultiSeriesSync {
         })
     }
 
-    /// Batch aligns two full series of bars by timestamp.
+    /// Batch aligns two full series of bars by timestamp. Each primary bar is paired with the
+    /// latest benchmark bar at or before its timestamp (as-of join), so a benchmark sampled on a
+    /// slightly different clock is forward-filled rather than dropped; `benchmark_source_timestamp`
+    /// tells the two apart. Primary bars before the first benchmark bar are skipped. Of several
+    /// benchmark bars with the same timestamp, the last one wins. Meant for series of the same
+    /// bar duration: timestamps are bar opens, so a longer benchmark bar would be paired before
+    /// it has closed.
     pub fn align_series(
         primary_series: &[Bar],
         benchmark_series: &[Bar],
     ) -> Vec<SynchronizedBarPair> {
-        let mut bench_map: HashMap<i64, Bar> = HashMap::new();
-        for b in benchmark_series {
-            bench_map.insert(b.timestamp, b.clone());
-        }
+        let mut benchmark: Vec<&Bar> = benchmark_series.iter().collect();
+        benchmark.sort_by_key(|b| b.timestamp);
 
-        let mut sync = MultiSeriesSync::new();
         let mut result = Vec::with_capacity(primary_series.len());
-
         for p_bar in primary_series {
-            let b_bar = bench_map.get(&p_bar.timestamp);
-            if let Some(pair) = sync.align_step(p_bar, b_bar) {
-                result.push(pair);
+            let end = benchmark.partition_point(|b| b.timestamp <= p_bar.timestamp);
+            if let Some(b_bar) = end.checked_sub(1).map(|i| benchmark[i]) {
+                result.push(SynchronizedBarPair {
+                    timestamp: p_bar.timestamp,
+                    primary: p_bar.clone(),
+                    benchmark: b_bar.clone(),
+                    benchmark_source_timestamp: b_bar.timestamp,
+                });
             }
         }
 
@@ -213,6 +220,21 @@ impl MultiSeriesAligner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn align_series_forward_fills_offset_benchmark_clock() {
+        let bar = |t: i64, c: f64| Bar::new(t, c, c, c, c, 1.0);
+        let pairs = MultiSeriesSync::align_series(
+            &[bar(60, 1.0), bar(120, 2.0)],
+            &[bar(59, 10.0), bar(119, 20.0)],
+        );
+        assert_eq!(pairs.len(), 2);
+        assert_eq!(pairs[0].benchmark.close, 10.0);
+        assert_eq!(pairs[0].benchmark_source_timestamp, 59);
+        assert_eq!(pairs[1].benchmark.close, 20.0);
+        // Before the first benchmark bar there is nothing to pair.
+        assert!(MultiSeriesSync::align_series(&[bar(30, 1.0)], &[bar(59, 10.0)]).is_empty());
+    }
 
     #[test]
     fn test_multi_series_sync_forward_fill() {

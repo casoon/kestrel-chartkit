@@ -19,7 +19,8 @@ pub enum TrendRelation {
     /// Fast below slow and still falling: a confirmed, still-strengthening downtrend.
     Bearish,
     /// Fast/slow relationship disagrees with the fast leg's own slope (e.g. fast above slow but
-    /// now falling) — likely losing momentum or about to cross.
+    /// now falling) — likely losing momentum or about to cross. Also when fast equals slow or the
+    /// fast leg is flat: equality is neither side.
     Transition,
 }
 
@@ -103,8 +104,16 @@ impl Indicator for AdaptiveTrendRelationship {
             }
         };
 
-        let above = fast > slow;
-        if let Some(prev_above) = self.prev_relation_above {
+        // Equal lines are neither above nor below: no relation of their own, and a cross is only
+        // reported once the fast line is strictly on the other side of the last strict relation.
+        let above = if fast > slow {
+            Some(true)
+        } else if fast < slow {
+            Some(false)
+        } else {
+            None
+        };
+        if let (Some(prev_above), Some(above)) = (self.prev_relation_above, above) {
             if prev_above != above {
                 let (kind, note) = if above {
                     (
@@ -120,12 +129,23 @@ impl Indicator for AdaptiveTrendRelationship {
                 self.alerts.push(IndicatorAlert::new(kind, note, 1.0));
             }
         }
-        self.prev_relation_above = Some(above);
+        if above.is_some() {
+            self.prev_relation_above = above;
+        }
 
-        let rising = self.prev_fast.map(|p| fast > p);
+        // `None` on the first bar (no slope yet), `Some(None)` for a flat fast leg.
+        let rising = self.prev_fast.map(|p| {
+            if fast > p {
+                Some(true)
+            } else if fast < p {
+                Some(false)
+            } else {
+                None
+            }
+        });
         let relation = match (above, rising) {
-            (true, Some(true)) | (true, None) => TrendRelation::Bullish,
-            (false, Some(false)) | (false, None) => TrendRelation::Bearish,
+            (Some(true), Some(Some(true)) | None) => TrendRelation::Bullish,
+            (Some(false), Some(Some(false)) | None) => TrendRelation::Bearish,
             _ => TrendRelation::Transition,
         };
         self.prev_fast = Some(fast);
@@ -149,6 +169,17 @@ impl Indicator for AdaptiveTrendRelationship {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn constant_prices_are_not_bearish() {
+        let mut ind = AdaptiveTrendRelationship::new(SmootherKind::Ema, 3, SmootherKind::Ema, 8);
+        let mut last = None;
+        for b in bars_from_closes(&[100.0; 20]) {
+            last = ind.on_bar(&b);
+            assert!(ind.alerts().is_empty());
+        }
+        assert_eq!(last.unwrap().state.as_deref(), Some("transition"));
+    }
 
     fn bars_from_closes(closes: &[f64]) -> Vec<Bar> {
         closes

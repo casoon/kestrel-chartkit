@@ -172,8 +172,24 @@ impl OutcomeRecorder {
                 _ => false,
             };
 
+            // A bar that opens beyond a level has hit it at the open, before anything else and at
+            // the open price; only an open between the levels leaves the intrabar order unknown.
+            let (target_at_open, stop_at_open) = match setup.trigger {
+                TriggerAction::Buy => {
+                    (bar.open >= setup.target_price, bar.open <= setup.stop_price)
+                }
+                TriggerAction::Sell => {
+                    (bar.open <= setup.target_price, bar.open >= setup.stop_price)
+                }
+                _ => (false, false),
+            };
+
             if hit_target || hit_stop || setup.duration_bars >= setup.max_duration_bars {
-                let target_wins = if hit_target && hit_stop {
+                let target_wins = if target_at_open {
+                    true
+                } else if stop_at_open {
+                    false
+                } else if hit_target && hit_stop {
                     match self.intrabar_fill_policy {
                         IntrabarFillPolicy::StopFirst => false,
                         IntrabarFillPolicy::TargetFirst => true,
@@ -194,9 +210,17 @@ impl OutcomeRecorder {
                 };
 
                 let exit_price = if target_wins {
-                    setup.target_price
+                    if target_at_open {
+                        bar.open
+                    } else {
+                        setup.target_price
+                    }
                 } else if hit_stop {
-                    setup.stop_price
+                    if stop_at_open {
+                        bar.open
+                    } else {
+                        setup.stop_price
+                    }
                 } else {
                     bar.close
                 };
@@ -247,6 +271,31 @@ impl OutcomeRecorder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_gap_through_stop_exits_at_open() {
+        let mut recorder = OutcomeRecorder::new();
+        recorder
+            .record_setup(1000, TriggerAction::Buy, 0.8, 0.9, 100.0, 105.0, 95.0, 10)
+            .unwrap();
+        recorder.on_bar(&Bar::new(1060, 90.0, 92.0, 89.0, 91.0, 1000.0));
+        let rec = &recorder.completed_records()[0];
+        assert_eq!(rec.outcome, TradeOutcome::Loss);
+        assert_eq!(rec.exit_price, 90.0);
+        assert_eq!(rec.realized_r_multiple, -2.0);
+    }
+
+    #[test]
+    fn test_open_beyond_target_wins_despite_stop_first_policy() {
+        let mut recorder = OutcomeRecorder::new();
+        recorder
+            .record_setup(1000, TriggerAction::Buy, 0.8, 0.9, 100.0, 105.0, 95.0, 10)
+            .unwrap();
+        recorder.on_bar(&Bar::new(1060, 106.0, 107.0, 94.0, 100.0, 1000.0));
+        let rec = &recorder.completed_records()[0];
+        assert_eq!(rec.outcome, TradeOutcome::Win);
+        assert_eq!(rec.exit_price, 106.0);
+    }
 
     #[test]
     fn test_outcome_recorder_win() {

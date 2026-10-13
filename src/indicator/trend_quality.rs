@@ -88,7 +88,14 @@ impl Indicator for TrendQualityScoreEngine {
         };
         self.prev_ema = Some(ema_val);
 
-        let direction = if slope > 0.0 { 1.0 } else { -1.0 };
+        // A flat EMA (and the first bar, which has no slope yet) has no direction.
+        let direction = if slope > 0.0 {
+            1.0
+        } else if slope < 0.0 {
+            -1.0
+        } else {
+            0.0
+        };
         let strength = (adx_out.value / 50.0).clamp(0.0, 1.0); // ADX normalized
         let participation = (rvol_val / 2.0).clamp(0.2, 1.0); // RVOL normalized
 

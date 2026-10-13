@@ -37,7 +37,8 @@ impl OrderBlockEngine {
         }
     }
 
-    /// Alle noch aktiven Order-Block-Zonen.
+    /// Alle noch aktiven Order-Block-Zonen (invalidierte werden auf ihrer
+    /// Invalidierungskerze entfernt).
     ///
     /// Die `extra`-Ausgabe führt nur die **letzte** als `active_ob_top`/
     /// `active_ob_bottom`; für eine Zonen-Registry, die alle Bereiche als
@@ -137,14 +138,13 @@ impl Indicator for OrderBlockEngine {
             self.active_obs.push(ob_zone);
         }
 
-        // Check mitigation of existing active OBs
-        let mut active_count = 0.0f64;
+        // Check mitigation of existing active OBs. A zone born on this bar is not tested against
+        // its own displacement bar: a retest needs a later return into the zone.
         for ob in self.active_obs.iter_mut() {
-            if ob.mitigated {
+            if ob.created_bar == self.bar_count {
                 continue;
             }
             if ob.is_bullish {
-                active_count += 1.0;
                 if curr_bar.low <= ob.top {
                     if curr_bar.close < ob.bottom {
                         ob.mitigated = true;
@@ -156,21 +156,26 @@ impl Indicator for OrderBlockEngine {
                         ));
                     }
                 }
-            } else {
-                active_count -= 1.0;
-                if curr_bar.high >= ob.bottom {
-                    if curr_bar.close > ob.top {
-                        ob.mitigated = true;
-                    } else {
-                        self.alerts.push(IndicatorAlert::new(
-                            "ob_retest_bearish",
-                            format!("Retest of Bearish Supply Zone (${:.2})", ob.bottom),
-                            0.80,
-                        ));
-                    }
+            } else if curr_bar.high >= ob.bottom {
+                if curr_bar.close > ob.top {
+                    ob.mitigated = true;
+                } else {
+                    self.alerts.push(IndicatorAlert::new(
+                        "ob_retest_bearish",
+                        format!("Retest of Bearish Supply Zone (${:.2})", ob.bottom),
+                        0.80,
+                    ));
                 }
             }
         }
+
+        // Counted after invalidation, so a zone broken on this bar is no longer active.
+        self.active_obs.retain(|ob| !ob.mitigated);
+        let active_count: f64 = self
+            .active_obs
+            .iter()
+            .map(|ob| if ob.is_bullish { 1.0 } else { -1.0 })
+            .sum();
 
         let mut extra = HashMap::new();
         extra.insert("active_count".to_string(), active_count);
@@ -193,4 +198,53 @@ pub fn build_order_block(params: &HashMap<String, f64>) -> OrderBlockEngine {
     let atr_len = params.get("atr_len").copied().unwrap_or(14.0) as usize;
     let min_disp_mult = params.get("min_disp").copied().unwrap_or(1.0);
     OrderBlockEngine::new(atr_len, min_disp_mult)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bar(i: i64, o: f64, h: f64, l: f64, c: f64) -> Bar {
+        Bar::new(i * 60, o, h, l, c, 100.0)
+    }
+
+    /// Flat warmup, a bearish bar (the future zone 99–101), then a bullish displacement.
+    fn engine_with_bullish_ob() -> (OrderBlockEngine, i64) {
+        let mut ob = OrderBlockEngine::new(3, 1.0);
+        let mut i = 0;
+        for _ in 0..4 {
+            ob.on_bar(&bar(i, 100.0, 100.5, 99.5, 100.0));
+            i += 1;
+        }
+        ob.on_bar(&bar(i, 100.5, 101.0, 99.0, 99.5));
+        i += 1;
+        ob.on_bar(&bar(i, 99.6, 106.0, 99.6, 105.5));
+        i += 1;
+        (ob, i)
+    }
+
+    #[test]
+    fn creation_bar_is_not_a_retest() {
+        let (ob, _) = engine_with_bullish_ob();
+        let kinds: Vec<String> = ob.alerts().into_iter().map(|a| a.kind).collect();
+        assert!(kinds.iter().any(|k| k == "bullish_order_block"));
+        assert!(!kinds.iter().any(|k| k == "ob_retest_bullish"));
+        assert_eq!(ob.active_zones().len(), 1);
+    }
+
+    #[test]
+    fn later_return_is_a_retest() {
+        let (mut ob, i) = engine_with_bullish_ob();
+        ob.on_bar(&bar(i, 105.0, 105.0, 100.5, 101.5));
+        assert!(ob.alerts().iter().any(|a| a.kind == "ob_retest_bullish"));
+    }
+
+    #[test]
+    fn invalidated_zone_is_inactive_on_its_invalidation_bar() {
+        let (mut ob, i) = engine_with_bullish_ob();
+        let out = ob.on_bar(&bar(i, 99.0, 99.0, 97.0, 98.0)).unwrap();
+        assert_eq!(out.extra["active_count"], 0.0);
+        assert!(!out.extra.contains_key("active_ob_top"));
+        assert!(ob.active_zones().is_empty());
+    }
 }

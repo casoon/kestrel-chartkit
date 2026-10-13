@@ -29,8 +29,13 @@ impl AggressorVolume {
 /// path when no direct aggressor/tick data is available. Shared with
 /// [`super::volume_profile_extended`] for its delta-profile bins.
 pub(crate) fn estimate_aggressor_from_ohlc(bar: &Bar) -> AggressorVolume {
-    let range = (bar.high - bar.low).max(1e-8);
-    let buy_pct = ((bar.close - bar.low) / range).clamp(0.0, 1.0);
+    let range = bar.high - bar.low;
+    // No range, no close location: an even split rather than all-sell.
+    let buy_pct = if range > 0.0 {
+        ((bar.close - bar.low) / range).clamp(0.0, 1.0)
+    } else {
+        0.5
+    };
     AggressorVolume {
         buy_volume: bar.volume * buy_pct,
         sell_volume: bar.volume * (1.0 - buy_pct),

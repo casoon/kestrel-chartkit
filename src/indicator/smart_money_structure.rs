@@ -300,11 +300,12 @@ impl FvgZoneTracker {
     }
 
     /// Feeds a bar, marking any unfilled zone the bar traded back into as filled. Returns the
-    /// zones newly filled this bar.
+    /// zones newly filled this bar. Only bars after a zone's `formed_at` can fill it: the bar
+    /// that completes the gap borders it by construction and is not a return into it.
     pub fn on_bar(&mut self, bar: &Bar) -> Vec<&FvgZone> {
         let mut newly_filled_indices = Vec::new();
         for (i, zone) in self.zones.iter_mut().enumerate() {
-            if zone.filled {
+            if zone.filled || bar.timestamp <= zone.formed_at {
                 continue;
             }
             let touched = if zone.is_bullish {
@@ -439,6 +440,21 @@ impl SmartMoneyStructureLinker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fvg_is_not_filled_by_the_bar_that_forms_it() {
+        let mut tracker = FvgZoneTracker::new();
+        tracker.register(true, 105.0, 100.0, 120);
+        assert!(tracker
+            .on_bar(&Bar::new(120, 106.0, 110.0, 105.0, 109.0, 1.0))
+            .is_empty());
+        assert_eq!(
+            tracker
+                .on_bar(&Bar::new(180, 108.0, 109.0, 104.0, 106.0, 1.0))
+                .len(),
+            1
+        );
+    }
 
     fn trending_bars(n: usize, step: f64) -> Vec<Bar> {
         (0..n)

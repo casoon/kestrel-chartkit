@@ -111,7 +111,8 @@ pub enum Tie {
 }
 
 /// Scans `bars[start + 1 ..= start + horizon]` for the first bar whose high reaches `upper` or
-/// whose low reaches `lower` (a gap beyond a level counts on the bar it happens). `None` if the
+/// whose low reaches `lower` (a gap beyond a level counts on the bar it happens; a bar that touches
+/// both is decided by its open if that lies beyond a level, otherwise by `tie`). `None` if the
 /// data ends before the horizon — an incomplete path would bias toward `Neither`.
 pub fn first_passage(
     bars: &[Bar],
@@ -129,6 +130,10 @@ pub fn first_passage(
         let hit_lower = bar.low <= lower;
         let bars_after = k + 1;
         match (hit_upper, hit_lower) {
+            // A bar that opens beyond a level has already touched it before trading toward the
+            // other one; only an open between the levels leaves the order unknown.
+            (true, true) if bar.open >= upper => return Some(Passage::Upper { bars: bars_after }),
+            (true, true) if bar.open <= lower => return Some(Passage::Lower { bars: bars_after }),
             (true, true) => {
                 return Some(match tie {
                     Tie::LowerFirst => Passage::Lower { bars: bars_after },
@@ -306,6 +311,24 @@ mod tests {
         assert_eq!(
             first_passage(&bars, 0, 105.0, 95.0, 2, Tie::LowerFirst),
             None
+        );
+    }
+
+    #[test]
+    fn a_gap_beyond_a_level_decides_before_the_tie_rule() {
+        let mut gap_up = bar(112.0, 94.0, 96.0);
+        gap_up.open = 110.0;
+        let bars = vec![bar(100.0, 100.0, 100.0), gap_up];
+        assert_eq!(
+            first_passage(&bars, 0, 105.0, 95.0, 1, Tie::LowerFirst),
+            Some(Passage::Upper { bars: 1 })
+        );
+        let mut gap_down = bar(106.0, 88.0, 104.0);
+        gap_down.open = 90.0;
+        let bars = vec![bar(100.0, 100.0, 100.0), gap_down];
+        assert_eq!(
+            first_passage(&bars, 0, 105.0, 95.0, 1, Tie::UpperFirst),
+            Some(Passage::Lower { bars: 1 })
         );
     }
 

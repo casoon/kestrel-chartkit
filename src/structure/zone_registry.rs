@@ -12,6 +12,9 @@ pub enum ZoneState {
     Touched,
     Reacted,
     Broken,
+    /// Broken, then retested from the other side: the zone now acts in the opposite role and its
+    /// `kind` is switched accordingly (former support is resistance and vice versa). Broken again
+    /// in that new role, it becomes `Broken`.
     Flipped,
 }
 
@@ -96,6 +99,13 @@ impl ZoneRegistry {
             mz.age_bars += 1;
 
             if mz.state == ZoneState::Flipped {
+                let broken_again = match mz.zone.kind {
+                    ZoneKind::Support => bar.close < mz.zone.price_bottom - (atr * 0.2),
+                    ZoneKind::Resistance => bar.close > mz.zone.price_top + (atr * 0.2),
+                };
+                if broken_again {
+                    mz.state = ZoneState::Broken;
+                }
                 continue;
             }
 
@@ -108,6 +118,10 @@ impl ZoneRegistry {
                 };
                 if is_flip {
                     mz.state = ZoneState::Flipped;
+                    mz.zone.kind = match mz.zone.kind {
+                        ZoneKind::Support => ZoneKind::Resistance,
+                        ZoneKind::Resistance => ZoneKind::Support,
+                    };
                     mz.touch_count += 1;
                 }
                 continue;
@@ -361,6 +375,13 @@ mod tests {
         let bar3 = Bar::new(3000, 96.0, 99.0, 95.0, 97.0, 1000.0);
         reg.update(&bar3, 2.0);
         assert_eq!(reg.zones()[0].state, ZoneState::Flipped);
+        assert_eq!(reg.zones()[0].zone.kind, ZoneKind::Resistance);
+
+        // Broken again in its new role (close above 102 + 0.4): no longer active.
+        let bar4 = Bar::new(4000, 99.0, 110.0, 99.0, 110.0, 1000.0);
+        reg.update(&bar4, 2.0);
+        assert_eq!(reg.zones()[0].state, ZoneState::Broken);
+        assert_eq!(reg.active_zones().count(), 0);
     }
 
     #[test]

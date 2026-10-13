@@ -48,9 +48,14 @@ impl Indicator for CvdEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let range = (bar.high - bar.low).max(1e-8);
-        // Estimate buy/sell volume fraction from bar close location within range
-        let buy_pct = (bar.close - bar.low) / range;
+        let range = bar.high - bar.low;
+        // Estimate buy/sell volume fraction from bar close location within range. A bar without
+        // range has no close location: split evenly instead of counting it all as selling.
+        let buy_pct = if range > 0.0 {
+            (bar.close - bar.low) / range
+        } else {
+            0.5
+        };
         let buy_vol = bar.volume * buy_pct;
         let sell_vol = bar.volume * (1.0 - buy_pct);
 
@@ -210,6 +215,15 @@ impl Indicator for KlingerVolumeForceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_zero_range_bar_is_not_all_selling() {
+        let mut cvd = CvdEngine::new();
+        let out = cvd
+            .on_bar(&Bar::new(1, 100.0, 100.0, 100.0, 100.0, 1000.0))
+            .unwrap();
+        assert_eq!(out.extra["delta"], 0.0);
+    }
 
     #[test]
     fn test_cvd_accumulation() {
