@@ -208,9 +208,9 @@ impl Indicator for FisherTransform {
 
             self.alerts.extreme_strength = if let Some((low, high)) = extreme {
                 if self.alerts.bull_extreme {
-                    ((self.oversold - low) / self.oversold.abs()).clamp(0.0, 1.0)
+                    super::threshold_strength(self.oversold - low, self.oversold.abs())
                 } else if self.alerts.bear_extreme {
-                    ((high - self.overbought) / self.overbought.abs()).clamp(0.0, 1.0)
+                    super::threshold_strength(high - self.overbought, self.overbought.abs())
                 } else {
                     0.0
                 }

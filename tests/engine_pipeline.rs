@@ -210,3 +210,28 @@ fn test_m2_9_vwap_regime_tracker_with_vwap_indicator() {
     let last = regime_outputs.last().unwrap();
     assert!(last.price_persistence > 0.5);
 }
+
+#[test]
+fn test_m2_9_vwap_regime_z_score_uses_vwap_sigma() {
+    // Typische Preise 100 und 102 mit gleichem Volumen: VWAP 101, sigma 1, close - VWAP 1.
+    let mut vwap = Vwap::new(50, 10);
+    let mut tracker = VwapRegimeTracker::new(20);
+    let bars = [
+        kestrel_chartkit::model::Bar::new(0, 100.0, 100.0, 100.0, 100.0, 1000.0),
+        kestrel_chartkit::model::Bar::new(60, 102.0, 102.0, 102.0, 102.0, 1000.0),
+    ];
+    let mut last = None;
+    for bar in &bars {
+        let vwap_out = vwap.on_bar(bar).unwrap();
+        last = Some(update_vwap_regime(
+            &mut tracker,
+            &vwap_out,
+            bar.close,
+            1.5,
+            0.1,
+            0.5,
+        ));
+    }
+    let z = last.unwrap().z_score;
+    assert!((z - 1.0).abs() < 1e-9, "z = {z}");
+}

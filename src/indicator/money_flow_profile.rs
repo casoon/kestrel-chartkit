@@ -71,9 +71,10 @@ pub struct MoneyFlowProfileEngine {
 impl MoneyFlowProfileEngine {
     /// `lookback` bars form the rolling window; `rows` bins the window's high/low range;
     /// `va_pct` is the fraction of total flow the value area expands to capture from POC
-    /// outward (default `0.70`).
+    /// outward (default `0.70`). A profile needs two bars, so `lookback` is raised to at least
+    /// `2` (the registry rejects smaller values instead).
     pub fn new(lookback: usize, rows: usize, va_pct: f64) -> Self {
-        let lookback = lookback.max(1);
+        let lookback = lookback.max(2);
         let rows = rows.max(1);
         Self {
             lookback,

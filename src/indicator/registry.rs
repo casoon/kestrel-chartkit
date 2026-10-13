@@ -1750,7 +1750,8 @@ pub fn build_checked(
             Ok(Box::new(VolumeProfileEngine::new(lookback, num_bins)))
         }
         "money_flow_profile" | "mfp" => {
-            let lookback = get_usize_p(params, "lookback", 200, 1, 10000)?;
+            // At least two bars: a one-bar window never forms a profile.
+            let lookback = get_usize_p(params, "lookback", 200, 2, 10000)?;
             let rows = get_usize_p(params, "rows", 25, 1, 1000)?;
             let va_pct = get_f64_p(params, "va_pct", 0.70, 0.0, 1.0)?;
             Ok(Box::new(MoneyFlowProfileEngine::new(
@@ -2487,12 +2488,82 @@ pub fn build(name: &str, params: &HashMap<String, f64>) -> Option<Box<dyn Indica
 /// scalar form (`Enum`, `Text`, `Timeframe`, `Source`) are rejected with
 /// [`RegistryError::UnsupportedParameterType`], since no indicator in this registry currently
 /// consumes them through the `f64` parameter map.
+/// Registry aliases and the canonical name each one builds (the first name of its
+/// [`build_checked`] arm).
+const REGISTRY_ALIASES: &[(&str, &str)] = &[
+    ("bb", "bollinger"),
+    ("srsi", "stoch_rsi"),
+    ("cks", "chande_kroll"),
+    ("ce", "chandelier_exit"),
+    ("chfr", "chandelier_flip_radar"),
+    ("wpr", "williams_r"),
+    ("fisher", "fisher_transform"),
+    ("ob", "order_block"),
+    ("fvg", "liquidity_fvg"),
+    ("smc", "liquidity_fvg"),
+    ("bos", "market_structure_breaks"),
+    ("choch", "market_structure_breaks"),
+    ("pivots", "pivots_structure"),
+    ("vp", "volume_profile"),
+    ("mfp", "money_flow_profile"),
+    ("vp_extended", "extended_volume_profile"),
+    ("vp_persistent", "persistent_volume_profile"),
+    ("wvf", "vix_fix"),
+    ("pinbar", "candle_story"),
+    ("leg_efficiency", "efficiency"),
+    ("er", "efficiency"),
+    ("wt", "wavetrend"),
+    ("avwap", "anchored_vwap"),
+    ("kvo", "klinger"),
+    ("multi_pivots", "pivot_sets"),
+    ("chop", "choppiness"),
+    ("vi", "vortex"),
+    ("cho", "chaikin_oscillator"),
+    ("sweeps", "liquidity_sweeps"),
+    ("oscillator_pivot_divergence", "pivot_divergence"),
+    ("pressure", "buy_sell_pressure"),
+];
+
+/// The canonical registry name for `name`: lower-cased, with a registry alias (`avwap`, `vp`,
+/// `wt`, ...) resolved to the name of the indicator it builds. Unknown names come back
+/// lower-cased and otherwise unchanged.
+///
+/// Every lookup of per-indicator metadata (source handling here, data requirements in
+/// [`crate::applicability::data_requirements`]) goes through this, so an alias can never escape a
+/// rule that is written against the canonical name.
+pub fn canonical_name(name: &str) -> String {
+    let lower = name.to_lowercase();
+    REGISTRY_ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == lower)
+        .map(|(_, canonical)| (*canonical).to_string())
+        .unwrap_or(lower)
+}
+
+/// The price an indicator reads natively when it reduces a bar to one scalar, by canonical name.
+///
+/// Most read the close. These read a derived price instead: `hlc3` for CCI, MFI, VWAP, anchored
+/// VWAP and WaveTrend, `hl2` for the Fisher Transform, the Awesome Oscillator and the Alligator.
+/// [`build_typed`] compares a requested `source` against this, not against `Close`: an explicit
+/// `Source::Close` on CCI must switch it to the close, not leave it on its native `hlc3`.
+fn native_source(canonical: &str) -> crate::model::Source {
+    use crate::model::Source;
+    match canonical {
+        "cci" | "mfi" | "vwap" | "anchored_vwap" | "wavetrend" => Source::Hlc3,
+        "fisher_transform" | "awesome_oscillator" | "alligator" => Source::Hl2,
+        _ => Source::Close,
+    }
+}
+
 /// Indicators known to depend on the genuine OHLC range (true range, high/low pivots, volume-at-
 /// price, market-structure detection, ...), for which [`super::source_mapped::SourceMapped`]
 /// would silently collapse `high == low == open == close` to the selected source and degenerate
 /// their math. `build_typed` rejects a non-`Close` `source` for these rather than silently
-/// applying it. Not necessarily exhaustive over the full catalog — extend as new range-dependent
-/// indicators are added.
+/// applying it; an explicit `Close` builds them unchanged (their native input is the whole bar).
+///
+/// Canonical names only — aliases are resolved through [`canonical_name`] first. The list covers
+/// every catalog entry that reads more than one bar field: a test feeds each remaining entry a
+/// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "markov_state_engine",
     "time_to_react",
@@ -2507,32 +2578,22 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "relative_volatility",
     "smi",
     "chande_kroll",
-    "cks",
     "true_range",
     "adx",
     "dmi",
     "chandelier_exit",
     "chandelier_flip_radar",
-    "chfr",
     "wyckoff",
     "volume_profile",
-    "vp",
     "money_flow_profile",
-    "mfp",
     "extended_volume_profile",
-    "vp_extended",
     "persistent_volume_profile",
-    "vp_persistent",
     "pivots_structure",
-    "pivots",
     "pivot_sets",
-    "multi_pivots",
     "zigzag",
     "zigzag_advanced",
     "liquidity_pools",
     "liquidity_sweeps",
-    "sweeps",
-    "zone_rejection",
     "double_pattern",
     "bottom_formation",
     "market_average_relationship",
@@ -2546,25 +2607,15 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "vein_structure_zones",
     "structural_wave_field",
     "pivot_divergence",
-    "oscillator_pivot_divergence",
     "liquidity_fvg",
-    "fvg",
-    "smc",
     "order_block",
-    "ob",
-    "ce",
     "bos_choch",
     "market_structure_breaks",
-    "bos",
-    "choch",
     "vix_fix",
-    "wvf",
     "keltner",
     "donchian",
     "vortex",
-    "vi",
     "choppiness",
-    "chop",
     "mass_index",
     "supertrend",
     "parabolic_sar",
@@ -2574,9 +2625,22 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "hires_volume_flow",
     "cvd",
     "klinger",
-    "kvo",
     "volatility_regime",
     "swing_structure",
+    "bop",
+    "stochastic",
+    "rvi",
+    "williams_r",
+    "ultimate_oscillator",
+    "elder_ray",
+    "eom",
+    "cmf",
+    "acc_dist",
+    "chaikin_oscillator",
+    "candle_story",
+    "buy_sell_pressure",
+    "trend_quality",
+    "multi_factor",
 ];
 
 /// Indicators whose price source is fixed by an explicit decision rather than by their math:
@@ -2602,9 +2666,9 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         }
     };
 
+    let canonical = canonical_name(name);
     if let Some(s) = source {
-        if s != crate::model::Source::Close
-            && SOURCE_FIXED_INDICATORS.contains(&name.to_lowercase().as_str())
+        if s != crate::model::Source::Close && SOURCE_FIXED_INDICATORS.contains(&canonical.as_str())
         {
             return Err(RegistryError::IncompatibleParameter {
                 parameter: "source".to_string(),
@@ -2616,7 +2680,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         }
 
         if s != crate::model::Source::Close
-            && RANGE_DEPENDENT_INDICATORS.contains(&name.to_lowercase().as_str())
+            && RANGE_DEPENDENT_INDICATORS.contains(&canonical.as_str())
         {
             return Err(RegistryError::IncompatibleParameter {
                 parameter: "source".to_string(),
@@ -2648,8 +2712,12 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         _ => build_typed_by_flattening(name, &remaining)?,
     };
 
+    // Wrapped whenever the requested source differs from what the indicator reads natively —
+    // for a close-native indicator that is any non-`Close` source, for CCI (`hlc3`) an explicit
+    // `Close` as well. Range-dependent indicators only get here with `Close` (see above), which
+    // is their `native_source`, so they are never wrapped.
     Ok(match source {
-        Some(s) if s != crate::model::Source::Close => {
+        Some(s) if s != native_source(&canonical) => {
             Box::new(super::source_mapped::SourceMapped::new(built, s))
         }
         _ => built,
@@ -3836,6 +3904,162 @@ mod tests {
             ParamValue::Source(crate::model::Source::Close),
         )]);
         assert!(build_typed("atr", &close_params).is_ok());
+    }
+
+    fn source_params(source: crate::model::Source) -> TypedParams {
+        HashMap::from([("source".to_string(), ParamValue::Source(source))])
+    }
+
+    /// Deterministic random walk with distinct open/high/low/close and varying volume.
+    fn walk_bars(n: usize) -> Vec<crate::model::Bar> {
+        let mut seed: u64 = 7;
+        let mut next = move || {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (seed >> 33) as f64 / (1u64 << 31) as f64
+        };
+        let mut close = 100.0;
+        (0..n)
+            .map(|i| {
+                let open = close;
+                close += (next() - 0.5) * 3.0;
+                let high = open.max(close) + next() * 1.5;
+                let low = open.min(close) - next() * 1.5;
+                crate::model::Bar::new(
+                    i as i64 * 60,
+                    open,
+                    high,
+                    low,
+                    close,
+                    500.0 + next() * 1000.0,
+                )
+            })
+            .collect()
+    }
+
+    /// N16: an explicit `Close` on an indicator whose native price is `hlc3` must switch it to the
+    /// close. With `open == close == 100` and rising highs, `Close` and `Open` are the same series
+    /// and must give the same result.
+    #[test]
+    fn test_build_typed_explicit_close_overrides_native_hlc3_source() {
+        use crate::model::Source;
+        let bars: Vec<crate::model::Bar> = (0..60)
+            .map(|i| crate::model::Bar::new(i * 60, 100.0, 101.0 + i as f64, 100.0, 100.0, 1000.0))
+            .collect();
+        for name in ["cci", "wavetrend", "wt"] {
+            let mut via_close = build_typed(name, &source_params(Source::Close)).unwrap();
+            let mut via_open = build_typed(name, &source_params(Source::Open)).unwrap();
+            let mut native = build_typed(name, &TypedParams::new()).unwrap();
+            let (mut c, mut o, mut n) = (None, None, None);
+            for bar in &bars {
+                c = via_close.on_bar(bar).map(|x| x.value);
+                o = via_open.on_bar(bar).map(|x| x.value);
+                n = native.on_bar(bar).map(|x| x.value);
+            }
+            assert!(c.is_some(), "{name}: no output");
+            assert_eq!(c, o, "{name}: Close and Open are identical here");
+            assert_ne!(
+                c, n,
+                "{name}: Close must differ from the native hlc3 reading"
+            );
+        }
+    }
+
+    /// N17: indicators that read more than one bar field reject a single-price source.
+    #[test]
+    fn test_build_typed_rejects_single_price_source_on_bop_stochastic_rvi() {
+        for name in [
+            "bop",
+            "stochastic",
+            "rvi",
+            "williams_r",
+            "wpr",
+            "cmf",
+            "pressure",
+        ] {
+            let err = match build_typed(name, &source_params(crate::model::Source::Open)) {
+                Err(e) => e,
+                Ok(_) => panic!("expected '{name}' to reject a non-Close source"),
+            };
+            assert!(
+                matches!(err, RegistryError::IncompatibleParameter { .. }),
+                "'{name}' returned {err:?} instead of IncompatibleParameter"
+            );
+        }
+    }
+
+    /// Every catalog entry outside [`RANGE_DEPENDENT_INDICATORS`] reads exactly one scalar per
+    /// bar, and that scalar is its [`native_source`]: feeding it a bar collapsed to that source
+    /// changes nothing. An entry that reads a second field fails here and belongs in the block
+    /// list (or `native_source` is wrong).
+    #[test]
+    fn test_source_mappable_entries_read_only_their_native_source() {
+        let bars = walk_bars(400);
+        for entry in catalog() {
+            if RANGE_DEPENDENT_INDICATORS.contains(&entry.name) || entry.name == "midas" {
+                continue;
+            }
+            let mut raw = build_checked(entry.name, &entry.default_params).unwrap();
+            let mut mapped = super::super::source_mapped::SourceMapped::new(
+                build_checked(entry.name, &entry.default_params).unwrap(),
+                native_source(entry.name),
+            );
+            for bar in &bars {
+                let a = raw.on_bar(bar).map(|o| o.value);
+                let b = mapped.on_bar(bar).map(|o| o.value);
+                let same = match (a, b) {
+                    (Some(x), Some(y)) => (x - y).abs() < 1e-9 || (x.is_nan() && y.is_nan()),
+                    (None, None) => true,
+                    _ => false,
+                };
+                assert!(
+                    same,
+                    "'{}' reads more than its native source ({:?}): {a:?} vs {b:?}",
+                    entry.name,
+                    native_source(entry.name)
+                );
+            }
+        }
+    }
+
+    /// N18: `lookback = 1` never produced a profile; it is rejected, `2` is the smallest
+    /// window that outputs.
+    #[test]
+    fn test_money_flow_profile_requires_lookback_of_two() {
+        let one = HashMap::from([("lookback".to_string(), 1.0)]);
+        assert!(matches!(
+            build_checked("money_flow_profile", &one),
+            Err(RegistryError::InvalidParameter { .. })
+        ));
+        let two = HashMap::from([("lookback".to_string(), 2.0)]);
+        let mut mfp = build_checked("mfp", &two).unwrap();
+        let outputs = walk_bars(5).iter().filter_map(|b| mfp.on_bar(b)).count();
+        assert!(outputs > 0);
+    }
+
+    #[test]
+    fn test_aliases_resolve_to_buildable_canonical_names() {
+        for (alias, canonical) in REGISTRY_ALIASES {
+            assert_eq!(canonical_name(alias), *canonical);
+            assert_eq!(canonical_name(&alias.to_uppercase()), *canonical);
+            assert!(
+                CANONICAL_INDICATOR_NAMES.contains(canonical),
+                "alias '{alias}' points at non-canonical '{canonical}'"
+            );
+            assert!(
+                build_checked(alias, &HashMap::new()).is_ok(),
+                "alias '{alias}' does not build"
+            );
+        }
+        assert_eq!(canonical_name("unknown_thing"), "unknown_thing");
+    }
+
+    #[test]
+    fn test_range_dependent_list_holds_canonical_names_only() {
+        for name in RANGE_DEPENDENT_INDICATORS {
+            assert_eq!(canonical_name(name), *name, "'{name}' is an alias");
+        }
     }
 
     #[test]

@@ -299,9 +299,10 @@ pub fn check_applicability(
     }
 }
 
-/// Looks up the [`DataRequirements`] for a registry/catalog indicator name (case-insensitive,
-/// matching the `.to_lowercase()` convention used by
-/// [`crate::indicator::registry::build_checked`]/`build_typed`).
+/// Looks up the [`DataRequirements`] for a registry/catalog indicator name. The name is
+/// canonicalized first ([`crate::indicator::registry::canonical_name`]: case-insensitive, registry
+/// aliases such as `avwap` or `vp` resolved), so an alias carries exactly the requirements of the
+/// indicator it builds.
 ///
 /// This is a separate lookup rather than a field on
 /// [`crate::indicator::registry::IndicatorCatalogEntry`] because two indicators that need
@@ -311,13 +312,24 @@ pub fn check_applicability(
 /// way to give catalog and non-catalog indicators one shared source of truth without forcing a
 /// signature change on those two engines.
 ///
+/// `needs_real_volume` follows the actual inputs: it is set for every indicator whose formula
+/// always consumes the bar volume (volume and money-flow measures, volume-weighted averages and
+/// profiles, and the composites `trend_quality`/`multi_factor`, whose participation factor is a
+/// relative volume). It is **not** set for formulas that read OHLC only (`buy_sell_pressure`,
+/// `elder_ray`), nor for the composites that use volume as an optional factor and switch it off
+/// themselves when the bars carry none (`exhaustion_scanner`, `coilforge_zones`,
+/// `market_tradability_engine`, `swing_conviction_radar`, `liquidity_hunter`,
+/// `vein_reversal_score`, `vein_structure_zones`, `structural_wave_field`) — a caller with tick
+/// volume passes zero volume to them. `tests/applicability_catalog.rs` checks this split against
+/// a run of every catalog entry.
+///
 /// Names not listed below (including all pure price indicators) return
 /// [`DataRequirements::default()`] — deliberately conservative: `needs_trade_direction` and
 /// `needs_liquidity_depth` are left `false` everywhere for now, since no indicator covered by the
 /// plan is described as needing actual classified-trade data (bar-derived CVD is a documented
 /// heuristic, not a hard requirement) or is named as needing liquidity-depth data.
 pub fn data_requirements(name: &str) -> DataRequirements {
-    match name.to_lowercase().as_str() {
+    match crate::indicator::registry::canonical_name(name).as_str() {
         "volume_profile"
         | "extended_volume_profile"
         | "persistent_volume_profile"
@@ -331,8 +343,9 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             session_sensitive: true,
             ..DataRequirements::default()
         },
-        "cvd" | "buy_sell_pressure" | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger"
-        | "chaikin_oscillator" | "elder_ray" | "midas" => DataRequirements {
+        "volume" | "rvol" | "obv" | "acc_dist" | "cmf" | "vwma" | "cvd" | "hires_volume_flow"
+        | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger" | "chaikin_oscillator"
+        | "midas" | "market_exhaustion" | "trend_quality" | "multi_factor" => DataRequirements {
             needs_real_volume: true,
             ..DataRequirements::default()
         },
@@ -607,6 +620,30 @@ mod tests {
                 ..DataRequirements::default()
             }
         );
+    }
+
+    /// N28: an alias carries the requirements of the indicator it builds.
+    #[test]
+    fn data_requirements_resolve_registry_aliases() {
+        for (alias, canonical) in [
+            ("avwap", "anchored_vwap"),
+            ("vp", "volume_profile"),
+            ("VP", "volume_profile"),
+            ("mfp", "money_flow_profile"),
+            ("vp_extended", "extended_volume_profile"),
+            ("vp_persistent", "persistent_volume_profile"),
+            ("kvo", "klinger"),
+            ("cho", "chaikin_oscillator"),
+            ("pivots", "pivots_structure"),
+            ("multi_pivots", "pivot_sets"),
+        ] {
+            assert_ne!(data_requirements(canonical), DataRequirements::default());
+            assert_eq!(
+                data_requirements(alias),
+                data_requirements(canonical),
+                "alias '{alias}'"
+            );
+        }
     }
 
     #[test]

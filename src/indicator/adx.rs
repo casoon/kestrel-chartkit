@@ -162,10 +162,10 @@ impl Indicator for Adx {
                 crossed_under(prev_adx, self.level_weak, adx_raw, self.level_weak);
             if self.alerts.adx_activated {
                 self.alerts.regime_strength =
-                    ((adx_raw - self.level_weak) / self.level_weak).clamp(0.0, 1.0);
+                    super::threshold_strength(adx_raw - self.level_weak, self.level_weak);
             } else if self.alerts.adx_deactivated {
                 self.alerts.regime_strength =
-                    ((self.level_weak - adx_raw) / self.level_weak).clamp(0.0, 1.0);
+                    super::threshold_strength(self.level_weak - adx_raw, self.level_weak);
             }
         }
         self.prev_di_plus = Some(di_plus);

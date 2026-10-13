@@ -133,3 +133,56 @@ fn test_rsi_synthetic_trending_direction() {
         "Expected low RSI for synthetic downtrend, got {last_down}"
     );
 }
+
+/// 60 Bars abwärts bis zum Boden, dann 60 Bars aufwärts: der Oszillator liegt am unteren
+/// Skalenrand und kreuzt danach seine Signallinie nach oben.
+fn fall_then_rise() -> Vec<kestrel_chartkit::model::Bar> {
+    (0..120)
+        .map(|i: i64| {
+            let p = if i < 60 {
+                100.0 - i as f64
+            } else {
+                40.0 + (i - 60) as f64
+            };
+            kestrel_chartkit::model::Bar::new(i * 60, p, p + 0.5, p - 0.5, p, 1000.0)
+        })
+        .collect()
+}
+
+fn assert_bull_extreme_strength_finite(name: &str, params: &[(&str, f64)]) {
+    let params: std::collections::HashMap<String, f64> =
+        params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+    let mut indicator =
+        kestrel_chartkit::indicator::registry::build_checked(name, &params).unwrap();
+    let mut fired = 0;
+    for bar in fall_then_rise() {
+        indicator.on_bar(&bar);
+        for alert in indicator.alerts() {
+            assert!(
+                (0.0..=1.0).contains(&alert.strength),
+                "{name} {}: strength {}",
+                alert.kind,
+                alert.strength
+            );
+            if alert.kind == "bull_extreme" {
+                fired += 1;
+            }
+        }
+    }
+    assert!(fired > 0, "{name}: Testserie muss bull_extreme auslösen");
+}
+
+#[test]
+fn test_rsi_zero_oversold_gives_finite_alert_strength() {
+    // oversold = 0 und overbought = 100 sind gültige Grenzen; die Stärke war 0/0 = NaN.
+    assert_bull_extreme_strength_finite(
+        "rsi",
+        &[
+            ("rsi_len", 1.0),
+            ("avg_len", 1.0),
+            ("sig_len", 2.0),
+            ("oversold", 0.0),
+            ("overbought", 100.0),
+        ],
+    );
+}
