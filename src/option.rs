@@ -242,8 +242,8 @@ pub fn black_scholes_merton(
         OptionType::Put => (k - s).max(0.0),
     };
 
-    // Boundary case: At expiration (T = 0) or zero volatility
-    if t <= 1e-12 || sigma <= 1e-12 {
+    // Boundary case: at expiration (T = 0) the option is worth its intrinsic value.
+    if t <= 1e-12 {
         let delta = match option_type {
             OptionType::Call => {
                 if s > k {
@@ -275,6 +275,57 @@ pub fn black_scholes_merton(
                 theta_annual: 0.0,
                 theta_daily: 0.0,
                 rho: 0.0,
+            },
+        });
+    }
+
+    // Boundary case: zero volatility before expiry (T > 0, sigma = 0). The terminal price is the
+    // deterministic forward, so the value is the discounted forward payoff
+    // `max(S e^{-qT} - K e^{-rT}, 0)` (put: `max(K e^{-rT} - S e^{-qT}, 0)`), as in QuantLib's
+    // `blackFormula` at `stdDev = 0` — not the spot intrinsic value. Greeks are the derivatives of
+    // that deterministic value: delta `±e^{-qT}` while in the money on a forward basis (half of it
+    // exactly at the money-forward), gamma and vega 0, theta and rho from the BSM formulas with
+    // `N(d1) = N(d2)` replaced by that in-the-money indicator.
+    if sigma <= 1e-12 {
+        let df_q = (-q * t).exp();
+        let df_r = (-r * t).exp();
+        let fwd_term = s * df_q;
+        let strike_term = k * df_r;
+        let call_itm = if (fwd_term - strike_term).abs() <= 1e-12 * fwd_term.max(strike_term) {
+            0.5
+        } else if fwd_term > strike_term {
+            1.0
+        } else {
+            0.0
+        };
+        let (price, delta, theta_annual, rho) = match option_type {
+            OptionType::Call => (
+                (fwd_term - strike_term).max(0.0),
+                df_q * call_itm,
+                (q * fwd_term - r * strike_term) * call_itm,
+                strike_term * t * call_itm,
+            ),
+            OptionType::Put => {
+                let put_itm = 1.0 - call_itm;
+                (
+                    (strike_term - fwd_term).max(0.0),
+                    -df_q * put_itm,
+                    (r * strike_term - q * fwd_term) * put_itm,
+                    -strike_term * t * put_itm,
+                )
+            }
+        };
+        return Ok(OptionPricingResult {
+            price,
+            intrinsic_value: intrinsic,
+            time_value: (price - intrinsic).max(0.0),
+            greeks: OptionGreeks {
+                delta,
+                gamma: 0.0,
+                vega: 0.0,
+                theta_annual,
+                theta_daily: theta_annual / 365.0,
+                rho,
             },
         });
     }
@@ -336,6 +387,11 @@ pub fn black_scholes_merton(
 }
 
 /// Evaluates a European option on a forward or futures contract using Black's 1976 model.
+///
+/// Greeks are taken with the forward held fixed: delta/gamma are with respect to the forward,
+/// and rho is `-T · price` (only the discount factor `e^{-rT}` depends on `r`). The
+/// zero-volatility case (`T > 0`, `sigma = 0`) values the discounted payoff
+/// `e^{-rT} max(F - K, 0)` (put analog), see [`black_scholes_merton`].
 pub fn black_76(
     option_type: OptionType,
     forward: f64,
@@ -358,7 +414,12 @@ pub fn black_76(
         dividend_yield: risk_free_rate,
         volatility,
     };
-    black_scholes_merton(option_type, &inputs)
+    // The BSM mapping (q = r) gets price, delta, gamma, vega and theta right for a fixed
+    // forward, but its rho differentiates only the strike discount and treats the forward as
+    // carried by r. With F fixed, the whole price is discounted by e^{-rT}, so rho = -T * price.
+    let mut result = black_scholes_merton(option_type, &inputs)?;
+    result.greeks.rho = -time_to_expiry_years * result.price;
+    Ok(result)
 }
 
 /// Inverts the Black-Scholes-Merton formula to find the implied volatility from a market price.
@@ -494,4 +555,83 @@ pub fn verify_put_call_parity(
     let forward_term = spot * (-dividend_yield * time_to_expiry_years).exp();
     let discount_strike = strike * (-risk_free_rate * time_to_expiry_years).exp();
     (call_price - put_price) - (forward_term - discount_strike)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn inputs(spot: f64, strike: f64, t: f64, r: f64, q: f64, vol: f64) -> BlackScholesInputs {
+        BlackScholesInputs {
+            spot,
+            strike,
+            time_to_expiry_years: t,
+            risk_free_rate: r,
+            dividend_yield: q,
+            volatility: vol,
+        }
+    }
+
+    #[test]
+    fn zero_volatility_before_expiry_values_the_discounted_forward_payoff() {
+        let call =
+            black_scholes_merton(OptionType::Call, &inputs(100.0, 100.0, 1.0, 0.1, 0.0, 0.0))
+                .unwrap();
+        let expected = 100.0 - 100.0 * (-0.1f64).exp();
+        assert!((call.price - expected).abs() < 1e-9, "{}", call.price);
+        assert!((expected - 9.516_258_196_4).abs() < 1e-9);
+        assert_eq!(call.greeks.delta, 1.0);
+        assert_eq!(call.greeks.gamma, 0.0);
+        assert_eq!(call.greeks.vega, 0.0);
+
+        // Greeks match finite differences of the deterministic price.
+        let h = 1e-5;
+        let price_at = |r: f64, t: f64| {
+            black_scholes_merton(OptionType::Call, &inputs(100.0, 100.0, t, r, 0.0, 0.0))
+                .unwrap()
+                .price
+        };
+        let rho_fd = (price_at(0.1 + h, 1.0) - price_at(0.1 - h, 1.0)) / (2.0 * h);
+        assert!((call.greeks.rho - rho_fd).abs() < 1e-5);
+        let theta_fd = -(price_at(0.1, 1.0 + h) - price_at(0.1, 1.0 - h)) / (2.0 * h);
+        assert!((call.greeks.theta_annual - theta_fd).abs() < 1e-5);
+
+        // The put is out of the money on a forward basis.
+        let put = black_scholes_merton(OptionType::Put, &inputs(100.0, 100.0, 1.0, 0.1, 0.0, 0.0))
+            .unwrap();
+        assert_eq!(put.price, 0.0);
+        assert_eq!(put.greeks.delta, 0.0);
+        assert_eq!(put.greeks.rho, 0.0);
+
+        // Black-76 inherits the branch: e^{-rT} max(F - K, 0).
+        let b76 = black_76(OptionType::Put, 90.0, 100.0, 1.0, 0.05, 0.0).unwrap();
+        assert!((b76.price - 10.0 * (-0.05f64).exp()).abs() < 1e-12);
+        assert!((b76.greeks.delta + (-0.05f64).exp()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn black_76_rho_matches_finite_difference_with_fixed_forward() {
+        let h = 1e-5;
+        for option_type in [OptionType::Call, OptionType::Put] {
+            for vol in [0.2, 0.0] {
+                let price_at = |r: f64| black_76(option_type, 100.0, 95.0, 1.0, r, vol).unwrap();
+                let fd = (price_at(0.05 + h).price - price_at(0.05 - h).price) / (2.0 * h);
+                let rho = price_at(0.05).greeks.rho;
+                assert!(
+                    (rho - fd).abs() < 1e-5,
+                    "{option_type:?} vol {vol}: {rho} vs {fd}"
+                );
+            }
+        }
+        let atm = black_76(OptionType::Call, 100.0, 100.0, 1.0, 0.05, 0.2).unwrap();
+        let fd = (black_76(OptionType::Call, 100.0, 100.0, 1.0, 0.05 + h, 0.2)
+            .unwrap()
+            .price
+            - black_76(OptionType::Call, 100.0, 100.0, 1.0, 0.05 - h, 0.2)
+                .unwrap()
+                .price)
+            / (2.0 * h);
+        assert!((atm.greeks.rho - fd).abs() < 1e-5);
+        assert!((atm.greeks.rho + 7.577).abs() < 1e-3, "{}", atm.greeks.rho);
+    }
 }

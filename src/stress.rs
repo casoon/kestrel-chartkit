@@ -98,7 +98,14 @@ pub struct StressedPortfolioResult {
     pub equity_change_pct: f64,
     /// Increase or decrease in total gross exposure.
     pub gross_exposure_change: f64,
-    /// Stressed gross leverage.
+    /// Stressed gross exposure divided by the **baseline (unstressed) equity**:
+    /// `snapshot.gross_exposure / baseline_equity` (0.0 if baseline equity <= 0).
+    ///
+    /// This answers "how large is the stressed book relative to the capital we started with".
+    /// It is *not* the leverage the account would report after the shock: that one divides by the
+    /// stressed equity and is [`PortfolioSnapshot::gross_leverage`] on [`Self::snapshot`]. After an
+    /// adverse shock the stressed-equity figure is the higher (riskier) of the two. The name is
+    /// kept for API stability; the denominator is the contract.
     pub gross_leverage: f64,
 }
 
@@ -452,4 +459,45 @@ pub fn simulate_equity_paths(
         terminal_equities,
         max_drawdowns,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contract::{ContractSpec, Currency, InstrumentType};
+    use crate::portfolio::PositionSide;
+
+    #[test]
+    fn stressed_gross_leverage_denominators_are_baseline_vs_stressed_equity() {
+        let ledger = CashLedger {
+            cash: 100_000.0,
+            ..Default::default()
+        };
+        let position = PositionSnapshot {
+            symbol: "FDAX".to_string(),
+            spec: ContractSpec {
+                multiplier: 25.0,
+                instrument_type: InstrumentType::LinearFuture,
+                ..Default::default()
+            },
+            side: PositionSide::Long,
+            quantity: 1.0,
+            entry_price: 20_000.0,
+            current_price: 20_000.0,
+            stop_price: None,
+            fx_to_account: 1.0,
+        };
+        let scenario = StressScenario {
+            price_shock_pct: -0.10,
+            ..StressScenario::neutral()
+        };
+        let result =
+            apply_portfolio_stress(Currency::eur(), &ledger, &[position], &scenario).unwrap();
+
+        // Stressed exposure 450,000; baseline equity 100,000; stressed equity 50,000.
+        assert!((result.snapshot.gross_exposure - 450_000.0).abs() < 1e-9);
+        assert!((result.snapshot.equity - 50_000.0).abs() < 1e-9);
+        assert!((result.gross_leverage - 4.5).abs() < 1e-12);
+        assert!((result.snapshot.gross_leverage - 9.0).abs() < 1e-12);
+    }
 }

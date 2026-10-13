@@ -472,7 +472,27 @@ impl ValuationContext {
             })
     }
 
+    /// Discount factor from the valuation date to `date` on `curve`: `DF(date) / DF(valuation)`.
+    ///
+    /// A curve's reference date need not equal the valuation date. Discounting must start at the
+    /// valuation date, so the curve's discount factors are rebased onto it; this holds for any
+    /// curve shape, not only flat ones. A valuation date before the curve's reference date is
+    /// rejected with [`ValuationContextError::TimeOutsideCurve`] — the curve says nothing about
+    /// that period.
+    fn discount_factor_from_valuation_date(
+        &self,
+        curve: &YieldCurve,
+        date: Date,
+    ) -> Result<f64, ValuationContextError> {
+        let at_valuation = curve.discount_factor(self.valuation_date)?;
+        Ok(curve.discount_factor(date)? / at_valuation)
+    }
+
     /// Present value of a bond's outstanding cashflows on the currency's discount curve.
+    ///
+    /// Cashflows are discounted to the valuation date, also when the curve's reference date lies
+    /// before it (see the rebasing note on the option pricer); a valuation date before the
+    /// curve's reference date is an error.
     ///
     /// This is the curve-based counterpart to [`FixedRateBond::price`], which discounts at a
     /// single yield. Accrued interest is the same figure in both — it comes from the schedule,
@@ -504,7 +524,8 @@ impl ValuationContext {
 
         let mut dirty_price = 0.0;
         for flow in &flows {
-            dirty_price += flow.amount * curve.discount_factor(flow.date)?;
+            dirty_price +=
+                flow.amount * self.discount_factor_from_valuation_date(&curve, flow.date)?;
         }
         let accrued_interest = bond.accrued_interest(self.valuation_date);
 
@@ -520,6 +541,12 @@ impl ValuationContext {
     /// The rate used is the zero rate to expiry. For a European option that is not an
     /// approximation: only the discount factor to expiry and the forward enter the formula, and
     /// both follow from that single rate.
+    ///
+    /// The curve's reference date may lie before the valuation date: the rate is then the
+    /// continuously compounded rate implied by `DF(expiry) / DF(valuation date)` over the option's
+    /// own year fraction, not the curve's zero rate for that tenor counted from its reference
+    /// date. With equal dates this is the zero rate to expiry. A valuation date before the
+    /// curve's reference date is rejected.
     ///
     /// Volatility and dividend yield are passed in rather than read from the context: a
     /// volatility surface over strike and maturity is not modelled yet, and inventing a flat one
@@ -599,7 +626,19 @@ impl ValuationContext {
             return Err(ValuationContextError::TimeOutsideCurve);
         }
         let time_to_expiry_years = year_fraction(self.valuation_date, expiry, curve.day_count());
-        let risk_free_rate = curve.zero_rate(time_to_expiry_years)?;
+        let risk_free_rate = if curve.reference_date() == self.valuation_date {
+            // Same origin: the zero rate to expiry, read directly (no exp/ln round trip).
+            curve.zero_rate(time_to_expiry_years)?
+        } else if time_to_expiry_years > 0.0 {
+            -self
+                .discount_factor_from_valuation_date(&curve, expiry)?
+                .ln()
+                / time_to_expiry_years
+        } else {
+            // Expiry today: the rate does not enter the price; take the curve's rate at the
+            // valuation date (and still reject a valuation date before the curve).
+            curve.zero_rate(curve.time_to(self.valuation_date)?)?
+        };
 
         let priced = black_scholes_merton(
             option_type,
@@ -613,5 +652,101 @@ impl ValuationContext {
             },
         )?;
         Ok(self.valued(priced))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn date(y: i32, m: u32, d: u32) -> Date {
+        Date::new(y, m, d).unwrap()
+    }
+
+    fn context_after_curve_reference(curve: YieldCurve) -> ValuationContext {
+        ValuationContext::new(date(2025, 7, 1), 0, "rebased")
+            .with_discount_curve(Currency::eur(), DiscountCurve::new(curve))
+    }
+
+    #[test]
+    fn bond_is_discounted_from_the_valuation_date_not_the_curve_reference() {
+        let dc = DayCountConvention::Actual365Fixed;
+        let context = context_after_curve_reference(YieldCurve::flat(date(2025, 1, 1), 0.10, dc));
+        let maturity = date(2026, 1, 1);
+        let schedule =
+            crate::finance::CouponSchedule::covering(date(2025, 7, 1), maturity, 1).unwrap();
+        let bond = FixedRateBond::new(1000.0, 0.0, 1, schedule, dc).unwrap();
+
+        let priced = context
+            .price_bond(&bond, &Currency::eur())
+            .unwrap()
+            .into_inner();
+        let expected = 1000.0 * (-0.10 * year_fraction(date(2025, 7, 1), maturity, dc)).exp();
+        assert!(
+            (priced.dirty_price - expected).abs() < 1e-9,
+            "{}",
+            priced.dirty_price
+        );
+        assert!((priced.dirty_price - 950.84).abs() < 0.01);
+
+        // Non-flat curve: DF(maturity) / DF(valuation date), not DF(maturity) alone.
+        let curve =
+            YieldCurve::from_zero_rates(date(2025, 1, 1), vec![(0.5, 0.02), (2.0, 0.06)], dc)
+                .unwrap();
+        let rebased = curve.discount_factor(maturity).unwrap()
+            / curve.discount_factor(date(2025, 7, 1)).unwrap();
+        let context = context_after_curve_reference(curve);
+        let priced = context
+            .price_bond(&bond, &Currency::eur())
+            .unwrap()
+            .into_inner();
+        assert!((priced.dirty_price - 1000.0 * rebased).abs() < 1e-9);
+    }
+
+    #[test]
+    fn option_rate_is_the_forward_rate_from_the_valuation_date() {
+        let dc = DayCountConvention::Actual365Fixed;
+        let curve =
+            YieldCurve::from_zero_rates(date(2025, 1, 1), vec![(0.5, 0.02), (2.0, 0.06)], dc)
+                .unwrap();
+        let expiry = date(2026, 1, 1);
+        let rebased = curve.discount_factor(expiry).unwrap()
+            / curve.discount_factor(date(2025, 7, 1)).unwrap();
+        let context = context_after_curve_reference(curve);
+        let priced = context
+            .price_european_option(
+                &Currency::eur(),
+                OptionType::Call,
+                100.0,
+                100.0,
+                expiry,
+                0.0,
+                0.0,
+            )
+            .unwrap()
+            .into_inner();
+        // Zero volatility: price is S - K * DF(valuation -> expiry).
+        assert!(
+            (priced.price - (100.0 - 100.0 * rebased)).abs() < 1e-9,
+            "{}",
+            priced.price
+        );
+    }
+
+    #[test]
+    fn valuation_date_before_curve_reference_is_rejected() {
+        let dc = DayCountConvention::Actual365Fixed;
+        let context = ValuationContext::new(date(2024, 12, 1), 0, "early").with_discount_curve(
+            Currency::eur(),
+            DiscountCurve::new(YieldCurve::flat(date(2025, 1, 1), 0.10, dc)),
+        );
+        let schedule =
+            crate::finance::CouponSchedule::covering(date(2024, 12, 1), date(2026, 1, 1), 1)
+                .unwrap();
+        let bond = FixedRateBond::new(1000.0, 0.0, 1, schedule, dc).unwrap();
+        assert_eq!(
+            context.price_bond(&bond, &Currency::eur()).unwrap_err(),
+            ValuationContextError::TimeOutsideCurve
+        );
     }
 }

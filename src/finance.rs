@@ -831,6 +831,12 @@ impl FixedRateBond {
 
     /// Inverts [`FixedRateBond::price`]: the yield at which the bond's clean price equals
     /// `clean_price`.
+    ///
+    /// The yield's domain is `y > -frequency` (where `1 + y / frequency` stays positive), so
+    /// deeply negative yields are found as well. A Newton step that would leave the domain is
+    /// replaced by halving the distance to its lower bound. If the price is not matched to
+    /// `1e-8` within the iteration limit, the result is
+    /// [`FinanceError::SolverFailedToConverge`] — never the last iterate.
     pub fn yield_to_maturity(
         &self,
         settlement: Date,
@@ -840,8 +846,9 @@ impl FixedRateBond {
             return Err(FinanceError::InvalidInput("clean_price must be positive"));
         }
 
+        let lower_bound = -(self.frequency as f64);
         let mut ytm = self.coupon_rate.max(0.01);
-        for _ in 0..100 {
+        for _ in 0..200 {
             let priced = self.price(settlement, ytm)?;
             let diff = priced.clean_price - clean_price;
             if diff.abs() < 1e-8 {
@@ -852,9 +859,14 @@ impl FixedRateBond {
             if derivative.abs() < 1e-12 {
                 return Err(FinanceError::SolverFailedToConverge);
             }
-            ytm = (ytm - diff / derivative).max(-0.5);
+            let next = ytm - diff / derivative;
+            ytm = if next > lower_bound {
+                next
+            } else {
+                0.5 * (ytm + lower_bound)
+            };
         }
-        Ok(ytm)
+        Err(FinanceError::SolverFailedToConverge)
     }
 }
 
@@ -999,4 +1011,45 @@ pub fn yield_to_maturity(
     let schedule = CouponSchedule::covering(settlement, maturity, frequency)?;
     FixedRateBond::new(face_value, coupon_rate, frequency, schedule, convention)?
         .yield_to_maturity(settlement, clean_price)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn yield_to_maturity_finds_yields_below_minus_fifty_percent() {
+        let settlement = Date::new(2025, 1, 1).unwrap();
+        let maturity = Date::new(2026, 1, 1).unwrap();
+        // One-year zero bond: 1000 / (1 + y) = 3333.33 -> y = -0.7.
+        let clean_price = 1000.0 / 0.3;
+        let ytm = yield_to_maturity(
+            clean_price,
+            1000.0,
+            0.0,
+            1,
+            settlement,
+            maturity,
+            DayCountConvention::Actual365Fixed,
+        )
+        .unwrap();
+        assert!((ytm + 0.7).abs() < 1e-9, "ytm {ytm}");
+    }
+
+    #[test]
+    fn yield_to_maturity_reports_non_convergence_instead_of_an_iterate() {
+        let settlement = Date::new(2025, 1, 1).unwrap();
+        let maturity = Date::new(2026, 1, 1).unwrap();
+        // A price no yield above -100% can reach within the iteration budget.
+        let result = yield_to_maturity(
+            1e300,
+            1000.0,
+            0.0,
+            1,
+            settlement,
+            maturity,
+            DayCountConvention::Actual365Fixed,
+        );
+        assert_eq!(result, Err(FinanceError::SolverFailedToConverge));
+    }
 }

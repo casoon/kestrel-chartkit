@@ -32,6 +32,11 @@ pub struct PositionSizeResult {
 /// result to `instrument`'s tick size via [`InstrumentMeta::round_to_tick`] is *not* applicable
 /// here (that rounds prices, not size) — sizing itself is left unrounded; round to a lot size
 /// externally if the instrument requires it.
+///
+/// Risk and notional use the same unit value: one price point is worth
+/// `tick_value / tick_size` per unit, so `notional_per_unit = entry * tick_value / tick_size`
+/// (for a cash share with `tick_value == tick_size` this is just `entry`). The leverage cap
+/// (`equity * max_leverage`) and `max_position_notional` are compared against that notional.
 pub fn position_size(
     account: &AccountRisk,
     instrument: &InstrumentMeta,
@@ -54,7 +59,8 @@ pub fn position_size(
     let risk_per_unit = ticks_at_risk * tick_value;
     let mut size = risk_budget / risk_per_unit;
 
-    let leverage_cap = (account.equity * account.max_leverage) / entry.max(1e-9);
+    let notional_per_unit = entry.max(1e-9) * tick_value / instrument.tick_size;
+    let leverage_cap = (account.equity * account.max_leverage) / notional_per_unit;
     let mut capped_by_leverage = false;
     if size > leverage_cap {
         size = leverage_cap;
@@ -63,7 +69,7 @@ pub fn position_size(
 
     let mut capped_by_notional = false;
     if let Some(max_notional) = account.max_position_notional {
-        let notional_cap = max_notional / entry.max(1e-9);
+        let notional_cap = max_notional / notional_per_unit;
         if size > notional_cap {
             size = notional_cap;
             capped_by_notional = true;
@@ -334,7 +340,25 @@ mod tests {
         };
         let result = position_size(&capped_account, &instrument(), 100.0, 98.0, 10.0);
         assert!(result.capped_by_notional);
-        assert!((result.size - 5.0).abs() < 1e-9); // 500 notional / 100 entry
+        // One point is worth 10 / 0.25 = 40 per unit, so one unit at 100 is 4,000 notional.
+        assert!((result.size - 500.0 / 4_000.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_position_size_leverage_cap_uses_point_value_not_raw_price() {
+        // Future at 5000, tick 0.25 worth 12.50 -> 50 per point -> 250,000 notional per contract.
+        let account = AccountRisk {
+            equity: 10_000.0,
+            risk_pct_per_trade: 0.01,
+            max_leverage: 1.0,
+            max_position_notional: None,
+        };
+        let result = position_size(&account, &instrument(), 5000.0, 4999.5, 12.5);
+        assert!(result.capped_by_leverage);
+        assert!(result.size <= 0.04 + 1e-12, "size {}", result.size);
+        assert!((result.size - 0.04).abs() < 1e-12);
+        let notional = result.size * 5000.0 * 12.5 / 0.25;
+        assert!(notional <= account.equity * account.max_leverage + 1e-6);
     }
 
     #[test]
