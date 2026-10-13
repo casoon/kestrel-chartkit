@@ -41,8 +41,9 @@ pub struct ZigZagNode {
 /// one. A pivot of the other kind confirms the running node and starts a new running node at its
 /// own price, once its change from the running node reaches the deviation threshold and the pivot
 /// bar lies at least `backstep` bars after the pivot bar of the last confirmation (checked once
-/// per bar, before either pivot is applied). Each confirmation raises a `zigzag_pivot_confirmed`
-/// alert.
+/// per bar, before either pivot is applied). Each confirmation raises an alert with the direction
+/// of the turn: `bull_swing_confirmed` for a confirmed swing low, `bear_swing_confirmed` for a
+/// confirmed swing high.
 ///
 /// In [`ZigZagDeviationMode::Percent`] the relative change `|price - running| / |running|` must
 /// reach `pct / 100`. In [`ZigZagDeviationMode::AtrMultiple`] the price distance
@@ -356,8 +357,13 @@ impl AdvancedZigZagEngine {
             });
             self.current_direction = opposite_direction;
             self.last_confirmed_bar_index = Some(bar_index);
+            // A confirmed swing low is a turn up (`bull_`), a swing high a turn down.
             self.alerts.push(IndicatorAlert::new(
-                "zigzag_pivot_confirmed",
+                if is_high {
+                    "bull_swing_confirmed"
+                } else {
+                    "bear_swing_confirmed"
+                },
                 if is_high {
                     "ZigZag confirmed a swing low"
                 } else {

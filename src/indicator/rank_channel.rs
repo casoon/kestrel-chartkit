@@ -3,7 +3,9 @@
 //! Many lines have no fixed scale (TRIX, VIDYA, PVT, ...) or no alerts of their own, so a fixed
 //! threshold cannot compare them. [`RankChannel`] wraps any indicator and adds a scale-free
 //! reading: `extra["rank"]` is the share (0..=100) of the previous `lookback` values that lie
-//! strictly below the current `value`. Alerts fire when the rank **enters** an extreme zone:
+//! below the current `value`, ties counted half (mid-rank) — so a value and its negation rank
+//! symmetrically, also for lines with discrete values (RCI). Alerts fire when the rank **enters**
+//! an extreme zone:
 //!
 //! | alert | condition |
 //! |---|---|
@@ -12,7 +14,11 @@
 //!
 //! The prefix reads the extreme as a reversion (an unusually low value → up). Whether that or the
 //! opposite reading holds is an empirical question; consumers that want the continuation reading
-//! swap the sides. The inner indicator's own output and alerts pass through unchanged; the rank
+//! swap the sides.
+//!
+//! A line without a price direction (ATR, efficiency ratio, choppiness, ulcer index …) has no
+//! reversion reading: a low ATR does not mean "up". [`RankChannel::undirected`] reports such
+//! lines as `rank_low` / `rank_high` instead, without a direction. The inner indicator's own output and alerts pass through unchanged; the rank
 //! starts once `lookback` earlier values exist, and the first ranked bar cannot alert (there is no
 //! previous rank).
 
@@ -35,6 +41,7 @@ pub struct RankChannel<I: Indicator> {
     high: f64,
     history: VecDeque<f64>,
     prev_rank: Option<f64>,
+    undirected: bool,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -47,8 +54,16 @@ impl<I: Indicator> RankChannel<I> {
             high,
             history: VecDeque::with_capacity(lookback + 1),
             prev_rank: None,
+            undirected: false,
             alerts: Vec::new(),
         }
+    }
+
+    /// For a line without a price direction: the zone entries alert as `rank_low` / `rank_high`
+    /// instead of `bull_` / `bear_rank_extreme`.
+    pub fn undirected(mut self) -> Self {
+        self.undirected = true;
+        self
     }
 
     pub fn with_defaults(inner: I) -> Self {
@@ -83,12 +98,17 @@ impl<I: Indicator> Indicator for RankChannel<I> {
         }
         if self.history.len() == self.lookback {
             let below = self.history.iter().filter(|h| **h < v).count();
-            let rank = 100.0 * below as f64 / self.lookback as f64;
+            let equal = self.history.iter().filter(|h| **h == v).count();
+            let rank = 100.0 * (below as f64 + 0.5 * equal as f64) / self.lookback as f64;
             out.extra.insert("rank".to_string(), rank);
             if let Some(prev) = self.prev_rank {
                 if rank <= self.low && prev > self.low {
                     self.alerts.push(IndicatorAlert::new(
-                        "bull_rank_extreme",
+                        if self.undirected {
+                            "rank_low"
+                        } else {
+                            "bull_rank_extreme"
+                        },
                         format!(
                             "{} at rank {rank:.0} of its last {}",
                             self.inner.name(),
@@ -98,7 +118,11 @@ impl<I: Indicator> Indicator for RankChannel<I> {
                     ));
                 } else if rank >= self.high && prev < self.high {
                     self.alerts.push(IndicatorAlert::new(
-                        "bear_rank_extreme",
+                        if self.undirected {
+                            "rank_high"
+                        } else {
+                            "bear_rank_extreme"
+                        },
                         format!(
                             "{} at rank {rank:.0} of its last {}",
                             self.inner.name(),
@@ -189,6 +213,22 @@ mod tests {
             );
             assert_eq!(out.value, *v);
         }
+    }
+
+    /// Ties count half: with the history 1 1 1 1 the value 1 ranks 50, not 0.
+    #[test]
+    fn ties_rank_in_the_middle_and_undirected_has_no_prefix() {
+        let mut r = RankChannel::new(Close, 4, 25.0, 75.0).undirected();
+        for v in [1.0, 1.0, 1.0, 1.0] {
+            r.on_bar(&bar(v));
+        }
+        assert_eq!(r.on_bar(&bar(1.0)).unwrap().extra["rank"], 50.0);
+        r.on_bar(&bar(0.0));
+        let kinds: Vec<String> = r.alerts().into_iter().map(|a| a.kind).collect();
+        assert_eq!(kinds, ["rank_low"]);
+        r.on_bar(&bar(5.0));
+        let kinds: Vec<String> = r.alerts().into_iter().map(|a| a.kind).collect();
+        assert_eq!(kinds, ["rank_high"]);
     }
 
     #[test]

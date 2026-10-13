@@ -90,6 +90,7 @@ supertrend5_line=43.30799999999999
 supertrend5_dir=1.0
 true_range_last=1.0799999999999983
 vix_fix5_last=2.736479207067434
+vix_fix5_inverse_last=1.083658430862592
 vortex5_plus=0.8582677165354332
 vortex5_minus=1.1102362204724414
 vol_tolerance=1e-09

@@ -11,9 +11,11 @@
 //! - **quality** `≥ min_quality_long`: +1 for `RSI > 50`, +1 when the last two confirmed swing
 //!   lows are not a lower low.
 //!
-//! A short mirrors the sweep (high above the highest high, close back below) with +1 for
-//! `RSI > 50` (still elevated) and +1 for no higher high, against `min_quality_short`. After a
-//! signal, the next one needs more than `cooldown` bars.
+//! A short mirrors the long exactly: the sweep (high above the highest high, close back below),
+//! +1 for `RSI < 50` and +1 for no higher high, against `min_quality_short` (default 2 like the
+//! long). The original scores the short with `RSI > 50` as well and needs only 1 point — one-sided,
+//! so the short fired about three times as often as the long on the same, mirrored data; this
+//! port treats both sides alike. After a signal, the next one needs more than `cooldown` bars.
 //!
 //! `value`: `1` on a long signal, `-1` on a short, `0` otherwise (a bar with both reports `1`
 //! and fires both alerts). `extra`: `long_quality`, `short_quality`, `rsi`, `atr`, `atr_base`,
@@ -37,7 +39,7 @@ use crate::model::Bar;
 use super::smoothing::{Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the original — except `min_quality_short`, which follows the long.
 #[derive(Debug, Clone)]
 pub struct SweepReversalScoreConfig {
     pub swing_len: usize,
@@ -63,7 +65,7 @@ impl Default for SweepReversalScoreConfig {
             rsi_len: 14,
             pivot_len: 5,
             min_quality_long: 2,
-            min_quality_short: 1,
+            min_quality_short: 2,
             cooldown: 5,
             sl_atr_buffer: 0.30,
             tp_r_mult: 1.50,
@@ -200,7 +202,7 @@ impl Indicator for SweepReversalScore {
         let ll = matches!(self.lows, [Some(a), Some(b)] if a < b);
         let hh = matches!(self.highs, [Some(a), Some(b)] if a > b);
         let long_quality = u8::from(rsi > 50.0) + u8::from(!ll);
-        let short_quality = u8::from(rsi > 50.0) + u8::from(!hh);
+        let short_quality = u8::from(rsi < 50.0) + u8::from(!hh);
         let sweep_long = bar.low < swing_low && bar.close > swing_low;
         let sweep_short = bar.high > swing_high && bar.close < swing_high;
         let cooldown_ok = self.last_signal.is_none_or(|s| t - s > c.cooldown);

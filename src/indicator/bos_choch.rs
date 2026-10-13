@@ -139,13 +139,18 @@ impl Indicator for BosChochEngine {
     fn alerts(&self) -> Vec<IndicatorAlert> {
         let mut alerts = Vec::new();
         if let Some(event) = self.last_event {
-            let note = match event {
-                StructureEventKind::BullishBos => "Bullish Break of Structure (BOS)",
-                StructureEventKind::BullishChoch => "Bullish Change of Character (CHoCH)",
-                StructureEventKind::BearishBos => "Bearish Break of Structure (BOS)",
-                StructureEventKind::BearishChoch => "Bearish Change of Character (CHoCH)",
+            // The prefix carries the direction of the break, like every directional alert.
+            let (kind, note) = match event {
+                StructureEventKind::BullishBos => ("bull_bos", "Bullish Break of Structure (BOS)"),
+                StructureEventKind::BullishChoch => {
+                    ("bull_choch", "Bullish Change of Character (CHoCH)")
+                }
+                StructureEventKind::BearishBos => ("bear_bos", "Bearish Break of Structure (BOS)"),
+                StructureEventKind::BearishChoch => {
+                    ("bear_choch", "Bearish Change of Character (CHoCH)")
+                }
             };
-            alerts.push(IndicatorAlert::new("structure_break", note, 0.9));
+            alerts.push(IndicatorAlert::new(kind, note, 0.9));
         }
         alerts
     }

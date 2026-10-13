@@ -2,7 +2,8 @@
 
 Written from the original definition, not from the Rust code, with the inputs
 only15m = false and gate F off (the other gates at their defaults: A and D on; B, C, E, G,
-H, I off). Series are full arrays indexed by bar.
+H, I off), and the short mirrored to the long (RSI < 50, minimum quality 2) instead of the
+original's one-sided RSI > 50 and minimum 1. Series are full arrays indexed by bar.
 """
 
 import math
@@ -18,7 +19,7 @@ ATR_LOW_FACTOR = 0.60
 RSI_LEN = 14
 PIV_LEN = 5
 MIN_Q_LONG = 2
-MIN_Q_SHORT = 1
+MIN_Q_SHORT = 2
 COOLDOWN = 5
 SL_ATR_BUFFER = 0.30
 TP_R_MULT = 1.50
@@ -124,7 +125,7 @@ def compute(bars):
         ll = sl1 is not None and sl2 is not None and sl1 < sl2
         hh = sh1 is not None and sh2 is not None and sh1 > sh2
         long_q = (1 if rsi[t] > 50 else 0) + (1 if not ll else 0)
-        short_q = (1 if rsi[t] > 50 else 0) + (1 if not hh else 0)
+        short_q = (1 if rsi[t] < 50 else 0) + (1 if not hh else 0)
         cooldown_ok = last_signal is None or t - last_signal > COOLDOWN
         long_sig = sweep_long and atr_ok and long_q >= MIN_Q_LONG and cooldown_ok
         short_sig = sweep_short and atr_ok and short_q >= MIN_Q_SHORT and cooldown_ok
@@ -152,11 +153,12 @@ HEADER = [
     "",
     "Formula: the original definition with only15m",
     "off and gate F off, everything else at its defaults (gate A sweep lookback 10, gate D ATR 14",
-    "above 0.6 x SMA 50 of the ATR, RSI 14, pivots 5, minimum quality 2 long / 1 short, cooldown 5,",
+    "above 0.6 x SMA 50 of the ATR, RSI 14, pivots 5, minimum quality 2 on both sides, cooldown 5,",
     "stop buffer 0.3 ATR, target 1.5 R). Conventions the original leaves open: ATR = Wilder",
     "average of the true range (first bar high - low) seeded with an SMA, RSI = Wilder averages of",
     "the close changes seeded with an SMA, pivots strict on both sides; output from the first bar",
-    "with ATR base, RSI and a full sweep window.",
+    "with ATR base, RSI and a full sweep window. The short mirrors the long: +1 for RSI < 50 and",
+    "+1 for no higher high (the original scores RSI > 50 on both sides and needs 1 point short).",
     "",
     "Series: 900 bars, prev = previous close (100 before the first bar), drift 0.08 up to bar 299,",
     "-0.10 to 599, 0.03 after; close = prev + drift + 0.9 sin(i/5) + 0.4 cos(i/2.2); open = prev +",

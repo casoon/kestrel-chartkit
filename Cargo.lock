@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "kestrel-chartkit"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "chrono",
  "chrono-tz",

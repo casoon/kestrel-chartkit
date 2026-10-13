@@ -441,7 +441,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "vix_fix",
-            description: "Williams Vix Fix volatility spike detector",
+            description: "Williams Vix Fix volatility spike detector: panic lows (WVF, alert panic_bottom) and, mirrored, blow-off tops (inverse VIX Fix, extra inverse/inverse_band, alert blowoff_top)",
             default_params: [
                 ("pd".to_string(), 22.0),
                 ("bband_len".to_string(), 20.0),
@@ -1046,7 +1046,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "sweep_reversal_score",
-            description: "Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (RSI > 50, no lower low / no higher high) against min_quality_long/short, cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
+            description: "Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
             default_params: [
                 ("swing_len".to_string(), 10.0),
                 ("atr_len".to_string(), 14.0),
@@ -1055,7 +1055,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("rsi_len".to_string(), 14.0),
                 ("pivot_len".to_string(), 5.0),
                 ("min_quality_long".to_string(), 2.0),
-                ("min_quality_short".to_string(), 1.0),
+                ("min_quality_short".to_string(), 2.0),
                 ("cooldown".to_string(), 5.0),
             ]
             .into(),
@@ -2189,7 +2189,7 @@ pub fn build_checked(
                 rsi_len: get_usize_p(params, "rsi_len", 14, 1, 500)?,
                 pivot_len: get_usize_p(params, "pivot_len", 5, 1, 50)?,
                 min_quality_long: get_usize_p(params, "min_quality_long", 2, 0, 2)? as u8,
-                min_quality_short: get_usize_p(params, "min_quality_short", 1, 0, 2)? as u8,
+                min_quality_short: get_usize_p(params, "min_quality_short", 2, 0, 2)? as u8,
                 cooldown: get_usize_p(params, "cooldown", 5, 0, 500)?,
                 ..SweepReversalScoreConfig::default()
             };

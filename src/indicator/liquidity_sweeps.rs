@@ -135,13 +135,13 @@ impl Indicator for LiquiditySweepEngine {
         let mut alerts = Vec::new();
         if self.sweep_detected == 1 {
             alerts.push(IndicatorAlert::new(
-                "sweep",
+                "bull_sweep",
                 "Bullish Liquidity Sweep & Reclaim",
                 0.85,
             ));
         } else if self.sweep_detected == -1 {
             alerts.push(IndicatorAlert::new(
-                "sweep",
+                "bear_sweep",
                 "Bearish Liquidity Sweep & Reclaim",
                 0.85,
             ));

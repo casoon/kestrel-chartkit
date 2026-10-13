@@ -473,6 +473,12 @@ fn test_golden_vix_fix_reference_values() {
         expected("vol_tolerance"),
         "VIX Fix",
     );
+    common::assert_close(
+        out.extra["inverse"],
+        expected("vix_fix5_inverse_last"),
+        expected("vol_tolerance"),
+        "Inverse VIX Fix",
+    );
 }
 
 #[test]

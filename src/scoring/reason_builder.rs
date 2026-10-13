@@ -37,6 +37,9 @@ pub fn score_indicator(
             | "ob_retest_bullish"
             | "bullish_bos"
             | "bullish_choch"
+            | "bull_bos"
+            | "bull_choch"
+            | "bull_sweep"
             | "price_below_val" => {
                 let s = 0.6 + 0.4 * alert.strength.clamp(0.0, 1.0);
                 score += s;
@@ -54,6 +57,9 @@ pub fn score_indicator(
             | "ob_retest_bearish"
             | "bearish_bos"
             | "bearish_choch"
+            | "bear_bos"
+            | "bear_choch"
+            | "bear_sweep"
             | "price_above_vah" => {
                 let s = 0.6 + 0.4 * alert.strength.clamp(0.0, 1.0);
                 score -= s;
@@ -61,6 +67,10 @@ pub fn score_indicator(
             }
             "panic_bottom" => {
                 score += 0.9;
+                reasons.push(alert.note.clone());
+            }
+            "blowoff_top" => {
+                score -= 0.9;
                 reasons.push(alert.note.clone());
             }
             "expansion" => {

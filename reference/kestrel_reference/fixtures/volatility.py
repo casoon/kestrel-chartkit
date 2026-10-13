@@ -368,6 +368,9 @@ def derive():
     keys["true_range_last"] = _true_ranges(VOL_BARS)[-1]
     highest = max(VOL_PRICES[-5:])
     keys["vix_fix5_last"] = (highest - VOL_BARS[-1][2]) / highest * 100.0
+    # Inverse VIX Fix (tops): (high - lowest close) / high.
+    lowest = min(VOL_PRICES[-5:])
+    keys["vix_fix5_inverse_last"] = (VOL_BARS[-1][1] - lowest) / VOL_BARS[-1][1] * 100.0
     keys["vortex5_plus"], keys["vortex5_minus"] = _vortex(VOL_BARS, 5)
     flat = [(100.0, 101.0, 99.0, 100.0)] * 5
     keys["atr3_signal2_pct"] = _atr_with_signal(flat, 3, 2)[-1][1]
@@ -488,7 +491,7 @@ SECTIONS = [
       "donchian5_upper", "donchian5_lower", "envelope5_basis", "envelope5_upper",
       "envelope5_lower", "garman_klass5_last", "hv5_last", "keltner5_basis", "keltner5_upper",
       "keltner5_lower", "mass_index5_last", "psar_last", "supertrend5_line", "supertrend5_dir",
-      "true_range_last", "vix_fix5_last", "vortex5_plus", "vortex5_minus", "vol_tolerance"]),
+      "true_range_last", "vix_fix5_last", "vix_fix5_inverse_last", "vortex5_plus", "vortex5_minus", "vol_tolerance"]),
     ("the ADX and the Mass Index where the formulas actually act",
      ["adx3_shaped_last", "mass_index5_shaped_last"]),
     ("Chande Kroll Stop (package 29)",

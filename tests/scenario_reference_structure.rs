@@ -37,7 +37,8 @@ fn test_scenario_bos_choch() {
         if let Some(out) = ind.on_bar(&b) {
             event_codes.push(out.value);
             for a in ind.alerts() {
-                if a.kind == "structure_break" {
+                if a.kind.ends_with("_bos") || a.kind.ends_with("_choch") {
+                    assert_structure_kind(&a.kind, &a.note);
                     notes_collected.push(a.note);
                 }
             }
@@ -74,7 +75,8 @@ fn test_scenario_bos_choch_synthetic_bearish() {
         if let Some(out) = ind.on_bar(&qb.bar) {
             event_codes.push(out.value);
             for a in ind.alerts() {
-                if a.kind == "structure_break" {
+                if a.kind.ends_with("_bos") || a.kind.ends_with("_choch") {
+                    assert_structure_kind(&a.kind, &a.note);
                     notes.push(a.note);
                 }
             }
@@ -111,7 +113,8 @@ fn test_scenario_bos_choch_synthetic_bullish() {
         if let Some(out) = ind.on_bar(&qb.bar) {
             event_codes.push(out.value);
             for a in ind.alerts() {
-                if a.kind == "structure_break" {
+                if a.kind.ends_with("_bos") || a.kind.ends_with("_choch") {
+                    assert_structure_kind(&a.kind, &a.note);
                     notes.push(a.note);
                 }
             }
@@ -663,7 +666,8 @@ fn test_scenario_liquidity_pools() {
             last_active_count = Some(out.value);
         }
         for a in ind.alerts() {
-            if a.kind == "liquidity_pool_stop_hunt" {
+            // Both hunted pools are BSL (highs): the hunt turns down.
+            if a.kind == "bear_pool_stop_hunt" {
                 stop_hunts.push(a.note);
             }
         }
@@ -714,11 +718,14 @@ fn test_scenario_liquidity_sweeps() {
     ];
 
     let mut last_sweep = 0.0;
+    let mut kinds = Vec::new();
     for b in &bars {
         if let Some(out) = ind.on_bar(b) {
             last_sweep = out.extra["sweep"];
         }
+        kinds.extend(ind.alerts().into_iter().map(|a| a.kind));
     }
+    assert_eq!(kinds, ["bear_sweep"], "the swept high turns down");
 
     assert_eq!(
         last_sweep, -1.0,
@@ -1127,7 +1134,8 @@ fn test_scenario_zigzag_advanced() {
     //     |125.5-89.5|/89.5=40.2% >> threshold, and backstep_ok holds (mid_bar_index=12 >=
     //     last_confirmed(7)+backstep(1)=8) => confirms the 89.5 low node and starts a new running
     //     high leg at 125.5. Final output: value=125.5 (not yet confirmed itself), state=
-    //     "running", plus a `zigzag_pivot_confirmed` alert for the just-confirmed swing low.
+    //     "running", plus a `bull_swing_confirmed` alert for the just-confirmed swing low (the 115.5 high
+    //     confirmed at idx9 raised `bear_swing_confirmed`).
     let mut last_out = None;
     let mut confirm_alerts = Vec::new();
     for (i, &p) in prices.iter().enumerate() {
@@ -1136,7 +1144,15 @@ fn test_scenario_zigzag_advanced() {
             last_out = Some(out);
         }
         for a in ind.alerts() {
-            if a.kind == "zigzag_pivot_confirmed" {
+            // A confirmed swing low is a turn up, a swing high a turn down.
+            if a.kind.ends_with("_swing_confirmed") {
+                assert_eq!(
+                    a.kind == "bull_swing_confirmed",
+                    a.note.contains("swing low"),
+                    "{} vs {}",
+                    a.kind,
+                    a.note
+                );
                 confirm_alerts.push(a.note);
             }
         }
@@ -1215,4 +1231,15 @@ fn test_scenario_zigzag_advanced_atr_mode() {
             "laufender Schenkel",
         );
     }
+}
+
+/// A structure alert names its direction and kind in the prefix and suffix, matching the note.
+fn assert_structure_kind(kind: &str, note: &str) {
+    let bull = note.starts_with("Bullish");
+    assert_eq!(kind.starts_with("bull_"), bull, "{kind} vs {note}");
+    assert_eq!(
+        kind.ends_with("_choch"),
+        note.contains("CHoCH"),
+        "{kind} vs {note}"
+    );
 }

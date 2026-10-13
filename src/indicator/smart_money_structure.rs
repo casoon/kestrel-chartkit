@@ -168,7 +168,7 @@ impl Indicator for LiquidityPoolEngine {
                     if bar.close < pool.price {
                         pool.state = LiquidityPoolState::StopHunted;
                         self.alerts.push(IndicatorAlert::new(
-                            "liquidity_pool_stop_hunt",
+                            "bear_pool_stop_hunt",
                             format!(
                                 "BSL pool at {:.4} swept and reclaimed (stop hunt)",
                                 pool.price
@@ -178,7 +178,7 @@ impl Indicator for LiquidityPoolEngine {
                     } else {
                         pool.state = LiquidityPoolState::BrokenThrough;
                         self.alerts.push(IndicatorAlert::new(
-                            "liquidity_pool_breakout",
+                            "bull_pool_breakout",
                             format!(
                                 "BSL pool at {:.4} broken through (sustained breakout)",
                                 pool.price
@@ -191,7 +191,7 @@ impl Indicator for LiquidityPoolEngine {
                     if bar.close > pool.price {
                         pool.state = LiquidityPoolState::StopHunted;
                         self.alerts.push(IndicatorAlert::new(
-                            "liquidity_pool_stop_hunt",
+                            "bull_pool_stop_hunt",
                             format!(
                                 "SSL pool at {:.4} swept and reclaimed (stop hunt)",
                                 pool.price
@@ -201,7 +201,7 @@ impl Indicator for LiquidityPoolEngine {
                     } else {
                         pool.state = LiquidityPoolState::BrokenThrough;
                         self.alerts.push(IndicatorAlert::new(
-                            "liquidity_pool_breakout",
+                            "bear_pool_breakout",
                             format!(
                                 "SSL pool at {:.4} broken through (sustained breakout)",
                                 pool.price
@@ -215,7 +215,7 @@ impl Indicator for LiquidityPoolEngine {
                 {
                     pool.state = LiquidityPoolState::Reclaimed;
                     self.alerts.push(IndicatorAlert::new(
-                        "liquidity_pool_reclaim",
+                        "bear_pool_reclaim",
                         format!(
                             "BSL breakout at {:.4} reclaimed (failed breakout)",
                             pool.price
@@ -228,7 +228,7 @@ impl Indicator for LiquidityPoolEngine {
                 {
                     pool.state = LiquidityPoolState::Reclaimed;
                     self.alerts.push(IndicatorAlert::new(
-                        "liquidity_pool_reclaim",
+                        "bull_pool_reclaim",
                         format!(
                             "SSL breakout at {:.4} reclaimed (failed breakout)",
                             pool.price
@@ -340,11 +340,15 @@ pub enum StructureCategory {
 
 fn categorize(kind: &str) -> Option<StructureCategory> {
     match kind {
-        "structure_break" => Some(StructureCategory::Break),
-        "sweep"
-        | "liquidity_pool_stop_hunt"
-        | "liquidity_pool_breakout"
-        | "liquidity_pool_reclaim"
+        "bull_bos" | "bear_bos" | "bull_choch" | "bear_choch" => Some(StructureCategory::Break),
+        "bull_sweep"
+        | "bear_sweep"
+        | "bull_pool_stop_hunt"
+        | "bear_pool_stop_hunt"
+        | "bull_pool_breakout"
+        | "bear_pool_breakout"
+        | "bull_pool_reclaim"
+        | "bear_pool_reclaim"
         | "bullish_liquidity_sweep"
         | "bearish_liquidity_sweep" => Some(StructureCategory::Liquidity),
         "bullish_order_block"
@@ -498,10 +502,13 @@ mod tests {
             .pools()
             .iter()
             .any(|p| p.state == LiquidityPoolState::StopHunted));
-        assert!(engine
-            .alerts()
-            .iter()
-            .any(|a| a.kind == "liquidity_pool_stop_hunt"));
+        assert!(
+            engine
+                .alerts()
+                .iter()
+                .any(|a| a.kind == "bear_pool_stop_hunt"),
+            "a hunted BSL pool (highs) turns down"
+        );
     }
 
     #[test]
@@ -518,8 +525,12 @@ mod tests {
             engine.on_bar(bar);
         }
 
-        // Breakout: pierce and close above 110.
+        // Breakout: pierce and close above 110 — with the break, up.
         engine.on_bar(&Bar::new(300, 100.0, 112.0, 99.0, 111.0, 10.0));
+        assert!(engine
+            .alerts()
+            .iter()
+            .any(|a| a.kind == "bull_pool_breakout"));
         assert!(engine
             .pools()
             .iter()
@@ -532,10 +543,13 @@ mod tests {
             .pools()
             .iter()
             .any(|p| p.state == LiquidityPoolState::Reclaimed));
-        assert!(engine
-            .alerts()
-            .iter()
-            .any(|a| a.kind == "liquidity_pool_reclaim"));
+        assert!(
+            engine
+                .alerts()
+                .iter()
+                .any(|a| a.kind == "bear_pool_reclaim"),
+            "a failed BSL breakout turns down"
+        );
     }
 
     #[test]
@@ -559,13 +573,13 @@ mod tests {
         let mut linker = SmartMoneyStructureLinker::new(5);
 
         // A structure break alone, no corroboration, must not link.
-        linker.observe(10, &[IndicatorAlert::new("structure_break", "BOS", 0.9)]);
+        linker.observe(10, &[IndicatorAlert::new("bull_bos", "BOS", 0.9)]);
         assert!(linker.check_confluence(10).is_none());
 
         // A liquidity sweep shortly before a later break must corroborate it.
         let mut linker = SmartMoneyStructureLinker::new(5);
-        linker.observe(8, &[IndicatorAlert::new("sweep", "swept", 0.85)]);
-        linker.observe(10, &[IndicatorAlert::new("structure_break", "BOS", 0.9)]);
+        linker.observe(8, &[IndicatorAlert::new("bull_sweep", "swept", 0.85)]);
+        linker.observe(10, &[IndicatorAlert::new("bull_bos", "BOS", 0.9)]);
 
         let event = linker.check_confluence(10).unwrap();
         assert!(event.categories.contains(&StructureCategory::Break));
@@ -576,8 +590,8 @@ mod tests {
     #[test]
     fn test_linker_ignores_break_outside_current_bar() {
         let mut linker = SmartMoneyStructureLinker::new(5);
-        linker.observe(8, &[IndicatorAlert::new("sweep", "swept", 0.85)]);
-        linker.observe(9, &[IndicatorAlert::new("structure_break", "BOS", 0.9)]);
+        linker.observe(8, &[IndicatorAlert::new("bull_sweep", "swept", 0.85)]);
+        linker.observe(9, &[IndicatorAlert::new("bull_bos", "BOS", 0.9)]);
         // Querying a bar where no break occurred must return None even if other events exist.
         assert!(linker.check_confluence(10).is_none());
     }

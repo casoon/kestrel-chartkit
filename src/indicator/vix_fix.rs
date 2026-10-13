@@ -11,8 +11,15 @@ use crate::model::Bar;
 /// `SMA(bband_len)(WVF) + mult * sd`, `sd` the population deviation of the last `bband_len` WVF
 /// values around that SMA; a WVF at or above it raises an alert.
 ///
-/// `value`: the WVF; `secondary`: the upper band. First output: once the band exists, i.e. with the
-/// `2 * bband_len - 1`-th bar. [`Indicator::reset`] clears all windows.
+/// The original only looks for panic lows. Its mirror for tops — the inverse VIX Fix — runs
+/// alongside: `inverse = (high - lowest_close) / high * 100`, `lowest_close` over the same `pd`
+/// closes, with its own band of the same form; at or above it raises `blowoff_top`. Divided by the
+/// high (not by the lowest close) it is the exact mirror of the WVF: on a series mirrored in log
+/// price (`p' = C / p`) `inverse` equals the WVF of the original, so tops and lows are found alike.
+///
+/// `value`: the WVF; `secondary`: the upper band; `extra["inverse"]`, `extra["inverse_band"]`.
+/// First output: once the band exists, i.e. with the `2 * bband_len - 1`-th bar.
+/// [`Indicator::reset`] clears all windows.
 pub struct WilliamsVixFix {
     bband_len: usize,
     mult: f64,
@@ -20,7 +27,15 @@ pub struct WilliamsVixFix {
     close_window: ExtremeWindow,
     wvf_window: Vec<f64>,
     sma: Sma,
+    inv_window: Vec<f64>,
+    inv_sma: Sma,
     alerts: Vec<IndicatorAlert>,
+}
+
+/// `mean + mult * sd` of `window` (population deviation around `mean`).
+fn band(window: &[f64], mean: f64, mult: f64) -> f64 {
+    let variance = window.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / window.len() as f64;
+    mean + mult * variance.sqrt()
 }
 
 impl WilliamsVixFix {
@@ -31,6 +46,8 @@ impl WilliamsVixFix {
             close_window: ExtremeWindow::new(pd),
             wvf_window: Vec::with_capacity(bband_len),
             sma: Sma::new(bband_len),
+            inv_window: Vec::with_capacity(bband_len),
+            inv_sma: Sma::new(bband_len),
             alerts: Vec::new(),
         }
     }
@@ -53,15 +70,16 @@ impl Indicator for WilliamsVixFix {
         self.close_window.reset();
         self.wvf_window.clear();
         self.sma.reset();
+        self.inv_window.clear();
+        self.inv_sma.reset();
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let highest_close = self
+        let (lowest_close, highest_close) = self
             .close_window
             .push(bar.close)
-            .map(|(_, high)| high)
-            .unwrap_or(bar.close);
+            .unwrap_or((bar.close, bar.close));
         self.alerts.clear();
 
         let wvf = if highest_close > 0.0 {
@@ -69,31 +87,32 @@ impl Indicator for WilliamsVixFix {
         } else {
             0.0
         };
+        let inverse = if bar.high > 0.0 {
+            ((bar.high - lowest_close) / bar.high) * 100.0
+        } else {
+            0.0
+        };
 
-        let sma_val = self.sma.update(wvf)?;
+        let sma_val = self.sma.update(wvf);
+        let inv_sma = self.inv_sma.update(inverse);
+        let (Some(mean), Some(inv_mean)) = (sma_val, inv_sma) else {
+            return None;
+        };
 
-        self.wvf_window.push(wvf);
-        if self.wvf_window.len() > self.bband_len {
-            self.wvf_window.remove(0);
+        for (w, v) in [(&mut self.wvf_window, wvf), (&mut self.inv_window, inverse)] {
+            w.push(v);
+            if w.len() > self.bband_len {
+                w.remove(0);
+            }
         }
-
         if self.wvf_window.len() < self.bband_len {
             return None;
         }
 
-        let mean = sma_val;
-        let variance = self
-            .wvf_window
-            .iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>()
-            / self.bband_len as f64;
-        let std_dev = variance.sqrt();
+        let upper_band = band(&self.wvf_window, mean, self.mult);
+        let inverse_band = band(&self.inv_window, inv_mean, self.mult);
 
-        let upper_band = mean + self.mult * std_dev;
-        let is_spike = wvf >= upper_band;
-
-        if is_spike {
+        if wvf >= upper_band {
             self.alerts.push(IndicatorAlert::new(
                 "panic_bottom",
                 format!(
@@ -103,8 +122,21 @@ impl Indicator for WilliamsVixFix {
                 1.0,
             ));
         }
+        if inverse >= inverse_band {
+            self.alerts.push(IndicatorAlert::new(
+                "blowoff_top",
+                format!(
+                    "Inverse VIX Fix Spike ({:.2} >= Upper Band {:.2}) - Market Top Zone",
+                    inverse, inverse_band
+                ),
+                1.0,
+            ));
+        }
 
-        Some(IndicatorOutput::new(wvf).with_secondary(upper_band))
+        let mut extra = HashMap::new();
+        extra.insert("inverse".to_string(), inverse);
+        extra.insert("inverse_band".to_string(), inverse_band);
+        Some(IndicatorOutput::with_extra(wvf, extra).with_secondary(upper_band))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -123,6 +155,59 @@ pub fn build_vix_fix(params: &HashMap<String, f64>) -> WilliamsVixFix {
 mod tests {
     use super::*;
     use crate::model::Bar;
+
+    /// On a series mirrored in log price the inverse is the WVF of the original, and
+    /// `blowoff_top` fires exactly where `panic_bottom` fired.
+    #[test]
+    fn inverse_is_the_mirror_of_the_wvf() {
+        let bars: Vec<Bar> = (0..200)
+            .map(|i| {
+                let c = 100.0 + 10.0 * (i as f64 * 0.21).sin() + 0.05 * i as f64;
+                let o = c - 0.4 * (i as f64 * 0.7).cos();
+                let h = c.max(o) + 0.3 + if i % 37 == 5 { 4.0 } else { 0.0 };
+                let l = c.min(o) - 0.5 - if i % 23 == 11 { 6.0 } else { 0.0 };
+                Bar::new(i, o, h, l, c, 0.0)
+            })
+            .collect();
+        let k = 1.0e4;
+        let mirrored: Vec<Bar> = bars
+            .iter()
+            .map(|b| {
+                Bar::new(
+                    b.timestamp,
+                    k / b.open,
+                    k / b.low,
+                    k / b.high,
+                    k / b.close,
+                    0.0,
+                )
+            })
+            .collect();
+        let (mut a, mut b) = (
+            WilliamsVixFix::new(22, 20, 2.0),
+            WilliamsVixFix::new(22, 20, 2.0),
+        );
+        let mut bottoms = 0;
+        for (x, y) in bars.iter().zip(&mirrored) {
+            let (ox, oy) = (a.on_bar(x), b.on_bar(y));
+            if let (Some(ox), Some(oy)) = (ox, oy) {
+                assert!((ox.value - oy.extra["inverse"]).abs() < 1e-9);
+                assert!((ox.secondary.unwrap() - oy.extra["inverse_band"]).abs() < 1e-9);
+            }
+            let ka: Vec<String> = a.alerts().into_iter().map(|x| x.kind).collect();
+            let kb: Vec<String> = b.alerts().into_iter().map(|x| x.kind).collect();
+            assert_eq!(
+                ka.contains(&"panic_bottom".into()),
+                kb.contains(&"blowoff_top".into())
+            );
+            assert_eq!(
+                ka.contains(&"blowoff_top".into()),
+                kb.contains(&"panic_bottom".into())
+            );
+            bottoms += usize::from(ka.contains(&"panic_bottom".into()));
+        }
+        assert!(bottoms > 0, "the series must contain panic lows");
+    }
 
     /// `warmup_period()` previously defaulted to 0 (never overridden), which was silently wrong:
     /// two nested `bband_len`-sized windows (`sma`, then `wvf_window`) must each fill before the
