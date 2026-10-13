@@ -223,7 +223,7 @@ pub fn golden_value(fixture_text: &str, key: &str) -> f64 {
         .unwrap_or_else(|_| panic!("invalid golden value: {key}"))
 }
 
-/// The OHLCV series shared by the WavesUnchained ports, as documented in
+/// The OHLCV series shared by several indicator golden tests, as documented in
 /// `reference/kestrel_reference/pine_series.py::wave_series`.
 pub fn wave_series(count: usize) -> Vec<Bar> {
     let mut bars = Vec::with_capacity(count);

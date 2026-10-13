@@ -2,8 +2,7 @@
 //!
 //! An extreme reading on its own usually marks a strong, healthy move, not a turn. Exhaustion
 //! additionally requires the oscillator to be fading already while price is still making a new
-//! high (low) — the definition of the Elder Ray Pressure Engine (WavesUnchained), applied to any
-//! oscillator line. Kestrel plan/55 point 2.
+//! high (low) — a definition that applies to any oscillator line. Kestrel plan/55 point 2.
 //!
 //! - **Bearish exhaustion** (an up-move tiring): within the last `recency` bars, including the
 //!   current one, the line ranked at or above `percentile` of its previous `lookback` values;

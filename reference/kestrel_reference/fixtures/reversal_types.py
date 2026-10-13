@@ -1,6 +1,6 @@
-"""golden_reversal_types: Reversal Type Classifier v1 (WavesUnchained) as research labels.
+"""golden_reversal_types: reversal type research labels.
 
-Written from the published Pine Script, not from the Rust code. The labels use the bars after the
+Written from the original definition, not from the Rust code. The labels use the bars after the
 pivot (the evaluation window) and are therefore research labels, not signals.
 """
 
@@ -135,15 +135,15 @@ def compute(bars):
 
 
 HEADER = [
-    "kestrel-chartkit golden reference fixture: Reversal Type Classifier (research labels)",
+    "kestrel-chartkit golden reference fixture: reversal type labels (research)",
     "",
     *provenance("reversal_types"),
     "",
-    "Formula: the published Pine Script 'Reversal Type Classifier v1' (WavesUnchained) with its",
+    "Formula: the original definition with its",
     "defaults (pivots 5/5, evaluation 24 bars, impulse 0.30 ATR, risk 1.5 ATR, snapback 1.2 R",
     "within 6 bars, grind 2.0 R, fail 1.0 R, follow-through 0.45 R, WT 10/21 with -45/45, EMA 100,",
     "ADX 14 with 22 / 16, ATR rank 100). Uses the 29 bars after each pivot: research labels, not",
-    "signals. Conventions where Pine leaves them open: EMAs seeded with their first value; ATR and",
+    "signals. Conventions the original leaves open: EMAs seeded with their first value; ATR and",
     "DMI Wilder averages seeded with an SMA (DMI from the second bar); pivots strict on both",
     "sides; a pivot without an ATR at the pivot bar is not labelled; missing WT/EMA/ADX values",
     "make the corresponding flag false and a missing ATR rank scores -3. Labels are ordered by",

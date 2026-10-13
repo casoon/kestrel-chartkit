@@ -1,8 +1,8 @@
 //! Failed breakout at a confirmed zone ("zone rejection").
 //!
 //! A wick pierces a confirmed support (resistance) zone and the bar closes back above (below)
-//! it. Four WavesUnchained scripts arrive at this pattern independently — Wyckoff's spring/UTAD,
-//! the Candle Story trap, Structure Break Risk's swing failure, the Chandelier trap — and it is
+//! it. Several independent methods arrive at this pattern — Wyckoff's spring/UTAD, the
+//! candlestick trap, the swing failure of a trend's structure, the Chandelier trap — and it is
 //! the one setup that carries its own invalidation: beyond the wick tip the idea is simply
 //! wrong. Kestrel plan/55 point 3.
 //!

@@ -16,14 +16,14 @@ use kestrel_chartkit::model::Bar;
 
 /// Volumen als optionaler Faktor, vom Indikator selbst abgeschaltet, wenn die Bars keins tragen.
 const OPTIONAL_VOLUME: &[&str] = &[
-    "exhaustion_scanner",
-    "coilforge_zones",
-    "market_tradability_engine",
-    "swing_conviction_radar",
-    "liquidity_hunter",
-    "vein_reversal_score",
-    "vein_structure_zones",
-    "structural_wave_field",
+    "overextension_risk",
+    "compression_zones",
+    "tradability_filter",
+    "leg_conviction",
+    "equal_level_liquidity",
+    "reversal_setup_score",
+    "structure_zones",
+    "structural_flow",
 ];
 
 fn same(a: &Option<IndicatorOutput>, b: &Option<IndicatorOutput>) -> bool {

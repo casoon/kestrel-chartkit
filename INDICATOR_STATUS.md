@@ -60,10 +60,10 @@ is complete.
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |
-| market_exhaustion | ✅ |
-| exhaustion_scanner | ✅ |
-| roc_advanced | ✅ |
-| oscillator_cycle_statistics | ✅ |
+| flow_exhaustion | ✅ |
+| overextension_risk | ✅ |
+| roc_context | ✅ |
+| rsi_cycle_stats | ✅ |
 
 ## Volatility
 
@@ -89,8 +89,8 @@ is complete.
 | ulcer_index | ✅ |
 | vix_fix | ✅ |
 | vortex | ✅ |
-| compression_fractal_release | ✅ |
-| time_to_react | ✅ |
+| coil_release | ✅ |
+| reaction_speed | ✅ |
 
 ## Volume
 
@@ -128,7 +128,7 @@ is complete.
 | midas | ✅ |
 | trend_relationship | ✅ |
 | zscore | ✅ |
-| smooth_trend_radar | ✅ |
+| smoothed_supertrend | ✅ |
 
 ## Composite Scores
 
@@ -160,19 +160,19 @@ is complete.
 | pivot_divergence | ✅ |
 | oscillator_pivot_divergence | ✅ |
 | bottom_formation | ✅ |
-| market_average_relationship | ✅ |
-| swing_conviction_radar | ✅ |
-| structure_break_risk | ✅ |
-| reversal_engine_score | ✅ |
-| liquidity_hunter | ✅ |
-| market_motion_dna | ✅ |
-| vein_accumulation | ✅ |
-| vein_reversal_score | ✅ |
-| vein_structure_zones | ✅ |
-| structural_wave_field | ✅ |
-| coilforge_zones | ✅ |
-| market_tradability_engine | ✅ |
-| markov_state_engine | ✅ |
+| price_average_relation | ✅ |
+| leg_conviction | ✅ |
+| trend_break_risk | ✅ |
+| sweep_reversal_score | ✅ |
+| equal_level_liquidity | ✅ |
+| leg_character | ✅ |
+| accumulation_phase | ✅ |
+| reversal_setup_score | ✅ |
+| structure_zones | ✅ |
+| structural_flow | ✅ |
+| compression_zones | ✅ |
+| tradability_filter | ✅ |
+| market_state_chain | ✅ |
 
 ---
 

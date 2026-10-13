@@ -1,8 +1,8 @@
-"""Pine-style series helpers for the ports of the WavesUnchained Pine scripts.
+"""Pine-style series helpers for the golden references of the stateful indicators.
 
 Every series is a full list with one entry per bar; `None` is Pine's `na`. Unless a helper says
 otherwise, a value exists only when every input it reads exists ("strict na"), which is the
-convention the Rust ports follow as well. Written from the Pine Script v6 reference, not from the
+convention the Rust indicators follow as well. Written from the Pine Script v6 reference, not from the
 Rust code.
 """
 
@@ -135,8 +135,8 @@ def wma(s, n):
 
 
 def jma(s, length, phase=0.0, power=2.0):
-    """The open Jurik approximation of the Pine scripts, seeded with the first available value
-    (e0 = jma = first value, e1 = e2 = 0) instead of Pine's zero state."""
+    """The open Jurik approximation, seeded with the first available value
+    (e0 = jma = first value, e1 = e2 = 0) instead of a zero state."""
     pr = phase / 100.0 + 1.5
     lt = 0.45 * (length - 1)
     beta = lt / (lt + 2.0)
@@ -241,7 +241,7 @@ def pine_round(x):
 
 
 def wave_series(n_bars, with_volume=True):
-    """The deterministic OHLCV series shared by the WavesUnchained ports: an uptrend, a drift, a
+    """The deterministic OHLCV series shared by several fixtures: an uptrend, a drift, a
     crash, a tight range and a breakout, with a fast wiggle; volume oscillates and stays positive.
 
     prev = previous close (100 before the first bar); drift 0.18 up to bar 219, -0.02 to 379,

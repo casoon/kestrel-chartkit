@@ -317,9 +317,9 @@ pub fn check_applicability(
 /// profiles, and the composites `trend_quality`/`multi_factor`, whose participation factor is a
 /// relative volume). It is **not** set for formulas that read OHLC only (`buy_sell_pressure`,
 /// `elder_ray`), nor for the composites that use volume as an optional factor and switch it off
-/// themselves when the bars carry none (`exhaustion_scanner`, `coilforge_zones`,
-/// `market_tradability_engine`, `swing_conviction_radar`, `liquidity_hunter`,
-/// `vein_reversal_score`, `vein_structure_zones`, `structural_wave_field`) — a caller with tick
+/// themselves when the bars carry none (`overextension_risk`, `compression_zones`,
+/// `tradability_filter`, `leg_conviction`, `equal_level_liquidity`,
+/// `reversal_setup_score`, `structure_zones`, `structural_flow`) — a caller with tick
 /// volume passes zero volume to them. `tests/applicability_catalog.rs` checks this split against
 /// a run of every catalog entry.
 ///
@@ -345,7 +345,7 @@ pub fn data_requirements(name: &str) -> DataRequirements {
         },
         "volume" | "rvol" | "obv" | "acc_dist" | "cmf" | "vwma" | "cvd" | "hires_volume_flow"
         | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger" | "chaikin_oscillator"
-        | "midas" | "market_exhaustion" | "trend_quality" | "multi_factor" => DataRequirements {
+        | "midas" | "flow_exhaustion" | "trend_quality" | "multi_factor" => DataRequirements {
             needs_real_volume: true,
             ..DataRequirements::default()
         },

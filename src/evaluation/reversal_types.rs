@@ -1,6 +1,6 @@
 //! Reversal type labels for research: how each confirmed pivot reversal actually played out.
 //!
-//! Port of the Pine Script "Reversal Type Classifier v1" (WavesUnchained) as a batch function.
+//! A batch function over a finished bar series.
 //!
 //! **Uses the bars after the pivot.** A label needs the `pivot_len` confirmation bars and the
 //! `eval_bars` evaluation window after the pivot, so it is known only `pivot_len + eval_bars`
@@ -19,11 +19,11 @@
 //! | [`ReversalKind::Chop`] | anything else |
 //!
 //! Pivots whose follow-through stays below `min_move_atr` ATR are not labelled. Each label also
-//! carries the Pine context flags at the pivot bar — WaveTrend divergence against the previous
+//! carries the context flags at the pivot bar — WaveTrend divergence against the previous
 //! pivot of the same side, WaveTrend beyond ±45, trend against the reversal (close vs. EMA with
-//! ADX ≥ `adx_trend`), chop (ADX ≤ `chop_adx`) — and the Pine quality score (0..100).
+//! ADX ≥ `adx_trend`), chop (ADX ≤ `chop_adx`) — and the quality score (0..100).
 //!
-//! Conventions where Pine leaves them open (also in the golden fixture): EMAs seeded with their
+//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with their
 //! first value; ATR and DMI Wilder averages seeded with an SMA (DMI from the second bar); pivots
 //! strict on both sides; a pivot without an ATR at the pivot bar is not labelled; a missing
 //! WaveTrend/EMA/ADX value makes its flag false and a missing ATR rank scores −3. Labels are
@@ -37,7 +37,7 @@ use crate::indicator::wavetrend::WaveTrendEngine;
 use crate::indicator::Indicator;
 use crate::model::Bar;
 
-/// Parameters, defaults as in the Pine script.
+/// Parameters, defaults of the original.
 #[derive(Debug, Clone)]
 pub struct ReversalTypeConfig {
     pub pivot_len: usize,

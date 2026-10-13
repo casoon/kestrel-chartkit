@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::accumulation_phase::{AccumulationPhase, AccumulationPhaseConfig};
 use super::adx::Adx;
 use super::alligator::AlligatorEngine;
 use super::anchored_vwap::{AnchoredVwapEngine, VwapAnchorKind, ZeroVolumePolicy};
@@ -20,8 +21,8 @@ use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
 use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
-use super::coilforge_zones::{CoilForgeConfig, CoilForgeZones};
-use super::compression_fractal_release::{CfrConfig, CompressionFractalRelease};
+use super::coil_release::{CoilRelease, CoilReleaseConfig};
+use super::compression_zones::{CompressionZones, CompressionZonesConfig};
 use super::connors_rsi::ConnorsRsiEngine;
 use super::coppock::CoppockCurveEngine;
 use super::double_pattern::DoublePattern;
@@ -29,21 +30,19 @@ use super::dpo::DpoEngine;
 use super::efficiency::LegEfficiencyEngine;
 use super::envelope::EnvelopeEngine;
 use super::eom::EomEngine;
-use super::exhaustion_scanner::{ExhaustionScanner, ExhaustionScannerConfig};
+use super::equal_level_liquidity::{EqualLevelLiquidity, EqualLevelLiquidityConfig};
 use super::fisher_transform::FisherTransform;
+use super::flow_exhaustion::{FlowExhaustion, FlowExhaustionConfig};
 use super::force_index::ElderForceIndex;
 use super::kst::KstEngine;
+use super::leg_character::{LegCharacter, LegCharacterConfig};
+use super::leg_conviction::{LegConviction, LegConvictionConfig};
 use super::liquidity_fvg::LiquidityFvgEngine;
-use super::liquidity_hunter::{LiquidityHunter, LiquidityHunterConfig};
 use super::liquidity_sweeps::LiquiditySweepEngine;
 use super::lsma::LsmaEngine;
 use super::macd::Macd;
-use super::market_average_relationship::{MareConfig, MarketAverageRelationship};
-use super::market_exhaustion::{MarketExhaustion, MarketExhaustionConfig};
-use super::market_motion_dna::{MarketMotionDna, MotionDnaConfig};
+use super::market_state_chain::{MarketStateChain, MarketStateChainConfig};
 use super::market_structure_breaks::MarketStructureBreaksEngine;
-use super::market_tradability_engine::{MarketTradabilityEngine, MteConfig};
-use super::markov_state_engine::{MarkovStateConfig, MarkovStateEngine};
 use super::mass_index::MassIndexEngine;
 use super::mcginley::McGinleyDynamicEngine;
 use super::mfi::Mfi;
@@ -59,29 +58,33 @@ use super::moving_averages::{
 use super::multi_factor::MultiFactorMarketScore;
 use super::nvi_pvi::{NviEngine, PviEngine};
 use super::order_block::OrderBlockEngine;
-use super::oscillator_cycle_statistics::{CycleStatisticsConfig, OscillatorCycleStatistics};
+use super::overextension_risk::{OverextensionRisk, OverextensionRiskConfig};
 pub use super::params::{ParamValue, TypedParams};
 use super::pivot_sets::{PivotSetType, PivotSetsEngine};
 use super::pivots_structure::PivotStructureEngine;
 use super::pmo::PriceMomentumOscillator;
+use super::price_average_relation::{PriceAverageRelation, PriceAverageRelationConfig};
 use super::pvt::PriceVolumeTrend;
 use super::rci::RciEngine;
+use super::reaction_speed::{ReactionSpeed, ReactionSpeedConfig};
 use super::relative_volatility::{RelativeVolatilityIndex, RelativeVolatilityVariant};
-use super::reversal_engine_score::{ReversalEngineConfig, ReversalEngineScore};
-use super::roc_advanced::{RocAdvanced, RocAdvancedConfig};
+use super::reversal_setup_score::ReversalSetupScore;
+use super::roc_context::{RocContext, RocContextConfig};
 use super::rsi::{Rsi, RsiSmoothing};
+use super::rsi_cycle_stats::{RsiCycleStats, RsiCycleStatsConfig};
 use super::rvat::RelativeVolumeAtTime;
 use super::rvi::RviEngine;
 use super::smi::StochasticMomentumIndex;
-use super::smooth_trend_radar::{SmoothTrendRadar, SmoothTrendRadarConfig};
+use super::smoothed_supertrend::{SmoothedSupertrend, SmoothedSupertrendConfig};
 use super::smoothing::EmaInit;
 use super::stoch_rsi::StochRsi;
-use super::structural_wave_field::StructuralWaveField;
-use super::structure_break_risk::{StructureBreakRisk, StructureBreakRiskConfig};
-use super::swing_conviction_radar::{SwingConvictionConfig, SwingConvictionRadar};
+use super::structural_flow::StructuralFlow;
+use super::structure_zones::StructureZones;
+use super::sweep_reversal_score::{SweepReversalScore, SweepReversalScoreConfig};
 use super::t3::T3;
 use super::tema::TemaEngine;
-use super::time_to_react::{TimeToReact, TimeToReactConfig};
+use super::tradability_filter::{TradabilityFilter, TradabilityFilterConfig};
+use super::trend_break_risk::{TrendBreakRisk, TrendBreakRiskConfig};
 use super::trend_quality::TrendQualityScoreEngine;
 use super::trend_structural::{
     AroonEngine, DmiEngine, IchimokuEngine, ParabolicSarEngine, SupertrendEngine,
@@ -90,9 +93,6 @@ use super::trix::Trix;
 use super::tsi::Tsi;
 use super::twap::{AnchoredTwap, TwapAnchor, TwapWeighting};
 use super::ulcer::UlcerIndexEngine;
-use super::vein_accumulation::{VeinAccumulation, VeinAccumulationConfig};
-use super::vein_reversal_score::VeinReversalScore;
-use super::vein_structure_zones::VeinStructureZones;
 use super::vidya::Vidya;
 use super::vix_fix::WilliamsVixFix;
 use super::volatility_indicators::{
@@ -856,8 +856,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "market_exhaustion",
-            description: "Market Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
+            name: "flow_exhaustion",
+            description: "Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
             default_params: [
                 ("mfi_len".to_string(), 14.0),
                 ("zone_lookback".to_string(), 200.0),
@@ -872,8 +872,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "exhaustion_scanner",
-            description: "Exhaustion Scanner: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+            name: "overextension_risk",
+            description: "Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
             default_params: [
                 ("w_stretch".to_string(), 40.0),
                 ("w_exhaust".to_string(), 35.0),
@@ -887,8 +887,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "smooth_trend_radar",
-            description: "Smooth Trend Radar: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)",
+            name: "smoothed_supertrend",
+            description: "Smoothed Supertrend: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)",
             default_params: [
                 ("factor".to_string(), 12.0),
                 ("atr_len".to_string(), 90.0),
@@ -902,8 +902,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "compression_fractal_release",
-            description: "Compression Fractal Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (Pine: higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
+            name: "coil_release",
+            description: "Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
             default_params: [
                 ("len".to_string(), 34.0),
                 ("break_len".to_string(), 12.0),
@@ -917,8 +917,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "coilforge_zones",
-            description: "CoilForge Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
+            name: "compression_zones",
+            description: "Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
             default_params: [
                 ("lookback".to_string(), 16.0),
                 ("min_zone_bars".to_string(), 5.0),
@@ -931,8 +931,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "roc_advanced",
-            description: "ROC Advanced: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
+            name: "roc_context",
+            description: "ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
             default_params: [
                 ("roc_len".to_string(), 12.0),
                 ("avg_len".to_string(), 3.0),
@@ -946,8 +946,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "market_tradability_engine",
-            description: "Market Tradability Engine (v1): no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
+            name: "tradability_filter",
+            description: "Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
             default_params: [
                 ("quality_len".to_string(), 20.0),
                 ("range_len".to_string(), 30.0),
@@ -961,8 +961,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "time_to_react",
-            description: "Time-to-React + Volatility-Time: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
+            name: "reaction_speed",
+            description: "Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
             default_params: [
                 ("atr_len".to_string(), 14.0),
                 ("atr_base".to_string(), 50.0),
@@ -974,8 +974,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "markov_state_engine",
-            description: "Markov State Engine: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
+            name: "market_state_chain",
+            description: "Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
             default_params: [
                 ("ema_len".to_string(), 55.0),
                 ("rank_len".to_string(), 100.0),
@@ -989,8 +989,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "oscillator_cycle_statistics",
-            description: "Oscillator Cycle Statistics (RSI): cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
+            name: "rsi_cycle_stats",
+            description: "RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
             default_params: [
                 ("rsi_len".to_string(), 14.0),
                 ("overbought".to_string(), 70.0),
@@ -1004,8 +1004,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "market_average_relationship",
-            description: "Market-Average Relationship Engine (MARE): price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down",
+            name: "price_average_relation",
+            description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down",
             default_params: [
                 ("ma_len".to_string(), 50.0),
                 ("ma_kind".to_string(), 0.0),
@@ -1017,8 +1017,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "swing_conviction_radar",
-            description: "Swing Conviction Radar: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)",
+            name: "leg_conviction",
+            description: "Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)",
             default_params: [
                 ("pivot_left".to_string(), 5.0),
                 ("pivot_right".to_string(), 5.0),
@@ -1032,8 +1032,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "structure_break_risk",
-            description: "Structure Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
+            name: "trend_break_risk",
+            description: "Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
             default_params: [
                 ("bias_len".to_string(), 50.0),
                 ("pivot_len".to_string(), 5.0),
@@ -1045,8 +1045,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "reversal_engine_score",
-            description: "Reversal Engine Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (RSI > 50, no lower low / no higher high) against min_quality_long/short, cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
+            name: "sweep_reversal_score",
+            description: "Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (RSI > 50, no lower low / no higher high) against min_quality_long/short, cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
             default_params: [
                 ("swing_len".to_string(), 10.0),
                 ("atr_len".to_string(), 14.0),
@@ -1061,8 +1061,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "liquidity_hunter",
-            description: "Liquidity Hunter: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
+            name: "equal_level_liquidity",
+            description: "Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
             default_params: [
                 ("pivot_len".to_string(), 8.0),
                 ("eq_tolerance_atr".to_string(), 0.12),
@@ -1076,8 +1076,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "market_motion_dna",
-            description: "Market Motion DNA: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
+            name: "leg_character",
+            description: "Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
             default_params: [
                 ("pivot_left".to_string(), 5.0),
                 ("pivot_right".to_string(), 5.0),
@@ -1092,8 +1092,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "vein_accumulation",
-            description: "Vein Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
+            name: "accumulation_phase",
+            description: "Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
             default_params: [
                 ("atr_len".to_string(), 14.0),
                 ("lookback".to_string(), 20.0),
@@ -1107,18 +1107,18 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "vein_reversal_score",
-            description: "Vein Reversal Score (Pine defaults, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict",
+            name: "reversal_setup_score",
+            description: "Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict",
             default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
-            name: "vein_structure_zones",
-            description: "Vein Structure & Zones (Pine defaults): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
+            name: "structure_zones",
+            description: "Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
             default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
-            name: "structural_wave_field",
-            description: "Structural Wave Field (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves",
+            name: "structural_flow",
+            description: "Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves",
             default_params: HashMap::new(),
         },
         IndicatorCatalogEntry {
@@ -2137,26 +2137,26 @@ pub fn build_checked(
                 p, atr_len, tol, depth, gap, wait,
             )))
         }
-        "market_average_relationship" => {
+        "price_average_relation" => {
             let ma_kind = match get_usize_p(params, "ma_kind", 0, 0, 3)? {
                 0 => super::smoothing::SmootherKind::Ema,
                 1 => super::smoothing::SmootherKind::Sma,
                 2 => super::smoothing::SmootherKind::Rma,
                 _ => super::smoothing::SmootherKind::Alma,
             };
-            let cfg = MareConfig {
+            let cfg = PriceAverageRelationConfig {
                 ma_kind,
                 ma_len: get_usize_p(params, "ma_len", 50, 2, 1000)?,
                 atr_len: get_usize_p(params, "atr_len", 14, 2, 200)?,
                 cooldown: get_usize_p(params, "cooldown", 8, 0, 100)?,
                 turn_level: get_f64_p(params, "turn_level", 55.0, 10.0, 100.0)?,
                 turn_lookback: get_usize_p(params, "turn_lookback", 30, 5, 150)?,
-                ..MareConfig::default()
+                ..PriceAverageRelationConfig::default()
             };
-            Ok(Box::new(MarketAverageRelationship::new(cfg)))
+            Ok(Box::new(PriceAverageRelation::new(cfg)))
         }
-        "swing_conviction_radar" => {
-            let cfg = SwingConvictionConfig {
+        "leg_conviction" => {
+            let cfg = LegConvictionConfig {
                 pivot_left: get_usize_p(params, "pivot_left", 5, 1, 50)?,
                 pivot_right: get_usize_p(params, "pivot_right", 5, 1, 50)?,
                 max_leg: get_usize_p(params, "max_leg", 100, 1, 1000)?,
@@ -2166,22 +2166,22 @@ pub fn build_checked(
                 w_clean: get_f64_p(params, "w_clean", 0.4, 0.0, 1.0)?,
                 w_volume: get_f64_p(params, "w_volume", 0.2, 0.0, 1.0)?,
             };
-            Ok(Box::new(SwingConvictionRadar::new(cfg)))
+            Ok(Box::new(LegConviction::new(cfg)))
         }
-        "structure_break_risk" => {
-            let cfg = StructureBreakRiskConfig {
+        "trend_break_risk" => {
+            let cfg = TrendBreakRiskConfig {
                 bias_len: get_usize_p(params, "bias_len", 50, 2, 1000)?,
                 pivot_len: get_usize_p(params, "pivot_len", 5, 1, 50)?,
                 near_atr: get_f64_p(params, "near_atr", 1.5, 0.01, 100.0)?,
                 rsi_len: get_usize_p(params, "rsi_len", 14, 2, 500)?,
                 hold_bars: get_usize_p(params, "hold_bars", 10, 1, 500)?,
                 smooth_len: get_usize_p(params, "smooth_len", 3, 1, 100)?,
-                ..StructureBreakRiskConfig::default()
+                ..TrendBreakRiskConfig::default()
             };
-            Ok(Box::new(StructureBreakRisk::new(cfg)))
+            Ok(Box::new(TrendBreakRisk::new(cfg)))
         }
-        "reversal_engine_score" => {
-            let cfg = ReversalEngineConfig {
+        "sweep_reversal_score" => {
+            let cfg = SweepReversalScoreConfig {
                 swing_len: get_usize_p(params, "swing_len", 10, 2, 500)?,
                 atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
                 atr_base_len: get_usize_p(params, "atr_base_len", 50, 1, 1000)?,
@@ -2191,12 +2191,12 @@ pub fn build_checked(
                 min_quality_long: get_usize_p(params, "min_quality_long", 2, 0, 2)? as u8,
                 min_quality_short: get_usize_p(params, "min_quality_short", 1, 0, 2)? as u8,
                 cooldown: get_usize_p(params, "cooldown", 5, 0, 500)?,
-                ..ReversalEngineConfig::default()
+                ..SweepReversalScoreConfig::default()
             };
-            Ok(Box::new(ReversalEngineScore::new(cfg)))
+            Ok(Box::new(SweepReversalScore::new(cfg)))
         }
-        "liquidity_hunter" => {
-            let cfg = LiquidityHunterConfig {
+        "equal_level_liquidity" => {
+            let cfg = EqualLevelLiquidityConfig {
                 pivot_len: get_usize_p(params, "pivot_len", 8, 1, 50)?,
                 eq_tolerance_atr: get_f64_p(params, "eq_tolerance_atr", 0.12, 0.0, 10.0)?,
                 min_touches: get_usize_p(params, "min_touches", 2, 1, 20)? as u32,
@@ -2205,12 +2205,12 @@ pub fn build_checked(
                 reclaim_bars: get_usize_p(params, "reclaim_bars", 3, 0, 100)?,
                 min_volume_ratio: get_f64_p(params, "min_volume_ratio", 1.2, 0.0, 100.0)?,
                 alert_distance_atr: get_f64_p(params, "alert_distance_atr", 1.0, 0.0, 100.0)?,
-                ..LiquidityHunterConfig::default()
+                ..EqualLevelLiquidityConfig::default()
             };
-            Ok(Box::new(LiquidityHunter::new(cfg)))
+            Ok(Box::new(EqualLevelLiquidity::new(cfg)))
         }
-        "market_motion_dna" => {
-            let cfg = MotionDnaConfig {
+        "leg_character" => {
+            let cfg = LegCharacterConfig {
                 pivot_left: get_usize_p(params, "pivot_left", 5, 1, 50)?,
                 pivot_right: get_usize_p(params, "pivot_right", 5, 1, 50)?,
                 max_leg_bars: get_usize_p(params, "max_leg_bars", 350, 20, 1500)?,
@@ -2220,12 +2220,12 @@ pub fn build_checked(
                 impulse_threshold: get_f64_p(params, "impulse_threshold", 62.0, 50.0, 95.0)?,
                 correction_threshold: get_f64_p(params, "correction_threshold", 62.0, 50.0, 95.0)?,
                 change_buffer: get_f64_p(params, "change_buffer", 5.0, 0.0, 25.0)?,
-                ..MotionDnaConfig::default()
+                ..LegCharacterConfig::default()
             };
-            Ok(Box::new(MarketMotionDna::new(cfg)))
+            Ok(Box::new(LegCharacter::new(cfg)))
         }
-        "vein_accumulation" => {
-            let cfg = VeinAccumulationConfig {
+        "accumulation_phase" => {
+            let cfg = AccumulationPhaseConfig {
                 atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
                 lookback: get_usize_p(params, "lookback", 20, 10, 500)?,
                 min_phase_bars: get_usize_p(params, "min_phase_bars", 10, 3, 500)?,
@@ -2235,14 +2235,14 @@ pub fn build_checked(
                 bbw_compress: get_f64_p(params, "bbw_compress", 0.7, 0.3, 5.0)?,
                 atr_compress: get_f64_p(params, "atr_compress", 0.8, 0.3, 5.0)?,
             };
-            Ok(Box::new(VeinAccumulation::new(cfg)))
+            Ok(Box::new(AccumulationPhase::new(cfg)))
         }
-        "vein_reversal_score" => Ok(Box::new(VeinReversalScore::new())),
-        "vein_structure_zones" => Ok(Box::new(VeinStructureZones::new())),
-        "structural_wave_field" => Ok(Box::new(StructuralWaveField::new())),
-        "market_exhaustion" => {
+        "reversal_setup_score" => Ok(Box::new(ReversalSetupScore::new())),
+        "structure_zones" => Ok(Box::new(StructureZones::new())),
+        "structural_flow" => Ok(Box::new(StructuralFlow::new())),
+        "flow_exhaustion" => {
             let pivot_len = get_usize_p(params, "pivot_len", 7, 1, 50)?;
-            let cfg = MarketExhaustionConfig {
+            let cfg = FlowExhaustionConfig {
                 mfi_len: get_usize_p(params, "mfi_len", 14, 2, 500)?,
                 zone_lookback: get_usize_p(params, "zone_lookback", 200, 10, 5000)?,
                 rsi_len: get_usize_p(params, "rsi_len", 14, 2, 500)?,
@@ -2253,12 +2253,12 @@ pub fn build_checked(
                 pivot_left: pivot_len,
                 pivot_right: pivot_len,
                 react_bars: get_usize_p(params, "react_bars", 10, 2, 100)?,
-                ..MarketExhaustionConfig::default()
+                ..FlowExhaustionConfig::default()
             };
-            Ok(Box::new(MarketExhaustion::new(cfg)))
+            Ok(Box::new(FlowExhaustion::new(cfg)))
         }
-        "exhaustion_scanner" => {
-            let cfg = ExhaustionScannerConfig {
+        "overextension_risk" => {
+            let cfg = OverextensionRiskConfig {
                 w_stretch: get_f64_p(params, "w_stretch", 40.0, 0.0, 100.0)?,
                 w_exhaust: get_f64_p(params, "w_exhaust", 35.0, 0.0, 100.0)?,
                 w_react: get_f64_p(params, "w_react", 25.0, 0.0, 100.0)?,
@@ -2267,12 +2267,12 @@ pub fn build_checked(
                 min_gap: get_usize_p(params, "min_gap", 8, 0, 500)?,
                 ema_len: get_usize_p(params, "ema_len", 50, 2, 1000)?,
                 structure_len: get_usize_p(params, "structure_len", 80, 2, 2000)?,
-                ..ExhaustionScannerConfig::default()
+                ..OverextensionRiskConfig::default()
             };
-            Ok(Box::new(ExhaustionScanner::new(cfg)))
+            Ok(Box::new(OverextensionRisk::new(cfg)))
         }
-        "smooth_trend_radar" => {
-            let cfg = SmoothTrendRadarConfig {
+        "smoothed_supertrend" => {
+            let cfg = SmoothedSupertrendConfig {
                 factor: get_f64_p(params, "factor", 12.0, 0.5, 100.0)?,
                 atr_len: get_usize_p(params, "atr_len", 90, 1, 1000)?,
                 wma_len: get_usize_p(params, "wma_len", 40, 1, 1000)?,
@@ -2281,12 +2281,12 @@ pub fn build_checked(
                 slope_lookback: get_usize_p(params, "slope_lookback", 3, 1, 100)?,
                 slope_threshold: get_f64_p(params, "slope_threshold", 0.05, 0.0, 10.0)?,
                 touches: get_usize_p(params, "touches", 2, 1, 5)?,
-                ..SmoothTrendRadarConfig::default()
+                ..SmoothedSupertrendConfig::default()
             };
-            Ok(Box::new(SmoothTrendRadar::new(cfg)))
+            Ok(Box::new(SmoothedSupertrend::new(cfg)))
         }
-        "compression_fractal_release" => {
-            let cfg = CfrConfig {
+        "coil_release" => {
+            let cfg = CoilReleaseConfig {
                 len: get_usize_p(params, "len", 34, 10, 150)?,
                 break_len: get_usize_p(params, "break_len", 12, 3, 50)?,
                 ema_len: get_usize_p(params, "ema_len", 55, 2, 2000)?,
@@ -2295,12 +2295,12 @@ pub fn build_checked(
                 thr_base: get_f64_p(params, "thr_base", 0.55, 0.0, 1.0)?,
                 cooldown: get_usize_p(params, "cooldown", 8, 0, 100)?,
                 chop_veto: get_f64_p(params, "chop_veto", 61.8, 30.0, 80.0)?,
-                ..CfrConfig::default()
+                ..CoilReleaseConfig::default()
             };
-            Ok(Box::new(CompressionFractalRelease::new(cfg)))
+            Ok(Box::new(CoilRelease::new(cfg)))
         }
-        "coilforge_zones" => {
-            let cfg = CoilForgeConfig {
+        "compression_zones" => {
+            let cfg = CompressionZonesConfig {
                 lookback: get_usize_p(params, "lookback", 16, 8, 100)?,
                 min_zone_bars: get_usize_p(params, "min_zone_bars", 5, 3, 50)?,
                 range_atr: get_f64_p(params, "range_atr", 4.2, 0.5, 20.0)?,
@@ -2308,17 +2308,17 @@ pub fn build_checked(
                 min_score: get_f64_p(params, "min_score", 35.0, 0.0, 80.0)?,
                 min_touches: get_usize_p(params, "min_touches", 2, 2, 20)?,
                 watch_bars: get_usize_p(params, "watch_bars", 20, 1, 200)?,
-                ..CoilForgeConfig::default()
+                ..CompressionZonesConfig::default()
             };
-            Ok(Box::new(CoilForgeZones::new(cfg)))
+            Ok(Box::new(CompressionZones::new(cfg)))
         }
-        "roc_advanced" => {
+        "roc_context" => {
             let ma_kind = match get_usize_p(params, "ma_kind", 0, 0, 2)? {
                 0 => super::smoothing::SmootherKind::Ema,
                 1 => super::smoothing::SmootherKind::Sma,
                 _ => super::smoothing::SmootherKind::Rma,
             };
-            let cfg = RocAdvancedConfig {
+            let cfg = RocContextConfig {
                 ma_kind,
                 roc_len: get_usize_p(params, "roc_len", 12, 1, 1000)?,
                 avg_len: get_usize_p(params, "avg_len", 3, 1, 200)?,
@@ -2327,12 +2327,12 @@ pub fn build_checked(
                 os_level: get_f64_p(params, "os_level", -5.0, -1000.0, -0.01)?,
                 ctx_len: get_usize_p(params, "ctx_len", 50, 2, 2000)?,
                 stall_len: get_usize_p(params, "stall_len", 5, 1, 200)?,
-                ..RocAdvancedConfig::default()
+                ..RocContextConfig::default()
             };
-            Ok(Box::new(RocAdvanced::new(cfg)))
+            Ok(Box::new(RocContext::new(cfg)))
         }
-        "market_tradability_engine" => {
-            let cfg = MteConfig {
+        "tradability_filter" => {
+            let cfg = TradabilityFilterConfig {
                 quality_len: get_usize_p(params, "quality_len", 20, 8, 100)?,
                 range_len: get_usize_p(params, "range_len", 30, 10, 200)?,
                 baseline_len: get_usize_p(params, "baseline_len", 34, 5, 200)?,
@@ -2347,24 +2347,24 @@ pub fn build_checked(
                 )?,
                 max_range_atr: get_f64_p(params, "max_range_atr", 7.0, 2.0, 20.0)?,
                 confirm_bars: get_usize_p(params, "confirm_bars", 2, 1, 10)?,
-                ..MteConfig::default()
+                ..TradabilityFilterConfig::default()
             };
-            Ok(Box::new(MarketTradabilityEngine::new(cfg)))
+            Ok(Box::new(TradabilityFilter::new(cfg)))
         }
-        "time_to_react" => {
-            let cfg = TimeToReactConfig {
+        "reaction_speed" => {
+            let cfg = ReactionSpeedConfig {
                 atr_len: get_usize_p(params, "atr_len", 14, 1, 500)?,
                 atr_base: get_usize_p(params, "atr_base", 50, 5, 1000)?,
                 swing_len: get_usize_p(params, "swing_len", 10, 2, 100)?,
                 react_bars: get_usize_p(params, "react_bars", 8, 1, 500)?,
                 valid_bars: get_usize_p(params, "valid_bars", 20, 1, 1000)?,
                 atr_move: get_f64_p(params, "atr_move", 1.6, 0.1, 20.0)?,
-                ..TimeToReactConfig::default()
+                ..ReactionSpeedConfig::default()
             };
-            Ok(Box::new(TimeToReact::new(cfg)))
+            Ok(Box::new(ReactionSpeed::new(cfg)))
         }
-        "markov_state_engine" => {
-            let cfg = MarkovStateConfig {
+        "market_state_chain" => {
+            let cfg = MarketStateChainConfig {
                 ema_len: get_usize_p(params, "ema_len", 55, 10, 1000)?,
                 rank_len: get_usize_p(params, "rank_len", 100, 20, 2000)?,
                 lookback: get_usize_p(params, "lookback", 500, 50, 1500)?,
@@ -2373,12 +2373,12 @@ pub fn build_checked(
                 conf_th: get_f64_p(params, "conf_th", 55.0, 0.0, 100.0)?,
                 rel_th: get_f64_p(params, "rel_th", 40.0, 0.0, 100.0)?,
                 bias_margin: get_f64_p(params, "bias_margin", 8.0, 0.0, 100.0)?,
-                ..MarkovStateConfig::default()
+                ..MarketStateChainConfig::default()
             };
-            Ok(Box::new(MarkovStateEngine::new(cfg)))
+            Ok(Box::new(MarketStateChain::new(cfg)))
         }
-        "oscillator_cycle_statistics" => {
-            let cfg = CycleStatisticsConfig {
+        "rsi_cycle_stats" => {
+            let cfg = RsiCycleStatsConfig {
                 rsi_len: get_usize_p(params, "rsi_len", 14, 2, 200)?,
                 overbought: get_f64_p(params, "overbought", 70.0, 51.0, 99.0)?,
                 oversold: get_f64_p(params, "oversold", 30.0, 1.0, 49.0)?,
@@ -2387,9 +2387,9 @@ pub fn build_checked(
                 min_samples: get_usize_p(params, "min_samples", 20, 1, 500)?,
                 edge_th: get_f64_p(params, "edge_th", 15.0, 0.0, 100.0)?,
                 max_ci: get_f64_p(params, "max_ci", 40.0, 1.0, 100.0)?,
-                ..CycleStatisticsConfig::default()
+                ..RsiCycleStatsConfig::default()
             };
-            Ok(Box::new(OscillatorCycleStatistics::new(cfg)))
+            Ok(Box::new(RsiCycleStats::new(cfg)))
         }
         "bottom_formation" => {
             let p = get_usize_p(params, "pivot_len", 5, 1, 10000)?;
@@ -2565,14 +2565,14 @@ fn native_source(canonical: &str) -> crate::model::Source {
 /// every catalog entry that reads more than one bar field: a test feeds each remaining entry a
 /// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
-    "markov_state_engine",
-    "time_to_react",
-    "market_tradability_engine",
-    "coilforge_zones",
-    "compression_fractal_release",
-    "smooth_trend_radar",
-    "exhaustion_scanner",
-    "market_exhaustion",
+    "market_state_chain",
+    "reaction_speed",
+    "tradability_filter",
+    "compression_zones",
+    "coil_release",
+    "smoothed_supertrend",
+    "overextension_risk",
+    "flow_exhaustion",
     "atr",
     "zone_rejection",
     "relative_volatility",
@@ -2596,16 +2596,16 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "liquidity_sweeps",
     "double_pattern",
     "bottom_formation",
-    "market_average_relationship",
-    "swing_conviction_radar",
-    "structure_break_risk",
-    "reversal_engine_score",
-    "liquidity_hunter",
-    "market_motion_dna",
-    "vein_accumulation",
-    "vein_reversal_score",
-    "vein_structure_zones",
-    "structural_wave_field",
+    "price_average_relation",
+    "leg_conviction",
+    "trend_break_risk",
+    "sweep_reversal_score",
+    "equal_level_liquidity",
+    "leg_character",
+    "accumulation_phase",
+    "reversal_setup_score",
+    "structure_zones",
+    "structural_flow",
     "pivot_divergence",
     "liquidity_fvg",
     "order_block",
@@ -3369,26 +3369,26 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "zone_rejection",
     "double_pattern",
     "bottom_formation",
-    "market_exhaustion",
-    "exhaustion_scanner",
-    "smooth_trend_radar",
-    "compression_fractal_release",
-    "coilforge_zones",
-    "roc_advanced",
-    "market_tradability_engine",
-    "time_to_react",
-    "markov_state_engine",
-    "oscillator_cycle_statistics",
-    "market_average_relationship",
-    "swing_conviction_radar",
-    "structure_break_risk",
-    "reversal_engine_score",
-    "liquidity_hunter",
-    "market_motion_dna",
-    "vein_accumulation",
-    "vein_reversal_score",
-    "vein_structure_zones",
-    "structural_wave_field",
+    "flow_exhaustion",
+    "overextension_risk",
+    "smoothed_supertrend",
+    "coil_release",
+    "compression_zones",
+    "roc_context",
+    "tradability_filter",
+    "reaction_speed",
+    "market_state_chain",
+    "rsi_cycle_stats",
+    "price_average_relation",
+    "leg_conviction",
+    "trend_break_risk",
+    "sweep_reversal_score",
+    "equal_level_liquidity",
+    "leg_character",
+    "accumulation_phase",
+    "reversal_setup_score",
+    "structure_zones",
+    "structural_flow",
     "pivot_divergence",
     "oscillator_pivot_divergence",
     "liquidity_pools",
