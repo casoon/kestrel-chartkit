@@ -1,6 +1,6 @@
 //! Generic composition graph for indicators with typed dependencies.
 //!
-//! [`Indicator::on_bar`](crate::indicator::Indicator::on_bar) only ever sees the raw [`Bar`] — it
+//! [`Indicator::on_bar`] only ever sees the raw [`Bar`] — it
 //! has no way to consume another indicator's output. `engine::pipeline` wires specific engines
 //! together by hand for specific milestones; it is not a reusable graph. [`GraphIndicator`] and
 //! [`CompositionGraph`] fill that gap: nodes declare named dependencies on other nodes' outputs,

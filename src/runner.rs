@@ -1,6 +1,6 @@
 //! Batch and replay execution over a full bar history.
 //!
-//! [`Indicator::on_bar`](crate::indicator::Indicator::on_bar) processes one bar and returns the
+//! [`Indicator::on_bar`] processes one bar and returns the
 //! latest value; consumers wanting a full, timestamp-aligned output series over a backfill
 //! (charting, backtesting, golden-fixture generation) previously had to hand-roll the loop. These
 //! helpers standardize it: deterministic (always start from [`Indicator::reset`]), timestamp-

@@ -1,6 +1,6 @@
 //! Bar lifecycle events and rollback-safe, idempotent recomputation.
 //!
-//! [`Indicator::on_bar`](crate::indicator::Indicator::on_bar) takes a single incoming bar and
+//! [`Indicator::on_bar`] takes a single incoming bar and
 //! permanently advances the indicator's state — it has no notion of a bar that is still forming
 //! versus one that has closed, and no way to reprocess a bar without double-counting it.
 //!
