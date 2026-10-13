@@ -277,7 +277,9 @@ pub fn aggregate_subscores(
 /// Convenience wrapper around [`aggregate_subscores`] that rounds the resulting
 /// [`crate::model::RiskPlan`] to `instrument`'s tick size (see
 /// [`crate::model::RiskPlan::rounded_to`]), so ATR-derived entry/stop/target prices land on a
-/// tradable price grid instead of arbitrary floating-point values.
+/// tradable price grid instead of arbitrary floating-point values. A plan that rounding makes
+/// untradable (see [`crate::model::RiskPlan::is_valid`], e.g. the stop collapsing onto the entry
+/// on a coarse tick) is dropped: `risk_plan` becomes `None`.
 #[allow(clippy::too_many_arguments)]
 pub fn aggregate_subscores_with_instrument(
     subscores: Vec<SubScore>,
@@ -290,7 +292,8 @@ pub fn aggregate_subscores_with_instrument(
 ) -> CompositeSignal {
     let mut signal = aggregate_subscores(subscores, weights, regime, sr_zones, latest_bar, atr_val);
     if let Some(plan) = &signal.risk_plan {
-        signal.risk_plan = Some(plan.rounded_to(instrument));
+        let rounded = plan.rounded_to(instrument);
+        signal.risk_plan = rounded.is_valid().then_some(rounded);
     }
     signal
 }

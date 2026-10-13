@@ -164,17 +164,22 @@ pub fn render_chart_svg(data: &ChartRenderData, width: u32, height: u32) -> Stri
     let n = data.bars.len();
     let bar_w = (chart_w / n as f64).max(1.0);
 
-    // Map timestamps to X coordinates
+    // One timestamp -> x projection for candles, series and markers alike: linear in time between
+    // the centre of the first and the centre of the last candle slot, so a marker or line point
+    // on a bar's timestamp sits on that bar's candle. With evenly spaced bars this places candle
+    // `i` at the centre of slot `i`; a gap in time shows as a gap on the chart.
     let min_ts = data.bars.first().map(|b| b.timestamp).unwrap_or(0);
     let max_ts = data.bars.last().map(|b| b.timestamp).unwrap_or(1);
     let ts_range = (max_ts - min_ts).max(1) as f64;
+    let first_x = margin_left + bar_w / 2.0;
+    let span_x = (chart_w - bar_w).max(0.0);
 
     let get_x_for_ts = |ts: i64| -> f64 {
         if n == 1 {
             return margin_left + chart_w / 2.0;
         }
         let ratio = (ts - min_ts) as f64 / ts_range;
-        margin_left + ratio * chart_w
+        first_x + ratio * span_x
     };
 
     let mut svg = String::new();
@@ -212,8 +217,8 @@ pub fn render_chart_svg(data: &ChartRenderData, width: u32, height: u32) -> Stri
     }
 
     // Render Candlesticks
-    for (i, b) in data.bars.iter().enumerate() {
-        let x = margin_left + i as f64 * bar_w + bar_w / 2.0;
+    for b in &data.bars {
+        let x = get_x_for_ts(b.timestamp);
         let y_high = to_y(b.high);
         let y_low = to_y(b.low);
         let y_open = to_y(b.open);
@@ -357,9 +362,50 @@ mod tests {
         // Series polyline
         assert!(svg.contains("<polyline points="));
 
-        // Markers at the first/last timestamp receive distinct X coordinates.
-        assert!(svg.contains("<circle cx=\"20.0\""));
-        assert!(svg.contains("<circle cx=\"740.0\""));
+        // Markers sit on the candles of their timestamps (slot centres of the 720px plot area).
+        assert!(svg.contains("<circle cx=\"200.0\""));
+        assert!(svg.contains("<circle cx=\"560.0\""));
+        assert!(svg.contains("<line x1=\"200.0\""));
+        assert!(svg.contains("<line x1=\"560.0\""));
+    }
+
+    fn candle(timestamp: i64) -> ChartBarData {
+        ChartBarData {
+            timestamp,
+            open: 100.0,
+            high: 101.0,
+            low: 99.0,
+            close: 100.5,
+            volume: 1.0,
+        }
+    }
+
+    /// N24: candles, line points and markers on the same timestamp share one x coordinate.
+    #[test]
+    fn candles_lines_and_markers_share_the_time_projection() {
+        let data = ChartRenderData {
+            title: "t".to_string(),
+            bars: vec![candle(0), candle(60)],
+            series: vec![ChartSeries {
+                name: "s".to_string(),
+                color: "#00ff00".to_string(),
+                points: vec![(0, 100.0), (60, 100.5)],
+            }],
+            zones: vec![],
+            markers: vec![ChartMarkerData {
+                timestamp: 0,
+                price: 100.0,
+                label: "m".to_string(),
+                action: TriggerAction::Buy,
+            }],
+        };
+        let svg = render_chart_svg(&data, 400, 200);
+        // Plot area 320px, two slots of 160px: centres at 100 and 260.
+        assert!(svg.contains("<line x1=\"100.0\""), "{svg}");
+        assert!(svg.contains("<circle cx=\"100.0\""), "{svg}");
+        assert!(svg.contains("points=\"100.0,"), "{svg}");
+        assert!(svg.contains("<line x1=\"260.0\""), "{svg}");
+        assert!(svg.contains(" 260.0,"), "{svg}");
     }
 }
 

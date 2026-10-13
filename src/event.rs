@@ -52,6 +52,12 @@ impl fmt::Display for EventPhase {
 /// [`AlertEvent::with_timeframe`] are the only way to change them, guaranteeing `event_id` is
 /// always recomputed from the complete, current identity context and can never go stale relative
 /// to it — regardless of the order those builders are called in.
+///
+/// `timestamp`, `phase` and `alert` are public, so `event_id` is a snapshot taken when the event
+/// was built: changing those fields afterwards does not update it. Identity therefore comes from
+/// [`AlertEvent::identity_key`], which is computed from the current fields every time, and
+/// [`AlertDeduplicator`] keys on that, not on the stored `event_id`. For an event that has not
+/// been mutated the two are equal.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct AlertEvent {
@@ -109,6 +115,19 @@ impl AlertEvent {
         }
     }
 
+    /// The identity of this event computed from its current instrument, timeframe, alert kind,
+    /// phase and timestamp — the key [`AlertDeduplicator`] uses. Equal to `event_id` unless one of
+    /// the public identity fields was changed after construction.
+    pub fn identity_key(&self) -> String {
+        compute_event_id(
+            &self.alert.kind,
+            self.phase,
+            self.timestamp,
+            self.instrument.as_deref(),
+            self.timeframe,
+        )
+    }
+
     pub fn instrument(&self) -> Option<&str> {
         self.instrument.as_deref()
     }
@@ -158,10 +177,12 @@ impl AlertDeduplicator {
         Self::default()
     }
 
-    /// Returns `true` and records the event if its ID has not been seen before; returns `false`
-    /// without side effects if it is a duplicate.
+    /// Returns `true` and records the event if its identity has not been seen before; returns
+    /// `false` without side effects if it is a duplicate. The identity is
+    /// [`AlertEvent::identity_key`], recomputed from the event's current fields, so an event
+    /// whose public fields were changed after construction is not mistaken for its original.
     pub fn admit(&mut self, event: &AlertEvent) -> bool {
-        self.seen.insert(event.event_id.clone())
+        self.seen.insert(event.identity_key())
     }
 
     pub fn reset(&mut self) {
@@ -294,6 +315,34 @@ mod tests {
         let event_2 = AlertEvent::new(alert_b_c, 1_000, EventPhase::Trigger).with_instrument("A");
 
         assert_ne!(event_1.event_id, event_2.event_id);
+    }
+
+    /// N23: mutating a public identity field after construction must not let the deduplicator
+    /// drop the changed event as a duplicate of the original.
+    #[test]
+    fn test_dedup_uses_current_identity_fields() {
+        let alert = IndicatorAlert::new("cross_up", "note", 0.8);
+        let original = AlertEvent::new(alert, 1_000, EventPhase::Trigger).with_instrument("DAX");
+        let mut dedup = AlertDeduplicator::new();
+        assert!(dedup.admit(&original));
+
+        let mut later = original.clone();
+        later.timestamp = 1_060;
+        assert!(dedup.admit(&later), "changed timestamp is a new event");
+
+        let mut invalidated = original.clone();
+        invalidated.phase = EventPhase::Invalidation;
+        assert!(dedup.admit(&invalidated), "changed phase is a new event");
+
+        let mut other_kind = original.clone();
+        other_kind.alert.kind = "cross_down".to_string();
+        assert!(
+            dedup.admit(&other_kind),
+            "changed alert kind is a new event"
+        );
+
+        assert!(!dedup.admit(&original.clone()));
+        assert_eq!(original.identity_key(), original.event_id);
     }
 
     #[test]

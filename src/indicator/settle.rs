@@ -286,7 +286,17 @@ where
     (settled(last_outputs), settled(last_alerts))
 }
 
+/// Two outputs differ when they do not carry the same channels — `secondary`/`signal` present on
+/// one side only, or a different set of `extra` keys — when any shared number differs (see
+/// [`relative_difference`]), or when the `state` differs.
 fn outputs_differ(a: &super::IndicatorOutput, b: &super::IndicatorOutput) -> bool {
+    if a.secondary.is_some() != b.secondary.is_some()
+        || a.signal.is_some() != b.signal.is_some()
+        || a.extra.len() != b.extra.len()
+        || a.extra.keys().any(|key| !b.extra.contains_key(key))
+    {
+        return true;
+    }
     let mut pairs = vec![(a.value, b.value)];
     if let (Some(x), Some(y)) = (a.secondary, b.secondary) {
         pairs.push((x, y));
@@ -295,9 +305,7 @@ fn outputs_differ(a: &super::IndicatorOutput, b: &super::IndicatorOutput) -> boo
         pairs.push((x, y));
     }
     for (key, x) in &a.extra {
-        if let Some(y) = b.extra.get(key) {
-            pairs.push((*x, *y));
-        }
+        pairs.push((*x, b.extra[key]));
     }
     pairs
         .into_iter()
@@ -305,11 +313,15 @@ fn outputs_differ(a: &super::IndicatorOutput, b: &super::IndicatorOutput) -> boo
         || a.state != b.state
 }
 
+/// Relative difference against the larger magnitude. Non-finite values agree only with the same
+/// non-finite value (`NaN` with `NaN`, `+inf` with `+inf`); a non-finite value against a finite
+/// one, or two different non-finite values, is an infinite difference.
 fn relative_difference(x: f64, y: f64) -> f64 {
-    if x.is_nan() && y.is_nan() {
-        return 0.0;
+    match (x.is_finite(), y.is_finite()) {
+        (true, true) => (x - y).abs() / x.abs().max(y.abs()).max(1e-9),
+        (false, false) if (x.is_nan() && y.is_nan()) || x == y => 0.0,
+        _ => f64::INFINITY,
     }
-    (x - y).abs() / x.abs().max(y.abs()).max(1e-9)
 }
 
 /// Reference series for [`settle_bars`] and its tests.
@@ -352,4 +364,48 @@ pub fn reference_series(
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::IndicatorOutput;
+    use super::*;
+
+    fn output(value: f64) -> IndicatorOutput {
+        IndicatorOutput::with_extra(value, HashMap::new())
+    }
+
+    /// N31: a channel present on one side only is a disagreement, as is a one-sided non-finite
+    /// value; identical outputs (including shared NaN) agree.
+    #[test]
+    fn outputs_differ_detects_one_sided_channels_and_non_finite_values() {
+        let base = output(1.0);
+        assert!(!outputs_differ(&base, &base.clone()));
+
+        let mut with_extra = base.clone();
+        with_extra.extra.insert("zone".to_string(), 2.0);
+        assert!(outputs_differ(&with_extra, &base));
+        assert!(outputs_differ(&base, &with_extra));
+
+        let mut with_secondary = base.clone();
+        with_secondary.secondary = Some(1.0);
+        assert!(outputs_differ(&with_secondary, &base));
+
+        let mut with_signal = base.clone();
+        with_signal.signal = Some(1.0);
+        assert!(outputs_differ(&base, &with_signal));
+
+        assert!(outputs_differ(&output(f64::NAN), &base));
+        assert!(outputs_differ(&base, &output(f64::NAN)));
+        assert!(outputs_differ(&output(f64::INFINITY), &base));
+        assert!(outputs_differ(
+            &output(f64::INFINITY),
+            &output(f64::NEG_INFINITY)
+        ));
+        assert!(!outputs_differ(&output(f64::NAN), &output(f64::NAN)));
+        assert!(!outputs_differ(
+            &output(f64::INFINITY),
+            &output(f64::INFINITY)
+        ));
+    }
 }

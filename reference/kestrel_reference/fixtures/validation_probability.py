@@ -37,11 +37,14 @@ HEADER = [
     "",
     "Isotonic calibration (IsotonicCalibrator). Samples with the same score form one block whose",
     "value is their win rate. Adjacent blocks are pooled while a block's value is below its",
-    "predecessor's; a pooled block takes the weighted mean and its highest score as threshold.",
-    "Pooled here with a stack, not in place. Prediction: at or below the first threshold the",
-    "first probability, at or above the last the last one, on a threshold its probability, in",
-    "between linear between the neighbouring thresholds. iso<i>_score<j>/_won<j> are the samples,",
-    "_threshold<k>/_probability<k> the curve, _query<m>/_predicted<m> predictions from it.",
+    "predecessor's; a pooled block takes the weighted mean of its members. Every block puts its",
+    "lowest score and, if different, its highest score on the curve, both with the block's value,",
+    "so a score inside a pooled block maps to that block's value. Pooled here with a stack, not",
+    "in place. Prediction: at or below the first threshold the first probability, at or above the",
+    "last the last one, on a threshold its probability, in between linear between the",
+    "neighbouring thresholds. iso<i>_score<j>/_won<j> are the samples, _blocks the number of",
+    "blocks, _points/_threshold<k>/_probability<k> the curve, _query<m>/_predicted<m> predictions",
+    "from it.",
     "Without pooling the ties first, iso0 would keep two blocks at score 0.5 (0.0 and 1.0).",
     "",
     "validation_probability_tolerance is the comparison tolerance the tests apply, stated rather",
@@ -54,16 +57,23 @@ def _isotonic(samples):
     blocks = []
     for score, group in groupby(ordered, key=lambda sample: sample[0]):
         outcomes = [1.0 if won else 0.0 for _, won in group]
-        blocks.append((score, float(len(outcomes)), sum(outcomes) / len(outcomes)))
+        blocks.append((score, score, float(len(outcomes)), sum(outcomes) / len(outcomes)))
     pooled = []
     for block in blocks:
         pooled.append(block)
-        while len(pooled) > 1 and pooled[-1][2] < pooled[-2][2]:
+        while len(pooled) > 1 and pooled[-1][3] < pooled[-2][3]:
             high = pooled.pop()
             low = pooled.pop()
-            weight = low[1] + high[1]
-            pooled.append((high[0], weight, (low[1] * low[2] + high[1] * high[2]) / weight))
-    return [b[0] for b in pooled], [b[2] for b in pooled]
+            weight = low[2] + high[2]
+            pooled.append((low[0], high[1], weight, (low[2] * low[3] + high[2] * high[3]) / weight))
+    thresholds, probabilities = [], []
+    for lowest, highest, _, value in pooled:
+        thresholds.append(lowest)
+        probabilities.append(value)
+        if highest > lowest:
+            thresholds.append(highest)
+            probabilities.append(value)
+    return len(pooled), thresholds, probabilities
 
 
 def _predict(thresholds, probabilities, score):
@@ -87,12 +97,13 @@ def build():
     blocks = [(None, "calibration sample", {"log_loss": total / len(PREDICTIONS)}),
               (None, "isotonic cases", {"meta_isotonic_case_count": float(len(ISOTONIC_CASES))})]
     for i, (samples, queries) in enumerate(ISOTONIC_CASES):
-        thresholds, probabilities = _isotonic(samples)
+        block_count, thresholds, probabilities = _isotonic(samples)
         case = {"n": float(len(samples))}
         for j, (score, won) in enumerate(samples):
             case[f"score{j}"] = score
             case[f"won{j}"] = 1.0 if won else 0.0
-        case["blocks"] = float(len(thresholds))
+        case["blocks"] = float(block_count)
+        case["points"] = float(len(thresholds))
         for k, (threshold, probability) in enumerate(zip(thresholds, probabilities)):
             case[f"threshold{k}"] = threshold
             case[f"probability{k}"] = probability

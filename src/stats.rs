@@ -82,6 +82,10 @@ pub fn percent_rank(slice: &[f64], val: f64) -> f64 {
 }
 
 /// Computes Pearson correlation from finite, positionally aligned pairs.
+///
+/// `None` with fewer than two pairs or when either side is constant (all its values equal). The
+/// degeneracy check is exact and scale-free: a series and the same series scaled by `1e-9`
+/// correlate identically, since no absolute epsilon is applied to the variances.
 pub fn correlation(left: &[f64], right: &[f64]) -> Option<f64> {
     let pairs: Vec<(f64, f64)> = left
         .iter()
@@ -92,6 +96,18 @@ pub fn correlation(left: &[f64], right: &[f64]) -> Option<f64> {
     if pairs.len() < 2 {
         return None;
     }
+    let (x0, y0) = pairs[0];
+    if pairs.iter().all(|&(x, _)| x == x0) || pairs.iter().all(|&(_, y)| y == y0) {
+        return None;
+    }
+    // Pearson is invariant under positive scaling; normalising each side by its largest
+    // magnitude keeps the squared deviations of very small or very large series representable.
+    let scale_x = pairs.iter().fold(0.0f64, |m, &(x, _)| m.max(x.abs()));
+    let scale_y = pairs.iter().fold(0.0f64, |m, &(_, y)| m.max(y.abs()));
+    let pairs: Vec<(f64, f64)> = pairs
+        .into_iter()
+        .map(|(x, y)| (x / scale_x, y / scale_y))
+        .collect();
     let count = pairs.len() as f64;
     let mean_x = pairs.iter().map(|(x, _)| x).sum::<f64>() / count;
     let mean_y = pairs.iter().map(|(_, y)| y).sum::<f64>() / count;
@@ -102,7 +118,7 @@ pub fn correlation(left: &[f64], right: &[f64]) -> Option<f64> {
     let variance_x = pairs.iter().map(|(x, _)| (x - mean_x).powi(2)).sum::<f64>();
     let variance_y = pairs.iter().map(|(_, y)| (y - mean_y).powi(2)).sum::<f64>();
     let denominator = (variance_x * variance_y).sqrt();
-    (denominator > f64::EPSILON).then_some(covariance / denominator)
+    (denominator > 0.0 && denominator.is_finite()).then_some(covariance / denominator)
 }
 
 /// Result of a linear regression fit over a data slice.
@@ -265,6 +281,20 @@ mod tests {
     fn test_correlation() {
         assert_eq!(correlation(&[1.0, 2.0, 3.0], &[2.0, 4.0, 6.0]), Some(1.0));
         assert_eq!(correlation(&[1.0, 1.0], &[1.0, 2.0]), None);
+    }
+
+    /// N26: scaling both series must not change the correlation; only a truly constant series is
+    /// degenerate.
+    #[test]
+    fn correlation_is_scale_invariant() {
+        let scaled = [1e-9, 2e-9, 3e-9];
+        let r = correlation(&scaled, &scaled).expect("non-constant series correlate");
+        assert!((r - 1.0).abs() < 1e-12, "got {r}");
+        let tiny = [1e-200, 2e-200, 3e-200];
+        let r = correlation(&tiny, &[3.0, 2.0, 1.0]).expect("non-constant series correlate");
+        assert!((r + 1.0).abs() < 1e-12, "got {r}");
+        assert_eq!(correlation(&[1e-9, 1e-9, 1e-9], &scaled), None);
+        assert_eq!(correlation(&[0.1, 0.1, 0.1], &[1.0, 2.0, 3.0]), None);
     }
 }
 

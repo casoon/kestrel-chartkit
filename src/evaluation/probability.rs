@@ -26,7 +26,10 @@ pub struct CalibratedProbability {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IsotonicCalibrator {
-    /// Score cutoffs sorted ascending.
+    /// Score cutoffs sorted strictly ascending. Each fitted block contributes its lowest training
+    /// score and, if different, its highest one, both carrying the block's probability — so
+    /// [`IsotonicCalibrator::predict`] is flat inside a block and interpolates only in the gap
+    /// between two blocks.
     pub thresholds: Vec<f64>,
     /// Corresponding calibrated probabilities in `0.0..=1.0` (guaranteed non-decreasing).
     pub probabilities: Vec<f64>,
@@ -39,7 +42,8 @@ impl IsotonicCalibrator {
     /// Samples with the same score form one initial block whose value is their win rate, so a
     /// score maps to exactly one probability and `thresholds` are strictly ascending. Adjacent
     /// blocks are then pooled while a block's value falls below its predecessor's (PAVA), each
-    /// pooled block taking the weighted mean of its members and its highest score as threshold.
+    /// pooled block taking the weighted mean of its members. A block spanning several scores keeps
+    /// both its lowest and its highest score as thresholds (see [`IsotonicCalibrator::thresholds`]).
     ///
     /// Out-of-sample discipline: Call this method ONLY on training data!
     pub fn fit(samples: &[(f64, bool)]) -> Option<Self> {
@@ -51,11 +55,13 @@ impl IsotonicCalibrator {
         let mut sorted = samples.to_vec();
         sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-        // 2. Initialize PAVA blocks: (score, weight, value), one per distinct score. Pooling only
+        // 2. Initialize PAVA blocks: (lower score, upper score, weight, value), one per distinct
+        //    score. Pooling only
         //    where the value falls would leave tied scores with rising outcomes (0.5 -> loss,
         //    0.5 -> win) as separate blocks under the same threshold, and `predict` would answer
         //    with whichever of them it hit first.
         let mut scores: Vec<f64> = Vec::with_capacity(sorted.len());
+        let mut lower_scores: Vec<f64> = Vec::with_capacity(sorted.len());
         let mut weights: Vec<f64> = Vec::with_capacity(sorted.len());
         let mut values: Vec<f64> = Vec::with_capacity(sorted.len());
 
@@ -69,6 +75,7 @@ impl IsotonicCalibrator {
                 }
                 _ => {
                     scores.push(score);
+                    lower_scores.push(score);
                     weights.push(1.0);
                     values.push(y);
                 }
@@ -90,11 +97,12 @@ impl IsotonicCalibrator {
 
                 weights[i - 1] = w_new;
                 values[i - 1] = v_new;
-                scores[i - 1] = scores[i]; // upper boundary of merged block
+                scores[i - 1] = scores[i]; // upper boundary of merged block; lower one stays
 
                 weights.remove(i);
                 values.remove(i);
                 scores.remove(i);
+                lower_scores.remove(i);
 
                 i -= 1; // Step back to check previous pair
             } else {
@@ -102,9 +110,22 @@ impl IsotonicCalibrator {
             }
         }
 
+        // 4. Emit both bounds of every block, so a score inside a pooled block maps to the block's
+        //    value instead of being interpolated towards the next block.
+        let mut thresholds = Vec::with_capacity(2 * scores.len());
+        let mut probabilities = Vec::with_capacity(2 * scores.len());
+        for ((&lower, &upper), &value) in lower_scores.iter().zip(&scores).zip(&values) {
+            thresholds.push(lower);
+            probabilities.push(value);
+            if upper > lower {
+                thresholds.push(upper);
+                probabilities.push(value);
+            }
+        }
+
         Some(Self {
-            thresholds: scores,
-            probabilities: values,
+            thresholds,
+            probabilities,
             train_sample_size: samples.len(),
         })
     }
@@ -259,7 +280,8 @@ pub fn compute_calibration_metrics(
 
 /// Circular block bootstrap estimating confidence intervals for Brier Score under time dependence.
 ///
-/// Returns `(mean, percentile_05, percentile_95)`.
+/// Returns `(mean, percentile_05, percentile_95)`, or `None` for empty or mismatched inputs (as
+/// [`compute_calibration_metrics`]), a zero block size or zero bootstraps.
 pub fn block_bootstrap_brier(
     predicted: &[f64],
     actual: &[bool],
@@ -268,7 +290,7 @@ pub fn block_bootstrap_brier(
     seed: u64,
 ) -> Option<(f64, f64, f64)> {
     let n = predicted.len();
-    if n == 0 || block_size == 0 || num_bootstraps == 0 {
+    if n == 0 || n != actual.len() || block_size == 0 || num_bootstraps == 0 {
         return None;
     }
 
@@ -317,4 +339,33 @@ pub struct ValidationExperimentManifest {
     pub train_sample_size: usize,
     pub test_sample_size: usize,
     pub metrics: CalibrationMetrics,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// N12: scores 1 and 2 are pooled into one block (0.5); a score inside it must map to the
+    /// block's value, not be interpolated from the previous block.
+    #[test]
+    fn pooled_block_is_flat_between_its_bounds() {
+        let model =
+            IsotonicCalibrator::fit(&[(0.0, false), (1.0, true), (2.0, false), (3.0, true)])
+                .unwrap();
+        assert_eq!(model.predict(0.0), 0.0);
+        assert_eq!(model.predict(1.0), 0.5);
+        assert_eq!(model.predict(1.5), 0.5);
+        assert_eq!(model.predict(2.0), 0.5);
+        assert_eq!(model.predict(3.0), 1.0);
+        // Between blocks: linear interpolation from the upper bound of one to the lower of the next.
+        assert_eq!(model.predict(0.5), 0.25);
+        assert_eq!(model.predict(2.5), 0.75);
+    }
+
+    /// N21: mismatched lengths return `None` instead of panicking.
+    #[test]
+    fn block_bootstrap_rejects_length_mismatch() {
+        assert_eq!(block_bootstrap_brier(&[0.5, 0.7], &[], 1, 1, 7), None);
+        assert_eq!(block_bootstrap_brier(&[0.5], &[true, false], 1, 1, 7), None);
+    }
 }

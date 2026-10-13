@@ -85,8 +85,25 @@ impl AnchoredVwapEngine {
         Self::new(VwapAnchorKind::Session, 1.0, 2.0)
     }
 
+    /// Sets the fixed local-time offset for every anchor kind: `Day`/`Week`/`Month` bucket by it,
+    /// and for `Session` it replaces the session config's `utc_offset_seconds`, so the session
+    /// hours are read in the same local time. The last of `with_utc_offset` and
+    /// [`AnchoredVwapEngine::with_session_config`] wins for the session offset.
+    ///
+    /// # Panics
+    ///
+    /// With a session anchor, if `|utc_offset_seconds|` is a day or more (see
+    /// [`SessionConfigError::InvalidUtcOffset`]).
     pub fn with_utc_offset(mut self, utc_offset_seconds: i32) -> Self {
         self.utc_offset_seconds = utc_offset_seconds;
+        if let Some(tracker) = &self.session_tracker {
+            let config = SessionConfig {
+                utc_offset_seconds,
+                ..tracker.config().clone()
+            };
+            self.session_tracker =
+                Some(SessionTracker::new(config).expect("UTC offset must be less than 24 hours"));
+        }
         self
     }
 
@@ -100,6 +117,7 @@ impl AnchoredVwapEngine {
         config: SessionConfig,
     ) -> Result<Self, SessionConfigError> {
         self.anchor_kind = VwapAnchorKind::Session;
+        self.utc_offset_seconds = config.utc_offset_seconds;
         self.session_tracker = Some(SessionTracker::new(config)?);
         self.active = true;
         Ok(self)
@@ -251,6 +269,56 @@ mod tests {
             .on_bar_with_anchor(&Bar::new(2, 200.0, 200.0, 200.0, 200.0, 1.0), true)
             .unwrap();
         assert_eq!(output.value, 200.0);
+    }
+
+    /// N19: `with_utc_offset` applies to the session anchor as it does to the calendar anchors.
+    #[test]
+    fn utc_offset_applies_to_session_anchor() {
+        // Default session = whole local day; with +1h the day restarts at 23:00 UTC.
+        let mut avwap = AnchoredVwapEngine::with_defaults().with_utc_offset(3_600);
+        avwap.on_bar(&Bar::new(22 * 3_600, 100.0, 100.0, 100.0, 100.0, 1.0));
+        let out = avwap
+            .on_bar(&Bar::new(23 * 3_600, 200.0, 200.0, 200.0, 200.0, 1.0))
+            .unwrap();
+        assert_eq!(
+            out.value, 200.0,
+            "local midnight must restart the session VWAP"
+        );
+
+        // Same as the Day anchor with the same offset.
+        let mut day = AnchoredVwapEngine::new(VwapAnchorKind::Day, 1.0, 2.0).with_utc_offset(3_600);
+        day.on_bar(&Bar::new(22 * 3_600, 100.0, 100.0, 100.0, 100.0, 1.0));
+        let out = day
+            .on_bar(&Bar::new(23 * 3_600, 200.0, 200.0, 200.0, 200.0, 1.0))
+            .unwrap();
+        assert_eq!(out.value, 200.0);
+
+        // A configured session is read in local time after the offset is applied.
+        let config = SessionConfig {
+            start_hour: 9,
+            start_minute: 0,
+            end_hour: 10,
+            end_minute: 0,
+            orb_duration_mins: 30,
+            utc_offset_seconds: 0,
+        };
+        let mut session = AnchoredVwapEngine::with_defaults()
+            .with_session_config(config)
+            .unwrap()
+            .with_utc_offset(3_600);
+        assert!(session
+            .on_bar(&Bar::new(9 * 3_600, 100.0, 100.0, 100.0, 100.0, 1.0))
+            .is_none());
+        assert!(session
+            .on_bar(&Bar::new(
+                8 * 3_600 + 86_400,
+                100.0,
+                100.0,
+                100.0,
+                100.0,
+                1.0
+            ))
+            .is_some());
     }
 
     #[test]
