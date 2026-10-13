@@ -425,6 +425,13 @@ pub fn black_76(
 /// Inverts the Black-Scholes-Merton formula to find the implied volatility from a market price.
 ///
 /// Uses bounded Brent-Newton hybrid iteration. Returns volatility as an annualized fraction (e.g. 0.20 for 20%).
+///
+/// The search domain is `sigma > 0`. The lower bracket starts at `1e-4` and is lowered (down to
+/// `1e-10`) when the market price lies below the price at that volatility. A result is returned
+/// only when the price matches to `1e-8` or the volatility bracket has shrunk below `1e-10`;
+/// otherwise the solver fails with [`OptionError::SolverMaxIterationsExceeded`] (iteration limit)
+/// or [`OptionError::SolverFailedToConverge`] (no bracket in the domain) — never with the last
+/// iterate.
 pub fn implied_volatility(
     option_type: OptionType,
     market_price: f64,
@@ -433,6 +440,29 @@ pub fn implied_volatility(
     time_to_expiry_years: f64,
     risk_free_rate: f64,
     dividend_yield: f64,
+) -> Result<f64, OptionError> {
+    implied_volatility_with_limit(
+        option_type,
+        market_price,
+        spot,
+        strike,
+        time_to_expiry_years,
+        risk_free_rate,
+        dividend_yield,
+        100,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn implied_volatility_with_limit(
+    option_type: OptionType,
+    market_price: f64,
+    spot: f64,
+    strike: f64,
+    time_to_expiry_years: f64,
+    risk_free_rate: f64,
+    dividend_yield: f64,
+    max_iter: usize,
 ) -> Result<f64, OptionError> {
     if !market_price.is_finite() || market_price <= 0.0 {
         return Err(OptionError::InvalidInput(
@@ -476,9 +506,17 @@ pub fn implied_volatility(
     let mut vol_high = 5.0f64;
 
     inputs.volatility = vol_low;
-    let price_low = black_scholes_merton(option_type, &inputs)?.price;
+    let mut price_low = black_scholes_merton(option_type, &inputs)?.price;
+    while price_low > market_price && vol_low > 1e-10 {
+        vol_low *= 0.1;
+        inputs.volatility = vol_low;
+        price_low = black_scholes_merton(option_type, &inputs)?.price;
+    }
     if (price_low - market_price).abs() < 1e-7 {
         return Ok(vol_low);
+    }
+    if price_low > market_price {
+        return Err(OptionError::SolverFailedToConverge);
     }
 
     inputs.volatility = vol_high;
@@ -495,7 +533,6 @@ pub fn implied_volatility(
 
     // Hybrid Newton-Raphson / Bisection
     let mut current_vol = 0.5 * (vol_low + vol_high);
-    let max_iter = 100;
     let tol = 1e-8;
 
     for _ in 0..max_iter {
@@ -535,7 +572,7 @@ pub fn implied_volatility(
         }
     }
 
-    Ok(current_vol)
+    Err(OptionError::SolverMaxIterationsExceeded)
 }
 
 /// Verifies European put-call parity and returns the pricing discrepancy.
@@ -607,6 +644,40 @@ mod tests {
         let b76 = black_76(OptionType::Put, 90.0, 100.0, 1.0, 0.05, 0.0).unwrap();
         assert!((b76.price - 10.0 * (-0.05f64).exp()).abs() < 1e-12);
         assert!((b76.greeks.delta + (-0.05f64).exp()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn implied_volatility_reports_iteration_limit_instead_of_the_last_iterate() {
+        let price = black_scholes_merton(
+            OptionType::Call,
+            &inputs(100.0, 105.0, 0.5, 0.03, 0.0, 0.237),
+        )
+        .unwrap()
+        .price;
+        let args = (OptionType::Call, price, 100.0, 105.0, 0.5, 0.03, 0.0);
+        assert_eq!(
+            implied_volatility_with_limit(
+                args.0, args.1, args.2, args.3, args.4, args.5, args.6, 1
+            ),
+            Err(OptionError::SolverMaxIterationsExceeded)
+        );
+        let solved =
+            implied_volatility(args.0, args.1, args.2, args.3, args.4, args.5, args.6).unwrap();
+        assert!((solved - 0.237).abs() < 1e-7, "{solved}");
+    }
+
+    #[test]
+    fn implied_volatility_finds_volatilities_below_the_initial_bracket() {
+        let target = 2e-5;
+        let price = black_scholes_merton(
+            OptionType::Call,
+            &inputs(100.0, 100.0, 1.0, 0.0, 0.0, target),
+        )
+        .unwrap()
+        .price;
+        let solved =
+            implied_volatility(OptionType::Call, price, 100.0, 100.0, 1.0, 0.0, 0.0).unwrap();
+        assert!((solved - target).abs() < 1e-7, "{solved}");
     }
 
     #[test]
