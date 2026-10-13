@@ -339,10 +339,10 @@
         "max_expression_width": 4
       },
       "evidence_class": "heuristic",
-      "id": "complexity-inflation:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs:CandleStoryEngine::on_bar",
+      "id": "complexity-inflation:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs:CandleClassificationEngine::on_bar",
       "location": {
-        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs",
-        "item_path": "CandleStoryEngine::on_bar",
+        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs",
+        "item_path": "CandleClassificationEngine::on_bar",
         "line": 42
       },
       "origin": "code",
@@ -1620,10 +1620,10 @@
         "max_expression_width": 6
       },
       "evidence_class": "heuristic",
-      "id": "complexity-inflation:/Users/jseidel/GitHub/kestrel-chartkit/tests/scenario_reference_structure.rs:test_scenario_candle_story",
+      "id": "complexity-inflation:/Users/jseidel/GitHub/kestrel-chartkit/tests/scenario_reference_structure.rs:test_scenario_candle_classification",
       "location": {
         "file": "/Users/jseidel/GitHub/kestrel-chartkit/tests/scenario_reference_structure.rs",
-        "item_path": "test_scenario_candle_story",
+        "item_path": "test_scenario_candle_classification",
         "line": 128
       },
       "origin": "code",
@@ -4342,10 +4342,10 @@
         "token_count": 21
       },
       "evidence_class": "derived_fact",
-      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs:CandleStoryEngine::on_bar:634-654",
+      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs:CandleClassificationEngine::on_bar:634-654",
       "location": {
-        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs",
-        "item_path": "CandleStoryEngine::on_bar",
+        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs",
+        "item_path": "CandleClassificationEngine::on_bar",
         "line": 153
       },
       "origin": "code",
@@ -5345,10 +5345,10 @@
         "token_count": 20
       },
       "evidence_class": "derived_fact",
-      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs:CandleStoryEngine::on_bar:23-42",
+      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs:CandleClassificationEngine::on_bar:23-42",
       "location": {
-        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs",
-        "item_path": "CandleStoryEngine::on_bar",
+        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs",
+        "item_path": "CandleClassificationEngine::on_bar",
         "line": 44
       },
       "origin": "code",
@@ -6705,10 +6705,10 @@
         "token_count": 23
       },
       "evidence_class": "derived_fact",
-      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs:CandleStoryEngine::on_bar:0-22",
+      "id": "duplicate-code:/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs:CandleClassificationEngine::on_bar:0-22",
       "location": {
-        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_story.rs",
-        "item_path": "CandleStoryEngine::on_bar",
+        "file": "/Users/jseidel/GitHub/kestrel-chartkit/src/indicator/candle_classification.rs",
+        "item_path": "CandleClassificationEngine::on_bar",
         "line": 42
       },
       "origin": "code",

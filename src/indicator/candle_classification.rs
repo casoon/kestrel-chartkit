@@ -4,7 +4,7 @@ use crate::indicator::smoothing::Rma;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Candle Story Engine — normalised single- and multi-candle classification.
+/// Candle Classification — normalised single- and multi-candle classification.
 ///
 /// # Why a set and not a code
 ///
@@ -30,8 +30,8 @@ use crate::model::Bar;
 /// named readings (`hammer`, `hanging_man`, …), and derives the named ones from an explicit
 /// `trend_context` measured over `trend_lookback` bars. Naming a shape without that context would
 /// assert something the bar does not contain.
-pub struct CandleStoryEngine {
-    config: CandleStoryConfig,
+pub struct CandleClassificationEngine {
+    config: CandleClassificationConfig,
     window: Vec<Bar>,
     closes: Vec<f64>,
     atr: Rma,
@@ -42,7 +42,7 @@ pub struct CandleStoryEngine {
 
 /// Thresholds of the classification. Every one of them is a decision, not a constant of nature.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CandleStoryConfig {
+pub struct CandleClassificationConfig {
     /// Minimum wick share of the range for a pinbar.
     pub pin_wick_min: f64,
     /// How far towards the opposite end the close must sit for a pinbar (0…1).
@@ -81,7 +81,7 @@ pub struct CandleStoryConfig {
     pub trend_min_atr: f64,
 }
 
-impl Default for CandleStoryConfig {
+impl Default for CandleClassificationConfig {
     fn default() -> Self {
         Self {
             pin_wick_min: 0.55,
@@ -139,12 +139,12 @@ impl Metrics {
     }
 }
 
-impl CandleStoryEngine {
+impl CandleClassificationEngine {
     pub fn new() -> Self {
-        Self::with_config(CandleStoryConfig::default())
+        Self::with_config(CandleClassificationConfig::default())
     }
 
-    pub fn with_config(config: CandleStoryConfig) -> Self {
+    pub fn with_config(config: CandleClassificationConfig) -> Self {
         Self {
             atr: Rma::new(config.atr_len),
             config,
@@ -171,7 +171,7 @@ impl CandleStoryEngine {
     }
 }
 
-impl Default for CandleStoryEngine {
+impl Default for CandleClassificationEngine {
     fn default() -> Self {
         Self::new()
     }
@@ -201,9 +201,9 @@ fn mark(
     alerts.push(IndicatorAlert::new(kind, message, strength));
 }
 
-impl Indicator for CandleStoryEngine {
+impl Indicator for CandleClassificationEngine {
     fn name(&self) -> &str {
-        "candle_story"
+        "candle_classification"
     }
 
     fn warmup_period(&self) -> usize {
@@ -299,7 +299,7 @@ impl Indicator for CandleStoryEngine {
     }
 }
 
-impl CandleStoryEngine {
+impl CandleClassificationEngine {
     /// Shapes that need one bar only.
     fn classify_single(
         &self,
@@ -1090,6 +1090,6 @@ impl CandleStoryEngine {
     }
 }
 
-pub fn build_candle_story(_params: &HashMap<String, f64>) -> CandleStoryEngine {
-    CandleStoryEngine::new()
+pub fn build_candle_classification(_params: &HashMap<String, f64>) -> CandleClassificationEngine {
+    CandleClassificationEngine::new()
 }

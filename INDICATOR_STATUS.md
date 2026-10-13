@@ -74,7 +74,7 @@ is complete.
 | aroon | ✅ |
 | chande_kroll | ✅ |
 | chandelier_exit | ✅ |
-| chandelier_flip_radar | ✅ |
+| adaptive_chandelier | ✅ |
 | choppiness | ✅ |
 | dmi | ✅ |
 | donchian | ✅ |
@@ -144,7 +144,7 @@ is complete.
 | Indicator | Verified |
 |---|---|
 | bos_choch | ✅ |
-| candle_story | ✅ |
+| candle_classification | ✅ |
 | liquidity_fvg | ✅ |
 | liquidity_pools | ✅ |
 | liquidity_sweeps | ✅ |

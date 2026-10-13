@@ -66,7 +66,7 @@ fn series() -> Vec<Bar> {
 #[test]
 fn mare_matches_the_reference_implementation() {
     let mut ind = build_checked("price_average_relation", &HashMap::new()).unwrap();
-    let tol = expected("mare_tolerance");
+    let tol = expected("relation_tolerance");
     let mut first = None;
     let mut events: HashMap<&str, Vec<usize>> = HashMap::new();
     for (t, bar) in series().iter().enumerate() {

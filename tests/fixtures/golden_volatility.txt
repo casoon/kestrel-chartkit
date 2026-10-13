@@ -37,7 +37,7 @@
 # deviation filed under up or down by the direction of the price, Wilder-smoothed,
 # 100 up / (up + down). The high/low variant averages the index over highs and lows.
 #
-# Chandelier Flip Radar, length 5, atr_mult 3, high/low extremes, danger 0.35, warn 0.75, over
+# Adaptive Chandelier, length 5, atr_mult 3, high/low extremes, danger 0.35, warn 0.75, over
 # (open, high, low, close) bars:
 #   trend  15 bars, base = 100 + 2 i: (base, base + 3, base - 3, base + 1); no adaptive mode, no
 #          body filter.
@@ -133,7 +133,7 @@ rvi_vol_close_output_count=33.0
 rvi_vol_high_low_last=36.83672490447423
 rvi_vol_tolerance=1e-12
 
-# Chandelier Flip Radar
+# Adaptive Chandelier
 cfr_trend_active_stop=113.0
 cfr_trend_dist_atr=2.9999999999999996
 cfr_trend_multiplier=3.0

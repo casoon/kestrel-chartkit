@@ -262,9 +262,9 @@ def _chandelier(bars, length, mult):
 
 
 
-def _chandelier_flip_radar(bars, length, atr_mult, close_extremes, adaptive, body_filter,
+def _adaptive_chandelier(bars, length, atr_mult, close_extremes, adaptive, body_filter,
                            danger, warn):
-    """Chandelier Flip Radar per bar as documented on its type: Wilder ATR of the true range,
+    """Adaptive Chandelier per bar as documented on its type: Wilder ATR of the true range,
     stops at the highest high - multiplier ATR / lowest low + multiplier ATR ratcheted while the
     previous direction holds, flips against the previous stops behind the body filter, risk state
     from the distance to the previous stop, traps. `None` before the ATR exists."""
@@ -405,18 +405,18 @@ def derive():
 
     trend = [(100.0 + i * 2.0, 100.0 + i * 2.0 + 3.0, 100.0 + i * 2.0 - 3.0, 100.0 + i * 2.0 + 1.0)
              for i in range(15)]
-    last = _chandelier_flip_radar(trend, 5, 3.0, False, False, 0.0, 0.35, 0.75)[-1]
+    last = _adaptive_chandelier(trend, 5, 3.0, False, False, 0.0, 0.35, 0.75)[-1]
     keys["cfr_trend_active_stop"] = last["value"]
     keys["cfr_trend_dist_atr"] = last["dist_atr"]
     keys["cfr_trend_multiplier"] = last["multiplier"]
     keys["cfr_trend_risk_state"] = last["risk_state"]
     spike = [(100.0, 101.0, 99.0, 100.0)] * 105 + [(100.0, 250.0, 50.0, 150.0)]
-    last = _chandelier_flip_radar(spike, 5, 3.0, False, True, 0.0, 0.35, 0.75)[-1]
+    last = _adaptive_chandelier(spike, 5, 3.0, False, True, 0.0, 0.35, 0.75)[-1]
     keys["cfr_spike_multiplier"] = last["multiplier"]
     keys["cfr_spike_active_stop"] = last["value"]
     keys["cfr_spike_bear_trap"] = float("bull_bear_trap" in last["alerts"])
     weak = trend[:6] + [(94.6, 96.0, 94.0, 94.5)]
-    last = _chandelier_flip_radar(weak, 5, 3.0, False, False, 0.8, 0.35, 0.75)[-1]
+    last = _adaptive_chandelier(weak, 5, 3.0, False, False, 0.8, 0.35, 0.75)[-1]
     keys["cfr_weak_active_stop"] = last["value"]
     keys["cfr_weak_risk_state"] = last["risk_state"]
     keys["cfr_weak_bear_weak_flip"] = float("bear_weak_flip" in last["alerts"])
@@ -461,7 +461,7 @@ HEADER = [
     "deviation filed under up or down by the direction of the price, Wilder-smoothed,",
     "100 up / (up + down). The high/low variant averages the index over highs and lows.",
     "",
-    "Chandelier Flip Radar, length 5, atr_mult 3, high/low extremes, danger 0.35, warn 0.75, over",
+    "Adaptive Chandelier, length 5, atr_mult 3, high/low extremes, danger 0.35, warn 0.75, over",
     "(open, high, low, close) bars:",
     "  trend  15 bars, base = 100 + 2 i: (base, base + 3, base - 3, base + 1); no adaptive mode, no",
     "         body filter.",
@@ -503,7 +503,7 @@ SECTIONS = [
     ("Relative Volatility Index (package 35)",
      ["rvi_vol_close_first", "rvi_vol_close_last", "rvi_vol_close_output_count",
       "rvi_vol_high_low_last", "rvi_vol_tolerance"]),
-    ("Chandelier Flip Radar",
+    ("Adaptive Chandelier",
      ["cfr_trend_active_stop", "cfr_trend_dist_atr", "cfr_trend_multiplier",
       "cfr_trend_risk_state", "cfr_spike_multiplier", "cfr_spike_active_stop",
       "cfr_spike_bear_trap", "cfr_weak_active_stop", "cfr_weak_risk_state",

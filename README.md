@@ -6,7 +6,7 @@ visualization.
 
 **Website and documentation:** [casoon.github.io/kestrel-chartkit](https://casoon.github.io/kestrel-chartkit/)
 
-The crate is at **0.26**, pre-1.0. Root-level re-exports are the preferred consumer API;
+The crate is at **0.27**, pre-1.0. Root-level re-exports are the preferred consumer API;
 lower-level modules remain public for advanced composition but may change before 1.0. Breaking
 changes are marked with `!` in the commit subject and raise the minor version.
 
@@ -78,10 +78,10 @@ coupon dates, business-day adjustment and sensitivities.
 
 ```toml
 [dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.26.0" }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.27.0" }
 ```
 
-or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.26.0`.
+or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.27.0`.
 Requires Rust 1.87 or newer.
 
 > **Note on the registry.** crates.io and docs.rs still carry 0.11.3, thirteen minor versions
@@ -131,7 +131,7 @@ The default `serde` feature derives `Serialize` and `Deserialize` for public DTO
 smaller dependency graph:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.26.0", default-features = false }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.27.0", default-features = false }
 ```
 
 The optional `calendar` feature adds `src/calendar.rs` (`ExchangeCalendar`): IANA-timezone/DST-aware
@@ -140,7 +140,7 @@ crate carries no timezone-database dependency. It is about *trading hours*; the 
 a bond schedule needs are supplied as a `BusinessCalendar` instead:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.26.0", features = ["calendar"] }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.27.0", features = ["calendar"] }
 ```
 
 ## Testing & Quality

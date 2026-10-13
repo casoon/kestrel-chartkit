@@ -1,4 +1,4 @@
-//! Chandelier Flip Radar: a Chandelier-Exit-style ATR ratchet stop extended with an adaptive
+//! Adaptive Chandelier: a Chandelier-Exit-style ATR ratchet stop extended with an adaptive
 //! volatility-regime multiplier, a body-filtered distinction between a "real" direction flip and
 //! a "weak" one, bull/bear trap detection (a wick breaches the opposite stop without a
 //! confirming close), and a continuous `-3..3` risk state — a richer risk-management layer on
@@ -25,7 +25,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 use std::collections::HashMap;
 
-/// Reusable Chandelier Flip Radar engine — see the module doc comment for how this relates to
+/// Reusable Adaptive Chandelier engine — see the module doc comment for how this relates to
 /// [`super::chandelier_exit::ChandelierExitEngine`].
 ///
 /// Per bar: `atr_raw` is Wilder's average of the true range over `length` (the first bar's
@@ -48,7 +48,7 @@ use std::collections::HashMap;
 /// `value`: the current stop of the current direction; `extra`: `long_stop`, `short_stop`,
 /// `dist_atr`, `multiplier`, `risk_state`; `state`: the risk state's label. First output with bar
 /// `length`.
-pub struct ChandelierFlipRadarEngine {
+pub struct AdaptiveChandelierEngine {
     length: usize,
     atr_mult: f64,
     use_close_extremes: bool,
@@ -72,7 +72,7 @@ pub struct ChandelierFlipRadarEngine {
     alerts: Vec<IndicatorAlert>,
 }
 
-impl ChandelierFlipRadarEngine {
+impl AdaptiveChandelierEngine {
     /// `length` sizes the highest-high/lowest-low lookback and the internal ATR. `atr_mult`
     /// scales the ATR offset from those extremes. `use_close_extremes` swaps the highest/lowest
     /// source from bar high/low to bar close (default: close-based). `simple_adaptive`
@@ -135,9 +135,9 @@ fn state_label(state: i32) -> &'static str {
     }
 }
 
-impl Indicator for ChandelierFlipRadarEngine {
+impl Indicator for AdaptiveChandelierEngine {
     fn name(&self) -> &str {
-        "chandelier_flip_radar"
+        "adaptive_chandelier"
     }
 
     fn warmup_period(&self) -> usize {
@@ -287,42 +287,42 @@ impl Indicator for ChandelierFlipRadarEngine {
         if buy_signal {
             self.alerts.push(IndicatorAlert::new(
                 "bull_flip",
-                "Chandelier Flip Radar: flipped long",
+                "Adaptive Chandelier: flipped long",
                 1.0,
             ));
         }
         if sell_signal {
             self.alerts.push(IndicatorAlert::new(
                 "bear_flip",
-                "Chandelier Flip Radar: flipped short",
+                "Adaptive Chandelier: flipped short",
                 1.0,
             ));
         }
         if weak_long {
             self.alerts.push(IndicatorAlert::new(
                 "bull_weak_flip",
-                "Chandelier Flip Radar: weak long flip (body filter not met)",
+                "Adaptive Chandelier: weak long flip (body filter not met)",
                 1.0,
             ));
         }
         if weak_short {
             self.alerts.push(IndicatorAlert::new(
                 "bear_weak_flip",
-                "Chandelier Flip Radar: weak short flip (body filter not met)",
+                "Adaptive Chandelier: weak short flip (body filter not met)",
                 1.0,
             ));
         }
         if bull_trap {
             self.alerts.push(IndicatorAlert::new(
                 "bear_bull_trap",
-                "Chandelier Flip Radar: bull trap (wick above short stop, close back inside)",
+                "Adaptive Chandelier: bull trap (wick above short stop, close back inside)",
                 (1.0 - dist_atr).clamp(0.0, 1.0),
             ));
         }
         if bear_trap {
             self.alerts.push(IndicatorAlert::new(
                 "bull_bear_trap",
-                "Chandelier Flip Radar: bear trap (wick below long stop, close back inside)",
+                "Adaptive Chandelier: bear trap (wick below long stop, close back inside)",
                 (1.0 - dist_atr).clamp(0.0, 1.0),
             ));
         }
@@ -377,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_warmup_returns_none_then_emits() {
-        let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, true, false, 0.8, 0.35, 0.75);
+        let mut engine = AdaptiveChandelierEngine::new(5, 3.0, true, false, 0.8, 0.35, 0.75);
         let bars = trending_up_bars(10);
         let mut outputs = Vec::new();
         for bar in &bars {
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_reset_clears_state() {
-        let mut engine = ChandelierFlipRadarEngine::new(5, 3.0, true, false, 0.8, 0.35, 0.75);
+        let mut engine = AdaptiveChandelierEngine::new(5, 3.0, true, false, 0.8, 0.35, 0.75);
         for bar in trending_up_bars(6) {
             engine.on_bar(&bar);
         }

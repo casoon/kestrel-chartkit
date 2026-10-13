@@ -520,5 +520,5 @@ def build():
         for j, b in enumerate(bars[:6]):
             ev[f"{name}_{j}"] = float(b)
     blocks.append(("ev", "events", ev))
-    blocks.append((None, None, {"mare_tolerance": 1e-9}))
+    blocks.append((None, None, {"relation_tolerance": 1e-9}))
     return HEADER, blocks

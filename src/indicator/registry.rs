@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::accumulation_phase::{AccumulationPhase, AccumulationPhaseConfig};
+use super::adaptive_chandelier::AdaptiveChandelierEngine;
 use super::adx::Adx;
 use super::alligator::AlligatorEngine;
 use super::anchored_vwap::{AnchoredVwapEngine, VwapAnchorKind, ZeroVolumePolicy};
@@ -14,12 +15,11 @@ use super::bop::BalanceOfPowerEngine;
 use super::bos_choch::BosChochEngine;
 use super::bottom_formation::BottomFormation;
 use super::buy_sell_pressure::BuySellPressureEstimator;
-use super::candle_story::{CandleStoryConfig, CandleStoryEngine};
+use super::candle_classification::{CandleClassificationConfig, CandleClassificationEngine};
 use super::cci::Cci;
 use super::chaikin_osc::ChaikinOscillatorEngine;
 use super::chande_kroll::ChandeKrollStop;
 use super::chandelier_exit::ChandelierExitEngine;
-use super::chandelier_flip_radar::ChandelierFlipRadarEngine;
 use super::choppiness::ChoppinessIndexEngine;
 use super::coil_release::{CoilRelease, CoilReleaseConfig};
 use super::compression_zones::{CompressionZones, CompressionZonesConfig};
@@ -314,8 +314,8 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             default_params: [("length".to_string(), 22.0), ("atr_mult".to_string(), 3.0)].into(),
         },
         IndicatorCatalogEntry {
-            name: "chandelier_flip_radar",
-            description: "Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak flips, and bull/bear trap detection (use ChandelierFlipRadarEngine::new directly for use_close_extremes=false or simple_adaptive=true; this f64-only entry uses the documented defaults for both)",
+            name: "adaptive_chandelier",
+            description: "Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak flips, and bull/bear trap detection (use AdaptiveChandelierEngine::new directly for use_close_extremes=false or simple_adaptive=true; this f64-only entry uses the documented defaults for both)",
             default_params: [
                 ("length".to_string(), 30.0),
                 ("atr_mult".to_string(), 4.5),
@@ -450,7 +450,7 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
             .into(),
         },
         IndicatorCatalogEntry {
-            name: "candle_story",
+            name: "candle_classification",
             description: "Normalised candle classification — reports every pattern it recognises",
             default_params: [
                 ("pin_wick_min".to_string(), 0.55),
@@ -1647,7 +1647,7 @@ pub fn build_checked(
             let atr_mult = get_f64_p(params, "atr_mult", 3.0, 0.01, 100.0)?;
             Ok(Box::new(ChandelierExitEngine::new(length, atr_mult)))
         }
-        "chandelier_flip_radar" | "chfr" => {
+        "adaptive_chandelier" | "chfr" => {
             let length = get_usize_p(params, "length", 30, 1, 10000)?;
             let atr_mult = get_f64_p(params, "atr_mult", 4.5, 0.01, 100.0)?;
             let body_filter_atr = get_f64_p(params, "body_filter_atr", 0.80, 0.0, 100.0)?;
@@ -1656,8 +1656,8 @@ pub fn build_checked(
             // `use_close_extremes`/`simple_adaptive` are fixed to their documented defaults
             // here (true/false) —
             // this f64-only registry surface has no boolean parameter type; use
-            // `ChandelierFlipRadarEngine::new` directly to override them.
-            Ok(Box::new(ChandelierFlipRadarEngine::new(
+            // `AdaptiveChandelierEngine::new` directly to override them.
+            Ok(Box::new(AdaptiveChandelierEngine::new(
                 length,
                 atr_mult,
                 true,
@@ -1783,10 +1783,10 @@ pub fn build_checked(
             let mult = get_f64_p(params, "mult", 2.0, 0.01, 100.0)?;
             Ok(Box::new(WilliamsVixFix::new(pd, bband_len, mult)))
         }
-        "candle_story" | "pinbar" => {
-            let d = CandleStoryConfig::default();
-            Ok(Box::new(CandleStoryEngine::with_config(
-                CandleStoryConfig {
+        "candle_classification" | "pinbar" => {
+            let d = CandleClassificationConfig::default();
+            Ok(Box::new(CandleClassificationEngine::with_config(
+                CandleClassificationConfig {
                     pin_wick_min: get_f64_p(params, "pin_wick_min", d.pin_wick_min, 0.1, 0.95)?,
                     pin_close_pos: get_f64_p(params, "pin_close_pos", d.pin_close_pos, 0.5, 1.0)?,
                     marubozu_body_min: get_f64_p(
@@ -2495,7 +2495,7 @@ const REGISTRY_ALIASES: &[(&str, &str)] = &[
     ("srsi", "stoch_rsi"),
     ("cks", "chande_kroll"),
     ("ce", "chandelier_exit"),
-    ("chfr", "chandelier_flip_radar"),
+    ("chfr", "adaptive_chandelier"),
     ("wpr", "williams_r"),
     ("fisher", "fisher_transform"),
     ("ob", "order_block"),
@@ -2509,7 +2509,7 @@ const REGISTRY_ALIASES: &[(&str, &str)] = &[
     ("vp_extended", "extended_volume_profile"),
     ("vp_persistent", "persistent_volume_profile"),
     ("wvf", "vix_fix"),
-    ("pinbar", "candle_story"),
+    ("pinbar", "candle_classification"),
     ("leg_efficiency", "efficiency"),
     ("er", "efficiency"),
     ("wt", "wavetrend"),
@@ -2582,7 +2582,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "adx",
     "dmi",
     "chandelier_exit",
-    "chandelier_flip_radar",
+    "adaptive_chandelier",
     "wyckoff",
     "volume_profile",
     "money_flow_profile",
@@ -2637,7 +2637,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "cmf",
     "acc_dist",
     "chaikin_oscillator",
-    "candle_story",
+    "candle_classification",
     "buy_sell_pressure",
     "trend_quality",
     "multi_factor",
@@ -3291,7 +3291,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "pvt",
     "pmo",
     "chandelier_exit",
-    "chandelier_flip_radar",
+    "adaptive_chandelier",
     "midas",
     "trend_relationship",
     "williams_r",
@@ -3307,7 +3307,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "persistent_volume_profile",
     "vwap",
     "vix_fix",
-    "candle_story",
+    "candle_classification",
     "efficiency",
     "volume",
     "rvol",

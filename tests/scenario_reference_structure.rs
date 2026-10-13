@@ -131,14 +131,14 @@ fn test_scenario_bos_choch_synthetic_bullish() {
 }
 
 // ============================================================================
-// 2. Candle Story (Pinbars, Kangaroo Tails, Engulfing Patterns)
+// 2. Candle Classification (Pinbars, Kangaroo Tails, Engulfing Patterns)
 // ============================================================================
 #[test]
-fn test_scenario_candle_story() {
+fn test_scenario_candle_classification() {
     // `min_range_atr` off: this fixture is three bars long, so the ATR is still warming up and a
     // size floor would suppress everything. The point here is the classification, not the filter.
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     // Bar 0: neutral bar
     let b0 = Bar::new(0, 100.0, 101.0, 99.0, 100.0, 1000.0);
@@ -183,9 +183,9 @@ fn test_scenario_candle_story() {
 /// This is what the previous single `pattern_type` slot could not express: whichever check ran
 /// last overwrote the others, so the reported pattern depended on the order of the branches.
 #[test]
-fn test_scenario_candle_story_reports_every_match() {
+fn test_scenario_candle_classification_reports_every_match() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     // A small bearish bar, then a large bullish one that both engulfs it and is a marubozu.
     ind.on_bar(&Bar::new(0, 100.0, 100.6, 99.6, 99.8, 1000.0));
@@ -204,7 +204,7 @@ fn test_scenario_candle_story_reports_every_match() {
 
 /// Hammer and hanging man are the same geometry; only the prior move separates them.
 #[test]
-fn test_scenario_candle_story_needs_the_trend_to_name_a_hammer() {
+fn test_scenario_candle_classification_needs_the_trend_to_name_a_hammer() {
     // Body 0.05, lower wick 3.0 (60× the body), upper wick 0.01 — hammer geometry either way.
     let shape = |t: i64, base: f64| Bar::new(t, base, base + 0.06, base - 3.0, base + 0.05, 1000.0);
 
@@ -217,7 +217,7 @@ fn test_scenario_candle_story_needs_the_trend_to_name_a_hammer() {
             ("trend_min_atr".to_string(), 1.0),
         ]
         .into();
-        let mut ind = build_checked("candle_story", &params).unwrap();
+        let mut ind = build_checked("candle_classification", &params).unwrap();
         for i in 0..14 {
             let base = if steigend {
                 100.0 + i as f64 * 2.0
@@ -257,9 +257,9 @@ fn test_scenario_candle_story_needs_the_trend_to_name_a_hammer() {
 /// Advance block: three bullish candles, each with a smaller body and a longer upper wick than
 /// the one before — an uptrend still climbing but with less conviction each bar.
 #[test]
-fn test_scenario_candle_story_advance_block() {
+fn test_scenario_candle_classification_advance_block() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 110.0, 99.0, 110.0, 1000.0)); // body 10, upper wick 0
     ind.on_bar(&Bar::new(60, 110.0, 120.0, 109.0, 118.0, 1000.0)); // body 8, upper wick 2
@@ -273,9 +273,9 @@ fn test_scenario_candle_story_advance_block() {
 /// Abandoned baby: a candle in trend direction, a gap, a doji isolated by gaps on both sides,
 /// then a candle against the trend on the far side of the second gap.
 #[test]
-fn test_scenario_candle_story_abandoned_baby() {
+fn test_scenario_candle_classification_abandoned_baby() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     // Bullish trend candle, high = 111.
     ind.on_bar(&Bar::new(0, 100.0, 111.0, 99.0, 110.0, 1000.0));
@@ -292,9 +292,9 @@ fn test_scenario_candle_story_abandoned_baby() {
 /// Breakaway: a gap in trend direction, three small continuation candles, then a large counter
 /// candle closing back into the gap.
 #[test]
-fn test_scenario_candle_story_breakaway() {
+fn test_scenario_candle_classification_breakaway() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 121.0, 99.0, 120.0, 1000.0)); // large bullish, high 121
     ind.on_bar(&Bar::new(60, 125.0, 127.0, 124.0, 126.0, 1000.0)); // gap up (low 124 > 121), small
@@ -310,9 +310,9 @@ fn test_scenario_candle_story_breakaway() {
 
 /// Kicking: two marubozu of opposite colour, the second gapping past the first's own extreme.
 #[test]
-fn test_scenario_candle_story_kicking() {
+fn test_scenario_candle_classification_kicking() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 141.0, 100.0, 101.0, 1000.0)); // bearish marubozu
     let out = ind
@@ -324,9 +324,9 @@ fn test_scenario_candle_story_kicking() {
 
 /// Counterattack lines: opposite colours, matching closes.
 #[test]
-fn test_scenario_candle_story_counterattack_lines() {
+fn test_scenario_candle_classification_counterattack_lines() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 110.5, 99.5, 110.0, 1000.0)); // bullish, close 110
     let out = ind
@@ -338,9 +338,9 @@ fn test_scenario_candle_story_counterattack_lines() {
 
 /// Separating lines: opposite colours, matching opens.
 #[test]
-fn test_scenario_candle_story_separating_lines() {
+fn test_scenario_candle_classification_separating_lines() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 100.5, 79.5, 80.0, 1000.0)); // bearish, open 100
     let out = ind
@@ -352,9 +352,9 @@ fn test_scenario_candle_story_separating_lines() {
 
 /// Matching low: two bearish candles closing at (almost) the same price.
 #[test]
-fn test_scenario_candle_story_matching_low() {
+fn test_scenario_candle_classification_matching_low() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 99.5, 100.0, 1000.0)); // bearish, close 100
     let out = ind
@@ -366,9 +366,9 @@ fn test_scenario_candle_story_matching_low() {
 
 /// Homing pigeon: a harami where both candles are bearish.
 #[test]
-fn test_scenario_candle_story_homing_pigeon() {
+fn test_scenario_candle_classification_homing_pigeon() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 141.0, 99.0, 100.0, 1000.0)); // bearish, body [100, 140]
     let out = ind
@@ -380,9 +380,9 @@ fn test_scenario_candle_story_homing_pigeon() {
 
 /// Tri-star: three dojis, the middle one isolated by gaps on both sides.
 #[test]
-fn test_scenario_candle_story_tri_star() {
+fn test_scenario_candle_classification_tri_star() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 101.0, 99.0, 100.1, 1000.0)); // doji
     ind.on_bar(&Bar::new(60, 150.0, 150.55, 149.65, 150.03, 1000.0)); // doji, gapped above
@@ -395,9 +395,9 @@ fn test_scenario_candle_story_tri_star() {
 
 /// Tasuki gap: two candles in trend direction with a gap, then a counter candle staying inside it.
 #[test]
-fn test_scenario_candle_story_tasuki_gap() {
+fn test_scenario_candle_classification_tasuki_gap() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 110.5, 99.5, 110.0, 1000.0)); // bullish, high 110.5
     ind.on_bar(&Bar::new(60, 130.0, 140.6, 129.7, 140.0, 1000.0)); // bullish, gapped up
@@ -411,9 +411,9 @@ fn test_scenario_candle_story_tasuki_gap() {
 /// Upside gap two crows: a bullish candle, a gap up, then a bearish candle enclosed by a second
 /// bearish candle that still closes above the pre-gap close.
 #[test]
-fn test_scenario_candle_story_upside_gap_two_crows() {
+fn test_scenario_candle_classification_upside_gap_two_crows() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 110.5, 99.5, 110.0, 1000.0)); // bullish, close 110
     ind.on_bar(&Bar::new(60, 140.0, 140.6, 129.9, 130.0, 1000.0)); // bearish, gapped up
@@ -426,9 +426,9 @@ fn test_scenario_candle_story_upside_gap_two_crows() {
 
 /// Three stars in the south: three bearish candles, shrinking ranges, rising lows.
 #[test]
-fn test_scenario_candle_story_three_stars_in_the_south() {
+fn test_scenario_candle_classification_three_stars_in_the_south() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 99.5, 100.0, 1000.0)); // range 41, low 99.5
     ind.on_bar(&Bar::new(60, 125.0, 125.3, 109.8, 110.0, 1000.0)); // range 15.5, low 109.8
@@ -441,9 +441,9 @@ fn test_scenario_candle_story_three_stars_in_the_south() {
 
 /// Deliberation: two large bullish candles, then a small third opening at the second's close.
 #[test]
-fn test_scenario_candle_story_deliberation() {
+fn test_scenario_candle_classification_deliberation() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 120.5, 99.5, 120.0, 1000.0));
     ind.on_bar(&Bar::new(60, 120.0, 140.5, 119.5, 140.0, 1000.0));
@@ -456,9 +456,9 @@ fn test_scenario_candle_story_deliberation() {
 
 /// Stick sandwich: bearish, bullish, bearish — the outer candles closing at the same price.
 #[test]
-fn test_scenario_candle_story_stick_sandwich() {
+fn test_scenario_candle_classification_stick_sandwich() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 99.5, 100.0, 1000.0)); // bearish, close 100
     ind.on_bar(&Bar::new(60, 100.0, 120.5, 99.5, 120.0, 1000.0)); // bullish
@@ -472,9 +472,9 @@ fn test_scenario_candle_story_stick_sandwich() {
 /// Unique three river bottom: a large bearish candle, a bearish candle with a long lower wick at
 /// a new low, then a small bullish candle holding above that low.
 #[test]
-fn test_scenario_candle_story_unique_three_river_bottom() {
+fn test_scenario_candle_classification_unique_three_river_bottom() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 99.5, 100.0, 1000.0)); // low 99.5
     ind.on_bar(&Bar::new(60, 100.0, 100.5, 59.5, 95.0, 1000.0)); // new low, long lower wick
@@ -488,9 +488,9 @@ fn test_scenario_candle_story_unique_three_river_bottom() {
 /// Three-line strike: three same-direction candles making progress, then a single counter
 /// candle whose range covers all three.
 #[test]
-fn test_scenario_candle_story_three_line_strike() {
+fn test_scenario_candle_classification_three_line_strike() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 110.5, 99.5, 110.0, 1000.0));
     ind.on_bar(&Bar::new(60, 110.0, 120.5, 109.5, 120.0, 1000.0));
@@ -505,9 +505,9 @@ fn test_scenario_candle_story_three_line_strike() {
 /// Concealing baby swallow: two bearish marubozu, then a bearish candle poking into the previous
 /// body, then a candle that fully encloses it.
 #[test]
-fn test_scenario_candle_story_concealing_baby_swallow() {
+fn test_scenario_candle_classification_concealing_baby_swallow() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 99.8, 100.0, 1000.0)); // bearish marubozu
     ind.on_bar(&Bar::new(60, 100.0, 100.3, 59.7, 60.0, 1000.0)); // bearish marubozu
@@ -523,9 +523,9 @@ fn test_scenario_candle_story_concealing_baby_swallow() {
 /// bullish close beyond its high. The same bars also read as a mat hold — the two definitions
 /// overlap wherever the closing candle both breaks out and is the larger of the two directions.
 #[test]
-fn test_scenario_candle_story_rising_three_methods_and_mat_hold() {
+fn test_scenario_candle_classification_rising_three_methods_and_mat_hold() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 100.0, 125.5, 99.2, 125.0, 1000.0)); // large bullish
     ind.on_bar(&Bar::new(60, 125.0, 125.3, 123.5, 124.0, 1000.0)); // small, contained
@@ -541,9 +541,9 @@ fn test_scenario_candle_story_rising_three_methods_and_mat_hold() {
 
 /// Falling three methods: the mirrored shape.
 #[test]
-fn test_scenario_candle_story_falling_three_methods() {
+fn test_scenario_candle_classification_falling_three_methods() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.8, 114.5, 115.0, 1000.0)); // large bearish
     ind.on_bar(&Bar::new(60, 115.0, 116.5, 114.7, 116.0, 1000.0)); // small, contained
@@ -559,9 +559,9 @@ fn test_scenario_candle_story_falling_three_methods() {
 /// Ladder bottom: three bearish candles with falling closes, a bearish candle with a long upper
 /// wick, then a bullish candle gapping above it.
 #[test]
-fn test_scenario_candle_story_ladder_bottom() {
+fn test_scenario_candle_classification_ladder_bottom() {
     let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
-    let mut ind = build_checked("candle_story", &params).unwrap();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
 
     ind.on_bar(&Bar::new(0, 140.0, 140.5, 119.5, 120.0, 1000.0));
     ind.on_bar(&Bar::new(60, 120.0, 120.5, 104.5, 105.0, 1000.0));

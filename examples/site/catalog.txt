@@ -21,7 +21,7 @@ efi
 atr
 chande_kroll
 chandelier_exit
-chandelier_flip_radar
+adaptive_chandelier
 midas
 hires_volume_flow
 extended_volume_profile
@@ -38,7 +38,7 @@ volume_profile
 money_flow_profile
 vwap
 vix_fix
-candle_story
+candle_classification
 efficiency
 volume
 rvol

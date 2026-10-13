@@ -126,7 +126,7 @@ pub fn score_indicator(
                     reasons.push("BOLLINGER: Preis unter unterem Band".to_string());
                 }
             }
-            "candle_story" => {
+            "candle_classification" => {
                 if val > 30.0 {
                     score += 0.3;
                 } else if val < -30.0 {
