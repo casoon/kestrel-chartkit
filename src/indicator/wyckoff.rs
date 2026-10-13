@@ -317,13 +317,15 @@ impl Indicator for WyckoffStateMachine {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
 
-        let tr = match self.prev_close {
+        // Den Vorgänger-Schluss vor dem Überschreiben sichern: die Bias-Rückfallregel unten
+        // vergleicht den aktuellen Schluss mit dem *vorigen*.
+        let prev_close = self.prev_close.replace(bar.close);
+        let tr = match prev_close {
             Some(pc) => (bar.high - bar.low)
                 .max((bar.high - pc).abs())
                 .max((bar.low - pc).abs()),
             None => bar.high - bar.low,
         };
-        self.prev_close = Some(bar.close);
         let atr = self.atr.update(tr);
         let volume_band = self.volume_threshold.update(bar.volume);
 
@@ -350,7 +352,7 @@ impl Indicator for WyckoffStateMachine {
                     WyckoffBias::Accumulation
                 } else if is_climax && bar.close > bar.open {
                     WyckoffBias::Distribution
-                } else if self.prev_close.map(|pc| bar.close < pc).unwrap_or(false) {
+                } else if prev_close.map(|pc| bar.close < pc).unwrap_or(false) {
                     WyckoffBias::Accumulation
                 } else {
                     WyckoffBias::Distribution
@@ -481,6 +483,19 @@ mod tests {
             "a clean A->C->D->E sequence must score reasonably high"
         );
         assert!(score.cause_score > 0.0);
+    }
+
+    #[test]
+    fn test_falling_series_without_climax_locks_accumulation_bias() {
+        // Gleichmäßig fallende Reihe mit konstantem Volumen: kein Klimax, also entscheidet die
+        // Rückfallregel (Schluss unter Vorgänger-Schluss → Accumulation).
+        let mut machine = WyckoffStateMachine::new(10, 5.0, 4);
+        for i in 0..15 {
+            let close = 100.0 - i as f64 * 0.1;
+            let bar = Bar::new(i * 60, close + 0.05, close + 1.0, close - 1.0, close, 100.0);
+            machine.on_bar(&bar);
+        }
+        assert_eq!(machine.bias(), Some(WyckoffBias::Accumulation));
     }
 
     /// Deliberately a robustness/no-panic check only (finding 07): this pseudo-random walk is not

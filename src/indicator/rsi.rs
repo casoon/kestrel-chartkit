@@ -296,12 +296,14 @@ impl Indicator for Rsi {
 
             self.alerts.extreme_strength = if self.alerts.bull_extreme {
                 extreme
-                    .map(|(low, _)| ((self.oversold - low) / self.oversold.abs()).clamp(0.0, 1.0))
+                    .map(|(low, _)| {
+                        super::threshold_strength(self.oversold - low, self.oversold.abs())
+                    })
                     .unwrap_or(0.0)
             } else if self.alerts.bear_extreme {
                 extreme
                     .map(|(_, high)| {
-                        ((high - self.overbought) / self.overbought.abs()).clamp(0.0, 1.0)
+                        super::threshold_strength(high - self.overbought, self.overbought.abs())
                     })
                     .unwrap_or(0.0)
             } else {

@@ -207,9 +207,9 @@ impl Indicator for Cci {
                 .cloned()
                 .fold(f64::NEG_INFINITY, f64::max);
             self.alerts.extreme_strength = if self.alerts.bull_extreme {
-                ((self.oversold - lowest) / self.oversold.abs()).clamp(0.0, 1.0)
+                super::threshold_strength(self.oversold - lowest, self.oversold.abs())
             } else if self.alerts.bear_extreme {
-                ((highest - self.overbought) / self.overbought.abs()).clamp(0.0, 1.0)
+                super::threshold_strength(highest - self.overbought, self.overbought.abs())
             } else {
                 0.0
             };

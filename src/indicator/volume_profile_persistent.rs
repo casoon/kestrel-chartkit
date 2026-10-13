@@ -20,6 +20,12 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// per-bin absorption threshold.
 const MAD_CONSISTENCY_CONSTANT: f64 = 1.482_602_218_505_602;
 
+/// Most grid bins a single bar may span. A bar whose `low..=high` covers more bins than this
+/// (a `bin_width` far too fine for the instrument, or a corrupt range such as `high = 1e20`) is
+/// skipped like a non-finite bar: it contributes nothing and does not enter the window. Without
+/// the bound the per-bar allocation and the key arithmetic would overflow.
+const MAX_BINS_PER_BAR: f64 = 100_000.0;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct BinLifecycle {
     volume: f64,
@@ -60,6 +66,9 @@ pub struct AbsorptionBin {
 /// first (lowest-priced) live bin with the largest volume. The profile and a per-bin absorption
 /// profile come as [`ProfileArtifact`]s; bins whose volume per touch is a robust outlier (median
 /// plus `absorption_k` scaled MAD, `2.5` by default) additionally as [`ZoneArtifact`]s.
+///
+/// A bar that spans more than 100 000 bins is skipped (see `MAX_BINS_PER_BAR`), as is a bar with
+/// a non-finite or inverted range.
 ///
 /// First output: with the `lookback`-th bar. [`Indicator::reset`] clears bins and window.
 pub struct PersistentVolumeProfileEngine {
@@ -158,6 +167,12 @@ impl PersistentVolumeProfileEngine {
             || !bar.volume.is_finite()
             || bar.high < bar.low
         {
+            return;
+        }
+        // Checked in floating point before any key or allocation exists: keys beyond `i64`
+        // saturate, and their difference would overflow.
+        let span = (bar.high / self.bin_width).floor() - (bar.low / self.bin_width).floor() + 1.0;
+        if span > MAX_BINS_PER_BAR {
             return;
         }
 
@@ -371,6 +386,27 @@ mod tests {
     /// regardless of where `price` falls relative to a bin boundary.
     fn bar_at(price: f64, volume: f64) -> Bar {
         Bar::new(0, price, price + 0.05, price - 0.05, price, volume)
+    }
+
+    /// N27: a bar spanning an absurd number of bins (`low = 1`, `high = 1e20`, width 1) is
+    /// skipped instead of overflowing the bin arithmetic or the allocation.
+    #[test]
+    fn test_bar_spanning_too_many_bins_is_skipped() {
+        let mut engine = PersistentVolumeProfileEngine::new(3, 1.0);
+        let huge = Bar::new(0, 1.0, 1e20, 1.0, 1.0, 100.0);
+        assert!(engine.on_bar(&huge).is_none());
+        assert!(engine.bins.is_empty());
+        assert!(engine.window.is_empty());
+
+        // Just over the bound (bins 0..=100_000) is skipped as well, without allocating.
+        let over = Bar::new(60, 0.5, 100_000.5, 0.5, 0.5, 100.0);
+        engine.on_bar(&over);
+        assert!(engine.window.is_empty());
+
+        // An ordinary bar afterwards is recorded normally.
+        engine.on_bar(&bar_at(10.5, 100.0));
+        assert_eq!(engine.window.len(), 1);
+        assert_eq!(engine.bins.len(), 1);
     }
 
     #[test]

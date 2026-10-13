@@ -237,6 +237,8 @@ pub fn build_free_space_from_profile(
 
 /// M2.9: `VwapRegimeTracker` mit `indicator::vwap::Vwap` verbinden.
 ///
+/// Der z-Wert ist `(close - VWAP) / extra["sigma"]`; ohne `sigma` im Output ist er 0.
+///
 /// `atr_val` ist der ATR-Prozentwert (`100 * ATR / close`), wie ihn
 /// [`crate::indicator::atr::Atr`] liefert.
 pub fn update_vwap_regime(
@@ -251,12 +253,9 @@ pub fn update_vwap_regime(
     let diff = bar_close - vwap;
 
     let slope_raw = vwap_output.extra.get("slope").copied().unwrap_or(0.0);
-    let sigma = vwap_output
-        .extra
-        .get("sigma_1_upper")
-        .copied()
-        .unwrap_or(1.0)
-        - vwap;
+    // `Vwap` liefert die Standardabweichung direkt als `extra["sigma"]`; fehlt sie, gibt es
+    // keinen z-Wert (Tracker setzt ihn bei `sigma <= 0` auf 0).
+    let sigma = vwap_output.extra.get("sigma").copied().unwrap_or(0.0);
 
     let atr_raw = (atr_val / 100.0) * bar_close;
 

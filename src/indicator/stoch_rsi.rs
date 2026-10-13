@@ -14,7 +14,8 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// `SMA(d_len)` of `%K`; both clamped to `0..=100`. A context line over longer windows serves the
 /// divergence alerts.
 ///
-/// First output: with the `rsi_len + stoch_len + k_len - 1`-th bar. [`Indicator::reset`] clears all
+/// First output: with the `rsi_len + stoch_len + k_len + d_len - 2`-th bar, since `%K` is only
+/// published together with its `%D`. [`Indicator::reset`] clears all
 /// state.
 pub struct StochRsi {
     mid_line: f64,
@@ -89,7 +90,12 @@ impl StochRsi {
             prev_k_line: None,
             prev_signal: None,
             bars_seen: 0,
-            warmup_period: rsi_len + 1 + stoch_len.saturating_sub(1) + k_len.saturating_sub(1),
+            // %K und %D erscheinen nur gemeinsam: die Signallänge gehört zur Einschwingzeit.
+            warmup_period: rsi_len
+                + 1
+                + stoch_len.saturating_sub(1)
+                + k_len.saturating_sub(1)
+                + d_len.saturating_sub(1),
             ctx_avg_gain: Rma::new(ctx_rsi_len),
             ctx_avg_loss: Rma::new(ctx_rsi_len),
             ctx_stoch_window: ExtremeWindow::new(ctx_stoch_len),
@@ -207,10 +213,10 @@ impl Indicator for StochRsi {
 
             self.alerts.extreme_strength = if self.alerts.bull_extreme {
                 let lowest = extreme.map(|(low, _)| low).unwrap_or(k_line);
-                ((self.oversold - lowest) / self.oversold.abs()).clamp(0.0, 1.0)
+                super::threshold_strength(self.oversold - lowest, self.oversold.abs())
             } else if self.alerts.bear_extreme {
                 let highest = extreme.map(|(_, high)| high).unwrap_or(k_line);
-                ((highest - self.overbought) / self.overbought.abs()).clamp(0.0, 1.0)
+                super::threshold_strength(highest - self.overbought, self.overbought.abs())
             } else {
                 0.0
             };

@@ -235,6 +235,23 @@ impl IndicatorAlert {
     }
 }
 
+/// Stärke eines Schwellen-Alarms: wie weit `excess` über die Schwelle hinausgeht, gemessen an
+/// `scale`, begrenzt auf `0.0..=1.0`.
+///
+/// Vertrag für den Rand: Steht die Schwelle auf dem Nullpunkt (`scale == 0`, z. B. RSI mit
+/// `oversold = 0`), gibt es keinen Maßstab. Dann ist die Stärke `1.0`, wenn die Schwelle
+/// überschritten wurde (`excess > 0`), sonst `0.0` — genau das, was die Begrenzung für beliebig
+/// kleines `scale` ergäbe. Ein Wert, der die Schwelle nur erreicht (`excess == 0`), hat wie bei
+/// jeder anderen Schwelle die Stärke `0.0`; NaN entsteht nie aus `0 / 0`.
+pub(crate) fn threshold_strength(excess: f64, scale: f64) -> f64 {
+    let ratio = excess / scale;
+    if ratio.is_nan() {
+        0.0
+    } else {
+        ratio.clamp(0.0, 1.0)
+    }
+}
+
 impl fmt::Display for IndicatorAlert {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} ({})", self.note, self.kind)
