@@ -1,6 +1,6 @@
 //! Lower-timeframe (intrabar) child-bar grouping.
 //!
-//! [`BarResampler`](crate::timeframe::BarResampler) goes from lower-timeframe (LTF) bars to an
+//! [`BarResampler`] goes from lower-timeframe (LTF) bars to an
 //! *aggregated* higher-timeframe (HTF) bar. Some calculations (lower-timeframe request style:
 //! intrabar delta, aggressor volume, absorption) instead need
 //! the **full ordered sequence** of LTF child bars that belong to each HTF parent bucket, not just
