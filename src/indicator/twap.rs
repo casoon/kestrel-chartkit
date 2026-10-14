@@ -166,3 +166,55 @@ impl Indicator for AnchoredTwap {
         self.current_period = None;
     }
 }
+
+/// Registry definition of `twap` (plan 49). The anchor and the weighting are typed-map choices;
+/// the price is the one requested through `build_typed`'s `source` (the close otherwise).
+pub const TWAP_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "twap",
+    aliases: &[],
+    description: "Anchored Time Weighted Average Price (no volume; build_typed accepts weighting=per_bar|by_duration and anchor=continuous|daily|manual_timestamp)",
+    params: &[
+        super::definition::ParamSpec::choice("weighting", "per_bar", &["per_bar", "by_duration"], false)
+            .meaning("each bar counts once, or by its duration"),
+        super::definition::ParamSpec::number("day_start_offset", 0.0, -86_400.0, 86_400.0)
+            .meaning("seconds after midnight UTC at which a daily anchor restarts"),
+        super::definition::ParamSpec::choice(
+            "anchor",
+            "daily",
+            &["continuous", "daily", "manual_timestamp"],
+            false,
+        )
+        .meaning("where the average restarts"),
+        super::definition::ParamSpec::timestamp("anchor_timestamp")
+            .meaning("the anchor for anchor=manual_timestamp"),
+    ],
+    checks: &[],
+    build: |p| {
+        let weighting = match p.choice("weighting") {
+            "by_duration" => TwapWeighting::ByDuration,
+            _ => TwapWeighting::PerBar,
+        };
+        let anchor = match p.choice("anchor") {
+            "continuous" => TwapAnchor::Continuous,
+            "manual_timestamp" => {
+                let timestamp = p.timestamp("anchor_timestamp").ok_or_else(|| {
+                    super::registry::RegistryError::InvalidEnumValue {
+                        parameter: "anchor".to_string(),
+                        value: "manual_timestamp".to_string(),
+                        reason: "requires an accompanying 'anchor_timestamp' Timestamp parameter"
+                            .to_string(),
+                    }
+                })?;
+                TwapAnchor::ManualTimestamp(timestamp)
+            }
+            _ => TwapAnchor::Daily {
+                start_offset_seconds: p.number("day_start_offset") as i64,
+            },
+        };
+        Ok(Box::new(AnchoredTwap::new(
+            anchor,
+            p.requested_source().unwrap_or(Source::Close),
+            weighting,
+        )))
+    },
+};

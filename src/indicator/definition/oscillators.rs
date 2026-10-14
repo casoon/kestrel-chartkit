@@ -24,4 +24,11 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::bop::BOP_DEFINITION,
     &crate::indicator::bbtrend::BBTREND_DEFINITION,
     &crate::indicator::zscore::ZSCORE_DEFINITION,
+    &crate::indicator::rsi::RSI_DEFINITION,
+    &crate::indicator::stoch_rsi::STOCH_RSI_DEFINITION,
+    &crate::indicator::cci::CCI_DEFINITION,
+    &crate::indicator::mfi::MFI_DEFINITION,
+    &crate::indicator::williams_r::WILLIAMS_R_DEFINITION,
+    &crate::indicator::fisher_transform::FISHER_TRANSFORM_DEFINITION,
+    &crate::indicator::wavetrend::WAVETREND_DEFINITION,
 ];

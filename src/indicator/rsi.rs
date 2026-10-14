@@ -416,3 +416,49 @@ impl Indicator for Rsi {
         out
     }
 }
+
+/// Registry definition of `rsi` (plan 49). `smoothing` exists only in the typed map.
+pub const RSI_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "rsi",
+    aliases: &[],
+    description: "Relative Strength Index (build_typed accepts smoothing=wilder|ema for the up/down averages; wilder is the default)",
+    params: &[
+        super::definition::ParamSpec::choice("smoothing", "wilder", &["wilder", "ema"], false)
+            .meaning("how the up and down moves are averaged"),
+        super::definition::ParamSpec::count("rsi_len", 14, 1, 10000).meaning("changes in the RSI average"),
+        super::definition::ParamSpec::count("avg_len", 3, 1, 10000).meaning("EMA over the raw RSI (the line)"),
+        super::definition::ParamSpec::count("sig_len", 3, 1, 10000).meaning("EMA over the line (signal)"),
+            super::definition::ParamSpec::number("overbought", 70.0, 0.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", 30.0, 0.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+    ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+    build: |p| {
+        let smoothing = match p.choice("smoothing") {
+            "ema" => RsiSmoothing::Ema,
+            _ => RsiSmoothing::Wilder,
+        };
+        Ok(Box::new(
+            Rsi::new(
+                p.count("rsi_len"),
+                p.count("avg_len"),
+                p.count("sig_len"),
+                50.0,
+                p.number("overbought"),
+                p.number("oversold"),
+                5,
+                true,
+                100,
+                4,
+                10.0,
+            )
+            .with_smoothing(smoothing),
+        ))
+    },
+};

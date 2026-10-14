@@ -24,4 +24,6 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::volatility_indicators::DONCHIAN_DEFINITION,
     &crate::indicator::volatility_indicators::KELTNER_DEFINITION,
     &crate::indicator::bollinger::BOLLINGER_DEFINITION,
+    &crate::indicator::twap::TWAP_DEFINITION,
+    &crate::indicator::midas::MIDAS_DEFINITION,
 ];

@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use super::params::{ParamValue, TypedParams};
 use super::registry::{IndicatorCatalogEntry, RegistryError};
 use super::Indicator;
+use crate::model::Source;
 
 /// What a parameter accepts.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,6 +39,10 @@ pub enum ParamKind {
     },
     /// A point in time, Unix seconds, typed map only; no default.
     Timestamp,
+    /// The price the indicator reads, typed map only. Declaring it means the indicator handles
+    /// `source` itself: `build_typed` then skips its generic source handling (the compatibility
+    /// checks and the [`SourceMapped`](super::source_mapped::SourceMapped) wrapper).
+    Source { default: Source },
 }
 
 /// One parameter of an indicator.
@@ -52,6 +57,16 @@ pub struct ParamSpec {
     /// A deprecated name still accepted for this parameter. Given alone it is validated under its
     /// own name; given beside the parameter with a different value it is a conflict.
     pub legacy_alias: Option<&'static str>,
+    /// For a number whose valid range depends on a choice: the choice parameter and the range per
+    /// option. Options not listed keep the spec's own range.
+    pub range_by: Option<RangeBy>,
+}
+
+/// Ranges of a number per option of a choice (see [`ParamSpec::range_by`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RangeBy {
+    pub choice: &'static str,
+    pub ranges: &'static [(&'static str, f64, f64)],
 }
 
 impl ParamSpec {
@@ -62,6 +77,7 @@ impl ParamSpec {
             meaning: "",
             threshold: false,
             legacy_alias: None,
+            range_by: None,
         }
     }
 
@@ -72,6 +88,7 @@ impl ParamSpec {
             meaning: "",
             threshold: false,
             legacy_alias: None,
+            range_by: None,
         }
     }
 
@@ -91,6 +108,18 @@ impl ParamSpec {
             meaning: "",
             threshold: false,
             legacy_alias: None,
+            range_by: None,
+        }
+    }
+
+    pub const fn source(default: Source) -> Self {
+        Self {
+            name: "source",
+            kind: ParamKind::Source { default },
+            meaning: "",
+            threshold: false,
+            legacy_alias: None,
+            range_by: None,
         }
     }
 
@@ -101,6 +130,7 @@ impl ParamSpec {
             meaning: "",
             threshold: false,
             legacy_alias: None,
+            range_by: None,
         }
     }
 
@@ -114,6 +144,15 @@ impl ParamSpec {
         self
     }
 
+    pub const fn range_by(
+        mut self,
+        choice: &'static str,
+        ranges: &'static [(&'static str, f64, f64)],
+    ) -> Self {
+        self.range_by = Some(RangeBy { choice, ranges });
+        self
+    }
+
     pub const fn legacy_alias(mut self, alias: &'static str) -> Self {
         self.legacy_alias = Some(alias);
         self
@@ -124,7 +163,7 @@ impl ParamSpec {
         match self.kind {
             ParamKind::Count { .. } | ParamKind::Number { .. } => true,
             ParamKind::Choice { numeric, .. } => numeric,
-            ParamKind::Timestamp => false,
+            ParamKind::Timestamp | ParamKind::Source { .. } => false,
         }
     }
 
@@ -138,7 +177,7 @@ impl ParamSpec {
                 options,
                 numeric: true,
             } => options.iter().position(|o| *o == default).map(|i| i as f64),
-            ParamKind::Choice { .. } | ParamKind::Timestamp => None,
+            ParamKind::Choice { .. } | ParamKind::Timestamp | ParamKind::Source { .. } => None,
         }
     }
 }
@@ -178,13 +217,16 @@ impl IndicatorDefinition {
         }
     }
 
-    /// The parameters that are thresholds on the output's scale, in spec order.
+    /// The parameters that are thresholds on the output's scale, from the lowest default to the
+    /// highest — independent of the spec order, which follows the order of validation.
     pub fn threshold_params(&self) -> Vec<&'static str> {
-        self.params
-            .iter()
-            .filter(|p| p.threshold)
-            .map(|p| p.name)
-            .collect()
+        let mut thresholds: Vec<&ParamSpec> = self.params.iter().filter(|p| p.threshold).collect();
+        thresholds.sort_by(|a, b| {
+            a.f64_default()
+                .partial_cmp(&b.f64_default())
+                .expect("finite defaults")
+        });
+        thresholds.into_iter().map(|p| p.name).collect()
     }
 
     /// Rejects the first key (in sorted order, so the error is reproducible) that is not one of
@@ -212,6 +254,13 @@ impl IndicatorDefinition {
         }
     }
 
+    /// Whether the indicator reads `source` itself (see [`ParamKind::Source`]).
+    pub fn reads_own_source(&self) -> bool {
+        self.params
+            .iter()
+            .any(|p| matches!(p.kind, ParamKind::Source { .. }))
+    }
+
     pub fn build_from_f64(
         &self,
         requested: &str,
@@ -221,15 +270,19 @@ impl IndicatorDefinition {
             .iter()
             .map(|(k, v)| (k.clone(), ParamValue::Float(*v)))
             .collect();
-        (self.build)(&resolve(self, requested, &input, Input::F64Map)?)
+        (self.build)(&resolve(self, requested, &input, Input::F64Map, None)?)
     }
 
+    /// `source` is the price requested through `build_typed`'s generic source handling, for an
+    /// indicator that needs to know it beside the wrapper (it is `None` for one that reads its
+    /// own `source` parameter).
     pub fn build_from_typed(
         &self,
         requested: &str,
         params: &TypedParams,
+        source: Option<Source>,
     ) -> Result<Box<dyn Indicator>, RegistryError> {
-        (self.build)(&resolve(self, requested, params, Input::Typed)?)
+        (self.build)(&resolve(self, requested, params, Input::Typed, source)?)
     }
 }
 
@@ -240,12 +293,14 @@ enum Resolved {
     Number(f64),
     Choice(&'static str),
     Timestamp(Option<i64>),
+    Source(Source),
 }
 
 /// The parameters of one build, each validated against its spec and defaulted where absent.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedParams {
     values: HashMap<&'static str, Resolved>,
+    requested_source: Option<Source>,
 }
 
 impl ResolvedParams {
@@ -282,6 +337,19 @@ impl ResolvedParams {
         }
     }
 
+    /// The price of an indicator that declares [`ParamKind::Source`].
+    pub fn source(&self) -> Source {
+        match self.values.get("source") {
+            Some(Resolved::Source(v)) => *v,
+            other => panic!("source is not declared: {other:?}"),
+        }
+    }
+
+    /// The price requested through `build_typed`'s generic source handling, if any.
+    pub fn requested_source(&self) -> Option<Source> {
+        self.requested_source
+    }
+
     pub fn timestamp(&self, name: &str) -> Option<i64> {
         match self.values.get(name) {
             Some(Resolved::Timestamp(v)) => *v,
@@ -303,6 +371,7 @@ fn resolve(
     requested: &str,
     params: &TypedParams,
     input: Input,
+    requested_source: Option<Source>,
 ) -> Result<ResolvedParams, RegistryError> {
     definition.reject_unknown(requested, params.keys(), input == Input::Typed)?;
 
@@ -336,6 +405,11 @@ fn resolve(
             (ParamKind::Number { default, .. }, None) => Resolved::Number(default),
             (ParamKind::Choice { default, .. }, None) => Resolved::Choice(default),
             (ParamKind::Timestamp, None) => Resolved::Timestamp(None),
+            (ParamKind::Source { default }, None) => Resolved::Source(default),
+            (ParamKind::Source { .. }, Some(ParamValue::Source(source))) => {
+                Resolved::Source(*source)
+            }
+            (ParamKind::Source { .. }, Some(other)) => return Err(unsupported(spec.name, other)),
             (ParamKind::Count { .. } | ParamKind::Number { .. }, Some(value)) => {
                 numbers.push(Queued::new(spec, spec.name, scalar(spec.name, value)?));
                 continue;
@@ -404,6 +478,21 @@ fn resolve(
                 Resolved::Count(value as usize)
             }
             ParamKind::Number { min, max, .. } => {
+                let (min, max) = spec
+                    .range_by
+                    .and_then(|by| {
+                        let chosen = match values.get(by.choice) {
+                            Some(Resolved::Choice(option)) => *option,
+                            other => {
+                                panic!("range_by names {}, not a choice: {other:?}", by.choice)
+                            }
+                        };
+                        by.ranges
+                            .iter()
+                            .find(|(option, _, _)| *option == chosen)
+                            .map(|(_, min, max)| (*min, *max))
+                    })
+                    .unwrap_or((min, max));
                 if !value.is_finite() || value < min || value > max {
                     return Err(RegistryError::InvalidParameter {
                         parameter: given_as.to_string(),
@@ -416,13 +505,18 @@ fn resolve(
                 }
                 Resolved::Number(value)
             }
-            ParamKind::Choice { .. } | ParamKind::Timestamp => unreachable!("only numbers queued"),
+            ParamKind::Choice { .. } | ParamKind::Timestamp | ParamKind::Source { .. } => {
+                unreachable!("only numbers queued")
+            }
         };
         values.insert(spec.name, resolved);
     }
 
     // Pass 3: relations.
-    let resolved = ResolvedParams { values };
+    let resolved = ResolvedParams {
+        values,
+        requested_source,
+    };
     for check in definition.checks {
         match *check {
             Check::Less { lower, upper } => {
@@ -577,7 +671,7 @@ mod tests {
                 values.extend((0..=options.len()).map(|i| i as f64));
                 values.extend([-1.0, 0.5]);
             }
-            ParamKind::Timestamp => {}
+            ParamKind::Timestamp | ParamKind::Source { .. } => {}
         }
         values
     }
@@ -602,7 +696,7 @@ mod tests {
                 }
                 values.push(ParamValue::Int(1));
             }
-            ParamKind::Timestamp => {}
+            ParamKind::Timestamp | ParamKind::Source { .. } => {}
         }
         values
     }
@@ -648,6 +742,10 @@ mod tests {
                 cases.push(HashMap::from([(spec.name.to_string(), value)]));
             }
         }
+        cases.push(HashMap::from([(
+            "source".to_string(),
+            ParamValue::Enum("hl2".into()),
+        )]));
         for source in [Source::Close, Source::Hl2, Source::Hlc3] {
             cases.push(HashMap::from([(
                 "source".to_string(),
@@ -678,18 +776,35 @@ mod tests {
         cases
     }
 
+    /// Cases where the definition deliberately differs from the legacy path (operator decision
+    /// 2026-10-14): `zigzag_advanced` takes the same parameters on both entry points, so the
+    /// legacy f64 path's rejection of `deviation_mode`/`deviation_value` and the legacy typed
+    /// path's silent neglect of `deviation_pct` are not reproduced.
+    fn intended_difference(name: &str, keys: &[&String]) -> bool {
+        name == "zigzag_advanced"
+            && keys.iter().any(|k| {
+                ["deviation_mode", "deviation_value", "deviation_pct"].contains(&k.as_str())
+            })
+    }
+
     #[test]
     fn definitions_build_exactly_what_the_legacy_registry_builds() {
         let mut checked = 0;
         for definition in definitions() {
             for name in std::iter::once(definition.name).chain(definition.aliases.iter().copied()) {
                 for params in f64_cases(definition) {
+                    if intended_difference(name, &params.keys().collect::<Vec<_>>()) {
+                        continue;
+                    }
                     let new = fingerprint(build_checked_with(name, &params, Route::Definitions));
                     let old = fingerprint(build_checked_with(name, &params, Route::Legacy));
                     assert_eq!(new, old, "{name} f64 {params:?}");
                     checked += 1;
                 }
                 for params in typed_cases(definition) {
+                    if intended_difference(name, &params.keys().collect::<Vec<_>>()) {
+                        continue;
+                    }
                     let new = fingerprint(build_typed_with(name, &params, Route::Definitions));
                     let old = fingerprint(build_typed_with(name, &params, Route::Legacy));
                     assert_eq!(new, old, "{name} typed {params:?}");
@@ -779,6 +894,74 @@ mod tests {
         ));
     }
 
+    /// The unified `zigzag_advanced`: the same deviation through either entry point and either
+    /// name, mode-dependent ranges, and the legacy typed build reproduced for `deviation_value`.
+    #[test]
+    fn zigzag_advanced_takes_the_same_parameters_on_both_entry_points() {
+        let f64_build = |params: &[(&str, f64)]| {
+            let params: HashMap<String, f64> =
+                params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+            fingerprint(build_checked_with(
+                "zigzag_advanced",
+                &params,
+                Route::Definitions,
+            ))
+        };
+        let typed_build = |params: Vec<(&str, ParamValue)>, route| {
+            let params: TypedParams = params
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect();
+            fingerprint(build_typed_with("zigzag_advanced", &params, route))
+        };
+        let atr_typed = || {
+            vec![
+                ("deviation_mode", ParamValue::Enum("atr_multiple".into())),
+                ("deviation_value", ParamValue::Float(2.5)),
+            ]
+        };
+        // The legacy typed path is the reference for the ATR mode.
+        let reference = typed_build(atr_typed(), Route::Legacy);
+        assert!(reference.is_ok());
+        assert_eq!(typed_build(atr_typed(), Route::Definitions), reference);
+        assert_eq!(
+            typed_build(
+                vec![
+                    ("deviation_mode", ParamValue::Enum("atr_multiple".into())),
+                    ("deviation_pct", ParamValue::Float(2.5)),
+                ],
+                Route::Definitions
+            ),
+            reference
+        );
+        assert_eq!(
+            f64_build(&[("deviation_mode", 1.0), ("deviation_pct", 2.5)]),
+            reference
+        );
+        assert_eq!(
+            f64_build(&[("deviation_mode", 1.0), ("deviation_value", 2.5)]),
+            reference
+        );
+
+        // Percent: up to 100; ATR multiples: up to 1000.
+        let percent_error = f64_build(&[("deviation_pct", 500.0)]).unwrap_err();
+        assert!(
+            percent_error.contains("between 0.001 and 100"),
+            "{percent_error}"
+        );
+        assert!(f64_build(&[("deviation_mode", 1.0), ("deviation_pct", 500.0)]).is_ok());
+        assert!(f64_build(&[("deviation_mode", 2.0)]).is_err());
+
+        // The typed path no longer ignores deviation_pct.
+        assert_ne!(
+            typed_build(
+                vec![("deviation_pct", ParamValue::Float(5.0))],
+                Route::Definitions
+            ),
+            typed_build(vec![], Route::Definitions)
+        );
+    }
+
     #[test]
     fn resolve_reports_types_before_ranges() {
         let atr = &crate::indicator::atr::ATR_DEFINITION;
@@ -787,7 +970,7 @@ mod tests {
             ("sig_len".to_string(), ParamValue::Enum("x".into())),
         ]);
         assert!(matches!(
-            atr.build_from_typed("atr", &params),
+            atr.build_from_typed("atr", &params, None),
             Err(RegistryError::UnsupportedParameterType { parameter, .. }) if parameter == "sig_len"
         ));
     }

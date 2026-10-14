@@ -157,6 +157,33 @@ impl Indicator for WaveTrendEngine {
     }
 }
 
+/// Registry definition of `wavetrend` (plan 49).
+pub const WAVETREND_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "wavetrend",
+        aliases: &["wt"],
+        description: "WaveTrend Oscillator (wt1, wt2)",
+        params: &[
+            super::definition::ParamSpec::count("n1", 10, 1, 10000).meaning("channel length"),
+            super::definition::ParamSpec::count("n2", 21, 1, 10000).meaning("average length"),
+            super::definition::ParamSpec::number("ob_level", 60.0, -100.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("os_level", -60.0, -100.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(WaveTrendEngine::new(
+                p.count("n1"),
+                p.count("n2"),
+                p.number("ob_level"),
+                p.number("os_level"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

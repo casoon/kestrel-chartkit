@@ -316,3 +316,38 @@ impl Indicator for Cci {
         out
     }
 }
+
+/// Registry definition of `cci` (plan 49).
+pub const CCI_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "cci",
+    aliases: &[],
+    description: "Commodity Channel Index (value is the EMA(avg_len) of the raw CCI; avg_len = 1 gives the raw line)",
+    params: &[
+        super::definition::ParamSpec::count("cci_len", 20, 1, 10000).meaning("bars in the CCI window"),
+        super::definition::ParamSpec::count("avg_len", 3, 1, 10000).meaning("EMA over the raw CCI (the line)"),
+            super::definition::ParamSpec::number("overbought", 100.0, -1000.0, 1000.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", -100.0, -1000.0, 1000.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+    ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+    build: |p| {
+        Ok(Box::new(Cci::new(
+            p.count("cci_len"),
+            p.count("avg_len"),
+            3,
+            5,
+            p.number("oversold"),
+            p.number("overbought"),
+            true,
+            100,
+            4,
+            25.0,
+        )))
+    },
+};

@@ -305,3 +305,39 @@ impl Indicator for FisherTransform {
         out
     }
 }
+
+/// Registry definition of `fisher_transform` (plan 49).
+pub const FISHER_TRANSFORM_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "fisher_transform",
+    aliases: &["fisher"],
+    description: "Fisher Transform (value is the EMA(avg_len) of the raw transform; avg_len = 1 gives the raw line)",
+    params: &[
+        super::definition::ParamSpec::count("fish_len", 10, 1, 10000).meaning("bars in the normalising window"),
+        super::definition::ParamSpec::count("avg_len", 2, 1, 10000).meaning("EMA over the raw transform (the line)"),
+            super::definition::ParamSpec::number("overbought", 1.5, -100.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", -1.5, -100.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+    ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+    build: |p| {
+        Ok(Box::new(FisherTransform::new(
+            p.count("fish_len"),
+            p.count("avg_len"),
+            3,
+            0.0,
+            p.number("overbought"),
+            p.number("oversold"),
+            5,
+            true,
+            40,
+            4,
+            0.5,
+        )))
+    },
+};

@@ -705,10 +705,11 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
         },
         IndicatorCatalogEntry {
             name: "zigzag_advanced",
-            description: "ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (build_typed with deviation_mode=percent|atr_multiple); AdvancedZigZagEngine::reduce/project_to_timeframe for recursive levels and HTF projection",
+            description: "ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (deviation_mode=percent|atr_multiple, in build_checked as 0|1; deviation_pct is the deviation in percent or in ATR multiples, deviation_value its former typed name); AdvancedZigZagEngine::reduce/project_to_timeframe for recursive levels and HTF projection",
             default_params: [
                 ("depth".to_string(), 3.0),
                 ("backstep".to_string(), 2.0),
+                ("deviation_mode".to_string(), 0.0),
                 ("deviation_pct".to_string(), 1.0),
                 ("atr_len".to_string(), 14.0),
             ]
@@ -2776,7 +2777,11 @@ pub(crate) fn build_typed_with(
         None => reject_unknown_params(name, keys, true)?,
     }
 
-    if name.to_lowercase() == "midas" {
+    // An indicator that reads `source` itself bypasses the generic handling below.
+    if let Some(definition) = definition.filter(|d| d.reads_own_source()) {
+        return definition.build_from_typed(name, params, None);
+    }
+    if definition.is_none() && name.to_lowercase() == "midas" {
         // Bypasses the generic `source` handling below; see `build_midas_typed`.
         return build_midas_typed(params);
     }
@@ -2824,7 +2829,7 @@ pub(crate) fn build_typed_with(
     remaining.remove("source");
 
     let built = match (definition, name.to_lowercase().as_str()) {
-        (Some(definition), _) => definition.build_from_typed(name, &remaining)?,
+        (Some(definition), _) => definition.build_from_typed(name, &remaining, source)?,
         (None, name) => match name {
             "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
             "atr" => build_atr_typed(&remaining)?,

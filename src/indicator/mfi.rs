@@ -225,3 +225,36 @@ impl Indicator for Mfi {
         out
     }
 }
+
+/// Registry definition of `mfi` (plan 49).
+pub const MFI_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "mfi",
+    aliases: &[],
+    description: "Money Flow Index (value is the EMA(avg_len) of the raw MFI; avg_len = 1 gives the raw line)",
+    params: &[
+        super::definition::ParamSpec::count("mfi_len", 14, 1, 10000).meaning("bars of money flow"),
+        super::definition::ParamSpec::count("avg_len", 3, 1, 10000).meaning("EMA over the raw MFI (the line)"),
+            super::definition::ParamSpec::number("overbought", 80.0, 0.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", 20.0, 0.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+    ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+    build: |p| {
+        Ok(Box::new(Mfi::new(
+            p.count("mfi_len"),
+            p.count("avg_len"),
+            3,
+            50.0,
+            p.number("overbought"),
+            p.number("oversold"),
+            5,
+            true,
+        )))
+    },
+};

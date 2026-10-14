@@ -322,8 +322,9 @@ fn zigzag_advanced_rejects_invalid_configuration() {
     assert_rejected("zigzag_advanced", &[("depth", 0.0)]);
     assert_rejected("zigzag_advanced", &[("deviation_pct", 0.0)]);
     assert_rejected("zigzag_advanced", &[("atr_len", 0.0)]);
-    // Typed-only: the plain registry has no enum parameter type.
-    assert_rejected("zigzag_advanced", &[("deviation_mode", 1.0)]);
+    // deviation_mode is 0 (percent) or 1 (ATR multiples); percent ends at 100.
+    assert_rejected("zigzag_advanced", &[("deviation_mode", 2.0)]);
+    assert_rejected("zigzag_advanced", &[("deviation_pct", 150.0)]);
     assert_rejected("zigzag_advanced", &[("back_step", 2.0)]);
 }
 

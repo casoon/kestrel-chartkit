@@ -375,6 +375,44 @@ impl AdvancedZigZagEngine {
     }
 }
 
+/// Registry definition of `zigzag_advanced` (plan 49). Both entry points take the same
+/// parameters: `deviation_mode` (by name, or `0`/`1` in the `f64` map) and `deviation_pct`, the
+/// deviation in percent (up to 100) or in ATR multiples (up to 1000).
+pub const ZIGZAG_ADVANCED_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "zigzag_advanced",
+    aliases: &[],
+    description: "ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (deviation_mode=percent|atr_multiple, in build_checked as 0|1; deviation_pct is the deviation in percent or in ATR multiples, deviation_value its former typed name); AdvancedZigZagEngine::reduce/project_to_timeframe for recursive levels and HTF projection",
+    params: &[
+        super::definition::ParamSpec::count("depth", 3, 1, 10000).meaning("bars on each side of a pivot"),
+        super::definition::ParamSpec::count("backstep", 2, 0, 10000)
+            .meaning("bars within which a newer pivot replaces an older one"),
+        super::definition::ParamSpec::choice("deviation_mode", "percent", &["percent", "atr_multiple"], true)
+            .meaning("unit of the deviation: percent of price or multiples of the ATR"),
+        super::definition::ParamSpec::number("deviation_pct", 1.0, 0.001, 1000.0)
+            .range_by(
+                "deviation_mode",
+                &[("percent", 0.001, 100.0), ("atr_multiple", 0.001, 1000.0)],
+            )
+            .legacy_alias("deviation_value")
+            .meaning("minimum move for a new leg, in the unit of deviation_mode"),
+        super::definition::ParamSpec::count("atr_len", 14, 1, 10000).meaning("bars in the ATR"),
+    ],
+    checks: &[],
+    build: |p| {
+        let value = p.number("deviation_pct");
+        let deviation = match p.choice("deviation_mode") {
+            "atr_multiple" => ZigZagDeviationMode::AtrMultiple(value),
+            _ => ZigZagDeviationMode::Percent(value),
+        };
+        Ok(Box::new(AdvancedZigZagEngine::new(
+            p.count("depth"),
+            p.count("backstep"),
+            deviation,
+            p.count("atr_len"),
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

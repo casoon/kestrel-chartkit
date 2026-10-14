@@ -305,3 +305,46 @@ impl Indicator for StochRsi {
         out
     }
 }
+
+/// Registry definition of `stoch_rsi` (plan 49).
+pub const STOCH_RSI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "stoch_rsi",
+        aliases: &["srsi"],
+        description: "Stochastic RSI",
+        params: &[
+            super::definition::ParamSpec::count("rsi_len", 14, 1, 10000)
+                .meaning("changes in the RSI"),
+            super::definition::ParamSpec::count("stoch_len", 14, 1, 10000)
+                .meaning("RSI values in the stochastic window"),
+            super::definition::ParamSpec::count("k_len", 3, 1, 10000).meaning("smoothing of %K"),
+            super::definition::ParamSpec::count("d_len", 3, 1, 10000).meaning("smoothing of %D"),
+            super::definition::ParamSpec::number("overbought", 80.0, 0.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", 20.0, 0.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+        build: |p| {
+            Ok(Box::new(StochRsi::new(
+                p.count("rsi_len"),
+                p.count("stoch_len"),
+                p.count("k_len"),
+                p.count("d_len"),
+                50.0,
+                p.number("overbought"),
+                p.number("oversold"),
+                5,
+                true,
+                50,
+                50,
+                4,
+                10.0,
+            )))
+        },
+    };

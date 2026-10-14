@@ -275,3 +275,39 @@ impl Indicator for WilliamsR {
         out
     }
 }
+
+/// Registry definition of `williams_r` (plan 49).
+pub const WILLIAMS_R_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "williams_r",
+    aliases: &["wpr"],
+    description: "Williams %R (0..100 convention; value is the EMA(avg_len) of the raw line, avg_len = 1 gives the raw line)",
+    params: &[
+        super::definition::ParamSpec::count("wpr_len", 14, 1, 10000).meaning("bars in the high/low window"),
+        super::definition::ParamSpec::count("avg_len", 3, 1, 10000).meaning("EMA over the raw %R (the line)"),
+            super::definition::ParamSpec::number("overbought", 80.0, 0.0, 100.0)
+                .threshold()
+                .meaning("upper zone, alerts above it"),
+            super::definition::ParamSpec::number("oversold", 20.0, 0.0, 100.0)
+                .threshold()
+                .meaning("lower zone, alerts below it"),
+    ],
+        checks: &[super::definition::Check::Less {
+            lower: "oversold",
+            upper: "overbought",
+        }],
+    build: |p| {
+        Ok(Box::new(WilliamsR::new(
+            p.count("wpr_len"),
+            p.count("avg_len"),
+            3,
+            50.0,
+            p.number("overbought"),
+            p.number("oversold"),
+            5,
+            true,
+            50,
+            4,
+            10.0,
+        )))
+    },
+};

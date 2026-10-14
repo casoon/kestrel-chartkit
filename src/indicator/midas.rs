@@ -217,6 +217,33 @@ impl Indicator for MidasCurveEngine {
     }
 }
 
+/// Registry definition of `midas` (plan 49). It reads its own `source` (hlc3 by default), so
+/// `build_typed` neither checks nor wraps it.
+pub const MIDAS_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "midas",
+    aliases: &[],
+    description: "MIDAS launch-anchored curve with Topfinder/Bottomfinder projection (build_typed with mode=topfinder|bottomfinder)",
+    params: &[
+        super::definition::ParamSpec::choice("mode", "topfinder", &["topfinder", "bottomfinder"], false)
+            .meaning("project from the last high (topfinder) or low (bottomfinder)"),
+        super::definition::ParamSpec::source(Source::Hlc3).meaning("the price the curve averages"),
+        super::definition::ParamSpec::count("maturity_bars", 20, 1, 10000)
+            .meaning("bars after an extreme until the curve counts as exhausted"),
+    ],
+    checks: &[],
+    build: |p| {
+        let mode = match p.choice("mode") {
+            "bottomfinder" => MidasMode::Bottomfinder,
+            _ => MidasMode::Topfinder,
+        };
+        Ok(Box::new(MidasCurveEngine::new(
+            mode,
+            p.source(),
+            p.count("maturity_bars") as u32,
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
