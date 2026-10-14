@@ -52,18 +52,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("liquidity_pools"),
     Coverage::full("zigzag_advanced"),
     Coverage::full("zone_rejection"),
-    Coverage {
-        indicator: "double_pattern",
-        values: Status::Partial(
-            "deviation: a neckline close on bar max_wait + 1 after forming still confirms \
-             (double_pattern_expiry, ignored)",
-        ),
-        alerts: Status::Partial(
-            "deviation: confirmation alert on bar max_wait + 1 after forming \
-             (double_pattern_expiry, ignored)",
-        ),
-        configuration: Status::Specified,
-    },
+    Coverage::full("double_pattern"),
     Coverage::full("bottom_formation"),
     Coverage {
         indicator: "pivot_divergence",
@@ -77,15 +66,7 @@ pub const COVERAGE: &[Coverage] = &[
         alerts: Status::Partial(DIVERGENCE_OSCILLATORS),
         configuration: Status::Specified,
     },
-    Coverage {
-        indicator: "wyckoff",
-        values: Status::Partial(
-            "deviation: warmup_period() is range_lookback, the first output waits for the \
-             ATR(14) (wyckoff_short_lookback, ignored)",
-        ),
-        alerts: Status::Specified,
-        configuration: Status::Specified,
-    },
+    Coverage::full("wyckoff"),
 ];
 
 // --- liquidity_fvg ---------------------------------------------------------------------------
@@ -400,7 +381,6 @@ fn double_pattern_fast() {
 /// confirms on bar `max_wait + 1` (the expiry check runs after the neckline check). Bars 30 and
 /// 58: formed on 26 and 54, `max_wait` 3, the neckline close comes 4 bars later.
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn double_pattern_expiry() {
     holds(
         "double_pattern_expiry",
@@ -558,7 +538,6 @@ fn wyckoff_wide() {
 /// comes with bar 14, `warmup_period()` says `range_lookback` (10). Plan 62: warmup = first
 /// output.
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn wyckoff_short_lookback() {
     holds("wyckoff_short_lookback", "wyckoff", IndicatorUnit::Unitless);
 }

@@ -82,15 +82,7 @@ pub const COVERAGE: &[Coverage] = &[
     },
     Coverage::full("ichimoku"),
     Coverage::full("supertrend"),
-    Coverage {
-        indicator: "parabolic_sar",
-        values: Partial(
-            "deviation: the first output carries no extra is_long/af although the type lists \
-             them for every output; all later bars specified",
-        ),
-        alerts: Specified,
-        configuration: Specified,
-    },
+    Coverage::full("parabolic_sar"),
     Coverage {
         indicator: "donchian",
         values: Specified,
@@ -365,11 +357,8 @@ fn supertrend_tight() {
     ));
 }
 
-/// The documented contract: `extra["is_long"]` and `extra["af"]` on every output. The first
-/// output carries neither (plan 62: deviation, see the report); the two tests below check every
-/// other part of the same cases.
+/// `extra["is_long"]` and `extra["af"]` on every output, the first included.
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn parabolic_sar_defaults() {
     assert_holds(&case(
         "parabolic_sar_defaults",
@@ -379,31 +368,12 @@ fn parabolic_sar_defaults() {
 }
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn parabolic_sar_fast() {
     assert_holds(&case(
         "parabolic_sar_fast",
         "parabolic_sar",
         IndicatorUnit::Price,
     ));
-}
-
-/// The case without the extras of the first output, the one deviation from the documented
-/// contract; everything else still has to hold.
-fn psar_without_first_extras(name: &str) -> ContractCase {
-    let mut c = case(name, "parabolic_sar", IndicatorUnit::Price);
-    c.expected[0].output.as_mut().unwrap().extra.clear();
-    c
-}
-
-#[test]
-fn parabolic_sar_defaults_apart_from_first_extras() {
-    assert_holds(&psar_without_first_extras("parabolic_sar_defaults"));
-}
-
-#[test]
-fn parabolic_sar_fast_apart_from_first_extras() {
-    assert_holds(&psar_without_first_extras("parabolic_sar_fast"));
 }
 
 #[test]

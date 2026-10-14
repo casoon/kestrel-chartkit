@@ -137,9 +137,10 @@ def _cmf(bars, length):
 
 
 def _cvd(bars):
-    """Running sum of volume * (2 share - 1), share = (close - low) / (high - low), range floored
-    at 1e-8."""
-    return sum(v * (2.0 * (c - l) / max(h - l, 1e-8) - 1.0) for _, h, l, c, v in bars)
+    """Running sum of volume * (2 share - 1), share = (close - low) / (high - low), and 0.5 for a
+    bar without range."""
+    return sum(v * (2.0 * ((c - l) / (h - l) if h - l > 0.0 else 0.5) - 1.0)
+               for _, h, l, c, v in bars)
 
 
 def _hires_flow(bars):

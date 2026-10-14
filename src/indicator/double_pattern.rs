@@ -219,6 +219,10 @@ impl Indicator for DoublePattern {
         let index = self.index;
         let max_wait = self.max_wait;
         self.active.retain(|p| {
+            // Expired first: a close through the neckline counts only within `max_wait` bars.
+            if index - p.formed_at > max_wait {
+                return false;
+            }
             if confirmed.is_none() {
                 let through = if p.bottom {
                     bar.close > p.neckline
@@ -235,7 +239,7 @@ impl Indicator for DoublePattern {
             } else {
                 bar.close > p.extreme
             };
-            !broken && index - p.formed_at <= max_wait
+            !broken
         });
         if let Some(p) = confirmed {
             self.set_event(if p.bottom { 2 } else { -2 }, &p);

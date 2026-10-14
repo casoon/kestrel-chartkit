@@ -127,8 +127,8 @@ def pressure_edge_bars():
 
 def trend_quality_series(bars, period):
     """Per the type, all four inputs over `period`:
-    - direction: +1 if the first-sample EMA of the close rose against the previous bar's, else -1;
-      a flat EMA counts as -1, and so does the first output (documented: no previous value);
+    - direction: +1 if the first-sample EMA of the close rose against the previous bar's, -1 if it
+      fell; a flat EMA counts as 0, and so does the first output (documented: no previous value);
     - efficiency: Kaufman ER over the last period + 1 closes;
     - strength: clamp(ADX / 50, 0, 1), Wilder DI and ADX smoothing both over `period`;
     - participation: clamp(RVOL / 2, 0.2, 1), RVOL = volume / mean of the last `period` volumes
@@ -141,7 +141,12 @@ def trend_quality_series(bars, period):
     first = 2 * period - 1  # 0-based bar of the first ADX
     out = [None] * len(bars)
     for t in range(first, len(bars)):
-        direction = 1.0 if t > first and ema[t] > ema[t - 1] else -1.0
+        if t > first and ema[t] > ema[t - 1]:
+            direction = 1.0
+        elif t > first and ema[t] < ema[t - 1]:
+            direction = -1.0
+        else:
+            direction = 0.0
         efficiency = efficiency_ratio(closes[:t + 1], period)
         strength = clamp(adx_line[t - first] / 50.0, 0.0, 1.0)
         volumes = [b[4] for b in bars[t + 1 - period:t + 1]]

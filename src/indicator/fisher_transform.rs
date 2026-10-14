@@ -16,8 +16,8 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// ```
 ///
 /// (the normalised term is `0` for a flat window). **`value` is the line**, `Ema(avg_len)` of `fish`
-/// with the first-sample seed; `extra["signal"]` is `Ema(sig_len)` of the line. The registry fixes
-/// `avg_len = 2` and `sig_len = 3` and reads only `fish_len`.
+/// with the first-sample seed; `extra["signal"]` is `Ema(sig_len)` of the line. The registry reads
+/// `fish_len` and `avg_len` (default 2) and fixes `sig_len = 3`.
 ///
 /// First output: with the `fish_len`-th bar. [`Indicator::reset`] clears windows, recursions and
 /// averages.

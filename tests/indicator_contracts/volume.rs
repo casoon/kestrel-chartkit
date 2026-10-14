@@ -72,15 +72,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("obv"),
     Coverage::full("cmf"),
     Coverage::full("acc_dist"),
-    Coverage {
-        indicator: "cvd",
-        values: Partial(
-            "bars without range: documented 1e-8 range floor (all selling) deviates from the \
-             implementation's even split; cvd_zero_range ignored",
-        ),
-        alerts: Specified,
-        configuration: Specified,
-    },
+    Coverage::full("cvd"),
     Coverage::full("klinger"),
     Coverage::full("eom"),
     Coverage::full("nvi"),
@@ -188,10 +180,8 @@ fn cvd_shaped() {
     assert_holds(&case("cvd_shaped", "cvd", IndicatorUnit::Volume));
 }
 
-/// Deviation (plan 62): the type documents the range "floored at `1e-8`", so a bar without range
-/// has share `0 / 1e-8 = 0` and counts as all selling; the implementation splits it evenly.
+/// A bar without range has no close location: its volume splits evenly (share 0.5).
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn cvd_zero_range() {
     assert_holds(&case("cvd_zero_range", "cvd", IndicatorUnit::Volume));
 }

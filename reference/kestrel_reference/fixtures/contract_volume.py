@@ -174,12 +174,12 @@ def acc_dist_case(bars):
 # --- CVD and the high-resolution flow --------------------------------------------------------
 
 def cvd_case(bars):
-    """share = (close - low) / (high - low), the range floored at 1e-8 as documented; buy =
+    """share = (close - low) / (high - low), 0.5 for a bar without range as documented; buy =
     volume * share, sell = volume * (1 - share), delta = buy - sell; value = running total
     (`volume._cvd` over the prefix)."""
     expected = []
     for i, (_, h, l, c, v) in enumerate(bars):
-        share = (c - l) / max(h - l, 1e-8)
+        share = (c - l) / (h - l) if h - l > 0.0 else 0.5
         buy, sell = v * share, v * (1.0 - share)
         expected.append(((_cvd(bars[:i + 1]), {"delta": buy - sell, "buy_volume": buy,
                                                "sell_volume": sell}), {}))
@@ -528,7 +528,7 @@ def cases():
         ("acc_dist_shaped", "A/D over shaped bars after a bar without range",
          acc_dist_case(flat_first + shaped(12, 67))),
         ("cvd_shaped", "CVD over shaped bars", cvd_case(shaped(20, 71))),
-        ("cvd_zero_range", "CVD: a bar without range, share from the documented 1e-8 floor",
+        ("cvd_zero_range", "CVD: a bar without range splits its volume evenly (share 0.5)",
          cvd_case(flat_first)),
         ("hires_volume_flow_defaults", "HiRes flow with the catalog default (window_len 20)",
          hires_case(20, absorb_bars())),

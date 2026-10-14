@@ -11,8 +11,9 @@ use std::collections::HashMap;
 /// All four inputs run on every bar with the same `period`:
 ///
 /// - `direction`: `+1` if the EMA(`period`) of the close (first-sample seeded, see
-///   [`EmaEngine`]) rose against the previous bar's, `ema > prev`; otherwise `-1`. A flat EMA
-///   counts as `-1`, and so does the first output, which has no previous value to compare with.
+///   [`EmaEngine`]) rose against the previous bar's, `-1` if it fell. A flat EMA has no
+///   direction and counts as `0`, and so does the first output, which has no previous value to
+///   compare with.
 /// - `efficiency`: the Kaufman Efficiency Ratio over `period` ([`LegEfficiencyEngine`]), `0..=1`.
 /// - `strength`: `clamp(ADX / 50, 0, 1)`, the ADX from [`Adx::with_period`]`(period)`: Wilder DI
 ///   and ADX smoothing both over `period`.

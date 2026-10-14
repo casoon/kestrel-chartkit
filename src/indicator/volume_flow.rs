@@ -12,8 +12,8 @@ use std::collections::HashMap;
 /// crate's default. [`super::cvd_intrabar::IntrabarCvd`] offers the finer estimate from
 /// lower-timeframe bars without replacing this one.
 ///
-/// Per bar, with the range floored at `1e-8`: `share = (close - low) / (high - low)`,
-/// `buy = volume * share`, `sell = volume * (1 - share)`, `delta = buy - sell`. `value` is the
+/// Per bar: `share = (close - low) / (high - low)`, and `0.5` for a bar without range, which has
+/// no close location to read a side from; `buy = volume * share`, `sell = volume * (1 - share)`, `delta = buy - sell`. `value` is the
 /// running total of the deltas; `extra` carries this bar's `delta`, `buy_volume` and
 /// `sell_volume`. First output: with the first bar. [`Indicator::reset`] returns the total to
 /// zero.

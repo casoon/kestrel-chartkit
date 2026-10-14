@@ -261,6 +261,16 @@ impl ParabolicSarEngine {
     }
 }
 
+impl ParabolicSarEngine {
+    /// The SAR with its documented fields, the same on every bar including the first.
+    fn output(&self) -> IndicatorOutput {
+        let mut extra = HashMap::new();
+        extra.insert("is_long".to_string(), if self.is_long { 1.0 } else { 0.0 });
+        extra.insert("af".to_string(), self.af);
+        IndicatorOutput::with_extra(self.sar, extra)
+    }
+}
+
 impl Indicator for ParabolicSarEngine {
     fn name(&self) -> &str {
         "parabolic_sar"
@@ -280,17 +290,15 @@ impl Indicator for ParabolicSarEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        if self.prev_bar.is_none() {
+        self.alerts.clear();
+        let Some(prev) = self.prev_bar.as_ref() else {
             self.prev_bar = Some(bar.clone());
             self.sar = bar.low;
             self.ep = bar.high;
-            return Some(IndicatorOutput::new(self.sar));
-        }
-
-        let prev = self.prev_bar.as_ref().unwrap();
+            return Some(self.output());
+        };
         let mut next_sar = self.sar + self.af * (self.ep - self.sar);
 
-        self.alerts.clear();
         if self.is_long {
             if bar.low < next_sar {
                 self.is_long = false;
@@ -331,12 +339,7 @@ impl Indicator for ParabolicSarEngine {
 
         self.sar = next_sar;
         self.prev_bar = Some(bar.clone());
-
-        let mut extra = HashMap::new();
-        extra.insert("is_long".to_string(), if self.is_long { 1.0 } else { 0.0 });
-        extra.insert("af".to_string(), self.af);
-
-        Some(IndicatorOutput::with_extra(self.sar, extra))
+        Some(self.output())
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {

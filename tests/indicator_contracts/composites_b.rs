@@ -20,19 +20,13 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("buy_sell_pressure"),
     Coverage {
         indicator: "trend_quality",
-        values: Status::Partial(
-            "deviation: the first output and a flat EMA give direction 0 (and value 0), the type \
-             documents -1; every case is ignored until resolved",
-        ),
-        alerts: Status::Partial("no alerts; only checked in the ignored cases"),
+        values: Status::Specified,
+        alerts: Status::Specified,
         configuration: Status::Specified,
     },
     Coverage {
         indicator: "multi_factor",
-        values: Status::Partial(
-            "period 4 holds; the default case is ignored: its first output inherits the \
-             trend_quality direction deviation",
-        ),
+        values: Status::Specified,
         alerts: Status::Specified,
         configuration: Status::Specified,
     },
@@ -142,7 +136,6 @@ fn buy_sell_pressure_rejects_invalid_configuration() {
 // --- Trend quality ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn trend_quality_defaults() {
     assert_holds(&case(
         "trend_quality_defaults",
@@ -152,7 +145,6 @@ fn trend_quality_defaults() {
 }
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn trend_quality_period5() {
     assert_holds(&case(
         "trend_quality_period5",
@@ -162,7 +154,6 @@ fn trend_quality_period5() {
 }
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn trend_quality_novolume() {
     assert_holds(&case(
         "trend_quality_novolume",
@@ -172,7 +163,6 @@ fn trend_quality_novolume() {
 }
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn trend_quality_flat() {
     assert_holds(&case(
         "trend_quality_flat",
@@ -191,7 +181,6 @@ fn trend_quality_rejects_invalid_configuration() {
 // --- Multi-factor ----------------------------------------------------------------------------
 
 #[test]
-#[ignore = "plan 62: deviation, see report"]
 fn multi_factor_defaults() {
     assert_holds(&case(
         "multi_factor_defaults",

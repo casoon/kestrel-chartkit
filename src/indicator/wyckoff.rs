@@ -50,6 +50,9 @@ pub enum WyckoffEventKind {
     LastPointOfSupply,
 }
 
+/// Length of the ATR the range width and the proximity bands are measured in.
+const ATR_LEN: usize = 14;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WyckoffEvent {
     pub kind: WyckoffEventKind,
@@ -94,7 +97,7 @@ impl WyckoffStateMachine {
             range_lookback,
             range_atr_max,
             min_range_bars: min_range_bars.max(2),
-            atr: Rma::new(14),
+            atr: Rma::new(ATR_LEN),
             prev_close: None,
             // Must stay derived from the same `range_lookback` as the bar deque below: the deque
             // gates when a range becomes lock-eligible (`bars.len() == self.range_lookback`), and
@@ -300,8 +303,10 @@ impl Indicator for WyckoffStateMachine {
         "wyckoff"
     }
 
+    /// The window of `range_lookback` bars and the ATR(14) must both exist: the first output
+    /// comes with whichever is complete last.
     fn warmup_period(&self) -> usize {
-        self.range_lookback
+        self.range_lookback.max(ATR_LEN)
     }
 
     fn reset(&mut self) {
