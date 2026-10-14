@@ -1,79 +1,69 @@
 import type { ShowcaseExample } from '@casoon/pages-theme/showcase';
-import source from '../../examples/site_showcase.rs?raw';
+import { url } from '@casoon/pages-theme/url';
+import { indicators, indicatorSpec, inlineChart, spec } from './chartlet';
 
-// Every chart is an SVG written by the crate's own renderers: `cargo run --example
-// site_showcase` streams synthetic bars (fixed seeds) through the indicators and writes
-// examples/site/*.svg. The site embeds those files unchanged, and the Rust code shown next to
-// each chart is sliced from the same example file.
-const svgs = import.meta.glob<string>('../../examples/site/*.svg', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-});
+// The showcase is the visual indicator reference: every catalog indicator on the same fictitious
+// CASOON share (invented prices), with its default parameters, drawn by chartlet from numbers
+// kestrel-chartkit computed. `cargo run --example site_showcase` writes the specifications.
 
-function chart(name: string): string {
-  const svg = svgs[`../../examples/site/${name}.svg`];
-  if (!svg) {
-    throw new Error(`Missing examples/site/${name}.svg, run: cargo run --example site_showcase`);
-  }
-  return svg.trim();
+const FILE = 'examples/site_showcase.rs';
+
+const rustFor = (name: string, defaults: Record<string, number>) => {
+  const entries = Object.entries(defaults);
+  const map = entries.length
+    ? `HashMap::from([\n${entries.map(([k, v]) => `    ("${k}".to_string(), ${Number.isInteger(v) ? v.toFixed(1) : v}),`).join('\n')}\n])`
+    : 'HashMap::new()';
+  return `// Defaults of "${name}" (see the indicator reference)\nlet params = ${map};\nlet mut indicator = build_checked("${name}", &params)?;\n\nfor bar in &bars {\n    if let Some(output) = indicator.on_bar(bar) {\n        // output.value, output.extra[...], indicator.alerts()\n    }\n}`;
+};
+
+/** Two lazily loaded files, CSS shows the one matching the page (styles: site/src/pages/…). */
+function lazyChart(name: string): string {
+  const s = indicatorSpec(name);
+  const alt = (s.description ?? '').replace(/"/g, '&quot;');
+  const img = (theme: string) =>
+    `<img class="ind-${theme}" src="${url(`charts/${name}-${theme}.svg`)}" alt="${alt}" width="${s.width}" height="${s.height}" loading="lazy" decoding="async" style="display:block;max-width:100%;height:auto;border-radius:10px">`;
+  const style =
+    '<style>.ind-dark{display:none!important}:root[data-theme=dark] .ind-light{display:none!important}:root[data-theme=dark] .ind-dark{display:block!important}@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ind-light{display:none!important}:root:not([data-theme=light]) .ind-dark{display:block!important}}</style>';
+  return `${style}${img('light')}${img('dark')}`;
 }
 
-/** The SVG has a fixed size, so narrow screens scroll it inside a focusable region. */
-export function figure(name: string, label: string): string {
-  return `<div role="region" tabindex="0" aria-label="${label} (scrollable)" style="max-width:100%;overflow-x:auto;line-height:0;border-radius:10px">${chart(name)}</div>`;
-}
-
-function snippet(slug: string): string {
-  const marker = `// showcase:start ${slug}\n`;
-  const start = source.indexOf(marker);
-  const end = source.indexOf('// showcase:end', start);
-  if (start < 0 || end < 0) throw new Error(`No showcase section "${slug}" in site_showcase.rs`);
-  return source.slice(start + marker.length, end).trimEnd();
-}
-
-const catalogue = [
+const features: ShowcaseExample[] = [
   {
     slug: 'market-regime',
     title: 'Market regime',
-    tags: ['classify_regime', 'adx', 'atr', 'render_scene_svg'],
-    description:
-      'Synthetic bars in four legs: up, sideways, down, sideways. classify_regime runs on every bar with ADX(14) and ATR(14), and each run of equal regimes is shaded: green for bullish expansion, red for bearish expansion, grey for consolidation, amber for transition. The unshaded start is the ADX and ATR warmup. The lower pane shows ADX with the trend threshold of 20.',
+    description: String(spec('regime').description),
+    file: FILE,
+    tags: ['classify_regime', 'adx', 'atr'],
+    input: {
+      lang: 'rust',
+      code: `let mut adx = build_checked("adx", &HashMap::new())?;\nlet mut atr = build_checked("atr", &HashMap::new())?;\n\nfor (i, bar) in bars.iter().enumerate() {\n    let (Some(a), Some(t)) = (adx.on_bar(bar), atr.on_bar(bar)) else { continue };\n    // The ATR indicator reports 100 * ATR / close; classify_regime expects the fraction.\n    let regime = classify_regime(&bars[..=i], a.value, t.value / 100.0);\n}`,
+    },
+    output: { html: inlineChart(spec('regime'), 'regime'), kind: 'panel' },
   },
   {
     slug: 'composite-signal',
     title: 'Composite signal',
-    tags: ['score_indicator', 'aggregate_subscores', 'render_chart_svg'],
-    description:
-      'MACD, Vortex and Trend Quality are scored on every bar and aggregated with the current regime, on the same four legs as the regime chart. A marker shows where a Buy or Sell trigger starts, labelled with the composite score. Only a ClearToTrade grade produces a trigger, so a direction against the regime stays silent.',
-  },
-  {
-    slug: 'bollinger-bands',
-    title: 'Bollinger Bands',
-    tags: ['bollinger', 'render_chart_svg'],
-    description:
-      'Bollinger Bands (20, 2) on a random walk: upper and lower band in blue, the basis in orange. The lines start once the 20-bar warmup is complete.',
-  },
-  {
-    slug: 'supertrend',
-    title: 'Supertrend',
-    tags: ['supertrend', 'render_chart_svg'],
-    description:
-      'Supertrend (10, 3) on the same four legs as the regime chart. The stop line is green while the trend is long and red while it is short; a marker shows each flip.',
-  },
-  {
-    slug: 'volume-profile',
-    title: 'Volume profile',
-    tags: ['volume_profile', 'render_chart_svg'],
-    description:
-      'Volume profile over the last 70 bars with 30 price bins. The shaded zone is the value area, the orange line the point of control.',
+    description: String(spec('composite').description),
+    file: FILE,
+    tags: ['score_indicator', 'aggregate_subscores', 'classify_regime'],
+    input: {
+      lang: 'rust',
+      code: `let subscores = vec![\n    score_indicator("macd", &macd_out, &macd.alerts()),\n    score_indicator("vortex", &vortex_out, &vortex.alerts()),\n    score_indicator("trend_quality", &tq_out, &tq.alerts()),\n];\nlet regime = classify_regime(&bars[..=i], adx_out.value, atr_out.value / 100.0);\nlet signal = aggregate_subscores(subscores, None, regime, Vec::new(), Some(bar), atr_out.extra["raw"]);\n// signal.trigger, signal.score, signal.permission`,
+    },
+    output: { html: inlineChart(spec('composite'), 'composite'), kind: 'panel' },
   },
 ];
 
-export const examples: ShowcaseExample[] = catalogue.map(({ slug, ...meta }) => ({
-  slug,
-  ...meta,
-  file: 'examples/site_showcase.rs',
-  input: { code: snippet(slug), lang: 'rust' },
-  output: { html: figure(slug, `${meta.title} chart`), kind: 'panel' },
-}));
+const perIndicator: ShowcaseExample[] = indicators
+  .filter((entry) => entry.chart)
+  .map((entry) => ({
+    slug: entry.name,
+    title: entry.name,
+    description: `${entry.description} — ${entry.family}. Default parameters on synthetic 4-hour bars of a fictitious CASOON share (invented prices); the latest alerts as markers.`,
+    file: FILE,
+    tags: [entry.family, `unit: ${entry.unit}`],
+    input: { lang: 'rust', code: rustFor(entry.name, entry.defaults) },
+    output: { html: lazyChart(entry.name), kind: 'panel' },
+  }));
+
+export const examples: ShowcaseExample[] = [...features, ...perIndicator];

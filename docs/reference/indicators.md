@@ -9,7 +9,7 @@ order: 2
 > code of this version. The crate is pre-1.0 and under active development: names, parameters
 > and outputs can still change fundamentally between versions.
 
-Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The chart under each entry runs the indicator with its defaults over synthetic 4-hour bars of a fictitious CASOON share (invented prices): a price result over the candles, anything else in a pane below, its latest alerts as markers. It shows what the calculation produces, not a trading result.
+Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
 ## Moving averages, bands and trend lines
 
@@ -17,7 +17,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 
 Simple Moving Average
 
-<IndicatorChart name="sma" />
+[See it in the showcase](../../../showcase/sma/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -29,7 +29,7 @@ Simple Moving Average
 
 Anchored VWAP Engine
 
-<IndicatorChart name="anchored_vwap" />
+[See it in the showcase](../../../showcase/anchored_vwap/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars · needs real volume
 
@@ -45,7 +45,7 @@ Anchored VWAP Engine
 
 Exponential Moving Average (build_typed accepts init=first_sample|sma for the seed; first_sample is the default)
 
-<IndicatorChart name="ema" />
+[See it in the showcase](../../../showcase/ema/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -58,7 +58,7 @@ Exponential Moving Average (build_typed accepts init=first_sample|sma for the se
 
 Weighted Moving Average
 
-<IndicatorChart name="wma" />
+[See it in the showcase](../../../showcase/wma/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -70,7 +70,7 @@ Weighted Moving Average
 
 Volume-Weighted Moving Average
 
-<IndicatorChart name="vwma" />
+[See it in the showcase](../../../showcase/vwma/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars · needs real volume
 
@@ -82,7 +82,7 @@ Volume-Weighted Moving Average
 
 Hull Moving Average
 
-<IndicatorChart name="hma" />
+[See it in the showcase](../../../showcase/hma/)
 
 **Output** unit Price, range not declared · **warmup** 23 bars
 
@@ -94,7 +94,7 @@ Hull Moving Average
 
 Double Exponential Moving Average
 
-<IndicatorChart name="dema" />
+[See it in the showcase](../../../showcase/dema/)
 
 **Output** unit Price, range not declared · **warmup** 39 bars
 
@@ -106,7 +106,7 @@ Double Exponential Moving Average
 
 Triple Exponential Moving Average
 
-<IndicatorChart name="tema" />
+[See it in the showcase](../../../showcase/tema/)
 
 **Output** unit Price, range not declared · **warmup** 14 bars
 
@@ -118,7 +118,7 @@ Triple Exponential Moving Average
 
 Kaufman's Adaptive Moving Average
 
-<IndicatorChart name="kama" />
+[See it in the showcase](../../../showcase/kama/)
 
 **Output** unit Price, range not declared · **warmup** 11 bars
 
@@ -134,7 +134,7 @@ Requires `fast_period` to be smaller than `slow_period`.
 
 Least Squares Moving Average / Linear Regression
 
-<IndicatorChart name="lsma" />
+[See it in the showcase](../../../showcase/lsma/)
 
 **Output** unit Price, range not declared · **warmup** 25 bars
 
@@ -146,7 +146,7 @@ Least Squares Moving Average / Linear Regression
 
 McGinley Dynamic Moving Average
 
-<IndicatorChart name="mcginley" />
+[See it in the showcase](../../../showcase/mcginley/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
 
@@ -158,7 +158,7 @@ McGinley Dynamic Moving Average
 
 Tillson T3 (weighted combination of six chained EMAs; v is a shape factor, not volume)
 
-<IndicatorChart name="t3" />
+[See it in the showcase](../../../showcase/t3/)
 
 **Output** unit Price, range not declared · **warmup** 5 bars
 
@@ -171,7 +171,7 @@ Tillson T3 (weighted combination of six chained EMAs; v is a shape factor, not v
 
 Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 
-<IndicatorChart name="vidya" />
+[See it in the showcase](../../../showcase/vidya/)
 
 **Output** unit Price, range not declared · **warmup** 10 bars
 
@@ -184,7 +184,7 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 
 Williams Alligator (Jaw, Teeth, Lips)
 
-<IndicatorChart name="alligator" />
+[See it in the showcase](../../../showcase/alligator/)
 
 **Output** unit Price, range not declared · **warmup** 13 bars
 
@@ -192,7 +192,7 @@ Williams Alligator (Jaw, Teeth, Lips)
 
 Moving Average Envelopes
 
-<IndicatorChart name="envelope" />
+[See it in the showcase](../../../showcase/envelope/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -205,7 +205,7 @@ Moving Average Envelopes
 
 Rolling Volume Weighted Average Price with sigma bands and slope
 
-<IndicatorChart name="vwap" />
+[See it in the showcase](../../../showcase/vwap/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars · needs real volume
 
@@ -218,7 +218,7 @@ Rolling Volume Weighted Average Price with sigma bands and slope
 
 Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma)
 
-<IndicatorChart name="trend_relationship" />
+[See it in the showcase](../../../showcase/trend_relationship/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -235,7 +235,7 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 Ichimoku Kinko Hyo Cloud
 
-<IndicatorChart name="ichimoku" />
+[See it in the showcase](../../../showcase/ichimoku/)
 
 **Output** unit Price, range not declared · **warmup** 52 bars
 
@@ -253,7 +253,7 @@ Requires `kijun_p` to be smaller than `senkou_b_p`.
 
 Supertrend ATR Trailing Stop
 
-<IndicatorChart name="supertrend" />
+[See it in the showcase](../../../showcase/supertrend/)
 
 **Output** unit Price, range not declared · **warmup** 10 bars
 
@@ -266,7 +266,7 @@ Supertrend ATR Trailing Stop
 
 Parabolic SAR
 
-<IndicatorChart name="parabolic_sar" />
+[See it in the showcase](../../../showcase/parabolic_sar/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
 
@@ -279,7 +279,7 @@ Parabolic SAR
 
 Donchian Channels
 
-<IndicatorChart name="donchian" />
+[See it in the showcase](../../../showcase/donchian/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -291,7 +291,7 @@ Donchian Channels
 
 Keltner Channels
 
-<IndicatorChart name="keltner" />
+[See it in the showcase](../../../showcase/keltner/)
 
 **Output** unit Price, range not declared · **warmup** 10 bars
 
@@ -305,7 +305,7 @@ Keltner Channels
 
 Bollinger Bands (build_typed accepts variance=population|sample for the standard-deviation divisor; population is the default)
 
-<IndicatorChart name="bollinger" />
+[See it in the showcase](../../../showcase/bollinger/)
 
 **Output** unit Price, range not declared · **warmup** 20 bars
 
@@ -319,7 +319,7 @@ Bollinger Bands (build_typed accepts variance=population|sample for the standard
 
 Anchored Time Weighted Average Price (no volume; build_typed accepts weighting=per_bar|by_duration and anchor=continuous|daily|manual_timestamp)
 
-<IndicatorChart name="twap" />
+[See it in the showcase](../../../showcase/twap/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
 
@@ -334,7 +334,7 @@ Anchored Time Weighted Average Price (no volume; build_typed accepts weighting=p
 
 MIDAS launch-anchored curve with Topfinder/Bottomfinder projection (build_typed with mode=topfinder|bottomfinder)
 
-<IndicatorChart name="midas" />
+[See it in the showcase](../../../showcase/midas/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars · needs real volume
 
@@ -350,7 +350,7 @@ MIDAS launch-anchored curve with Topfinder/Bottomfinder projection (build_typed 
 
 Moving Average Convergence Divergence
 
-<IndicatorChart name="macd" />
+[See it in the showcase](../../../showcase/macd/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 26 bars
 
@@ -366,7 +366,7 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 Price Momentum Oscillator (twice-smoothed one-bar return with alpha = 2/length, scaled by ten)
 
-<IndicatorChart name="pmo" />
+[See it in the showcase](../../../showcase/pmo/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 55 bars
 
@@ -380,7 +380,7 @@ Price Momentum Oscillator (twice-smoothed one-bar return with alpha = 2/length, 
 
 Stochastic Momentum Index (double-smoothed position of the close relative to the midpoint of the high-low range)
 
-<IndicatorChart name="smi" />
+[See it in the showcase](../../../showcase/smi/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 14 bars
 
@@ -395,7 +395,7 @@ Stochastic Momentum Index (double-smoothed position of the close relative to the
 
 Rank Correlation Index (rank of prices against rank of time, scaled by 100)
 
-<IndicatorChart name="rci" />
+[See it in the showcase](../../../showcase/rci/)
 
 **Output** unit Ratio, range -100 – 100 · **warmup** 9 bars
 
@@ -407,7 +407,7 @@ Rank Correlation Index (rank of prices against rank of time, scaled by 100)
 
 TRIX (rate of change of a triple-smoothed price series, in percent)
 
-<IndicatorChart name="trix" />
+[See it in the showcase](../../../showcase/trix/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 16 bars
 
@@ -420,7 +420,7 @@ TRIX (rate of change of a triple-smoothed price series, in percent)
 
 True Strength Index
 
-<IndicatorChart name="tsi" />
+[See it in the showcase](../../../showcase/tsi/)
 
 **Output** unit Ratio, range -100 – 100 · **warmup** 2 bars
 
@@ -436,7 +436,7 @@ Requires `short_len` to be smaller than `long_len`.
 
 Classic Stochastic Oscillator
 
-<IndicatorChart name="stochastic" />
+[See it in the showcase](../../../showcase/stochastic/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 16 bars
 
@@ -449,7 +449,7 @@ Classic Stochastic Oscillator
 
 Rate of Change / Momentum
 
-<IndicatorChart name="roc" />
+[See it in the showcase](../../../showcase/roc/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 13 bars
 
@@ -461,7 +461,7 @@ Rate of Change / Momentum
 
 Ultimate Oscillator
 
-<IndicatorChart name="ultimate_oscillator" />
+[See it in the showcase](../../../showcase/ultimate_oscillator/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 29 bars
 
@@ -479,7 +479,7 @@ Requires `period2` to be smaller than `period3`.
 
 Awesome Oscillator
 
-<IndicatorChart name="awesome_oscillator" />
+[See it in the showcase](../../../showcase/awesome_oscillator/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 34 bars
 
@@ -494,7 +494,7 @@ Requires `fast_period` to be smaller than `slow_period`.
 
 Percentage Price Oscillator
 
-<IndicatorChart name="ppo" />
+[See it in the showcase](../../../showcase/ppo/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 26 bars
 
@@ -510,7 +510,7 @@ Requires `fast_period` to be smaller than `slow_period`.
 
 Chande Momentum Oscillator
 
-<IndicatorChart name="cmo" />
+[See it in the showcase](../../../showcase/cmo/)
 
 **Output** unit Ratio, range -100 – 100 · **warmup** 15 bars
 
@@ -522,7 +522,7 @@ Chande Momentum Oscillator
 
 Elder Ray Index (Bull/Bear Power)
 
-<IndicatorChart name="elder_ray" />
+[See it in the showcase](../../../showcase/elder_ray/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 13 bars
 
@@ -534,7 +534,7 @@ Elder Ray Index (Bull/Bear Power)
 
 Connors RSI
 
-<IndicatorChart name="connors_rsi" />
+[See it in the showcase](../../../showcase/connors_rsi/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 6 bars
 
@@ -548,7 +548,7 @@ Connors RSI
 
 Coppock Curve
 
-<IndicatorChart name="coppock" />
+[See it in the showcase](../../../showcase/coppock/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 24 bars
 
@@ -556,7 +556,7 @@ Coppock Curve
 
 Detrended Price Oscillator
 
-<IndicatorChart name="dpo" />
+[See it in the showcase](../../../showcase/dpo/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
 
@@ -568,7 +568,7 @@ Detrended Price Oscillator
 
 Know Sure Thing Oscillator
 
-<IndicatorChart name="kst" />
+[See it in the showcase](../../../showcase/kst/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 53 bars
 
@@ -576,7 +576,7 @@ Know Sure Thing Oscillator
 
 Relative Vigor Index
 
-<IndicatorChart name="rvi" />
+[See it in the showcase](../../../showcase/rvi/)
 
 **Output** unit Ratio, range not declared · **warmup** 13 bars
 
@@ -588,7 +588,7 @@ Relative Vigor Index
 
 Balance of Power
 
-<IndicatorChart name="bop" />
+[See it in the showcase](../../../showcase/bop/)
 
 **Output** unit Ratio, range -1 – 1 · **warmup** 14 bars
 
@@ -600,7 +600,7 @@ Balance of Power
 
 BBTrend (how far a short Bollinger set has moved out of a long one, in percent of the short basis; build_typed accepts variance=population|sample for both sets)
 
-<IndicatorChart name="bbtrend" />
+[See it in the showcase](../../../showcase/bbtrend/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 50 bars
 
@@ -617,7 +617,7 @@ Requires `short_len` to be smaller than `long_len`.
 
 Rolling Z-Score Engine
 
-<IndicatorChart name="zscore" />
+[See it in the showcase](../../../showcase/zscore/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 20 bars
 
@@ -629,7 +629,7 @@ Rolling Z-Score Engine
 
 Relative Strength Index (build_typed accepts smoothing=wilder|ema for the up/down averages; wilder is the default)
 
-<IndicatorChart name="rsi" />
+[See it in the showcase](../../../showcase/rsi/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 15 bars
 
@@ -648,7 +648,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 Stochastic RSI
 
-<IndicatorChart name="stoch_rsi" />
+[See it in the showcase](../../../showcase/stoch_rsi/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 32 bars
 
@@ -667,7 +667,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 Commodity Channel Index (value is the EMA(avg_len) of the raw CCI; avg_len = 1 gives the raw line)
 
-<IndicatorChart name="cci" />
+[See it in the showcase](../../../showcase/cci/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 20 bars
 
@@ -684,7 +684,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 Money Flow Index (value is the EMA(avg_len) of the raw MFI; avg_len = 1 gives the raw line)
 
-<IndicatorChart name="mfi" />
+[See it in the showcase](../../../showcase/mfi/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 14 bars · needs real volume
 
@@ -701,7 +701,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 Williams %R (0..100 convention; value is the EMA(avg_len) of the raw line, avg_len = 1 gives the raw line)
 
-<IndicatorChart name="williams_r" />
+[See it in the showcase](../../../showcase/williams_r/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 14 bars
 
@@ -718,7 +718,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 Fisher Transform (value is the EMA(avg_len) of the raw transform; avg_len = 1 gives the raw line)
 
-<IndicatorChart name="fisher_transform" />
+[See it in the showcase](../../../showcase/fisher_transform/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 10 bars
 
@@ -735,7 +735,7 @@ Requires `oversold` to be smaller than `overbought`.
 
 WaveTrend Oscillator (wt1, wt2)
 
-<IndicatorChart name="wavetrend" />
+[See it in the showcase](../../../showcase/wavetrend/)
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 4 bars
 
@@ -752,7 +752,7 @@ WaveTrend Oscillator (wt1, wt2)
 
 Average True Range (true-range average: build_typed accepts smoothing=rma|sma|ema|wma, build_checked the same as smoothing=0|1|2|3; rma is the default and the signal line stays Wilder-smoothed)
 
-<IndicatorChart name="atr" />
+[See it in the showcase](../../../showcase/atr/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 33 bars
 
@@ -766,7 +766,7 @@ Average True Range (true-range average: build_typed accepts smoothing=rma|sma|em
 
 Average Directional Index
 
-<IndicatorChart name="adx" />
+[See it in the showcase](../../../showcase/adx/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 28 bars
 
@@ -780,7 +780,7 @@ Average Directional Index
 
 Directional Movement Index (+DI / -DI)
 
-<IndicatorChart name="dmi" />
+[See it in the showcase](../../../showcase/dmi/)
 
 **Output** unit Ratio, range -100 – 100 · **warmup** 15 bars
 
@@ -792,7 +792,7 @@ Directional Movement Index (+DI / -DI)
 
 Aroon Indicator (Up, Down, Oscillator)
 
-<IndicatorChart name="aroon" />
+[See it in the showcase](../../../showcase/aroon/)
 
 **Output** unit Ratio, range -100 – 100 · **warmup** 15 bars
 
@@ -804,7 +804,7 @@ Aroon Indicator (Up, Down, Oscillator)
 
 Vortex Indicator (+VI, -VI)
 
-<IndicatorChart name="vortex" />
+[See it in the showcase](../../../showcase/vortex/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 15 bars
 
@@ -816,7 +816,7 @@ Vortex Indicator (+VI, -VI)
 
 Choppiness Index
 
-<IndicatorChart name="choppiness" />
+[See it in the showcase](../../../showcase/choppiness/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 14 bars
 
@@ -828,7 +828,7 @@ Choppiness Index
 
 Relative Volatility Index (the RSI construction applied to the standard deviation; build_typed accepts variant=close|high_low). Unrelated to "rvi", the Relative Vigor Index
 
-<IndicatorChart name="relative_volatility" />
+[See it in the showcase](../../../showcase/relative_volatility/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 23 bars
 
@@ -842,7 +842,7 @@ Relative Volatility Index (the RSI construction applied to the standard deviatio
 
 Ulcer Index (root mean square of the percentage drawdowns below the running high)
 
-<IndicatorChart name="ulcer_index" />
+[See it in the showcase](../../../showcase/ulcer_index/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 27 bars
 
@@ -854,7 +854,7 @@ Ulcer Index (root mean square of the percentage drawdowns below the running high
 
 True Range in price units
 
-<IndicatorChart name="true_range" />
+[See it in the showcase](../../../showcase/true_range/)
 
 **Output** unit Unitless, range 0 and above · **warmup** 1 bars
 
@@ -862,7 +862,7 @@ True Range in price units
 
 Annualized Historical Volatility
 
-<IndicatorChart name="historical_volatility" />
+[See it in the showcase](../../../showcase/historical_volatility/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 21 bars
 
@@ -874,7 +874,7 @@ Annualized Historical Volatility
 
 Garman-Klass Volatility Estimator
 
-<IndicatorChart name="garman_klass" />
+[See it in the showcase](../../../showcase/garman_klass/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 20 bars
 
@@ -886,7 +886,7 @@ Garman-Klass Volatility Estimator
 
 Mass Index Reversal Detector
 
-<IndicatorChart name="mass_index" />
+[See it in the showcase](../../../showcase/mass_index/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 25 bars
 
@@ -898,7 +898,7 @@ Mass Index Reversal Detector
 
 Chande Kroll Stop (window extremes minus/plus a Wilder-smoothed ATR, passed through a second extreme window)
 
-<IndicatorChart name="chande_kroll" />
+[See it in the showcase](../../../showcase/chande_kroll/)
 
 **Output** unit Price, range not declared · **warmup** 18 bars
 
@@ -912,7 +912,7 @@ Chande Kroll Stop (window extremes minus/plus a Wilder-smoothed ATR, passed thro
 
 Chandelier Exit (ATR trailing stop with direction flip)
 
-<IndicatorChart name="chandelier_exit" />
+[See it in the showcase](../../../showcase/chandelier_exit/)
 
 **Output** unit Price, range not declared · **warmup** 22 bars
 
@@ -925,7 +925,7 @@ Chandelier Exit (ATR trailing stop with direction flip)
 
 Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak flips, and bull/bear trap detection (use AdaptiveChandelierEngine::new directly for use_close_extremes=false or simple_adaptive=true; this f64-only entry uses the documented defaults for both)
 
-<IndicatorChart name="adaptive_chandelier" />
+[See it in the showcase](../../../showcase/adaptive_chandelier/)
 
 **Output** unit Price, range not declared · **warmup** 30 bars
 
@@ -941,7 +941,7 @@ Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak fl
 
 Williams Vix Fix volatility spike detector: panic lows (WVF, alert panic_bottom) and, mirrored, blow-off tops (inverse VIX Fix, extra inverse/inverse_band, alert blowoff_top)
 
-<IndicatorChart name="vix_fix" />
+[See it in the showcase](../../../showcase/vix_fix/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 39 bars
 
@@ -955,7 +955,7 @@ Williams Vix Fix volatility spike detector: panic lows (WVF, alert panic_bottom)
 
 Kaufman-style leg efficiency ratio
 
-<IndicatorChart name="efficiency" />
+[See it in the showcase](../../../showcase/efficiency/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 15 bars
 
@@ -967,7 +967,7 @@ Kaufman-style leg efficiency ratio
 
 Volatility Regime & Squeeze Detector
 
-<IndicatorChart name="volatility_regime" />
+[See it in the showcase](../../../showcase/volatility_regime/)
 
 **Output** unit Unitless, range not declared · **warmup** 20 bars
 
@@ -983,7 +983,7 @@ Volatility Regime & Squeeze Detector
 
 Price Volume Trend (volume weighted by the relative price change, accumulated)
 
-<IndicatorChart name="pvt" />
+[See it in the showcase](../../../showcase/pvt/)
 
 **Output** unit Volume, range not declared · **warmup** 2 bars · needs real volume
 
@@ -991,7 +991,7 @@ Price Volume Trend (volume weighted by the relative price change, accumulated)
 
 Elder's Force Index (price change times volume, EMA-smoothed)
 
-<IndicatorChart name="efi" />
+[See it in the showcase](../../../showcase/efi/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 14 bars · needs real volume
 
@@ -1003,7 +1003,7 @@ Elder's Force Index (price change times volume, EMA-smoothed)
 
 Relative Volume at Time (volume against the same time of day on previous days, regular and cumulative)
 
-<IndicatorChart name="rvat" />
+[See it in the showcase](../../../showcase/rvat/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 1441 bars · needs real volume
 
@@ -1017,7 +1017,7 @@ Relative Volume at Time (volume against the same time of day on previous days, r
 
 High-resolution volume flow with absorption detection (OHLC-estimated via this registry entry point; use HiResVolumeFlowEngine::on_bar_with_aggressor/on_intrabar_group directly for direct aggressor/intrabar-delta resolution)
 
-<IndicatorChart name="hires_volume_flow" />
+[See it in the showcase](../../../showcase/hires_volume_flow/)
 
 **Output** unit Volume, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1029,7 +1029,7 @@ High-resolution volume flow with absorption detection (OHLC-estimated via this r
 
 Full-bin price/volume profile with HVN/LVN/AVN classification, a delta profile, and zone formation (use ExtendedVolumeProfileEngine::on_intrabar_group directly for intrabar-resolution distribution)
 
-<IndicatorChart name="extended_volume_profile" />
+[See it in the showcase](../../../showcase/extended_volume_profile/)
 
 **Output** unit Price, range not declared · **warmup** 70 bars · needs real volume
 
@@ -1042,7 +1042,7 @@ Full-bin price/volume profile with HVN/LVN/AVN classification, a delta profile, 
 
 Fixed-price-grid volume profile with real bin lifecycle (birth/growth/expiry across updates) and a per-bin absorption profile
 
-<IndicatorChart name="persistent_volume_profile" />
+[See it in the showcase](../../../showcase/persistent_volume_profile/)
 
 **Output** unit Price, range not declared · **warmup** 70 bars · needs real volume
 
@@ -1055,7 +1055,7 @@ Fixed-price-grid volume profile with real bin lifecycle (birth/growth/expiry acr
 
 Price/volume distribution profile with point-of-control
 
-<IndicatorChart name="volume_profile" />
+[See it in the showcase](../../../showcase/volume_profile/)
 
 **Output** unit Price, range not declared · **warmup** 70 bars · needs real volume
 
@@ -1068,7 +1068,7 @@ Price/volume distribution profile with point-of-control
 
 Volume-by-price profile binned by dollar volume (volume x price) instead of raw volume, plus an aggregate bull/bear flow-bias percentage
 
-<IndicatorChart name="money_flow_profile" />
+[See it in the showcase](../../../showcase/money_flow_profile/)
 
 **Output** unit Price, range not declared · **warmup** 2 bars · needs real volume
 
@@ -1082,7 +1082,7 @@ Volume-by-price profile binned by dollar volume (volume x price) instead of raw 
 
 Volume and Average Volume
 
-<IndicatorChart name="volume" />
+[See it in the showcase](../../../showcase/volume/)
 
 **Output** unit Volume, range 0 and above · **warmup** 1 bars · needs real volume
 
@@ -1094,7 +1094,7 @@ Volume and Average Volume
 
 Relative Volume vs Moving Average
 
-<IndicatorChart name="rvol" />
+[See it in the showcase](../../../showcase/rvol/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 20 bars · needs real volume
 
@@ -1106,7 +1106,7 @@ Relative Volume vs Moving Average
 
 On-Balance Volume
 
-<IndicatorChart name="obv" />
+[See it in the showcase](../../../showcase/obv/)
 
 **Output** unit Volume, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1114,7 +1114,7 @@ On-Balance Volume
 
 Chaikin Money Flow
 
-<IndicatorChart name="cmf" />
+[See it in the showcase](../../../showcase/cmf/)
 
 **Output** unit Ratio, range -1 – 1 · **warmup** 20 bars · needs real volume
 
@@ -1126,7 +1126,7 @@ Chaikin Money Flow
 
 Accumulation / Distribution Line
 
-<IndicatorChart name="acc_dist" />
+[See it in the showcase](../../../showcase/acc_dist/)
 
 **Output** unit Volume, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1134,7 +1134,7 @@ Accumulation / Distribution Line
 
 Cumulative Volume Delta (Aufteilung aus der Bar-Form geschätzt, nicht aus klassifizierten Abschlüssen)
 
-<IndicatorChart name="cvd" />
+[See it in the showcase](../../../showcase/cvd/)
 
 **Output** unit Volume, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1142,7 +1142,7 @@ Cumulative Volume Delta (Aufteilung aus der Bar-Form geschätzt, nicht aus klass
 
 Klinger Volume Force Oscillator
 
-<IndicatorChart name="klinger" />
+[See it in the showcase](../../../showcase/klinger/)
 
 **Output** unit Volume, range open, centred on 0 · **warmup** 55 bars · needs real volume
 
@@ -1158,7 +1158,7 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 Ease of Movement
 
-<IndicatorChart name="eom" />
+[See it in the showcase](../../../showcase/eom/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 15 bars · needs real volume
 
@@ -1171,7 +1171,7 @@ Ease of Movement
 
 Negative Volume Index
 
-<IndicatorChart name="nvi" />
+[See it in the showcase](../../../showcase/nvi/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1179,7 +1179,7 @@ Negative Volume Index
 
 Positive Volume Index
 
-<IndicatorChart name="pvi" />
+[See it in the showcase](../../../showcase/pvi/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars · needs real volume
 
@@ -1187,7 +1187,7 @@ Positive Volume Index
 
 Chaikin Oscillator
 
-<IndicatorChart name="chaikin_oscillator" />
+[See it in the showcase](../../../showcase/chaikin_oscillator/)
 
 **Output** unit Volume, range open, centred on 0 · **warmup** 10 bars · needs real volume
 
@@ -1204,7 +1204,7 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 Order block detection from displacement candles (ATR-filtered)
 
-<IndicatorChart name="order_block" />
+[See it in the showcase](../../../showcase/order_block/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
 
@@ -1217,7 +1217,7 @@ Order block detection from displacement candles (ATR-filtered)
 
 Fair value gap (imbalance) detection
 
-<IndicatorChart name="liquidity_fvg" />
+[See it in the showcase](../../../showcase/liquidity_fvg/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -1229,7 +1229,7 @@ Fair value gap (imbalance) detection
 
 Break of structure / change of character (BOS/CHoCH) detection
 
-<IndicatorChart name="market_structure_breaks" />
+[See it in the showcase](../../../showcase/market_structure_breaks/)
 
 **Output** unit Unitless, range not declared · **warmup** 11 bars
 
@@ -1241,7 +1241,7 @@ Break of structure / change of character (BOS/CHoCH) detection
 
 Swing pivot detection with a rolling structure score
 
-<IndicatorChart name="pivots_structure" />
+[See it in the showcase](../../../showcase/pivots_structure/)
 
 **Output** unit Unitless, range not declared · **warmup** 11 bars
 
@@ -1255,7 +1255,7 @@ Swing pivot detection with a rolling structure score
 
 Normalised candle classification — reports every pattern it recognises
 
-<IndicatorChart name="candle_classification" />
+[See it in the showcase](../../../showcase/candle_classification/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -1280,7 +1280,7 @@ Normalised candle classification — reports every pattern it recognises
 
 ZigZag Swing Leg Engine
 
-<IndicatorChart name="zigzag" />
+[See it in the showcase](../../../showcase/zigzag/)
 
 **Output** unit Price, range not declared · **warmup** 25 bars
 
@@ -1293,7 +1293,7 @@ ZigZag Swing Leg Engine
 
 Multi-Pivot Set Engine
 
-<IndicatorChart name="pivot_sets" />
+[See it in the showcase](../../../showcase/pivot_sets/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
 
@@ -1305,7 +1305,7 @@ Multi-Pivot Set Engine
 
 BOS and CHoCH Market Structure Engine
 
-<IndicatorChart name="bos_choch" />
+[See it in the showcase](../../../showcase/bos_choch/)
 
 **Output** unit Unitless, range not declared · **warmup** 11 bars
 
@@ -1317,7 +1317,7 @@ BOS and CHoCH Market Structure Engine
 
 Liquidity Sweeps and EQH/EQL Detector
 
-<IndicatorChart name="liquidity_sweeps" />
+[See it in the showcase](../../../showcase/liquidity_sweeps/)
 
 **Output** unit Unitless, range not declared · **warmup** 11 bars
 
@@ -1330,7 +1330,7 @@ Liquidity Sweeps and EQH/EQL Detector
 
 Failed breakout at a confirmed pivot-cluster zone: wick through support/resistance, close back; extra["wick"] is the wick tip (natural stop)
 
-<IndicatorChart name="zone_rejection" />
+[See it in the showcase](../../../showcase/zone_rejection/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
 
@@ -1346,7 +1346,7 @@ Failed breakout at a confirmed pivot-cluster zone: wick through support/resistan
 
 Double bottom/top as a streaming event: forming on the second pivot (equal level within tolerance_atr, counter-swing ≥ min_depth_atr), confirmed on a close through the neckline; extra: neckline, target (measured move), wick (invalidation, natural stop)
 
-<IndicatorChart name="double_pattern" />
+[See it in the showcase](../../../showcase/double_pattern/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
 
@@ -1363,7 +1363,7 @@ Double bottom/top as a streaming event: forming on the second pivot (equal level
 
 Bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage
 
-<IndicatorChart name="bottom_formation" />
+[See it in the showcase](../../../showcase/bottom_formation/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -1377,7 +1377,7 @@ Bottom/top formation as a sequence of stages: attempt (new low below the last sw
 
 Price-pivot-anchored divergence (regular and hidden) on a selectable oscillator (0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI); fires on the confirmation bar, extra["pivot_price"] is the pivot (natural stop)
 
-<IndicatorChart name="pivot_divergence" />
+[See it in the showcase](../../../showcase/pivot_divergence/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
 
@@ -1396,7 +1396,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 Divergence with the pivots found in the oscillator (TradingView's divergence scripts: ta.pivotlow/pivothigh of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence
 
-<IndicatorChart name="oscillator_pivot_divergence" />
+[See it in the showcase](../../../showcase/oscillator_pivot_divergence/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
 
@@ -1415,7 +1415,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)
 
-<IndicatorChart name="liquidity_pools" />
+[See it in the showcase](../../../showcase/liquidity_pools/)
 
 **Output** unit Unitless, range not declared · **warmup** 11 bars
 
@@ -1428,7 +1428,7 @@ BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification 
 
 Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/UTAD, SOS/SOW/LPS/LPSY, sequence validation and Cause/Quality scoring
 
-<IndicatorChart name="wyckoff" />
+[See it in the showcase](../../../showcase/wyckoff/)
 
 **Output** unit Unitless, range not declared · **warmup** 20 bars
 
@@ -1442,7 +1442,7 @@ Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/
 
 ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (deviation_mode=percent|atr_multiple, in build_checked as 0|1; deviation_pct is the deviation in percent or in ATR multiples, deviation_value its former typed name); AdvancedZigZagEngine::reduce/project_to_timeframe for recursive levels and HTF projection
 
-<IndicatorChart name="zigzag_advanced" />
+[See it in the showcase](../../../showcase/zigzag_advanced/)
 
 **Output** unit Price, range not declared · **warmup** 7 bars
 
@@ -1460,7 +1460,7 @@ ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (d
 
 Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)
 
-<IndicatorChart name="flow_exhaustion" />
+[See it in the showcase](../../../showcase/flow_exhaustion/)
 
 **Output** unit Ratio, range not declared · **warmup** 30 bars · needs real volume
 
@@ -1480,7 +1480,7 @@ Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real v
 
 Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)
 
-<IndicatorChart name="overextension_risk" />
+[See it in the showcase](../../../showcase/overextension_risk/)
 
 **Output** unit Ratio, range not declared · **warmup** 81 bars
 
@@ -1499,7 +1499,7 @@ Overextension Risk: overextension score per side from three roles — stretch (E
 
 Smoothed Supertrend: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)
 
-<IndicatorChart name="smoothed_supertrend" />
+[See it in the showcase](../../../showcase/smoothed_supertrend/)
 
 **Output** unit Price, range not declared · **warmup** 129 bars
 
@@ -1518,7 +1518,7 @@ Smoothed Supertrend: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend m
 
 Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)
 
-<IndicatorChart name="coil_release" />
+[See it in the showcase](../../../showcase/coil_release/)
 
 **Output** unit Ratio, range not declared · **warmup** 58 bars
 
@@ -1537,7 +1537,7 @@ Coil Release: coil strength from symbolic complexity, box-counting fractal dimen
 
 Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)
 
-<IndicatorChart name="compression_zones" />
+[See it in the showcase](../../../showcase/compression_zones/)
 
 **Output** unit Ratio, range not declared · **warmup** 28 bars
 
@@ -1555,7 +1555,7 @@ Compression Zones: compression zones from a 0..80 score (ATR compression, ADX ch
 
 ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move
 
-<IndicatorChart name="roc_context" />
+[See it in the showcase](../../../showcase/roc_context/)
 
 **Output** unit Ratio, range not declared · **warmup** 55 bars
 
@@ -1574,7 +1574,7 @@ ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2
 
 Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)
 
-<IndicatorChart name="tradability_filter" />
+[See it in the showcase](../../../showcase/tradability_filter/)
 
 **Output** unit Ratio, range not declared · **warmup** 190 bars
 
@@ -1593,7 +1593,7 @@ Tradability Filter: no-trade filter with an eight-state machine (no_trade, balan
 
 Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)
 
-<IndicatorChart name="reaction_speed" />
+[See it in the showcase](../../../showcase/reaction_speed/)
 
 **Output** unit Ratio, range not declared · **warmup** 63 bars
 
@@ -1610,7 +1610,7 @@ Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > or
 
 Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended
 
-<IndicatorChart name="market_state_chain" />
+[See it in the showcase](../../../showcase/market_state_chain/)
 
 **Output** unit Ratio, range not declared · **warmup** 119 bars
 
@@ -1629,7 +1629,7 @@ Market State Chain: six debounced states (up/down trend, up/down weak, compressi
 
 RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout
 
-<IndicatorChart name="rsi_cycle_stats" />
+[See it in the showcase](../../../showcase/rsi_cycle_stats/)
 
 **Output** unit Ratio, range not declared · **warmup** 15 bars
 
@@ -1648,7 +1648,7 @@ RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure /
 
 Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down
 
-<IndicatorChart name="price_average_relation" />
+[See it in the showcase](../../../showcase/price_average_relation/)
 
 **Output** unit Unitless, range not declared · **warmup** 113 bars
 
@@ -1667,7 +1667,7 @@ Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 
 
 Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)
 
-<IndicatorChart name="leg_conviction" />
+[See it in the showcase](../../../showcase/leg_conviction/)
 
 **Output** unit Ratio, range not declared · **warmup** 12 bars
 
@@ -1686,7 +1686,7 @@ Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR 
 
 Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)
 
-<IndicatorChart name="trend_break_risk" />
+[See it in the showcase](../../../showcase/trend_break_risk/)
 
 **Output** unit Ratio, range not declared · **warmup** 15 bars
 
@@ -1703,7 +1703,7 @@ Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structur
 
 Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal
 
-<IndicatorChart name="sweep_reversal_score" />
+[See it in the showcase](../../../showcase/sweep_reversal_score/)
 
 **Output** unit Unitless, range not declared · **warmup** 63 bars
 
@@ -1723,7 +1723,7 @@ Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off)
 
 Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near
 
-<IndicatorChart name="equal_level_liquidity" />
+[See it in the showcase](../../../showcase/equal_level_liquidity/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
 
@@ -1742,7 +1742,7 @@ Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr A
 
 Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost
 
-<IndicatorChart name="leg_character" />
+[See it in the showcase](../../../showcase/leg_character/)
 
 **Output** unit Ratio, range not declared · **warmup** 11 bars
 
@@ -1762,7 +1762,7 @@ Leg Character: character of the live leg from the last alternating pivot (min_le
 
 Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready
 
-<IndicatorChart name="accumulation_phase" />
+[See it in the showcase](../../../showcase/accumulation_phase/)
 
 **Output** unit Unitless, range not declared · **warmup** 39 bars
 
@@ -1781,7 +1781,7 @@ Accumulation Phase: accumulation (bottom) and distribution (top) as process stat
 
 Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict
 
-<IndicatorChart name="reversal_setup_score" />
+[See it in the showcase](../../../showcase/reversal_setup_score/)
 
 **Output** unit Unitless, range not declared · **warmup** 69 bars
 
@@ -1789,7 +1789,7 @@ Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear 
 
 Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break
 
-<IndicatorChart name="structure_zones" />
+[See it in the showcase](../../../showcase/structure_zones/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
 
@@ -1797,7 +1797,7 @@ Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/
 
 Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves
 
-<IndicatorChart name="structural_flow" />
+[See it in the showcase](../../../showcase/structural_flow/)
 
 **Output** unit Unitless, range not declared · **warmup** 192 bars
 
@@ -1805,7 +1805,7 @@ Structural Flow (Balanced preset, relative-volume participation): multi-horizon 
 
 Trend Quality Score Engine
 
-<IndicatorChart name="trend_quality" />
+[See it in the showcase](../../../showcase/trend_quality/)
 
 **Output** unit Unitless, range not declared · **warmup** 28 bars · needs real volume
 
@@ -1817,7 +1817,7 @@ Trend Quality Score Engine
 
 Buy/Sell Pressure Estimator
 
-<IndicatorChart name="buy_sell_pressure" />
+[See it in the showcase](../../../showcase/buy_sell_pressure/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -1829,7 +1829,7 @@ Buy/Sell Pressure Estimator
 
 Multi-Factor Composite Market Score
 
-<IndicatorChart name="multi_factor" />
+[See it in the showcase](../../../showcase/multi_factor/)
 
 **Output** unit Ratio, range not declared · **warmup** 28 bars · needs real volume
 

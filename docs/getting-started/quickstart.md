@@ -65,27 +65,14 @@ Three things to note:
 
 ## Draw it
 
-`render_chart_svg` turns bars and indicator lines into an SVG string:
-
-```rust
-use kestrel_chartkit::viz::{render_chart_svg, ChartBarData, ChartRenderData, ChartSeries};
-
-let data = ChartRenderData {
-    title: "RSI input".to_string(),
-    bars: bars.iter().map(ChartBarData::from).collect(),
-    series: vec![ChartSeries {
-        name: "SMA 20".to_string(),
-        color: "#ffb74d".to_string(),
-        points: sma_points, // Vec<(timestamp, value)>
-    }],
-    zones: Vec::new(),
-    markers: Vec::new(),
-};
-std::fs::write("chart.svg", render_chart_svg(&data, 800, 400))?;
-```
+kestrel-chartkit computes and draws nothing. Hand the values to a renderer —
+[chartlet](https://casoon.github.io/chartlet/) for a static chart, as on this site, or
+[kestrel-loom](https://github.com/casoon/kestrel-loom) for an interactive one in the browser. The
+[visualising guide](../../guides/visualising/) shows how the site turns indicator output into a
+chartlet specification.
 
 ## Next steps
 
 - [Indicators](../../guides/indicators/): the trait, the registry and the output fields.
 - [Market regime](../../guides/market-regime/) and [Composite scoring](../../guides/composite-scoring/).
-- [SVG charts](../../guides/svg-charts/): both renderers and the colour contract.
+- [Visualising results](../../guides/visualising/): chartlet, kestrel-loom and the quick-look renderers.

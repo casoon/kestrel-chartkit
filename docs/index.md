@@ -10,7 +10,9 @@ order: 0
 
 kestrel-chartkit is a Rust library for technical analysis. It streams price bars through
 indicators, classifies the market regime, combines indicator readings into one composite signal
-and renders the results as static SVG. Everything runs in-process on data you pass in.
+and returns plain data. Everything runs in-process on data you pass in; drawing is left to a
+renderer such as [chartlet](https://casoon.github.io/chartlet/) or
+[kestrel-loom](https://github.com/casoon/kestrel-loom).
 
 ## What it covers
 
@@ -23,8 +25,10 @@ and renders the results as static SVG. Everything runs in-process on data you pa
 - **Composite scoring:** `score_indicator` turns one indicator reading into a subscore,
   `aggregate_subscores` weighs them into a direction, a permission grade and an ATR-based risk
   plan.
-- **SVG output:** `render_chart_svg` draws candles, indicator lines, zones and markers;
-  `render_scene_svg` draws a multi-pane scene.
+- **Data for charts:** a renderer-neutral scene model (`viz::scene`) for overlays, and every
+  output as plain data for [chartlet](https://casoon.github.io/chartlet/) or
+  [kestrel-loom](https://github.com/casoon/kestrel-loom). See
+  [Visualising results](guides/visualising/).
 - **Structure and events:** confirmed pivots and zones with a known event time, and detectors
   for failed breakouts, double bottoms and tops, bottom formation and divergences that alert on
   the bar the event becomes known.
@@ -46,7 +50,7 @@ documentation focuses on the areas above; the README and the API docs cover the 
 - **Pre-1.0, in development.** Root-level re-exports are the preferred API. Lower-level modules
   are public for advanced use. Nothing here is a stable foundation yet: expect breaking changes.
 - **Pure computation.** The crate holds mathematics only: indicators, statistics, valuation
-  formulas and renderers. It contains no credentials, no account or personal data and no
+  formulas. It contains no credentials, no account or personal data and no
   connection to any service.
 
 ## License
@@ -60,7 +64,7 @@ file is authoritative.
 ## How the docs are organised
 
 - **Getting started:** add the crate and stream a first indicator.
-- **Guides:** indicators, market regime, composite scoring, SVG charts, structure and events,
+- **Guides:** indicators, market regime, composite scoring, visualising results, structure and events,
   analytics and evaluation.
 - **Reference:** overview of the public entry points, the generated list of all indicators with
   their parameters, and where the API docs live.

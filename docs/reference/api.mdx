@@ -11,6 +11,10 @@ order: 1
   unreleased state, run `cargo doc --open` in a clone of the repository.
 </Callout>
 
+## Overview
+
+<Diagram name="api-overview" />
+
 ## Indicators
 
 <ApiEntry
@@ -94,20 +98,25 @@ order: 1
   See [Composite scoring](../../guides/composite-scoring/) for thresholds and grades.
 </ApiEntry>
 
-## SVG
+## Visualisation
+
+kestrel-chartkit draws nothing for presentation; see
+[Visualising results](../../guides/visualising/) for chartlet and kestrel-loom.
 
 <ApiEntry
-  kind="fn"
-  name="viz::render_chart_svg"
-  signature={`pub fn render_chart_svg(data: &ChartRenderData, width: u32, height: u32) -> String`}
-/>
-
-<ApiEntry
-  kind="fn"
-  name="viz::render_scene_svg"
-  signature={`pub fn render_scene_svg(scene: &Scene, width: u32, height: u32, theme: &Theme) -> String`}
+  kind="struct"
+  name="viz::scene::Scene"
+  signature={`pub struct Scene { /* panes, axes and objects */ }`}
 >
-  See [SVG charts](../../guides/svg-charts/).
+  The renderer-neutral scene model for overlays (markers, levels, zones) that kestrel-loom draws.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="viz::render_chart_svg / viz::render_scene_svg"
+  signature={`pub fn render_chart_svg(data: &ChartRenderData, width: u32, height: u32) -> String`}
+>
+  Quick-look SVG for tests and debugging, not a presentation layer.
 </ApiEntry>
 
 ## Beyond these docs

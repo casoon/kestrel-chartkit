@@ -13,12 +13,10 @@ import {
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
-import catalog from '../../../examples/site/catalog.txt?raw';
-import { chartletChart } from '../chartlet';
-import { figure } from '../showcase';
+import { indicators, inlineChart, spec } from '../chartlet';
 
-// Written by `cargo run --example site_showcase`: one line per entry of `catalog()`.
-const indicatorCount = catalog.trim().split('\n').length;
+// Written by `cargo run --example site_showcase`: one entry per indicator of `catalog()`.
+const indicatorCount = indicators.length;
 const goldenSuites = Object.keys(import.meta.glob('../../../tests/golden_reference_*.rs', { query: '?raw' })).length;
 // Each contract case is one table headed `@<case>` in tests/fixtures/contract_*.txt: a complete
 // expected run of one indicator, bar by bar.
@@ -32,9 +30,10 @@ const contractCases = Object.values(contractFixtures)
   .reduce((a, b) => a + b, 0);
 
 const version = '0.31.0';
-// A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with chartlet.
-const hero = chartletChart('demo-chart');
-const composite = figure('composite-signal', 'Composite signal chart');
+// A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
+// chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
+const hero = inlineChart(spec('hero'), 'hero');
+const regime = inlineChart(spec('regime'), 'regime');
 
 const cargoToml = `[dependencies]
 kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v${version}" }`;
@@ -56,8 +55,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 <Base>
   <Hero
-    title="Technical analysis as plain, testable Rust: indicators, regimes, signals and charts."
-    lead="kestrel-chartkit turns a stream of price bars into the readings a trading tool needs: indicator values, the current market regime, a composite signal that explains itself, and static SVG charts. It is a library of mathematics, nothing more: you bring the bars, it computes."
+    title="Technical analysis as plain, testable Rust: indicators, regimes and signals."
+    lead="kestrel-chartkit turns a stream of price bars into the readings a trading tool needs: indicator values, the current market regime and a composite signal that explains itself. It is a library of mathematics, nothing more: you bring the bars, it computes, and a renderer of your choice draws."
   >
     <Install
       commands={[
@@ -100,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       },
       {
         title: 'One definition per indicator',
-        body: `Name, aliases, every parameter with default, accepted range and meaning, and how it is built, in one place. Configuration typos and out-of-range values are errors, not silent defaults. The <a href="${url('docs/reference/indicators/')}">indicator reference</a> is generated from these definitions.`,
+        body: `Name, aliases, every parameter with default, accepted range and meaning, and how it is built, in one place. Configuration typos and out-of-range values are errors, not silent defaults. The <a href="${url('docs/reference/indicators/')}">indicator reference</a> is generated from these definitions, the <a href="${url('showcase/')}">showcase</a> draws every one of them.`,
       },
       {
         title: 'Checked against independent references',
@@ -118,17 +117,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   />
 
   <BuildOutput
-    caption="A composite signal on synthetic bars: MACD, Vortex and Trend Quality scored per bar and weighed against the regime. Every chart on this site is an SVG written by the crate's own renderer (cargo run --example site_showcase)."
-    file="examples/site/composite-signal.svg"
+    caption="The market regime per bar, from classify_regime with ADX and ATR, on the fictitious CASOON share. kestrel-chartkit computes every value; chartlet draws them when this site is built. The showcase has one such chart for each of the 130 indicators."
+    file="examples/site_showcase.rs"
   >
-    <Fragment set:html={composite} />
+    <Fragment set:html={regime} />
   </BuildOutput>
 
   <Callout type="note" title="Pure computation">
-    The crate contains mathematics only: indicators, statistics, valuation formulas and renderers.
-    It fetches no market data, connects to no broker or exchange, and holds no credentials, keys,
-    account or personal data. A composite signal is a rule-based summary of indicator readings,
-    not a forecast, and nothing here is investment advice.
+    The crate contains mathematics only: indicators, statistics and valuation formulas. It fetches
+    no market data, connects to no broker or exchange, and holds no credentials, keys, account or
+    personal data. Drawing is left to a renderer: <a href={url('docs/guides/visualising/')}>chartlet</a>
+    for static charts like the ones on this site, or
+    <a href="https://github.com/casoon/kestrel-loom">kestrel-loom</a> for an interactive chart in the
+    browser, itself still in development. A composite signal is a rule-based summary of indicator
+    readings, not a forecast, and nothing here is investment advice.
   </Callout>
 
   <Quickstart

@@ -110,8 +110,8 @@ description names them.
 | Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `double_pattern`, `bottom_formation` |
 | Divergence                     | `pivot_divergence`, `oscillator_pivot_divergence`                   |
 
-Print the full list with `catalog()`, or see `examples/site/catalog.txt` in the repository, which
-`cargo run --example site_showcase` writes.
+Print the full list with `catalog()`. The [indicator reference](../../reference/indicators/) lists
+every entry with its parameters, the [showcase](../../../showcase/) draws each one.
 
 ## Input contract
 

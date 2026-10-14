@@ -1,0 +1,22 @@
+---
+// A chartlet diagram from site/diagrams/<name>.json, inline and following the page's theme.
+import { inlineChart, type Spec } from '../chartlet';
+
+interface Props {
+  name: string;
+}
+
+const diagrams = import.meta.glob<Spec>('../../diagrams/*.json', { import: 'default', eager: true });
+const { name } = Astro.props;
+const spec = diagrams[`../../diagrams/${name}.json`];
+if (!spec) throw new Error(`unknown diagram: ${name}`);
+const html = inlineChart(spec, `diagram-${name}`);
+---
+
+<figure class="diagram" set:html={html} />
+
+<style>
+  .diagram {
+    margin: 24px 0 32px;
+  }
+</style>

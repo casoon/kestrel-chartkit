@@ -21,9 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The showcase charts are committed SVG files in examples/site/. The chartlet
-      # specifications of the per-indicator charts (site/.generated/, not committed) are
-      # written by the same example, so it runs before the site build.
+      # Every chart on the site is a chartlet specification computed by the crate itself;
+      # the example writes them into site/.generated/ (not committed), so it runs before the
+      # site build.
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 

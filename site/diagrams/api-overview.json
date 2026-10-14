@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "type": "architecture",
+  "title": "Where the main entry points sit",
+  "description": "Your application passes bars into kestrel-chartkit. The registry builds indicators from their definitions; indicators stream values, extras and alerts; classify_regime and the scoring functions turn readings into a regime and a composite signal; structure and analytics read the bars directly. Everything comes back as plain data, which a renderer such as chartlet or kestrel-loom draws.",
+  "width": 920,
+  "height": 660,
+  "architecture": {
+    "components": [
+      { "id": "app", "label": "Your application", "sublabel": "bars from your data source", "kind": "person" },
+      { "id": "registry", "label": "Registry", "sublabel": "catalog, build_checked, build_typed", "in": "crate" },
+      { "id": "definitions", "label": "Definitions", "sublabel": "parameters, ranges, relations", "kind": "storage", "in": "crate" },
+      { "id": "indicators", "label": "Indicators", "sublabel": "Indicator::on_bar, alerts", "in": "crate" },
+      { "id": "regime", "label": "Regime and scoring", "sublabel": "classify_regime, aggregate_subscores", "in": "crate" },
+      { "id": "structure", "label": "Structure and analytics", "sublabel": "pivots, zones, read-outs, evaluation", "in": "crate" },
+      { "id": "renderer", "label": "Renderer", "sublabel": "chartlet, kestrel-loom", "kind": "external" }
+    ],
+    "boundaries": [{ "id": "crate", "label": "kestrel-chartkit (pure computation)" }],
+    "connections": [
+      { "from": "app", "to": "registry", "label": "name and parameters" },
+      { "from": "registry", "to": "definitions", "label": "validates against", "dash": "dashed" },
+      { "from": "registry", "to": "indicators", "label": "builds" },
+      { "from": "app", "to": "indicators", "label": "bars, one at a time" },
+      { "from": "indicators", "to": "regime", "label": "outputs and alerts" },
+      { "from": "app", "to": "structure", "label": "bar history" },
+      { "from": "regime", "to": "app", "label": "regime, signal, risk plan" },
+      { "from": "app", "to": "renderer", "label": "values to draw" }
+    ]
+  }
+}

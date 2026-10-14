@@ -11,13 +11,12 @@ keywords = ["trading", "technical-analysis", "indicators", "charting", "signals"
 categories = ["finance", "visualization"]
 readme = "README.md"
 # The reference generator only produces tests/fixtures/; it is not part of the library.
-# site/, docs/ and examples/site/ make up the project website. .judge/, judge.md, CLAUDE.md and
+# site/ and docs/ make up the project website. .judge/, judge.md, CLAUDE.md and
 # .github/ are repository tooling.
 exclude = [
     "reference/",
     "site/",
     "docs/",
-    "examples/site/",
     ".judge/",
     "judge.md",
     "CLAUDE.md",

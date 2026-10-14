@@ -1,4 +1,4 @@
-import IndicatorChart from './components/IndicatorChart.astro';
+import Diagram from './components/Diagram.astro';
 
 // Components for docs MDX beyond the theme's (option `mdxComponents`).
-export const components = { IndicatorChart };
+export const components = { Diagram };
