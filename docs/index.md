@@ -4,14 +4,20 @@ description: What kestrel-chartkit computes, where it stops, and how this docume
 order: 0
 ---
 
+> **Work in progress.** kestrel-chartkit is under active development and has not reached a
+> stable release. Names, parameters, outputs and whole modules can still change fundamentally
+> from one version to the next. Pin a release tag, and expect to adapt when you upgrade.
+
 kestrel-chartkit is a Rust library for technical analysis. It streams price bars through
 indicators, classifies the market regime, combines indicator readings into one composite signal
 and renders the results as static SVG. Everything runs in-process on data you pass in.
 
 ## What it covers
 
-- **Indicators:** 110 entries in the registry (`catalog()`), from moving averages and oscillators
-  to volume profiles and market-structure detectors. All of them implement one streaming trait.
+- **Indicators:** 130 entries in the registry (`catalog()`), from moving averages and oscillators
+  to volume profiles and market-structure detectors. All of them implement one streaming trait,
+  and each is described by one definition: parameters with defaults, ranges and meaning (see the
+  [indicator reference](reference/indicators/)).
 - **Market regime:** `classify_regime` sorts the current market into bullish expansion, bearish
   expansion, consolidation or transition.
 - **Composite scoring:** `score_indicator` turns one indicator reading into a subscore,
@@ -37,8 +43,11 @@ documentation focuses on the areas above; the README and the API docs cover the 
 - **No strategy.** A composite signal is a rule-based summary of indicator readings. Its
   `agreement` is the share of subscores that agree, not a probability of success. Nothing in this
   crate or on this site is investment advice.
-- **Pre-1.0.** Root-level re-exports are the preferred API. Lower-level modules are public for
-  advanced use and may change before 1.0.
+- **Pre-1.0, in development.** Root-level re-exports are the preferred API. Lower-level modules
+  are public for advanced use. Nothing here is a stable foundation yet: expect breaking changes.
+- **Pure computation.** The crate holds mathematics only: indicators, statistics, valuation
+  formulas and renderers. It contains no credentials, no account or personal data and no
+  connection to any service.
 
 ## License
 
@@ -53,4 +62,5 @@ file is authoritative.
 - **Getting started:** add the crate and stream a first indicator.
 - **Guides:** indicators, market regime, composite scoring, SVG charts, structure and events,
   analytics and evaluation.
-- **Reference:** overview of the public entry points and where the generated API docs live.
+- **Reference:** overview of the public entry points, the generated list of all indicators with
+  their parameters, and where the API docs live.

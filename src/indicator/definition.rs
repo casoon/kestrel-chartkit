@@ -582,27 +582,36 @@ mod composites_a;
 mod composites_b;
 mod moving_averages;
 mod oscillators;
-mod pilot;
 mod structure;
 mod volatility;
 mod volume;
 
-/// The indicators already defined, one list per family; the registry routes them through their
-/// definition. Each definition lives beside its implementation.
-const FAMILIES: &[&[&IndicatorDefinition]] = &[
-    pilot::DEFINITIONS,
-    moving_averages::DEFINITIONS,
-    oscillators::DEFINITIONS,
-    volatility::DEFINITIONS,
-    volume::DEFINITIONS,
-    structure::DEFINITIONS,
-    composites_a::DEFINITIONS,
-    composites_b::DEFINITIONS,
+/// Every indicator, one list per family; the registry routes all builds through these. Each
+/// definition lives beside its implementation.
+const FAMILIES: &[(&str, &[&IndicatorDefinition])] = &[
+    (
+        "Moving averages, bands and trend lines",
+        moving_averages::DEFINITIONS,
+    ),
+    ("Oscillators", oscillators::DEFINITIONS),
+    ("Volatility and trend strength", volatility::DEFINITIONS),
+    ("Volume", volume::DEFINITIONS),
+    ("Market structure and patterns", structure::DEFINITIONS),
+    ("Composite read-outs, part 1", composites_a::DEFINITIONS),
+    ("Composite read-outs, part 2", composites_b::DEFINITIONS),
 ];
+
+/// The indicators grouped by family, each with its label, for documentation and pickers. Every
+/// catalog indicator appears exactly once.
+pub fn families() -> impl Iterator<Item = (&'static str, &'static [&'static IndicatorDefinition])> {
+    FAMILIES.iter().copied()
+}
 
 /// Every indicator definition.
 pub fn definitions() -> impl Iterator<Item = &'static IndicatorDefinition> {
-    FAMILIES.iter().flat_map(|family| family.iter().copied())
+    FAMILIES
+        .iter()
+        .flat_map(|(_, family)| family.iter().copied())
 }
 
 /// The definition of `name` (canonical name or alias, case-insensitive), if it has one yet.

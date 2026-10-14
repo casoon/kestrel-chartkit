@@ -10,9 +10,9 @@ export default defineConfig({
     casoonPages({
       name: 'kestrel-chartkit',
       description:
-        'Rust technical analysis library: streaming indicators, market regime classification, composite scoring and SVG charts.',
+        'Rust technical analysis library, in development: streaming indicators, market regime classification, composite scoring and SVG charts.',
       repo: 'casoon/kestrel-chartkit',
-      version: '0.24.0',
+      version: '0.31.0',
       license: 'BUSL-1.1',
       branch: 'master',
       packages: [

@@ -51,7 +51,14 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per indicator, with `name`, `description` and
-`default_params`. The current version has 110 entries.
+`default_params`. The current version has 130 entries; the
+[indicator reference](../../reference/indicators/) lists every one of them with its parameters.
+
+Behind the catalog, every indicator has one definition
+(`kestrel_chartkit::indicator::definition`): its name and aliases, each parameter with type,
+default, accepted range and meaning, the relations between parameters, and how it is built.
+`definition::families()` returns them grouped by family, for a parameter form or a picker that
+should not hard-code what the crate already knows.
 
 `output_unit(name)` says what the indicator's `value` is quoted in — `Price`, `Ratio`, `Volume`
 or `Unitless`. A charting consumer needs this to decide where the result belongs: `Price` means a
@@ -74,9 +81,9 @@ names return `Unitless`, and the enum is `#[non_exhaustive]` — match with a `_
 `build_checked(name, &params)` builds an indicator from a name and a parameter map. Missing
 parameters take their defaults. Periods must be whole numbers in the supported range, and invalid
 thresholds or orderings return a `RegistryError`. So does a key the indicator does not read — a
-typo like `peroid` fails instead of silently building with the default period. The accepted keys
-are the catalog entry's `default_params`; `build_typed` additionally takes `source` and the enum
-and timestamp parameters of the indicators that have them (e.g. `smoothing` for `rsi`):
+typo like `peroid` fails instead of silently building with the default period. Both entry points
+validate against the same definition; `build_typed` additionally takes `source` and the choices
+and timestamps that only a typed value can carry (e.g. `smoothing` for `rsi`):
 
 ```rust
 use kestrel_chartkit::build_checked;

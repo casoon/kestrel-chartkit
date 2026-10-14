@@ -3,6 +3,7 @@
 use super::IndicatorDefinition;
 
 pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
+    &crate::indicator::atr::ATR_DEFINITION,
     &crate::indicator::adx::ADX_DEFINITION,
     &crate::indicator::trend_structural::DMI_DEFINITION,
     &crate::indicator::trend_structural::AROON_DEFINITION,

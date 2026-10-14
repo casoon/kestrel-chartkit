@@ -3,6 +3,8 @@
 use super::IndicatorDefinition;
 
 pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
+    &crate::indicator::moving_averages::SMA_DEFINITION,
+    &crate::indicator::anchored_vwap::ANCHORED_VWAP_DEFINITION,
     &crate::indicator::moving_averages::EMA_DEFINITION,
     &crate::indicator::moving_averages::WMA_DEFINITION,
     &crate::indicator::moving_averages::VWMA_DEFINITION,
