@@ -113,7 +113,7 @@ fn render() -> String {
          relations are errors, missing parameters take their default. **Warmup** is the bar of the \
          first output with the default parameters. **Needs real volume** marks indicators whose \
          result is only meaningful with traded volume. The chart under each entry runs the \
-         indicator with its defaults over synthetic 4-hour bars of a fictitious instrument: a \
+         indicator with its defaults over synthetic 4-hour bars of a fictitious CASOON share (invented prices): a \
          price result over the candles, anything else in a pane below, its latest alerts as \
          markers. It shows what the calculation produces, not a trading result.\n\n",
     );

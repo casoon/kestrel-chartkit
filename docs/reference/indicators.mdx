@@ -9,7 +9,7 @@ order: 2
 > code of this version. The crate is pre-1.0 and under active development: names, parameters
 > and outputs can still change fundamentally between versions.
 
-Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The chart under each entry runs the indicator with its defaults over synthetic 4-hour bars of a fictitious instrument: a price result over the candles, anything else in a pane below, its latest alerts as markers. It shows what the calculation produces, not a trading result.
+Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The chart under each entry runs the indicator with its defaults over synthetic 4-hour bars of a fictitious CASOON share (invented prices): a price result over the candles, anything else in a pane below, its latest alerts as markers. It shows what the calculation produces, not a trading result.
 
 ## Moving averages, bands and trend lines
 

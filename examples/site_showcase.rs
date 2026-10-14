@@ -377,11 +377,11 @@ fn composite_signal() -> Chart {
 }
 // showcase:end
 
-/// A calm price chart of a fictitious instrument as a chartlet specification (JSON), the way
+/// A calm price chart of a fictitious CASOON share as a chartlet specification (JSON), the way
 /// Kestrel draws its own: candles, two EMAs, the nearest support and resistance zones, the last
 /// price, the latest RSI signals, and volume and RSI panes below. Every number is computed by
 /// this crate; chartlet only draws (the site renders the spec at build time, light and dark).
-/// Trending legs as 4-hour bars of a fictitious instrument from 5 January 2026. The volume
+/// Trending legs as 4-hour bars of a fictitious CASOON share (invented prices, no real quotes) from 5 January 2026. The volume
 /// follows each bar's range, so a volume pane has something to say.
 fn demo_bars(seed: u64, pattern: &[(usize, f64)]) -> Vec<Bar> {
     let raw = legs(seed, pattern);
@@ -451,7 +451,7 @@ fn demo_chart() -> Result<String, Box<dyn Error>> {
         })
         .collect();
     let mut price = vec![format!(
-        r#"{{"mark":"ohlc","name":"DEMO","data":[{}]}}"#,
+        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","data":[{}]}}"#,
         candles.join(",")
     )];
     price.push(line("EMA 20", &fast));
@@ -493,7 +493,7 @@ fn demo_chart() -> Result<String, Box<dyn Error>> {
         .collect();
 
     Ok(format!(
-        r#"{{"schemaVersion":1,"type":"time","title":"DEMO · fictitious instrument · 4h","description":"Synthetic 4-hour candles of a made-up instrument with EMA 20 and EMA 50, the nearest support and resistance zones from the confirmed pivots, the last price and the latest RSI signals, all computed by kestrel-chartkit. Volume and RSI(14) below.","width":640,"height":520,"timeAxis":{{"gaps":"collapse"}},"panes":[{{"heightRatio":8,"valueAxis":{{"title":"Price","decimals":2}},"layers":[{}]}},{{"heightRatio":2,"valueAxis":{{"title":"Volume"}},"layers":[{{"mark":"area","name":"Volume","stroke":"thin","points":[{}]}}]}},{{"heightRatio":2,"valueAxis":{{"title":"RSI","decimals":0}},"layers":[{},{{"mark":"annotation","value":70,"label":"70"}},{{"mark":"annotation","value":30,"label":"30"}}]}}]}}"#,
+        r#"{{"schemaVersion":1,"type":"time","title":"CASOON share (fictitious prices) · 4h","description":"Synthetic 4-hour candles of a fictitious CASOON share — invented prices, no real quotes — with EMA 20 and EMA 50, the nearest support and resistance zones from the confirmed pivots, the last price and the latest RSI signals, all computed by kestrel-chartkit. Volume and RSI(14) below.","width":640,"height":520,"timeAxis":{{"gaps":"collapse"}},"panes":[{{"heightRatio":8,"valueAxis":{{"title":"Price","decimals":2}},"layers":[{}]}},{{"heightRatio":2,"valueAxis":{{"title":"Volume"}},"layers":[{{"mark":"area","name":"Volume","stroke":"thin","points":[{}]}}]}},{{"heightRatio":2,"valueAxis":{{"title":"RSI","decimals":0}},"layers":[{},{{"mark":"annotation","value":70,"label":"70"}},{{"mark":"annotation","value":30,"label":"30"}}]}}]}}"#,
         price.join(","),
         volume.join(","),
         line("RSI 14", &rsi_line),
@@ -594,7 +594,7 @@ fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String
         })
         .collect();
     let mut price = vec![format!(
-        r#"{{"mark":"ohlc","name":"DEMO","data":[{}]}}"#,
+        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","data":[{}]}}"#,
         candles.join(",")
     )];
     let mut own: Vec<String> = Vec::new();
@@ -627,7 +627,8 @@ fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String
     // The latest alerts, at least eight bars apart so their labels stay readable, at most three:
     // under the low for a bullish kind, over the high for a bearish one, at the close otherwise.
     let mut shown: Vec<&(usize, String)> = Vec::new();
-    for alert in alerts.iter().rev() {
+    // Alerts of the last eight bars are left out: a label at the right edge has no room.
+    for alert in alerts.iter().rev().filter(|a| a.0 + 8 < window.len()) {
         if shown.len() == 3 {
             break;
         }
@@ -668,7 +669,7 @@ fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String
     let first = description.split(". ").next().unwrap_or(description);
     let described: String = first.replace('"', "'").chars().take(400).collect();
     Some(format!(
-        r#"{{"schemaVersion":1,"type":"time","title":"{name} · DEMO 4h","description":"{described}. Default parameters on synthetic 4-hour bars of a fictitious instrument, the last {INDICATOR_WINDOW} bars; {} alerts in view, the latest as markers.","width":640,"height":{},"timeAxis":{{"gaps":"collapse"}},"panes":[{}]}}"#,
+        r#"{{"schemaVersion":1,"type":"time","title":"{name} · CASOON (fictitious) 4h","description":"{described}. Default parameters on synthetic 4-hour bars of a fictitious CASOON share (invented prices), the last {INDICATOR_WINDOW} bars; {} alerts in view, the latest as markers.","width":640,"height":{},"timeAxis":{{"gaps":"collapse"}},"panes":[{}]}}"#,
         alerts.len(),
         if own.is_empty() { 320 } else { 420 },
         panes.join(",")
