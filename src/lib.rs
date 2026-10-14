@@ -30,6 +30,7 @@ pub mod checkpoint;
 pub mod clustering;
 /// Contract specifications, currencies, and linear contract valuation models.
 pub mod contract;
+pub mod data_snooping;
 /// Market-context and execution-support calculations.
 pub mod engine;
 /// Evaluation records and aggregate trade statistics.
@@ -116,6 +117,7 @@ pub use contract::{
     contract_pnl, contract_tick_value, notional_value, stop_risk_amount, ContractSpec,
     ContractSpecError, Currency, FxConversionError, FxRate, InstrumentType, ValuationError,
 };
+pub use data_snooping::{data_snooping, DataSnooping, SnoopingConfig};
 pub use event::{AlertDeduplicator, AlertEvent, EventPhase};
 pub use execution::{
     submit_bracket, ExecutionCosts, Fill, FillSimulator, FillSimulatorConfig, Order, OrderKind,

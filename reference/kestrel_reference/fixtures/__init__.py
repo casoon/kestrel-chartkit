@@ -20,6 +20,7 @@ from . import (
     coil_release,
     cross_asset_alignment,
     curve_diff,
+    data_snooping,
     deflated_sharpe,
     overextension_risk,
     family_math,
@@ -118,4 +119,5 @@ ALL = (
     contract_composites_b,
     price_location,
     leg_geometry,
+    data_snooping,
 )

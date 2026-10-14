@@ -62,6 +62,7 @@ Python 3.10 or newer; nothing else.
 | `golden_reversal_types` | `kestrel_reference/fixtures/reversal_types.py` |
 | `golden_price_location` | `kestrel_reference/fixtures/price_location.py` |
 | `golden_leg_geometry` | `kestrel_reference/fixtures/leg_geometry.py` |
+| `golden_data_snooping` | `kestrel_reference/fixtures/data_snooping.py` |
 | `contract_pilot` | `kestrel_reference/fixtures/contract_pilot.py` |
 | `contract_moving_averages` | `kestrel_reference/fixtures/contract_moving_averages.py` |
 | `contract_oscillators` | `kestrel_reference/fixtures/contract_oscillators.py` |
