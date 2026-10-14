@@ -255,6 +255,85 @@ pub fn longest_run<T>(values: &[T], mut predicate: impl FnMut(&T) -> bool) -> us
     longest
 }
 
+/// Nearest-rank quantile: the element at index `round((n − 1) · q)` of the ascending values
+/// (`f64::total_cmp`, so NaN sorts last; `round` is half away from zero). `q = 0.5` is the upper
+/// median for an even count. `None` for no values. Unlike [`rolling_quantile`] it never
+/// interpolates — every result is an observed value.
+pub fn nearest_rank_quantile(values: &[f64], q: f64) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    let mut v = values.to_vec();
+    v.sort_by(f64::total_cmp);
+    let idx = ((v.len() - 1) as f64 * q.clamp(0.0, 1.0)).round() as usize;
+    Some(v[idx.min(v.len() - 1)])
+}
+
+/// Mean of `(timestamp, value)` pairs with a block-clustered standard error.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BlockMean {
+    pub mean: f64,
+    /// `None` with fewer than two blocks.
+    pub std_error: Option<f64>,
+    pub blocks: usize,
+}
+
+/// Mean and cluster-robust standard error of the mean, the observations grouped into blocks
+/// `timestamp.div_euclid(block)`: with `S_g = Σ (x − mean)` per block over `G` blocks,
+/// `se = √(Σ S_g²) / n · √(G / (G − 1))`. With one observation per block this is the usual
+/// `s / √n`. Observations in the same block (same day, same market move) are not counted as
+/// independent. Blocks are summed in ascending order. `None` for no values.
+pub fn block_mean(values: &[(i64, f64)], block: i64) -> Option<BlockMean> {
+    let n = values.len();
+    if n == 0 || block <= 0 {
+        return None;
+    }
+    let mean = values.iter().map(|(_, v)| v).sum::<f64>() / n as f64;
+    let mut sums: std::collections::BTreeMap<i64, f64> = std::collections::BTreeMap::new();
+    for (ts, v) in values {
+        *sums.entry(ts.div_euclid(block)).or_default() += v - mean;
+    }
+    let blocks = sums.len();
+    let std_error = (blocks >= 2).then(|| {
+        let sq: f64 = sums.values().map(|s| s * s).sum();
+        sq.sqrt() / n as f64 * (blocks as f64 / (blocks - 1) as f64).sqrt()
+    });
+    Some(BlockMean {
+        mean,
+        std_error,
+        blocks,
+    })
+}
+
+/// `mean(a) − mean(b)` and its block-clustered standard error, both series grouped into the same
+/// blocks: per block `S_g = Σ_a (x − mean_a)/n_a − Σ_b (y − mean_b)/n_b`, `se = √(Σ S_g² · G /
+/// (G − 1))`. Observations of both series in one block enter with their dependence. `None` if
+/// either series is empty; standard error `None` below two blocks.
+pub fn block_difference(
+    a: &[(i64, f64)],
+    b: &[(i64, f64)],
+    block: i64,
+) -> Option<(f64, Option<f64>)> {
+    if a.is_empty() || b.is_empty() || block <= 0 {
+        return None;
+    }
+    let mean = |x: &[(i64, f64)]| x.iter().map(|(_, v)| v).sum::<f64>() / x.len() as f64;
+    let (ma, mb) = (mean(a), mean(b));
+    let mut sums: std::collections::BTreeMap<i64, f64> = std::collections::BTreeMap::new();
+    for (ts, v) in a {
+        *sums.entry(ts.div_euclid(block)).or_default() += (v - ma) / a.len() as f64;
+    }
+    for (ts, v) in b {
+        *sums.entry(ts.div_euclid(block)).or_default() -= (v - mb) / b.len() as f64;
+    }
+    let blocks = sums.len();
+    let std_error = (blocks >= 2).then(|| {
+        let sq: f64 = sums.values().map(|s| s * s).sum();
+        (sq * blocks as f64 / (blocks - 1) as f64).sqrt()
+    });
+    Some((ma - mb, std_error))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

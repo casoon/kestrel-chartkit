@@ -33,6 +33,24 @@ RUN_CASES = [
     [2.0, -0.5, -0.5, 1.0, -3.0, -3.0, -3.0, -3.0, 0.1, -1.0],
 ]
 
+QUANTILE_CASES = [
+    ([3.0, 1.0, 2.0], 0.5),
+    ([4.0, 1.0, 3.0, 2.0], 0.5),
+    ([4.0, 1.0, 3.0, 2.0], 0.75),
+    ([5.0, -1.0, 2.5, 7.0, 0.0, 3.0], 0.25),
+    ([5.0, -1.0, 2.5, 7.0, 0.0, 3.0], 0.9),
+    ([1.5], 0.3),
+    ([2.0, 1.0], 0.0),
+    ([2.0, 1.0], 1.0),
+]
+
+DAY = 86_400_000
+# (timestamp, value) pairs; several per day so the clustering matters.
+BLOCK_A = [(0, 1.0), (1000, 2.0), (DAY + 5, -1.0), (DAY + 9, 0.5), (3 * DAY, 4.0),
+           (3 * DAY + 7, 2.0), (5 * DAY, -2.0)]
+BLOCK_B = [(10, 0.5), (DAY + 1, 0.0), (2 * DAY, 1.0), (3 * DAY + 1, 1.5), (6 * DAY, -0.5)]
+BLOCK_SINGLE = [(0, 1.0), (DAY, 3.0), (2 * DAY, 2.0), (3 * DAY, 6.0)]
+
 HEADER = [
     "kestrel-chartkit golden reference fixture: sample statistics for trade evaluation",
     "",
@@ -52,6 +70,17 @@ HEADER = [
     "",
     "Longest run: run<i>_len values run<i>_v<j>; run<i>_longest_negative is the longest stretch of",
     "consecutive values below zero (a zero breaks the stretch), counted with itertools.groupby.",
+    "",
+    "Nearest-rank quantile: q<i>_n values q<i>_v<j>, level q<i>_q; q<i>_result is the element at",
+    "position floor((n-1)q + 1/2) of the sorted values (rounding half away from zero, written out",
+    "because Python's round() rounds half to even).",
+    "",
+    "Block statistics (block = one day, 86 400 000 ms): series a, b and single as <s>_n,",
+    "<s>_t<j>, <s>_x<j>. Mean of a; cluster-robust standard error: per day the sum of deviations",
+    "from the mean, se = sqrt(sum of squares) / n * sqrt(G/(G-1)) over G days (days in ascending",
+    "order). For `single` (one value per day) this is the textbook s/sqrt(n), recorded as",
+    "single_textbook_se. Difference a - b: per day sum (x - mean_a)/n_a minus sum (y - mean_b)/n_b,",
+    "se = sqrt(sum of squares * G/(G-1)).",
 ]
 
 
@@ -78,6 +107,40 @@ def _longest_negative(values):
                 if negative), default=0)
 
 
+def _nearest_rank(values, q):
+    v = sorted(values)
+    return v[math.floor((len(v) - 1) * q + 0.5)]
+
+
+def _block_mean(series):
+    n = len(series)
+    mean = sum(x for _, x in series) / n
+    sums = {}
+    for t, x in series:
+        day = t // DAY
+        sums[day] = sums.get(day, 0.0) + (x - mean)
+    g = len(sums)
+    sq = 0.0
+    for day in sorted(sums):
+        sq += sums[day] * sums[day]
+    return mean, math.sqrt(sq) / n * math.sqrt(g / (g - 1)), g
+
+
+def _block_difference(a, b):
+    ma = sum(x for _, x in a) / len(a)
+    mb = sum(x for _, x in b) / len(b)
+    sums = {}
+    for t, x in a:
+        sums[t // DAY] = sums.get(t // DAY, 0.0) + (x - ma) / len(a)
+    for t, x in b:
+        sums[t // DAY] = sums.get(t // DAY, 0.0) - (x - mb) / len(b)
+    g = len(sums)
+    sq = 0.0
+    for day in sorted(sums):
+        sq += sums[day] * sums[day]
+    return ma - mb, math.sqrt(sq * g / (g - 1))
+
+
 def build():
     blocks = [(None, "case counts", {"meta_wilson_case_count": float(len(WILSON_CASES)),
                                       "meta_run_case_count": float(len(RUN_CASES))})]
@@ -99,5 +162,25 @@ def build():
         case.update({f"v{j}": v for j, v in enumerate(values)})
         case["longest_negative"] = float(_longest_negative(values))
         blocks.append((f"run{i}", None, case))
+    blocks.append((None, "quantile cases", {"meta_quantile_case_count": float(len(QUANTILE_CASES))}))
+    for i, (values, q) in enumerate(QUANTILE_CASES):
+        case = {"n": float(len(values)), "q": q}
+        case.update({f"v{j}": v for j, v in enumerate(values)})
+        case["result"] = _nearest_rank(values, q)
+        blocks.append((f"q{i}", None, case))
+    for name, series in (("a", BLOCK_A), ("b", BLOCK_B), ("single", BLOCK_SINGLE)):
+        case = {"n": float(len(series))}
+        for j, (t, x) in enumerate(series):
+            case[f"t{j}"] = float(t)
+            case[f"x{j}"] = x
+        mean, se, g = _block_mean(series)
+        case.update({"mean": mean, "se": se, "blocks": float(g)})
+        if name == "single":
+            n = len(series)
+            var = sum((x - mean) ** 2 for _, x in series) / (n - 1)
+            case["textbook_se"] = math.sqrt(var / n)
+        blocks.append((f"block_{name}", f"block statistics, series {name}", case))
+    diff, se = _block_difference(BLOCK_A, BLOCK_B)
+    blocks.append(("block_diff", "a minus b", {"value": diff, "se": se}))
     blocks.append((None, None, {"sample_stats_tolerance": 1e-12}))
     return HEADER, blocks

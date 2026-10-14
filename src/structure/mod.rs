@@ -1,5 +1,10 @@
+pub mod legs;
 pub mod zone_registry;
 
+pub use legs::{
+    largest_pullback, path_efficiency, retracement, strict_pivots, swing_overlap, swing_sequence,
+    threshold_zigzag, window_leg, Leg, Retracement, RetracementZone, SwingSequence, ZigZagPivot,
+};
 pub use zone_registry::*;
 
 use crate::model::{Bar, SupportResistanceZone, ZoneKind};

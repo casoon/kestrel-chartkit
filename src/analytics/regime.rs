@@ -4,7 +4,7 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
-use super::{efficiency_ratio, true_range};
+use super::{bar_true_range, efficiency_ratio};
 use crate::indicator::adx::Adx;
 use crate::Bar;
 use crate::Indicator;
@@ -104,7 +104,7 @@ fn choppiness(bars: &[Bar], n: usize) -> Option<f64> {
     let mut highest = f64::NEG_INFINITY;
     let mut lowest = f64::INFINITY;
     for bar in window {
-        tr_sum += true_range(bar, prev);
+        tr_sum += bar_true_range(bar, prev);
         highest = highest.max(bar.high);
         lowest = lowest.min(bar.low);
         prev = Some(bar.close);

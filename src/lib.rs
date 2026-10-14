@@ -177,8 +177,9 @@ pub use series::{CumulativeSum, Series, SeriesEvents};
 pub use session::{SessionConfig, SessionConfigError, SessionTracker};
 pub use signal::{CompositeSignal, PermissionGrade, SignalDirection, SubScore};
 pub use stats::{
-    correlation, deflated_sharpe, linear_regression, longest_run, normal_quantile, wilson_interval,
-    DeflatedSharpe, ProportionInterval,
+    block_difference, block_mean, correlation, deflated_sharpe, linear_regression, longest_run,
+    nearest_rank_quantile, normal_quantile, wilson_interval, BlockMean, DeflatedSharpe,
+    ProportionInterval,
 };
 pub use stress::{
     apply_portfolio_stress, multi_asset_block_bootstrap, simulate_equity_paths,

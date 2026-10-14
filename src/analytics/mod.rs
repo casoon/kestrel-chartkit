@@ -9,6 +9,7 @@ mod fear_gauge;
 mod fear_greed;
 pub mod forward;
 mod price;
+pub mod price_location;
 mod regime;
 mod seasonality;
 mod trend;
@@ -21,6 +22,10 @@ pub use cheat_sheet::{
 pub use fear_gauge::{fear_gauge_reading, FearGaugeReading, FearGaugeState};
 pub use fear_greed::{fear_greed_reading, FearGreedDriver, FearGreedReading, FearGreedState};
 pub use price::{price_summary, PriceSummary};
+pub use price_location::{
+    price_location_series, true_range, wilder_atr_series, PriceLocation, PriceLocationConfig,
+    PriceLocationEngine, WilderAtr,
+};
 pub use regime::{classify_regime as classify_trend_regime, RegimeReading, RegimeState};
 pub use seasonality::{monthly_seasonality, MonthStatistics, MonthlyReturn, SeasonalityReport};
 pub use trend::{trend_reading, MarketPhase, TrendDirection, TrendReading};
@@ -32,13 +37,8 @@ pub use trend_persistence::{
 /// True range for a bar given the previous bar's close: the full
 /// three-term form, or high−low on the very first bar. Shared by the
 /// regime (Choppiness) and price (ATR) read-outs.
-fn true_range(bar: &crate::Bar, prev_close: Option<f64>) -> f64 {
-    match prev_close {
-        None => bar.high - bar.low,
-        Some(prev) => (bar.high - bar.low)
-            .max((bar.high - prev).abs())
-            .max((bar.low - prev).abs()),
-    }
+fn bar_true_range(bar: &crate::Bar, prev_close: Option<f64>) -> f64 {
+    true_range(bar.high, bar.low, prev_close)
 }
 
 /// Kaufman Efficiency Ratio over the last `n` price changes (needs `n`+1

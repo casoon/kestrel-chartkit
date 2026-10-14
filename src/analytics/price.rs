@@ -3,7 +3,7 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
-use super::true_range;
+use super::bar_true_range;
 use crate::Bar;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -94,7 +94,7 @@ fn wilder_atr_series(bars: &[Bar], len: usize) -> Vec<f64> {
     let mut prev_close = None;
     bars.iter()
         .filter_map(|bar| {
-            let tr = true_range(bar, prev_close);
+            let tr = bar_true_range(bar, prev_close);
             prev_close = Some(bar.close);
             smoother.update(tr)
         })

@@ -28,8 +28,10 @@ from . import (
     equal_level_liquidity,
     logistic,
     price_average_relation,
+    price_location,
     flow_exhaustion,
     leg_character,
+    leg_geometry,
     tradability_filter,
     market_state_chain,
     moving_averages,
@@ -114,4 +116,6 @@ ALL = (
     contract_structure,
     contract_composites_a,
     contract_composites_b,
+    price_location,
+    leg_geometry,
 )

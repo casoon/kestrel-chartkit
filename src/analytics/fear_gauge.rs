@@ -150,7 +150,7 @@ fn simple_atr(bars: &[Bar], end: usize, len: usize) -> Option<f64> {
     let mut sum = 0.0;
     let mut prev_close = bars[end - len].close;
     for bar in &bars[end - len + 1..=end] {
-        let tr = super::true_range(bar, Some(prev_close));
+        let tr = super::bar_true_range(bar, Some(prev_close));
         sum += tr;
         prev_close = bar.close;
     }

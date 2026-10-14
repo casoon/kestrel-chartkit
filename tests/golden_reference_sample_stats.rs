@@ -3,7 +3,9 @@
 
 mod common;
 
-use kestrel_chartkit::{longest_run, wilson_interval};
+use kestrel_chartkit::{
+    block_difference, block_mean, longest_run, nearest_rank_quantile, wilson_interval,
+};
 
 const GOLDEN: &str = include_str!("fixtures/golden_sample_stats.txt");
 
@@ -77,4 +79,55 @@ fn test_longest_negative_run_matches_the_reference() {
         let expected = value(&format!("run{i}_longest_negative")) as usize;
         assert_eq!(longest_run(&values, |v| *v < 0.0), expected, "run{i}");
     }
+}
+
+#[test]
+fn test_nearest_rank_quantile_matches_the_reference() {
+    let cases = value("meta_quantile_case_count") as usize;
+    assert!(cases > 0);
+    for i in 0..cases {
+        let key = |name: &str| value(&format!("q{i}_{name}"));
+        let values: Vec<f64> = (0..key("n") as usize)
+            .map(|j| key(&format!("v{j}")))
+            .collect();
+        assert_eq!(
+            nearest_rank_quantile(&values, key("q")),
+            Some(key("result")),
+            "q{i}"
+        );
+    }
+    assert_eq!(nearest_rank_quantile(&[], 0.5), None);
+}
+
+fn series(name: &str) -> Vec<(i64, f64)> {
+    let key = |f: &str| value(&format!("block_{name}_{f}"));
+    (0..key("n") as usize)
+        .map(|j| (key(&format!("t{j}")) as i64, key(&format!("x{j}"))))
+        .collect()
+}
+
+#[test]
+fn test_block_statistics_match_the_reference() {
+    const DAY: i64 = 86_400_000;
+    for name in ["a", "b", "single"] {
+        let key = |f: &str| value(&format!("block_{name}_{f}"));
+        let got = block_mean(&series(name), DAY).expect("values");
+        assert!((got.mean - key("mean")).abs() <= tolerance(), "{name} mean");
+        let se = got.std_error.expect("two or more blocks");
+        assert!((se - key("se")).abs() <= tolerance(), "{name} se");
+        assert_eq!(got.blocks, key("blocks") as usize, "{name} blocks");
+    }
+    // One value per block: the clustered error is the textbook s/sqrt(n).
+    let single = block_mean(&series("single"), DAY).expect("values");
+    assert!(
+        (single.std_error.expect("se") - value("block_single_textbook_se")).abs() <= tolerance()
+    );
+    let (diff, se) = block_difference(&series("a"), &series("b"), DAY).expect("both series");
+    assert!((diff - value("block_diff_value")).abs() <= tolerance());
+    assert!((se.expect("se") - value("block_diff_se")).abs() <= tolerance());
+    assert!(block_mean(&[], DAY).is_none());
+    assert_eq!(
+        block_mean(&[(0, 1.0), (1, 2.0)], DAY).unwrap().std_error,
+        None
+    );
 }
