@@ -9,6 +9,7 @@ from . import (
     business_days,
     compression_zones,
     composite,
+    contract_pilot,
     coil_release,
     cross_asset_alignment,
     curve_diff,
@@ -98,4 +99,5 @@ ALL = (
     reversal_setup_score,
     structure_zones,
     structural_flow,
+    contract_pilot,
 )

@@ -3,6 +3,8 @@
 use kestrel_chartkit::indicator::{Indicator, IndicatorOutput};
 use kestrel_chartkit::model::Bar;
 
+pub mod contract;
+
 /// Indicators whose first output depends on the data, not only on the bar count. For them
 /// `warmup_period()` is the earliest possible first output: no series may produce one sooner,
 /// but a later one is no breach, and `None` may follow the warmup.

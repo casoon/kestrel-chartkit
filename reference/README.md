@@ -60,6 +60,7 @@ Python 3.10 or newer; nothing else.
 | `golden_market_state_chain` | `kestrel_reference/fixtures/market_state_chain.py` |
 | `golden_rsi_cycle_stats` | `kestrel_reference/fixtures/rsi_cycle_stats.py` |
 | `golden_reversal_types` | `kestrel_reference/fixtures/reversal_types.py` |
+| `contract_pilot` | `kestrel_reference/fixtures/contract_pilot.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.
