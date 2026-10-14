@@ -26,7 +26,8 @@ use kestrel_chartkit::viz::{
     ChartSeries, ChartZoneData, LineStyle, Pane, Scene, SceneObject, SceneObjectKind, Theme,
 };
 use kestrel_chartkit::{
-    aggregate_subscores, build_checked, catalog, classify_regime, score_indicator, Bar, Indicator,
+    aggregate_subscores, build_checked, catalog, classify_regime, output_unit, score_indicator,
+    Bar, Indicator, IndicatorUnit,
 };
 
 type Chart = Result<String, Box<dyn Error>>;
@@ -380,18 +381,14 @@ fn composite_signal() -> Chart {
 /// Kestrel draws its own: candles, two EMAs, the nearest support and resistance zones, the last
 /// price, the latest RSI signals, and volume and RSI panes below. Every number is computed by
 /// this crate; chartlet only draws (the site renders the spec at build time, light and dark).
-fn demo_chart() -> Result<String, Box<dyn Error>> {
-    // Up, pullback, up, sell-off, recovery — 4h bars from 5 January 2026, a fictitious price.
-    let raw = legs(
-        11,
-        &[(32, 0.28), (18, -0.22), (26, 0.32), (16, -0.45), (18, 0.18)],
-    );
+/// Trending legs as 4-hour bars of a fictitious instrument from 5 January 2026. The volume
+/// follows each bar's range, so a volume pane has something to say.
+fn demo_bars(seed: u64, pattern: &[(usize, f64)]) -> Vec<Bar> {
+    let raw = legs(seed, pattern);
     let average_range = raw.iter().map(|b| b.high - b.low).sum::<f64>() / raw.len() as f64;
-    let bars: Vec<Bar> = raw
-        .iter()
+    raw.iter()
         .enumerate()
         .map(|(i, b)| {
-            // Volume follows the bar's range, so the volume pane has something to say.
             let volume = (800.0 + 2_400.0 * (b.high - b.low) / average_range).round();
             Bar::new(
                 1_767_571_200 + i as i64 * 14_400,
@@ -402,8 +399,15 @@ fn demo_chart() -> Result<String, Box<dyn Error>> {
                 volume,
             )
         })
-        .collect();
+        .collect()
+}
 
+fn demo_chart() -> Result<String, Box<dyn Error>> {
+    // Up, pullback, up, sell-off, recovery.
+    let bars = demo_bars(
+        11,
+        &[(32, 0.28), (18, -0.22), (26, 0.32), (16, -0.45), (18, 0.18)],
+    );
     let mut ema_fast = build_checked("ema", &params(&[("period", 20.0)]))?;
     let mut ema_slow = build_checked("ema", &params(&[("period", 50.0)]))?;
     let mut rsi = build_checked("rsi", &HashMap::new())?;
@@ -496,6 +500,181 @@ fn demo_chart() -> Result<String, Box<dyn Error>> {
     ))
 }
 
+/// Bars shown per indicator chart; the indicators run over the whole demo series first, so long
+/// warmups are complete before the window starts.
+const INDICATOR_WINDOW: usize = 150;
+
+/// One chartlet specification per catalog indicator (default parameters, the same fictitious
+/// 4h series): candles with the indicator over them when its output is a price, below them in a
+/// pane of its own otherwise; `secondary`, `signal` and price-level extras as further lines; the
+/// latest alerts as markers. `None` when the indicator produces too few values in the window.
+fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String> {
+    let entry = catalog().into_iter().find(|e| e.name == name)?;
+    let mut params = HashMap::new();
+    if entry.default_params.contains_key("bar_seconds") {
+        params.insert("bar_seconds".to_string(), 14_400.0);
+    }
+    let mut indicator = build_checked(name, &params).ok()?;
+    let start = bars.len().saturating_sub(INDICATOR_WINDOW);
+    let window = &bars[start..];
+    let mut outputs = Vec::new();
+    let mut alerts: Vec<(usize, String)> = Vec::new();
+    for (i, bar) in bars.iter().enumerate() {
+        let output = indicator.on_bar(bar);
+        if i >= start {
+            for alert in indicator.alerts() {
+                alerts.push((i - start, alert.kind));
+            }
+            outputs.push(output);
+        }
+    }
+    // A series over the window, `None` where the field is missing: the line breaks there instead
+    // of joining two distant values. Leading gaps are dropped.
+    type Series = Vec<(i64, Option<f64>)>;
+    let series = |pick: &dyn Fn(&kestrel_chartkit::indicator::IndicatorOutput) -> Option<f64>| {
+        let points: Series = window
+            .iter()
+            .zip(&outputs)
+            .map(|(b, o)| {
+                let v = o.as_ref().and_then(pick).filter(|v| v.is_finite());
+                (b.timestamp, v)
+            })
+            .skip_while(|(_, v)| v.is_none())
+            .collect();
+        points
+    };
+    let defined = |points: &Series| points.iter().filter(|(_, v)| v.is_some()).count();
+    let values = series(&|o| Some(o.value));
+    if defined(&values) < 5 {
+        return None;
+    }
+    let point = |(t, v): &(i64, Option<f64>)| match v {
+        Some(v) => format!(r#"{{"time":{t},"value":{v:.6}}}"#),
+        None => format!(r#"{{"time":{t},"value":null}}"#),
+    };
+    let line = |label: &str, points: &Series| {
+        let points: Vec<String> = points.iter().map(point).collect();
+        format!(
+            r#"{{"mark":"line","name":"{label}","markers":false,"points":[{}]}}"#,
+            points.join(",")
+        )
+    };
+
+    // Lines besides `value`: secondary, then extras — `signal` first, the rest by name.
+    let mut extra_keys: Vec<String> = outputs
+        .iter()
+        .flatten()
+        .flat_map(|o| o.extra.keys().cloned())
+        .collect();
+    extra_keys.sort();
+    extra_keys.dedup();
+    extra_keys.sort_by_key(|k| k != "signal");
+    let low = window.iter().map(|b| b.low).fold(f64::MAX, f64::min);
+    let high = window.iter().map(|b| b.high).fold(f64::MIN, f64::max);
+    let margin = (high - low) * 0.25;
+    let on_price_scale = |points: &Series| {
+        let defined: Vec<f64> = points.iter().filter_map(|(_, v)| *v).collect();
+        defined.len() >= 5
+            && defined
+                .iter()
+                .filter(|v| **v >= low - margin && **v <= high + margin)
+                .count()
+                * 10
+                >= defined.len() * 9
+    };
+    let price_unit = output_unit(name) == IndicatorUnit::Price;
+
+    let candles: Vec<String> = window
+        .iter()
+        .map(|b| {
+            format!(
+                r#"{{"time":{},"open":{:.4},"high":{:.4},"low":{:.4},"close":{:.4}}}"#,
+                b.timestamp, b.open, b.high, b.low, b.close
+            )
+        })
+        .collect();
+    let mut price = vec![format!(
+        r#"{{"mark":"ohlc","name":"DEMO","data":[{}]}}"#,
+        candles.join(",")
+    )];
+    let mut own: Vec<String> = Vec::new();
+    // Each line goes where its values live: over the candles when they stay on the price scale
+    // (and the indicator does not declare a non-price unit for `value`), in the pane below
+    // otherwise. ichimoku's `value` is the cloud width although its unit is Price.
+    let mut place = |label: &str, points: &Series, is_value: bool| {
+        let over_candles = on_price_scale(points) && (!is_value || price_unit);
+        let target = if over_candles { &mut price } else { &mut own };
+        if target.len() < 5 {
+            target.push(line(label, points));
+            true
+        } else {
+            false
+        }
+    };
+    place("value", &values, true);
+    let mut extra_lines = 0;
+    let secondary = series(&|o| o.secondary);
+    let mut candidates = vec![("secondary".to_string(), secondary)];
+    for key in &extra_keys {
+        candidates.push((key.clone(), series(&|o| o.extra.get(key).copied())));
+    }
+    for (label, points) in candidates {
+        if defined(&points) >= 5 && extra_lines < 3 && place(&label, &points, false) {
+            extra_lines += 1;
+        }
+    }
+
+    // The latest alerts, at least eight bars apart so their labels stay readable, at most three:
+    // under the low for a bullish kind, over the high for a bearish one, at the close otherwise.
+    let mut shown: Vec<&(usize, String)> = Vec::new();
+    for alert in alerts.iter().rev() {
+        if shown.len() == 3 {
+            break;
+        }
+        if shown.iter().all(|s| s.0.abs_diff(alert.0) >= 8) {
+            shown.push(alert);
+        }
+    }
+    for (i, kind) in shown.iter().rev().map(|a| (&a.0, &a.1)) {
+        let bar = &window[*i];
+        let bullish = kind.starts_with("bull") || kind.contains("bullish") || kind.ends_with("_up");
+        let bearish =
+            kind.starts_with("bear") || kind.contains("bearish") || kind.ends_with("_down");
+        let (value, shape) = if bullish {
+            (bar.low, "triangle-up")
+        } else if bearish {
+            (bar.high, "triangle-down")
+        } else {
+            (bar.close, "circle")
+        };
+        price.push(format!(
+            r#"{{"mark":"annotation","time":{},"value":{value:.4},"label":"{}","shape":"{shape}"}}"#,
+            bar.timestamp,
+            kind.strip_prefix(&format!("{name}_")).unwrap_or(kind)
+        ));
+    }
+
+    let mut panes = vec![format!(
+        r#"{{"heightRatio":3,"valueAxis":{{"title":"Price","decimals":2}},"layers":[{}]}}"#,
+        price.join(",")
+    )];
+    if !own.is_empty() {
+        panes.push(format!(
+            r#"{{"heightRatio":2,"valueAxis":{{"title":"{name}"}},"layers":[{}]}}"#,
+            own.join(",")
+        ));
+    }
+    // The catalog description up to its first sentence; chartlet takes at most 1000 characters.
+    let first = description.split(". ").next().unwrap_or(description);
+    let described: String = first.replace('"', "'").chars().take(400).collect();
+    Some(format!(
+        r#"{{"schemaVersion":1,"type":"time","title":"{name} · DEMO 4h","description":"{described}. Default parameters on synthetic 4-hour bars of a fictitious instrument, the last {INDICATOR_WINDOW} bars; {} alerts in view, the latest as markers.","width":640,"height":{},"timeAxis":{{"gaps":"collapse"}},"panes":[{}]}}"#,
+        alerts.len(),
+        if own.is_empty() { 320 } else { 420 },
+        panes.join(",")
+    ))
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/site");
     fs::create_dir_all(&dir)?;
@@ -516,6 +695,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     let spec = dir.join("demo-chart.json");
     fs::write(&spec, format!("{}\n", demo_chart()?))?;
     println!("wrote {}", spec.display());
+
+    // Per-indicator charts for the indicator reference: generated, not committed
+    // (site/.generated/ is ignored; the Pages workflow runs this example before the site build).
+    let generated = Path::new(env!("CARGO_MANIFEST_DIR")).join("site/.generated/indicators");
+    fs::create_dir_all(&generated)?;
+    let long = demo_bars(
+        21,
+        &[
+            (40, 0.25),
+            (30, -0.15),
+            (35, 0.3),
+            (25, -0.4),
+            (30, 0.05),
+            (40, 0.2),
+            (30, -0.3),
+            (40, 0.15),
+            (30, -0.1),
+            (20, 0.2),
+        ],
+    );
+    let mut charted = 0;
+    for entry in catalog() {
+        if let Some(spec) = indicator_chart(entry.name, entry.description, &long) {
+            fs::write(
+                generated.join(format!("{}.json", entry.name)),
+                format!("{spec}\n"),
+            )?;
+            charted += 1;
+        }
+    }
+    println!("indicator charts: {charted} of {}", catalog().len());
 
     let entries = catalog();
     let names: String = entries.iter().map(|e| format!("{}\n", e.name)).collect();

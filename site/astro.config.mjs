@@ -26,6 +26,7 @@ export default defineConfig({
       },
       // No CHANGELOG.md and no release notes yet.
       changelog: false,
+      mdxComponents: './src/mdx-components.ts',
     }),
   ],
 });

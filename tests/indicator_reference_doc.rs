@@ -1,4 +1,4 @@
-//! `docs/reference/indicators.md` is generated from the indicator definitions (plan 49), so the
+//! `docs/reference/indicators.mdx` is generated from the indicator definitions (plan 49), so the
 //! published parameter reference cannot drift from the code. This test renders it and compares;
 //! after a change to a definition, regenerate with
 //!
@@ -14,7 +14,7 @@ use kestrel_chartkit::indicator::definition::{families, Check, ParamKind, ParamS
 use kestrel_chartkit::indicator::registry::{build_checked, output_range, OutputRange};
 use kestrel_chartkit::output_unit;
 
-const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/reference/indicators.md");
+const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/reference/indicators.mdx");
 
 fn number(v: f64) -> String {
     if v.fract() == 0.0 && v.abs() < 1e15 {
@@ -112,7 +112,10 @@ fn render() -> String {
          against the same definition: unknown keys, values outside the accepted range and broken \
          relations are errors, missing parameters take their default. **Warmup** is the bar of the \
          first output with the default parameters. **Needs real volume** marks indicators whose \
-         result is only meaningful with traded volume.\n\n",
+         result is only meaningful with traded volume. The chart under each entry runs the \
+         indicator with its defaults over synthetic 4-hour bars of a fictitious instrument: a \
+         price result over the candles, anything else in a pane below, its latest alerts as \
+         markers. It shows what the calculation produces, not a trading result.\n\n",
     );
     for (family, list) in families() {
         writeln!(out, "## {family}\n").unwrap();
@@ -132,6 +135,8 @@ fn render() -> String {
             };
             writeln!(out, "### `{}`{aliases}\n", definition.name).unwrap();
             writeln!(out, "{}\n", definition.description).unwrap();
+            // The site renders the indicator on the demo series (examples/site_showcase.rs).
+            writeln!(out, "<IndicatorChart name=\"{}\" />\n", definition.name).unwrap();
             let warmup = build_checked(definition.name, &HashMap::new())
                 .map(|i| i.warmup_period().to_string())
                 .unwrap_or_else(|e| format!("({e})"));
@@ -165,7 +170,7 @@ fn render() -> String {
             for check in definition.checks {
                 match check {
                     Check::Less { lower, upper } => {
-                        writeln!(out, "Requires `{lower}` < `{upper}`.\n").unwrap()
+                        writeln!(out, "Requires `{lower}` to be smaller than `{upper}`.\n").unwrap()
                     }
                 }
             }
@@ -184,7 +189,7 @@ fn indicator_reference_matches_the_definitions() {
     let committed = std::fs::read_to_string(PATH).unwrap_or_default();
     assert!(
         committed == rendered,
-        "docs/reference/indicators.md is out of date; regenerate with \
+        "docs/reference/indicators.mdx is out of date; regenerate with \
          KESTREL_UPDATE_DOCS=1 cargo test --all-features --test indicator_reference_doc"
     );
 }
