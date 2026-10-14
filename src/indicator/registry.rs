@@ -461,6 +461,12 @@ pub fn catalog() -> Vec<IndicatorCatalogEntry> {
                 ("min_range_atr".to_string(), 0.5),
                 ("atr_len".to_string(), 14.0),
                 ("trend_lookback".to_string(), 10.0),
+                ("belt_hold_body_min".to_string(), 0.6),
+                ("belt_hold_open_wick_max".to_string(), 0.03),
+                ("spinning_top_body_max".to_string(), 0.3),
+                ("hammer_opposite_max".to_string(), 0.5),
+                ("tweezer_tolerance".to_string(), 0.0015),
+                ("trend_min_atr".to_string(), 1.0),
             ]
             .into(),
         },
@@ -1365,6 +1371,12 @@ pub enum RegistryError {
         indicator: String,
         reason: String,
     },
+    /// A parameter key the indicator does not read — typically a typo. Rejected instead of
+    /// silently building with the default for the parameter that was meant.
+    UnknownParameter {
+        parameter: String,
+        indicator: String,
+    },
 }
 
 impl std::fmt::Display for RegistryError {
@@ -1405,6 +1417,14 @@ impl std::fmt::Display for RegistryError {
                 f,
                 "Parameter '{}' is not compatible with indicator '{}': {}",
                 parameter, indicator, reason
+            ),
+            RegistryError::UnknownParameter {
+                parameter,
+                indicator,
+            } => write!(
+                f,
+                "Unknown parameter '{}' for indicator '{}'",
+                parameter, indicator
             ),
         }
     }
@@ -1503,10 +1523,75 @@ fn ensure_less(
     })
 }
 
+/// Legacy parameter names still read under their canonical name's semantics (see
+/// [`get_usize_p_aliased`]), by canonical indicator name.
+const LEGACY_PARAM_ALIASES: &[(&str, &[&str])] = &[("keltner", &["ma_period"])];
+
+/// Parameters only [`build_typed`] reads, by canonical indicator name: enum and timestamp choices
+/// without an `f64` default in the catalog, and `deviation_value`, whose range depends on the
+/// `deviation_mode` chosen beside it.
+const TYPED_ONLY_PARAMS: &[(&str, &[&str])] = &[
+    ("rsi", &["smoothing"]),
+    ("ema", &["init"]),
+    ("bollinger", &["variance"]),
+    ("bbtrend", &["variance"]),
+    ("relative_volatility", &["variant"]),
+    ("twap", &["anchor", "anchor_timestamp", "weighting"]),
+    (
+        "anchored_vwap",
+        &["anchor_kind", "anchor_timestamp", "zero_volume_policy"],
+    ),
+    ("pivot_sets", &["pivot_type"]),
+    ("midas", &["mode"]),
+    ("trend_relationship", &["fast_kind", "slow_kind"]),
+    ("zigzag_advanced", &["deviation_mode", "deviation_value"]),
+];
+
+fn listed_params(
+    table: &[(&str, &'static [&'static str])],
+    canonical: &str,
+) -> &'static [&'static str] {
+    table
+        .iter()
+        .find(|(name, _)| *name == canonical)
+        .map_or(&[], |(_, keys)| *keys)
+}
+
+/// Rejects the first key `name` does not accept: its catalog defaults and legacy aliases, plus the
+/// typed-only parameters when `typed`. An unknown indicator passes here and fails in the builder.
+fn reject_unknown_params<'a>(
+    name: &str,
+    keys: impl IntoIterator<Item = &'a String>,
+    typed: bool,
+) -> Result<(), RegistryError> {
+    let canonical = canonical_name(name);
+    let Some(entry) = catalog().into_iter().find(|e| e.name == canonical) else {
+        return Ok(());
+    };
+    let typed_only = if typed {
+        listed_params(TYPED_ONLY_PARAMS, &canonical)
+    } else {
+        &[]
+    };
+    for key in keys {
+        let accepted = entry.default_params.contains_key(key)
+            || listed_params(LEGACY_PARAM_ALIASES, &canonical).contains(&key.as_str())
+            || typed_only.contains(&key.as_str());
+        if !accepted {
+            return Err(RegistryError::UnknownParameter {
+                parameter: key.clone(),
+                indicator: name.to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
 pub fn build_checked(
     name: &str,
     params: &HashMap<String, f64>,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
+    reject_unknown_params(name, params.keys(), false)?;
     match name.to_lowercase().as_str() {
         "rsi" => Ok(Box::new(build_rsi(params, RsiSmoothing::Wilder)?)),
         "macd" => {
@@ -2650,6 +2735,8 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
 const SOURCE_FIXED_INDICATORS: &[&str] = &["efi"];
 
 pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
+    reject_unknown_params(name, params.keys().filter(|k| *k != "source"), true)?;
+
     if name.to_lowercase() == "midas" {
         // Bypasses the generic `source` handling below; see `build_midas_typed`.
         return build_midas_typed(params);
@@ -3483,7 +3570,7 @@ mod tests {
 
     #[test]
     fn test_build_checked_valid_and_invalid_params() {
-        let valid_params = HashMap::from([("period".to_string(), 14.0)]);
+        let valid_params = HashMap::from([("rsi_len".to_string(), 14.0)]);
         assert!(build_checked("rsi", &valid_params).is_ok());
 
         // Period 0 is invalid
@@ -3649,13 +3736,67 @@ mod tests {
         .is_ok());
     }
 
+    /// Plan 62/49: a typo must not silently build with the default — `sma` with `peroid` used to
+    /// build an SMA(20) instead of the SMA(2) that was meant.
+    #[test]
+    fn test_unknown_parameter_is_rejected() {
+        let typo = HashMap::from([("peroid".to_string(), 2.0)]);
+        let err = match build_checked("sma", &typo) {
+            Err(e) => e,
+            Ok(_) => panic!("Expected error for unknown parameter"),
+        };
+        assert_eq!(
+            err,
+            RegistryError::UnknownParameter {
+                parameter: "peroid".to_string(),
+                indicator: "sma".to_string(),
+            }
+        );
+        assert!(build_checked("sma", &HashMap::from([("period".to_string(), 2.0)])).is_ok());
+
+        let typed_typo: TypedParams = HashMap::from([("peroid".to_string(), ParamValue::Int(2))]);
+        assert!(matches!(
+            build_typed("sma", &typed_typo),
+            Err(RegistryError::UnknownParameter { .. })
+        ));
+
+        // Aliases resolve to the canonical entry's parameters.
+        assert!(build_checked("bb", &HashMap::from([("len".to_string(), 20.0)])).is_ok());
+        assert!(matches!(
+            build_checked("bb", &HashMap::from([("length".to_string(), 20.0)])),
+            Err(RegistryError::UnknownParameter { .. })
+        ));
+    }
+
+    #[test]
+    fn test_typed_only_and_legacy_params_are_accepted_where_they_are_read() {
+        let smoothing: TypedParams =
+            HashMap::from([("smoothing".to_string(), ParamValue::Enum("ema".to_string()))]);
+        assert!(build_typed("rsi", &smoothing).is_ok());
+        // `build_checked` does not read an RSI smoothing; accepting it there would ignore it.
+        assert!(matches!(
+            build_checked("rsi", &HashMap::from([("smoothing".to_string(), 1.0)])),
+            Err(RegistryError::UnknownParameter { .. })
+        ));
+
+        let source: TypedParams = HashMap::from([(
+            "source".to_string(),
+            ParamValue::Source(crate::model::Source::Hl2),
+        )]);
+        assert!(build_typed("sma", &source).is_ok());
+
+        assert!(
+            build_checked("keltner", &HashMap::from([("ma_period".to_string(), 20.0)])).is_ok()
+        );
+    }
+
     #[test]
     fn test_build_typed_flattens_numeric_params() {
-        let params: TypedParams = HashMap::from([("period".to_string(), ParamValue::Int(14))]);
+        let params: TypedParams = HashMap::from([("rsi_len".to_string(), ParamValue::Int(14))]);
         assert!(build_typed("rsi", &params).is_ok());
 
         let bool_params: TypedParams =
-            HashMap::from([("period".to_string(), ParamValue::Bool(true))]);
+            HashMap::from([("rsi_len".to_string(), ParamValue::Bool(true))]);
         // Bool flattens to 1.0, which build_checked's own validation then accepts or rejects.
         assert!(build_typed("rsi", &bool_params).is_ok());
     }
@@ -3663,7 +3804,7 @@ mod tests {
     #[test]
     fn test_build_typed_rejects_non_numeric_params() {
         let params: TypedParams =
-            HashMap::from([("period".to_string(), ParamValue::Enum("fast".to_string()))]);
+            HashMap::from([("rsi_len".to_string(), ParamValue::Enum("fast".to_string()))]);
         let err = match build_typed("rsi", &params) {
             Err(e) => e,
             Ok(_) => panic!("Expected error for enum parameter"),

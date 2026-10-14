@@ -118,7 +118,8 @@ that streams a full bar series through warmup.
   close. `Bar::new` is intentionally unchecked for trusted feeds and compatibility.
 - Use `Indicator::on_checked_bar` when a consumer cannot guarantee validated input.
 - Prefer `build_checked` for configuration-driven construction. Periods are whole numbers in the
-  supported range; invalid thresholds and parameter orderings return `RegistryError`.
+  supported range; invalid thresholds, parameter orderings and parameter keys the indicator does
+  not read (typos) return `RegistryError`.
 - Composite scoring discards non-finite subscores, bounds weights, validates trade-geometry bars,
   and falls back to one percent of price when ATR is not finite and positive.
 - Valuation results are only as good as the conventions they were given. A day count is never

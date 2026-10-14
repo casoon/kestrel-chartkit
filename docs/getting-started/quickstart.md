@@ -56,7 +56,8 @@ bar 15: close=46.00  RSI(14)=68.36
 Three things to note:
 
 - `build_checked` validates the parameters against the registry and returns a boxed
-  `Indicator`. An unknown name or an out-of-range period is a `RegistryError`, not a panic.
+  `Indicator`. An unknown name, an unknown parameter key or an out-of-range period is a `RegistryError`, not a
+  panic.
 - `Bar::try_new` rejects non-finite or non-positive prices and a high/low range that does not
   contain open and close. Use it wherever bars enter your program.
 - `on_bar` returns `None` until the warmup is complete, then `Some` on every bar.

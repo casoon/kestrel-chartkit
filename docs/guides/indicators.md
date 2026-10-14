@@ -73,7 +73,10 @@ names return `Unitless`, and the enum is `#[non_exhaustive]` — match with a `_
 
 `build_checked(name, &params)` builds an indicator from a name and a parameter map. Missing
 parameters take their defaults. Periods must be whole numbers in the supported range, and invalid
-thresholds or orderings return a `RegistryError`:
+thresholds or orderings return a `RegistryError`. So does a key the indicator does not read — a
+typo like `peroid` fails instead of silently building with the default period. The accepted keys
+are the catalog entry's `default_params`; `build_typed` additionally takes `source` and the enum
+and timestamp parameters of the indicators that have them (e.g. `smoothing` for `rsi`):
 
 ```rust
 use kestrel_chartkit::build_checked;

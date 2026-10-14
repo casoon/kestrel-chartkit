@@ -52,7 +52,7 @@ fn test_classify_regime_on_synthetic_flat_random_walk() {
 #[test]
 fn test_classify_regime_end_to_end_streaming_pipeline() {
     // Build real streaming ADX and ATR indicators from the registry
-    let mut adx = build_checked("adx", &HashMap::from([("adx_len".to_string(), 14.0)])).unwrap();
+    let mut adx = build_checked("adx", &HashMap::from([("di_len".to_string(), 14.0)])).unwrap();
     let mut atr = build_checked("atr", &HashMap::from([("atr_len".to_string(), 14.0)])).unwrap();
 
     // Generate 60 bars of a strong synthetic uptrend

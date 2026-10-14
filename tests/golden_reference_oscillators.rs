@@ -259,11 +259,7 @@ fn test_golden_tsi_reference_values() {
 fn test_golden_fisher_transform_reference_values() {
     let out = run_osc(
         "fisher_transform",
-        &HashMap::from([
-            ("fish_len".to_string(), 5.0),
-            ("avg_len".to_string(), 2.0),
-            ("sig_len".to_string(), 3.0),
-        ]),
+        &HashMap::from([("fish_len".to_string(), 5.0), ("avg_len".to_string(), 2.0)]),
     )
     .expect("Fisher Transform produced no output");
     let tol = expected("osc_tolerance");
