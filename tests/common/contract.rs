@@ -44,16 +44,87 @@ pub struct ContractCase {
 
 /// The case `name` from `fixture`, for `indicator` with the declared output `unit`.
 ///
-/// Every key under the case prefix must be understood; an unknown key panics, so a typo in the
-/// generator or a case name that prefixes another cannot silently drop expectations.
+/// Scalar lines `<case>_tolerance`, `<case>_bars`, `<case>_param_<key>`; then the table headed
+/// `@<case> open high low close volume <columns...>` with one row per bar and `-` for an absent
+/// column (format written by `render_contract` in `reference/kestrel_reference/fixture.py`).
+/// Every scalar key under the case prefix and every column must be understood; anything else
+/// panics, so a generator typo or a case name that prefixes another cannot drop expectations.
 pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
     let prefix = format!("{name}_");
+    let table_head = format!("@{name} ");
     let mut params = HashMap::new();
-    let mut bar_fields: BTreeMap<usize, HashMap<String, f64>> = BTreeMap::new();
-    let mut expected: BTreeMap<usize, ExpectedBar> = BTreeMap::new();
     let mut count = None;
     let mut tolerance = None;
-    for line in fixture.lines() {
+    let mut columns: Option<Vec<String>> = None;
+    let mut bars = Vec::new();
+    let mut expected = Vec::new();
+    let mut lines = fixture.lines();
+    while let Some(line) = lines.next() {
+        if let Some(head) = line.strip_prefix(&table_head) {
+            let head: Vec<String> = head.split(' ').map(str::to_string).collect();
+            assert_eq!(
+                head[..5],
+                ["open", "high", "low", "close", "volume"],
+                "case {name}: table must start with the bar columns"
+            );
+            let rows = count.unwrap_or_else(|| panic!("case {name}: table before `bars`"));
+            for i in 1..=rows {
+                let row = lines
+                    .next()
+                    .unwrap_or_else(|| panic!("case {name}: row {i} missing"));
+                let cells: Vec<&str> = row.split(' ').collect();
+                assert_eq!(cells.len(), head.len(), "case {name}: row {i} width");
+                let number = |cell: &str| -> Option<f64> {
+                    (cell != "-").then(|| {
+                        cell.parse()
+                            .unwrap_or_else(|_| panic!("case {name}: row {i}: `{cell}`"))
+                    })
+                };
+                let bar = |k: usize| {
+                    number(cells[k]).unwrap_or_else(|| panic!("case {name}: row {i} bar field"))
+                };
+                bars.push(Bar::new(
+                    i as i64 * BAR_SECONDS,
+                    bar(0),
+                    bar(1),
+                    bar(2),
+                    bar(3),
+                    bar(4),
+                ));
+                let mut out = ExpectedBar::default();
+                let mut output = ExpectedOutput {
+                    value: f64::NAN,
+                    secondary: None,
+                    extra: BTreeMap::new(),
+                };
+                let mut has_output = false;
+                for (column, cell) in head.iter().zip(&cells).skip(5) {
+                    let Some(value) = number(cell) else {
+                        continue;
+                    };
+                    if column == "value" {
+                        output.value = value;
+                        has_output = true;
+                    } else if column == "secondary" {
+                        output.secondary = Some(value);
+                    } else if let Some(field) = column.strip_prefix("extra:") {
+                        output.extra.insert(field.to_string(), value);
+                    } else if let Some(kind) = column.strip_prefix("alert:") {
+                        out.alerts.insert(kind.to_string(), value);
+                    } else {
+                        panic!("case {name}: unknown column `{column}`");
+                    }
+                }
+                assert!(
+                    has_output || (output.secondary.is_none() && output.extra.is_empty()),
+                    "case {name}: row {i} has output fields without a value"
+                );
+                out.output = has_output.then_some(output);
+                expected.push(out);
+            }
+            columns = Some(head);
+            continue;
+        }
         if line.starts_with('#') {
             continue;
         }
@@ -72,63 +143,11 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
             tolerance = Some(value);
         } else if let Some(param) = rest.strip_prefix("param_") {
             params.insert(param.to_string(), value);
-        } else if let Some((index, field)) = indexed(rest, "bar") {
-            bar_fields
-                .entry(index)
-                .or_default()
-                .insert(field.to_string(), value);
-        } else if let Some((index, field)) = indexed(rest, "out") {
-            let bar = expected.entry(index).or_default();
-            let output = bar.output.get_or_insert_with(|| ExpectedOutput {
-                value: f64::NAN,
-                secondary: None,
-                extra: BTreeMap::new(),
-            });
-            if field == "value" {
-                output.value = value;
-            } else if field == "secondary" {
-                output.secondary = Some(value);
-            } else if let Some(extra) = field.strip_prefix("extra_") {
-                output.extra.insert(extra.to_string(), value);
-            } else {
-                panic!("{key}: unknown output field");
-            }
-        } else if let Some((index, kind)) = indexed(rest, "alert") {
-            expected
-                .entry(index)
-                .or_default()
-                .alerts
-                .insert(kind.to_string(), value);
         } else {
             panic!("{key}: unknown contract key");
         }
     }
-    let count = count.unwrap_or_else(|| panic!("case {name}: not in the fixture"));
-    let bars = (1..=count)
-        .map(|i| {
-            let f = &bar_fields[&i];
-            Bar::new(
-                i as i64 * BAR_SECONDS,
-                f["open"],
-                f["high"],
-                f["low"],
-                f["close"],
-                f["volume"],
-            )
-        })
-        .collect();
-    let expected = (1..=count)
-        .map(|i| expected.remove(&i).unwrap_or_default())
-        .collect::<Vec<_>>();
-    for (i, bar) in expected.iter().enumerate() {
-        if let Some(output) = &bar.output {
-            assert!(
-                !output.value.is_nan(),
-                "case {name}: out{} without value",
-                i + 1
-            );
-        }
-    }
+    assert!(columns.is_some(), "case {name}: not in the fixture");
     ContractCase {
         name: name.to_string(),
         indicator: indicator.to_string(),
@@ -138,15 +157,6 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
         tolerance: tolerance.unwrap_or_else(|| panic!("case {name}: no tolerance")),
         expected,
     }
-}
-
-/// `bar12_close` with `head` "bar" → `(12, "close")`.
-fn indexed<'a>(rest: &'a str, head: &str) -> Option<(usize, &'a str)> {
-    let tail = rest.strip_prefix(head)?;
-    let digits = tail.find(|c: char| !c.is_ascii_digit())?;
-    let index = tail[..digits].parse().ok()?;
-    let field = tail[digits..].strip_prefix('_')?;
-    Some((index, field))
 }
 
 /// One run: per bar the output and the alerts (kind → strength).

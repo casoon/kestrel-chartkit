@@ -43,7 +43,7 @@ Conventions assumed where the type documentation leaves them open:
 from fractions import Fraction
 
 from ..exact import central_squares, sqrt as exact_sqrt, to_decimal
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import clamp, raw_rsi
 from ..smoothing import ema_first_sample
 from .contract_pilot import case_block, crossed_over, crossed_under, wave
@@ -53,6 +53,7 @@ from .oscillators import (
 )
 
 NAME = "contract_oscillators"
+RENDER = render_contract
 
 # Relative to max(1, |expected|): the second implementation repeats the documented arithmetic in
 # a different order, so differences are rounding only.

@@ -37,7 +37,7 @@ Conventions the type documentation leaves open, assumed here:
 import math
 
 from ..exact import bollinger
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import directional, efficiency_ratio, keltner, true_ranges
 from ..smoothing import ema_first_sample, rma
 from .contract_pilot import case_block, crossed_over, crossed_under
@@ -45,6 +45,7 @@ from .volatility import (_aroon, _chande_kroll, _choppiness, _dmi, _garman_klass
                          _relative_volatility, _ulcer, _vortex)
 
 NAME = "contract_volatility"
+RENDER = render_contract
 
 TOLERANCE = 1e-9
 
@@ -569,8 +570,7 @@ CHFR_BARS = path_bars(CHFR_PATH, 0.8)
 
 def build():
     header = provenance("contract_volatility") + [
-        "", "Format: see contract_pilot; out<i>_secondary is the secondary output where the",
-        "indicator has one."]
+        "", "Format: see contract_pilot (one table per case, `-` = absent)."]
     blocks = [
         block("adx_defaults", "ADX with the catalog defaults (14, 14, level 20): swings, chop, trend",
               adx_case(14, 14, 20.0, ADX_BARS)),

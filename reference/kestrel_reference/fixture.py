@@ -1,5 +1,7 @@
 """The key=value fixture format the Rust tests read, and the provenance note every header carries."""
 
+import re
+
 
 def render(header, blocks):
     """Renders a fixture: `# `-prefixed header lines, then one block per case.
@@ -16,6 +18,54 @@ def render(header, blocks):
         for key, value in case.items():
             name = key if prefix is None else f"{prefix}_{key}"
             lines.append(f"{name}={value!r}")
+    return "\n".join(lines) + "\n"
+
+
+_INDEXED = re.compile(r"(bar|out|alert)(\d+)_(.+)")
+
+
+def render_contract(header, blocks):
+    """Renders contract cases (plan 62) as one table per case instead of one line per number.
+
+    `blocks` are `case_block` results. The scalar keys (`tolerance`, `bars`, `param_*`) stay
+    `<case>_<key>=<value>` lines; the per-bar keys become a table headed
+    `@<case> open high low close volume <columns...>`, one row per bar, `-` where a column has no
+    value on that bar. Columns: `value`, `secondary`, `extra:<field>` and `alert:<kind>`, each only
+    if it occurs in the case.
+    """
+    lines = [f"# {line}".rstrip() for line in header]
+    for name, comment, case in blocks:
+        lines.append("")
+        if comment:
+            lines.append(f"# {comment}")
+        rows, columns = {}, set()
+        for key, value in case.items():
+            match = _INDEXED.fullmatch(key)
+            if match is None:
+                lines.append(f"{name}_{key}={value!r}")
+                continue
+            kind, index, field = match.group(1), int(match.group(2)), match.group(3)
+            if kind == "bar":
+                column = field
+            elif kind == "alert":
+                column = f"alert:{field}"
+            elif field.startswith("extra_"):
+                column = f"extra:{field[len('extra_'):]}"
+            else:
+                column = field
+            if kind != "bar":
+                columns.add(column)
+            rows.setdefault(index, {})[column] = value
+        order = (["value"] if "value" in columns else []) + \
+                (["secondary"] if "secondary" in columns else []) + \
+                sorted(c for c in columns if c.startswith("extra:")) + \
+                sorted(c for c in columns if c.startswith("alert:"))
+        assert set(order) == columns, (name, columns - set(order))
+        head = ["open", "high", "low", "close", "volume"] + order
+        lines.append(f"@{name} " + " ".join(head))
+        for index in range(1, int(case["bars"]) + 1):
+            row = rows[index]
+            lines.append(" ".join(repr(row[c]) if c in row else "-" for c in head))
     return "\n".join(lines) + "\n"
 
 

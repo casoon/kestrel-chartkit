@@ -120,7 +120,7 @@ def main():
                 print(f"partial   {name}: {derived} derived{note} + {stated} stated of {total} "
                       "keys, all agree; not written")
             continue
-        text = render(*module.build())
+        text = getattr(module, "RENDER", render)(*module.build())
         target = (FIXTURES if args.check else args.out) / f"{module.NAME}.txt"
         if args.check:
             current = target.read_text(encoding="utf-8") if target.exists() else ""

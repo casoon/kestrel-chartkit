@@ -26,7 +26,7 @@ import math
 from fractions import Fraction
 
 from ..exact import bollinger as exact_bollinger
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import keltner as keltner_last
 from ..indicators import true_ranges
 from ..smoothing import ema_first_sample, ema_published, least_squares, sma, wma
@@ -36,6 +36,7 @@ from .moving_averages import _dema, _hma, _kama, _mcginley, _t3, _tema, _vidya, 
 from .trend import _alligator, _midpoint
 
 NAME = "contract_moving_averages"
+RENDER = render_contract
 
 TOLERANCE = 1e-9
 MARGIN = 1e-7
@@ -759,6 +760,6 @@ def build_blocks():
 def build():
     header = provenance("contract_moving_averages") + [
         "",
-        "Format: see contract_pilot; out<i>_secondary where the output carries one.",
+        "Format: see contract_pilot (one table per case, `-` = absent).",
     ]
     return header, build_blocks()

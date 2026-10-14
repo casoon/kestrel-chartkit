@@ -33,7 +33,7 @@ Conventions the type documentation leaves open, assumed here (each also named at
 import math
 from statistics import NormalDist
 
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import clamp
 from ..smoothing import ema_first_sample
 from .contract_pilot import case_block, crossed_over, crossed_under
@@ -42,6 +42,7 @@ from .volume import (_acc_dist, _cmf, _cvd, _force_index, _hires_flow, _klinger,
                      _relative_volume_at_time, _volume_index)
 
 NAME = "contract_volume"
+RENDER = render_contract
 
 # Relative to max(1, |expected|): the second implementation repeats the documented arithmetic, so
 # differences are rounding only (running sums over a few hundred bars included).

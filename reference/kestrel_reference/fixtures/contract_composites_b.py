@@ -11,7 +11,7 @@ import math
 from contextlib import contextmanager
 
 from .. import exact
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import adx, efficiency_ratio, keltner, rsi_lines
 from ..smoothing import ema_first_sample
 from . import leg_conviction as golden_leg_conviction
@@ -26,6 +26,7 @@ from . import structural_flow as golden_structural_flow
 from .contract_pilot import case_block
 
 NAME = "contract_composites_b"
+RENDER = render_contract
 
 
 def clamp(x, low, high):
@@ -616,7 +617,7 @@ def with_volume(bars, volume=1000.0):
 def build():
     header = provenance("contract_composites_b") + [
         "",
-        "Format: see contract_pilot; out<i>_secondary where the output carries one.",
+        "Format: see contract_pilot (one table per case, `-` = absent).",
         "Buy/sell pressure, trend quality and multi-factor follow the formulas documented on their",
         "types. The other indicators reuse the golden modules (written from the original",
         "definitions) and map their per-bar state onto the documented output; alert strengths",

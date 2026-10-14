@@ -20,13 +20,14 @@ Common conventions:
 import math
 import statistics
 
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import rsi_lines
 from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
 from .contract_pilot import case_block
 
 NAME = "contract_structure"
+RENDER = render_contract
 
 # Relative to max(1, |expected|). Every model repeats the documented arithmetic on the same
 # inputs, so differences are rounding only.
@@ -1212,8 +1213,7 @@ def candle_classification(bars, **overrides):
 def build():
     header = provenance("contract_structure") + [
         "",
-        "Format: see contract_pilot (param_*, bar<i>_*, out<i>_value, out<i>_extra_<field>,",
-        "alert<i>_<kind>; missing keys mean no output, no such extra field, no such alert).",
+        "Format: see contract_pilot (one table per case, `-` = absent).",
     ]
     wave, zz, sw, rng, dbl = (structure_wave(), zigzag_bars(), sweep_bars(),
                                 range_bars(), double_bars())

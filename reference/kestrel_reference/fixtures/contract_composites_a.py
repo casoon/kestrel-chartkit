@@ -17,7 +17,7 @@ import contextlib
 import math
 
 from .. import pine_series as ps
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from . import coil_release as cr_ref
 from . import compression_zones as cz_ref
 from . import flow_exhaustion as fe_ref
@@ -32,6 +32,7 @@ from . import smoothed_supertrend as sst_ref
 from .contract_pilot import case_block
 
 NAME = "contract_composites_a"
+RENDER = render_contract
 
 
 @contextlib.contextmanager
@@ -965,8 +966,7 @@ def rsi_cycle_stats_blocks():
 def build():
     header = provenance("contract_composites_a") + [
         "",
-        "Format: see contract_pilot; out<i>_secondary is the expected `secondary` where the",
-        "indicator has one.",
+        "Format: see contract_pilot (one table per case, `-` = absent).",
     ]
     blocks = (roc_context_blocks() + smoothed_supertrend_blocks()
               + reaction_speed_blocks() + flow_exhaustion_blocks()

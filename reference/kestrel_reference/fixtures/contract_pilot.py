@@ -10,11 +10,12 @@ detector without a single formula; its case is a hand-built scenario whose expec
 derived bar by bar in the comments below.
 """
 
-from ..fixture import provenance
+from ..fixture import provenance, render_contract
 from ..indicators import clamp, rsi_lines, true_ranges
 from ..smoothing import rma
 
 NAME = "contract_pilot"
+RENDER = render_contract
 
 # Relative to max(1, |expected|). The second implementation repeats the documented arithmetic,
 # so differences are rounding only.
@@ -223,10 +224,9 @@ RSI_WAVE = wave(60, 100.0, [1.5, 1.2, 1.0, 0.8, -0.3, -1.6, -1.4, -1.1, -0.9, 0.
 def build():
     header = provenance("contract_pilot") + [
         "",
-        "Per case: param_*, bars and bar<i>_open/high/low/close/volume (1-based); out<i>_value and",
-        "out<i>_extra_<field> for every bar with an output; alert<i>_<kind> = strength for every",
-        "alert. Missing out keys mean no output on that bar, missing alert keys no alert, missing",
-        "extra keys that the field must be absent.",
+        "Per case: <case>_tolerance, <case>_bars, <case>_param_*; then a table @<case> with one row",
+        "per bar: open high low close volume, then value, secondary, extra:<field>, alert:<kind>.",
+        "`-` means absent: no output on that bar, no such field, no such alert.",
     ]
     blocks = [
         case_block("sma_rising", "SMA(3) over 100, 101, 102, 103: plan 62 hand example",

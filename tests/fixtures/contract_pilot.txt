@@ -3,104 +3,41 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Per case: param_*, bars and bar<i>_open/high/low/close/volume (1-based); out<i>_value and
-# out<i>_extra_<field> for every bar with an output; alert<i>_<kind> = strength for every
-# alert. Missing out keys mean no output on that bar, missing alert keys no alert, missing
-# extra keys that the field must be absent.
+# Per case: <case>_tolerance, <case>_bars, <case>_param_*; then a table @<case> with one row
+# per bar: open high low close volume, then value, secondary, extra:<field>, alert:<kind>.
+# `-` means absent: no output on that bar, no such field, no such alert.
 
 # SMA(3) over 100, 101, 102, 103: plan 62 hand example
 sma_rising_tolerance=1e-09
 sma_rising_bars=4.0
 sma_rising_param_period=3.0
-sma_rising_bar1_open=99.7
-sma_rising_bar1_high=101.0
-sma_rising_bar1_low=99.4
-sma_rising_bar1_close=100.0
-sma_rising_bar1_volume=1000.0
-sma_rising_bar2_open=100.7
-sma_rising_bar2_high=102.0
-sma_rising_bar2_low=100.4
-sma_rising_bar2_close=101.0
-sma_rising_bar2_volume=1000.0
-sma_rising_bar3_open=101.7
-sma_rising_bar3_high=103.0
-sma_rising_bar3_low=101.4
-sma_rising_bar3_close=102.0
-sma_rising_bar3_volume=1000.0
-sma_rising_bar4_open=102.7
-sma_rising_bar4_high=104.0
-sma_rising_bar4_low=102.4
-sma_rising_bar4_close=103.0
-sma_rising_bar4_volume=1000.0
-sma_rising_out3_value=101.0
-sma_rising_out4_value=102.0
+@sma_rising open high low close volume value
+99.7 101.0 99.4 100.0 1000.0 -
+100.7 102.0 100.4 101.0 1000.0 -
+101.7 103.0 101.4 102.0 1000.0 101.0
+102.7 104.0 102.4 103.0 1000.0 102.0
 
 # SMA(1) is the close itself, from the first bar
 sma_single_tolerance=1e-09
 sma_single_bars=3.0
 sma_single_param_period=1.0
-sma_single_bar1_open=99.7
-sma_single_bar1_high=101.0
-sma_single_bar1_low=99.4
-sma_single_bar1_close=100.0
-sma_single_bar1_volume=1000.0
-sma_single_bar2_open=103.7
-sma_single_bar2_high=105.0
-sma_single_bar2_low=103.4
-sma_single_bar2_close=104.0
-sma_single_bar2_volume=1000.0
-sma_single_bar3_open=97.7
-sma_single_bar3_high=99.0
-sma_single_bar3_low=97.4
-sma_single_bar3_close=98.0
-sma_single_bar3_volume=1000.0
-sma_single_out1_value=100.0
-sma_single_out2_value=104.0
-sma_single_out3_value=98.0
+@sma_single open high low close volume value
+99.7 101.0 99.4 100.0 1000.0 100.0
+103.7 105.0 103.4 104.0 1000.0 104.0
+97.7 99.0 97.4 98.0 1000.0 98.0
 
 # SMA(4) of a constant series is the constant
 sma_constant_tolerance=1e-09
 sma_constant_bars=7.0
 sma_constant_param_period=4.0
-sma_constant_bar1_open=49.7
-sma_constant_bar1_high=51.0
-sma_constant_bar1_low=49.4
-sma_constant_bar1_close=50.0
-sma_constant_bar1_volume=1000.0
-sma_constant_bar2_open=49.7
-sma_constant_bar2_high=51.0
-sma_constant_bar2_low=49.4
-sma_constant_bar2_close=50.0
-sma_constant_bar2_volume=1000.0
-sma_constant_bar3_open=49.7
-sma_constant_bar3_high=51.0
-sma_constant_bar3_low=49.4
-sma_constant_bar3_close=50.0
-sma_constant_bar3_volume=1000.0
-sma_constant_bar4_open=49.7
-sma_constant_bar4_high=51.0
-sma_constant_bar4_low=49.4
-sma_constant_bar4_close=50.0
-sma_constant_bar4_volume=1000.0
-sma_constant_bar5_open=49.7
-sma_constant_bar5_high=51.0
-sma_constant_bar5_low=49.4
-sma_constant_bar5_close=50.0
-sma_constant_bar5_volume=1000.0
-sma_constant_bar6_open=49.7
-sma_constant_bar6_high=51.0
-sma_constant_bar6_low=49.4
-sma_constant_bar6_close=50.0
-sma_constant_bar6_volume=1000.0
-sma_constant_bar7_open=49.7
-sma_constant_bar7_high=51.0
-sma_constant_bar7_low=49.4
-sma_constant_bar7_close=50.0
-sma_constant_bar7_volume=1000.0
-sma_constant_out4_value=50.0
-sma_constant_out5_value=50.0
-sma_constant_out6_value=50.0
-sma_constant_out7_value=50.0
+@sma_constant open high low close volume value
+49.7 51.0 49.4 50.0 1000.0 -
+49.7 51.0 49.4 50.0 1000.0 -
+49.7 51.0 49.4 50.0 1000.0 -
+49.7 51.0 49.4 50.0 1000.0 50.0
+49.7 51.0 49.4 50.0 1000.0 50.0
+49.7 51.0 49.4 50.0 1000.0 50.0
+49.7 51.0 49.4 50.0 1000.0 50.0
 
 # RSI(5) with avg_len 1 (the line is the raw RSI), signal EMA(3)
 rsi_rawline_tolerance=1e-09
@@ -110,436 +47,67 @@ rsi_rawline_param_avg_len=1.0
 rsi_rawline_param_sig_len=3.0
 rsi_rawline_param_overbought=70.0
 rsi_rawline_param_oversold=30.0
-rsi_rawline_bar1_open=99.7
-rsi_rawline_bar1_high=101.0
-rsi_rawline_bar1_low=99.4
-rsi_rawline_bar1_close=100.0
-rsi_rawline_bar1_volume=1000.0
-rsi_rawline_bar2_open=101.2
-rsi_rawline_bar2_high=102.5
-rsi_rawline_bar2_low=100.9
-rsi_rawline_bar2_close=101.5
-rsi_rawline_bar2_volume=1000.0
-rsi_rawline_bar3_open=102.4
-rsi_rawline_bar3_high=103.7
-rsi_rawline_bar3_low=102.10000000000001
-rsi_rawline_bar3_close=102.7
-rsi_rawline_bar3_volume=1000.0
-rsi_rawline_bar4_open=103.4
-rsi_rawline_bar4_high=104.7
-rsi_rawline_bar4_low=103.10000000000001
-rsi_rawline_bar4_close=103.7
-rsi_rawline_bar4_volume=1000.0
-rsi_rawline_bar5_open=104.2
-rsi_rawline_bar5_high=105.5
-rsi_rawline_bar5_low=103.9
-rsi_rawline_bar5_close=104.5
-rsi_rawline_bar5_volume=1000.0
-rsi_rawline_bar6_open=103.9
-rsi_rawline_bar6_high=105.2
-rsi_rawline_bar6_low=103.60000000000001
-rsi_rawline_bar6_close=104.2
-rsi_rawline_bar6_volume=1000.0
-rsi_rawline_bar7_open=102.30000000000001
-rsi_rawline_bar7_high=103.60000000000001
-rsi_rawline_bar7_low=102.00000000000001
-rsi_rawline_bar7_close=102.60000000000001
-rsi_rawline_bar7_volume=1000.0
-rsi_rawline_bar8_open=100.9
-rsi_rawline_bar8_high=102.2
-rsi_rawline_bar8_low=100.60000000000001
-rsi_rawline_bar8_close=101.2
-rsi_rawline_bar8_volume=1000.0
-rsi_rawline_bar9_open=99.80000000000001
-rsi_rawline_bar9_high=101.10000000000001
-rsi_rawline_bar9_low=99.50000000000001
-rsi_rawline_bar9_close=100.10000000000001
-rsi_rawline_bar9_volume=1000.0
-rsi_rawline_bar10_open=98.9
-rsi_rawline_bar10_high=100.2
-rsi_rawline_bar10_low=98.60000000000001
-rsi_rawline_bar10_close=99.2
-rsi_rawline_bar10_volume=1000.0
-rsi_rawline_bar11_open=99.30000000000001
-rsi_rawline_bar11_high=100.60000000000001
-rsi_rawline_bar11_low=99.00000000000001
-rsi_rawline_bar11_close=99.60000000000001
-rsi_rawline_bar11_volume=1000.0
-rsi_rawline_bar12_open=100.80000000000001
-rsi_rawline_bar12_high=102.10000000000001
-rsi_rawline_bar12_low=100.50000000000001
-rsi_rawline_bar12_close=101.10000000000001
-rsi_rawline_bar12_volume=1000.0
-rsi_rawline_bar13_open=102.00000000000001
-rsi_rawline_bar13_high=103.30000000000001
-rsi_rawline_bar13_low=101.70000000000002
-rsi_rawline_bar13_close=102.30000000000001
-rsi_rawline_bar13_volume=1000.0
-rsi_rawline_bar14_open=103.00000000000001
-rsi_rawline_bar14_high=104.30000000000001
-rsi_rawline_bar14_low=102.70000000000002
-rsi_rawline_bar14_close=103.30000000000001
-rsi_rawline_bar14_volume=1000.0
-rsi_rawline_bar15_open=103.80000000000001
-rsi_rawline_bar15_high=105.10000000000001
-rsi_rawline_bar15_low=103.50000000000001
-rsi_rawline_bar15_close=104.10000000000001
-rsi_rawline_bar15_volume=1000.0
-rsi_rawline_bar16_open=103.50000000000001
-rsi_rawline_bar16_high=104.80000000000001
-rsi_rawline_bar16_low=103.20000000000002
-rsi_rawline_bar16_close=103.80000000000001
-rsi_rawline_bar16_volume=1000.0
-rsi_rawline_bar17_open=101.90000000000002
-rsi_rawline_bar17_high=103.20000000000002
-rsi_rawline_bar17_low=101.60000000000002
-rsi_rawline_bar17_close=102.20000000000002
-rsi_rawline_bar17_volume=1000.0
-rsi_rawline_bar18_open=100.50000000000001
-rsi_rawline_bar18_high=101.80000000000001
-rsi_rawline_bar18_low=100.20000000000002
-rsi_rawline_bar18_close=100.80000000000001
-rsi_rawline_bar18_volume=1000.0
-rsi_rawline_bar19_open=99.40000000000002
-rsi_rawline_bar19_high=100.70000000000002
-rsi_rawline_bar19_low=99.10000000000002
-rsi_rawline_bar19_close=99.70000000000002
-rsi_rawline_bar19_volume=1000.0
-rsi_rawline_bar20_open=98.50000000000001
-rsi_rawline_bar20_high=99.80000000000001
-rsi_rawline_bar20_low=98.20000000000002
-rsi_rawline_bar20_close=98.80000000000001
-rsi_rawline_bar20_volume=1000.0
-rsi_rawline_bar21_open=98.90000000000002
-rsi_rawline_bar21_high=100.20000000000002
-rsi_rawline_bar21_low=98.60000000000002
-rsi_rawline_bar21_close=99.20000000000002
-rsi_rawline_bar21_volume=1000.0
-rsi_rawline_bar22_open=100.40000000000002
-rsi_rawline_bar22_high=101.70000000000002
-rsi_rawline_bar22_low=100.10000000000002
-rsi_rawline_bar22_close=100.70000000000002
-rsi_rawline_bar22_volume=1000.0
-rsi_rawline_bar23_open=101.60000000000002
-rsi_rawline_bar23_high=102.90000000000002
-rsi_rawline_bar23_low=101.30000000000003
-rsi_rawline_bar23_close=101.90000000000002
-rsi_rawline_bar23_volume=1000.0
-rsi_rawline_bar24_open=102.60000000000002
-rsi_rawline_bar24_high=103.90000000000002
-rsi_rawline_bar24_low=102.30000000000003
-rsi_rawline_bar24_close=102.90000000000002
-rsi_rawline_bar24_volume=1000.0
-rsi_rawline_bar25_open=103.40000000000002
-rsi_rawline_bar25_high=104.70000000000002
-rsi_rawline_bar25_low=103.10000000000002
-rsi_rawline_bar25_close=103.70000000000002
-rsi_rawline_bar25_volume=1000.0
-rsi_rawline_bar26_open=103.10000000000002
-rsi_rawline_bar26_high=104.40000000000002
-rsi_rawline_bar26_low=102.80000000000003
-rsi_rawline_bar26_close=103.40000000000002
-rsi_rawline_bar26_volume=1000.0
-rsi_rawline_bar27_open=101.50000000000003
-rsi_rawline_bar27_high=102.80000000000003
-rsi_rawline_bar27_low=101.20000000000003
-rsi_rawline_bar27_close=101.80000000000003
-rsi_rawline_bar27_volume=1000.0
-rsi_rawline_bar28_open=100.10000000000002
-rsi_rawline_bar28_high=101.40000000000002
-rsi_rawline_bar28_low=99.80000000000003
-rsi_rawline_bar28_close=100.40000000000002
-rsi_rawline_bar28_volume=1000.0
-rsi_rawline_bar29_open=99.00000000000003
-rsi_rawline_bar29_high=100.30000000000003
-rsi_rawline_bar29_low=98.70000000000003
-rsi_rawline_bar29_close=99.30000000000003
-rsi_rawline_bar29_volume=1000.0
-rsi_rawline_bar30_open=98.10000000000002
-rsi_rawline_bar30_high=99.40000000000002
-rsi_rawline_bar30_low=97.80000000000003
-rsi_rawline_bar30_close=98.40000000000002
-rsi_rawline_bar30_volume=1000.0
-rsi_rawline_bar31_open=98.50000000000003
-rsi_rawline_bar31_high=99.80000000000003
-rsi_rawline_bar31_low=98.20000000000003
-rsi_rawline_bar31_close=98.80000000000003
-rsi_rawline_bar31_volume=1000.0
-rsi_rawline_bar32_open=100.00000000000003
-rsi_rawline_bar32_high=101.30000000000003
-rsi_rawline_bar32_low=99.70000000000003
-rsi_rawline_bar32_close=100.30000000000003
-rsi_rawline_bar32_volume=1000.0
-rsi_rawline_bar33_open=101.20000000000003
-rsi_rawline_bar33_high=102.50000000000003
-rsi_rawline_bar33_low=100.90000000000003
-rsi_rawline_bar33_close=101.50000000000003
-rsi_rawline_bar33_volume=1000.0
-rsi_rawline_bar34_open=102.20000000000003
-rsi_rawline_bar34_high=103.50000000000003
-rsi_rawline_bar34_low=101.90000000000003
-rsi_rawline_bar34_close=102.50000000000003
-rsi_rawline_bar34_volume=1000.0
-rsi_rawline_bar35_open=103.00000000000003
-rsi_rawline_bar35_high=104.30000000000003
-rsi_rawline_bar35_low=102.70000000000003
-rsi_rawline_bar35_close=103.30000000000003
-rsi_rawline_bar35_volume=1000.0
-rsi_rawline_bar36_open=102.70000000000003
-rsi_rawline_bar36_high=104.00000000000003
-rsi_rawline_bar36_low=102.40000000000003
-rsi_rawline_bar36_close=103.00000000000003
-rsi_rawline_bar36_volume=1000.0
-rsi_rawline_bar37_open=101.10000000000004
-rsi_rawline_bar37_high=102.40000000000003
-rsi_rawline_bar37_low=100.80000000000004
-rsi_rawline_bar37_close=101.40000000000003
-rsi_rawline_bar37_volume=1000.0
-rsi_rawline_bar38_open=99.70000000000003
-rsi_rawline_bar38_high=101.00000000000003
-rsi_rawline_bar38_low=99.40000000000003
-rsi_rawline_bar38_close=100.00000000000003
-rsi_rawline_bar38_volume=1000.0
-rsi_rawline_bar39_open=98.60000000000004
-rsi_rawline_bar39_high=99.90000000000003
-rsi_rawline_bar39_low=98.30000000000004
-rsi_rawline_bar39_close=98.90000000000003
-rsi_rawline_bar39_volume=1000.0
-rsi_rawline_bar40_open=97.70000000000003
-rsi_rawline_bar40_high=99.00000000000003
-rsi_rawline_bar40_low=97.40000000000003
-rsi_rawline_bar40_close=98.00000000000003
-rsi_rawline_bar40_volume=1000.0
-rsi_rawline_bar41_open=98.10000000000004
-rsi_rawline_bar41_high=99.40000000000003
-rsi_rawline_bar41_low=97.80000000000004
-rsi_rawline_bar41_close=98.40000000000003
-rsi_rawline_bar41_volume=1000.0
-rsi_rawline_bar42_open=99.60000000000004
-rsi_rawline_bar42_high=100.90000000000003
-rsi_rawline_bar42_low=99.30000000000004
-rsi_rawline_bar42_close=99.90000000000003
-rsi_rawline_bar42_volume=1000.0
-rsi_rawline_bar43_open=100.80000000000004
-rsi_rawline_bar43_high=102.10000000000004
-rsi_rawline_bar43_low=100.50000000000004
-rsi_rawline_bar43_close=101.10000000000004
-rsi_rawline_bar43_volume=1000.0
-rsi_rawline_bar44_open=101.80000000000004
-rsi_rawline_bar44_high=103.10000000000004
-rsi_rawline_bar44_low=101.50000000000004
-rsi_rawline_bar44_close=102.10000000000004
-rsi_rawline_bar44_volume=1000.0
-rsi_rawline_bar45_open=102.60000000000004
-rsi_rawline_bar45_high=103.90000000000003
-rsi_rawline_bar45_low=102.30000000000004
-rsi_rawline_bar45_close=102.90000000000003
-rsi_rawline_bar45_volume=1000.0
-rsi_rawline_bar46_open=102.30000000000004
-rsi_rawline_bar46_high=103.60000000000004
-rsi_rawline_bar46_low=102.00000000000004
-rsi_rawline_bar46_close=102.60000000000004
-rsi_rawline_bar46_volume=1000.0
-rsi_rawline_bar47_open=100.70000000000005
-rsi_rawline_bar47_high=102.00000000000004
-rsi_rawline_bar47_low=100.40000000000005
-rsi_rawline_bar47_close=101.00000000000004
-rsi_rawline_bar47_volume=1000.0
-rsi_rawline_bar48_open=99.30000000000004
-rsi_rawline_bar48_high=100.60000000000004
-rsi_rawline_bar48_low=99.00000000000004
-rsi_rawline_bar48_close=99.60000000000004
-rsi_rawline_bar48_volume=1000.0
-rsi_rawline_bar49_open=98.20000000000005
-rsi_rawline_bar49_high=99.50000000000004
-rsi_rawline_bar49_low=97.90000000000005
-rsi_rawline_bar49_close=98.50000000000004
-rsi_rawline_bar49_volume=1000.0
-rsi_rawline_bar50_open=97.30000000000004
-rsi_rawline_bar50_high=98.60000000000004
-rsi_rawline_bar50_low=97.00000000000004
-rsi_rawline_bar50_close=97.60000000000004
-rsi_rawline_bar50_volume=1000.0
-rsi_rawline_bar51_open=97.70000000000005
-rsi_rawline_bar51_high=99.00000000000004
-rsi_rawline_bar51_low=97.40000000000005
-rsi_rawline_bar51_close=98.00000000000004
-rsi_rawline_bar51_volume=1000.0
-rsi_rawline_bar52_open=99.20000000000005
-rsi_rawline_bar52_high=100.50000000000004
-rsi_rawline_bar52_low=98.90000000000005
-rsi_rawline_bar52_close=99.50000000000004
-rsi_rawline_bar52_volume=1000.0
-rsi_rawline_bar53_open=100.40000000000005
-rsi_rawline_bar53_high=101.70000000000005
-rsi_rawline_bar53_low=100.10000000000005
-rsi_rawline_bar53_close=100.70000000000005
-rsi_rawline_bar53_volume=1000.0
-rsi_rawline_bar54_open=101.40000000000005
-rsi_rawline_bar54_high=102.70000000000005
-rsi_rawline_bar54_low=101.10000000000005
-rsi_rawline_bar54_close=101.70000000000005
-rsi_rawline_bar54_volume=1000.0
-rsi_rawline_bar55_open=102.20000000000005
-rsi_rawline_bar55_high=103.50000000000004
-rsi_rawline_bar55_low=101.90000000000005
-rsi_rawline_bar55_close=102.50000000000004
-rsi_rawline_bar55_volume=1000.0
-rsi_rawline_bar56_open=101.90000000000005
-rsi_rawline_bar56_high=103.20000000000005
-rsi_rawline_bar56_low=101.60000000000005
-rsi_rawline_bar56_close=102.20000000000005
-rsi_rawline_bar56_volume=1000.0
-rsi_rawline_bar57_open=100.30000000000005
-rsi_rawline_bar57_high=101.60000000000005
-rsi_rawline_bar57_low=100.00000000000006
-rsi_rawline_bar57_close=100.60000000000005
-rsi_rawline_bar57_volume=1000.0
-rsi_rawline_bar58_open=98.90000000000005
-rsi_rawline_bar58_high=100.20000000000005
-rsi_rawline_bar58_low=98.60000000000005
-rsi_rawline_bar58_close=99.20000000000005
-rsi_rawline_bar58_volume=1000.0
-rsi_rawline_bar59_open=97.80000000000005
-rsi_rawline_bar59_high=99.10000000000005
-rsi_rawline_bar59_low=97.50000000000006
-rsi_rawline_bar59_close=98.10000000000005
-rsi_rawline_bar59_volume=1000.0
-rsi_rawline_bar60_open=96.90000000000005
-rsi_rawline_bar60_high=98.20000000000005
-rsi_rawline_bar60_low=96.60000000000005
-rsi_rawline_bar60_close=97.20000000000005
-rsi_rawline_bar60_volume=1000.0
-rsi_rawline_out6_value=93.75000000000006
-rsi_rawline_out6_extra_signal=93.75000000000006
-rsi_rawline_out7_value=66.17647058823539
-rsi_rawline_out7_extra_signal=79.96323529411772
-rsi_rawline_out8_value=50.06954102920723
-rsi_rawline_out8_extra_signal=65.01638816166248
-rsi_rawline_out9_value=40.40970955521262
-rsi_rawline_out9_extra_signal=52.713048858437546
-rsi_rawline_alert9_bear_mid_cross=1.0
-rsi_rawline_out10_value=33.75032959306243
-rsi_rawline_out10_extra_signal=43.23168922574999
-rsi_rawline_out11_value=39.30699447098617
-rsi_rawline_out11_extra_signal=41.26934184836808
-rsi_rawline_out12_value=56.4350760924404
-rsi_rawline_out12_extra_signal=48.852208970404234
-rsi_rawline_alert12_bull_mid_cross=1.0
-rsi_rawline_out13_value=66.02352569965765
-rsi_rawline_out13_extra_signal=57.437867335030944
-rsi_rawline_out14_value=72.36036271065282
-rsi_rawline_out14_extra_signal=64.89911502284188
-rsi_rawline_out15_value=76.70502879856011
-rsi_rawline_out15_extra_signal=70.80207191070099
-rsi_rawline_out16_value=71.44106080602927
-rsi_rawline_out16_extra_signal=71.12156635836513
-rsi_rawline_out17_value=49.01591562880553
-rsi_rawline_out17_extra_signal=60.06874099358533
-rsi_rawline_alert17_bear_extreme=0.09578612569371582
-rsi_rawline_alert17_bear_mid_cross=1.0
-rsi_rawline_out18_value=36.488500889219246
-rsi_rawline_out18_extra_signal=48.27862094140229
-rsi_rawline_out19_value=29.16712612434118
-rsi_rawline_out19_extra_signal=38.72287353287173
-rsi_rawline_out20_value=24.200885945390084
-rsi_rawline_out20_extra_signal=31.461879739130907
-rsi_rawline_out21_value=30.751361271000405
-rsi_rawline_out21_extra_signal=31.106620505065656
-rsi_rawline_out22_value=50.71581872638095
-rsi_rawline_out22_extra_signal=40.911219615723304
-rsi_rawline_alert22_bull_extreme=0.19330380182033052
-rsi_rawline_alert22_bull_mid_cross=1.0
-rsi_rawline_out23_value=61.74482660014538
-rsi_rawline_out23_extra_signal=51.32802310793434
-rsi_rawline_out24_value=68.97663038899782
-rsi_rawline_out24_extra_signal=60.15232674846608
-rsi_rawline_out25_value=73.90891949154812
-rsi_rawline_out25_extra_signal=67.0306231200071
-rsi_rawline_out26_value=68.78288827498267
-rsi_rawline_out26_extra_signal=67.90675569749489
-rsi_rawline_out27_value=47.03509623965875
-rsi_rawline_out27_extra_signal=57.47092596857682
-rsi_rawline_alert27_bear_extreme=0.05584170702211598
-rsi_rawline_alert27_bear_mid_cross=1.0
-rsi_rawline_out28_value=34.948968267155934
-rsi_rawline_out28_extra_signal=46.20994711786638
-rsi_rawline_out29_value=27.906237323147266
-rsi_rawline_out29_extra_signal=37.05809222050682
-rsi_rawline_out30_value=23.13768566462521
-rsi_rawline_out30_extra_signal=30.097888942566016
-rsi_rawline_out31_value=29.80174730688745
-rsi_rawline_out31_extra_signal=29.949818124726733
-rsi_rawline_out32_value=50.08700269098894
-rsi_rawline_out32_extra_signal=40.018410407857836
-rsi_rawline_alert32_bull_extreme=0.22874381117915968
-rsi_rawline_alert32_bull_mid_cross=1.0
-rsi_rawline_out33_value=61.276863903434936
-rsi_rawline_out33_extra_signal=50.647637155646386
-rsi_rawline_out34_value=68.6078292225744
-rsi_rawline_out34_extra_signal=59.62773318911039
-rsi_rawline_out35_value=73.60488503709374
-rsi_rawline_out35_extra_signal=66.61630911310206
-rsi_rawline_out36_value=68.4941034869102
-rsi_rawline_out36_extra_signal=67.55520630000613
-rsi_rawline_out37_value=46.82069294653172
-rsi_rawline_out37_extra_signal=57.18794962326893
-rsi_rawline_alert37_bear_extreme=0.051498357672767676
-rsi_rawline_alert37_bear_mid_cross=1.0
-rsi_rawline_out38_value=34.78267231572268
-rsi_rawline_out38_extra_signal=45.9853109694958
-rsi_rawline_out39_value=27.770203137703618
-rsi_rawline_out39_extra_signal=36.87775705359971
-rsi_rawline_out40_value=23.023072906859355
-rsi_rawline_out40_extra_signal=29.95041498022953
-rsi_rawline_out41_value=29.699414182247907
-rsi_rawline_out41_extra_signal=29.82491458123872
-rsi_rawline_out42_value=50.01931031691026
-rsi_rawline_out42_extra_signal=39.92211244907449
-rsi_rawline_alert42_bull_extreme=0.23256423643802152
-rsi_rawline_alert42_bull_mid_cross=1.0
-rsi_rawline_out43_value=61.22651647183313
-rsi_rawline_out43_extra_signal=50.574314460453806
-rsi_rawline_out44_value=68.56816540713609
-rsi_rawline_out44_extra_signal=59.57123993379495
-rsi_rawline_out45_value=73.57219516149308
-rsi_rawline_out45_extra_signal=66.57171754764401
-rsi_rawline_out46_value=68.46305619028774
-rsi_rawline_out46_extra_signal=67.51738686896587
-rsi_rawline_out47_value=46.797651641186356
-rsi_rawline_out47_extra_signal=57.15751925507611
-rsi_rawline_alert47_bear_extreme=0.051031359449901205
-rsi_rawline_alert47_bear_mid_cross=1.0
-rsi_rawline_out48_value=34.764804942132315
-rsi_rawline_out48_extra_signal=45.96116209860421
-rsi_rawline_out49_value=27.755589079565667
-rsi_rawline_out49_extra_signal=36.85837558908494
-rsi_rawline_out50_value=23.01076121787318
-rsi_rawline_out50_extra_signal=29.934568403479062
-rsi_rawline_out51_value=29.688421975639656
-rsi_rawline_out51_extra_signal=29.81149518955936
-rsi_rawline_out52_value=50.0120398949889
-rsi_rawline_out52_extra_signal=39.911767542274134
-rsi_rawline_alert52_bull_extreme=0.23297462607089395
-rsi_rawline_alert52_bull_mid_cross=1.0
-rsi_rawline_out53_value=61.22110929858885
-rsi_rawline_out53_extra_signal=50.566438420431496
-rsi_rawline_out54_value=68.56390579724683
-rsi_rawline_out54_extra_signal=59.565172108839164
-rsi_rawline_out55_value=73.56868459994232
-rsi_rawline_out55_extra_signal=66.56692835439074
-rsi_rawline_out56_value=68.45972205891047
-rsi_rawline_out56_extra_signal=67.5133252066506
-rsi_rawline_out57_value=46.79517736991939
-rsi_rawline_out57_extra_signal=57.154251288284996
-rsi_rawline_alert57_bear_extreme=0.05098120857060451
-rsi_rawline_alert57_bear_mid_cross=1.0
-rsi_rawline_out58_value=34.76288631503962
-rsi_rawline_out58_extra_signal=45.95856880166231
-rsi_rawline_out59_value=27.754019820522615
-rsi_rawline_out59_extra_signal=36.85629431109246
-rsi_rawline_out60_value=23.00943919992028
-rsi_rawline_out60_extra_signal=29.93286675550637
+@rsi_rawline open high low close volume value extra:signal alert:bear_extreme alert:bear_mid_cross alert:bull_extreme alert:bull_mid_cross
+99.7 101.0 99.4 100.0 1000.0 - - - - - -
+101.2 102.5 100.9 101.5 1000.0 - - - - - -
+102.4 103.7 102.10000000000001 102.7 1000.0 - - - - - -
+103.4 104.7 103.10000000000001 103.7 1000.0 - - - - - -
+104.2 105.5 103.9 104.5 1000.0 - - - - - -
+103.9 105.2 103.60000000000001 104.2 1000.0 93.75000000000006 93.75000000000006 - - - -
+102.30000000000001 103.60000000000001 102.00000000000001 102.60000000000001 1000.0 66.17647058823539 79.96323529411772 - - - -
+100.9 102.2 100.60000000000001 101.2 1000.0 50.06954102920723 65.01638816166248 - - - -
+99.80000000000001 101.10000000000001 99.50000000000001 100.10000000000001 1000.0 40.40970955521262 52.713048858437546 - 1.0 - -
+98.9 100.2 98.60000000000001 99.2 1000.0 33.75032959306243 43.23168922574999 - - - -
+99.30000000000001 100.60000000000001 99.00000000000001 99.60000000000001 1000.0 39.30699447098617 41.26934184836808 - - - -
+100.80000000000001 102.10000000000001 100.50000000000001 101.10000000000001 1000.0 56.4350760924404 48.852208970404234 - - - 1.0
+102.00000000000001 103.30000000000001 101.70000000000002 102.30000000000001 1000.0 66.02352569965765 57.437867335030944 - - - -
+103.00000000000001 104.30000000000001 102.70000000000002 103.30000000000001 1000.0 72.36036271065282 64.89911502284188 - - - -
+103.80000000000001 105.10000000000001 103.50000000000001 104.10000000000001 1000.0 76.70502879856011 70.80207191070099 - - - -
+103.50000000000001 104.80000000000001 103.20000000000002 103.80000000000001 1000.0 71.44106080602927 71.12156635836513 - - - -
+101.90000000000002 103.20000000000002 101.60000000000002 102.20000000000002 1000.0 49.01591562880553 60.06874099358533 0.09578612569371582 1.0 - -
+100.50000000000001 101.80000000000001 100.20000000000002 100.80000000000001 1000.0 36.488500889219246 48.27862094140229 - - - -
+99.40000000000002 100.70000000000002 99.10000000000002 99.70000000000002 1000.0 29.16712612434118 38.72287353287173 - - - -
+98.50000000000001 99.80000000000001 98.20000000000002 98.80000000000001 1000.0 24.200885945390084 31.461879739130907 - - - -
+98.90000000000002 100.20000000000002 98.60000000000002 99.20000000000002 1000.0 30.751361271000405 31.106620505065656 - - - -
+100.40000000000002 101.70000000000002 100.10000000000002 100.70000000000002 1000.0 50.71581872638095 40.911219615723304 - - 0.19330380182033052 1.0
+101.60000000000002 102.90000000000002 101.30000000000003 101.90000000000002 1000.0 61.74482660014538 51.32802310793434 - - - -
+102.60000000000002 103.90000000000002 102.30000000000003 102.90000000000002 1000.0 68.97663038899782 60.15232674846608 - - - -
+103.40000000000002 104.70000000000002 103.10000000000002 103.70000000000002 1000.0 73.90891949154812 67.0306231200071 - - - -
+103.10000000000002 104.40000000000002 102.80000000000003 103.40000000000002 1000.0 68.78288827498267 67.90675569749489 - - - -
+101.50000000000003 102.80000000000003 101.20000000000003 101.80000000000003 1000.0 47.03509623965875 57.47092596857682 0.05584170702211598 1.0 - -
+100.10000000000002 101.40000000000002 99.80000000000003 100.40000000000002 1000.0 34.948968267155934 46.20994711786638 - - - -
+99.00000000000003 100.30000000000003 98.70000000000003 99.30000000000003 1000.0 27.906237323147266 37.05809222050682 - - - -
+98.10000000000002 99.40000000000002 97.80000000000003 98.40000000000002 1000.0 23.13768566462521 30.097888942566016 - - - -
+98.50000000000003 99.80000000000003 98.20000000000003 98.80000000000003 1000.0 29.80174730688745 29.949818124726733 - - - -
+100.00000000000003 101.30000000000003 99.70000000000003 100.30000000000003 1000.0 50.08700269098894 40.018410407857836 - - 0.22874381117915968 1.0
+101.20000000000003 102.50000000000003 100.90000000000003 101.50000000000003 1000.0 61.276863903434936 50.647637155646386 - - - -
+102.20000000000003 103.50000000000003 101.90000000000003 102.50000000000003 1000.0 68.6078292225744 59.62773318911039 - - - -
+103.00000000000003 104.30000000000003 102.70000000000003 103.30000000000003 1000.0 73.60488503709374 66.61630911310206 - - - -
+102.70000000000003 104.00000000000003 102.40000000000003 103.00000000000003 1000.0 68.4941034869102 67.55520630000613 - - - -
+101.10000000000004 102.40000000000003 100.80000000000004 101.40000000000003 1000.0 46.82069294653172 57.18794962326893 0.051498357672767676 1.0 - -
+99.70000000000003 101.00000000000003 99.40000000000003 100.00000000000003 1000.0 34.78267231572268 45.9853109694958 - - - -
+98.60000000000004 99.90000000000003 98.30000000000004 98.90000000000003 1000.0 27.770203137703618 36.87775705359971 - - - -
+97.70000000000003 99.00000000000003 97.40000000000003 98.00000000000003 1000.0 23.023072906859355 29.95041498022953 - - - -
+98.10000000000004 99.40000000000003 97.80000000000004 98.40000000000003 1000.0 29.699414182247907 29.82491458123872 - - - -
+99.60000000000004 100.90000000000003 99.30000000000004 99.90000000000003 1000.0 50.01931031691026 39.92211244907449 - - 0.23256423643802152 1.0
+100.80000000000004 102.10000000000004 100.50000000000004 101.10000000000004 1000.0 61.22651647183313 50.574314460453806 - - - -
+101.80000000000004 103.10000000000004 101.50000000000004 102.10000000000004 1000.0 68.56816540713609 59.57123993379495 - - - -
+102.60000000000004 103.90000000000003 102.30000000000004 102.90000000000003 1000.0 73.57219516149308 66.57171754764401 - - - -
+102.30000000000004 103.60000000000004 102.00000000000004 102.60000000000004 1000.0 68.46305619028774 67.51738686896587 - - - -
+100.70000000000005 102.00000000000004 100.40000000000005 101.00000000000004 1000.0 46.797651641186356 57.15751925507611 0.051031359449901205 1.0 - -
+99.30000000000004 100.60000000000004 99.00000000000004 99.60000000000004 1000.0 34.764804942132315 45.96116209860421 - - - -
+98.20000000000005 99.50000000000004 97.90000000000005 98.50000000000004 1000.0 27.755589079565667 36.85837558908494 - - - -
+97.30000000000004 98.60000000000004 97.00000000000004 97.60000000000004 1000.0 23.01076121787318 29.934568403479062 - - - -
+97.70000000000005 99.00000000000004 97.40000000000005 98.00000000000004 1000.0 29.688421975639656 29.81149518955936 - - - -
+99.20000000000005 100.50000000000004 98.90000000000005 99.50000000000004 1000.0 50.0120398949889 39.911767542274134 - - 0.23297462607089395 1.0
+100.40000000000005 101.70000000000005 100.10000000000005 100.70000000000005 1000.0 61.22110929858885 50.566438420431496 - - - -
+101.40000000000005 102.70000000000005 101.10000000000005 101.70000000000005 1000.0 68.56390579724683 59.565172108839164 - - - -
+102.20000000000005 103.50000000000004 101.90000000000005 102.50000000000004 1000.0 73.56868459994232 66.56692835439074 - - - -
+101.90000000000005 103.20000000000005 101.60000000000005 102.20000000000005 1000.0 68.45972205891047 67.5133252066506 - - - -
+100.30000000000005 101.60000000000005 100.00000000000006 100.60000000000005 1000.0 46.79517736991939 57.154251288284996 0.05098120857060451 1.0 - -
+98.90000000000005 100.20000000000005 98.60000000000005 99.20000000000005 1000.0 34.76288631503962 45.95856880166231 - - - -
+97.80000000000005 99.10000000000005 97.50000000000006 98.10000000000005 1000.0 27.754019820522615 36.85629431109246 - - - -
+96.90000000000005 98.20000000000005 96.60000000000005 97.20000000000005 1000.0 23.00943919992028 29.93286675550637 - - - -
 
 # RSI with the catalog defaults (14, 3, 3, 70/30)
 rsi_defaults_tolerance=1e-09
@@ -549,407 +117,67 @@ rsi_defaults_param_avg_len=3.0
 rsi_defaults_param_sig_len=3.0
 rsi_defaults_param_overbought=70.0
 rsi_defaults_param_oversold=30.0
-rsi_defaults_bar1_open=99.7
-rsi_defaults_bar1_high=101.0
-rsi_defaults_bar1_low=99.4
-rsi_defaults_bar1_close=100.0
-rsi_defaults_bar1_volume=1000.0
-rsi_defaults_bar2_open=101.2
-rsi_defaults_bar2_high=102.5
-rsi_defaults_bar2_low=100.9
-rsi_defaults_bar2_close=101.5
-rsi_defaults_bar2_volume=1000.0
-rsi_defaults_bar3_open=102.4
-rsi_defaults_bar3_high=103.7
-rsi_defaults_bar3_low=102.10000000000001
-rsi_defaults_bar3_close=102.7
-rsi_defaults_bar3_volume=1000.0
-rsi_defaults_bar4_open=103.4
-rsi_defaults_bar4_high=104.7
-rsi_defaults_bar4_low=103.10000000000001
-rsi_defaults_bar4_close=103.7
-rsi_defaults_bar4_volume=1000.0
-rsi_defaults_bar5_open=104.2
-rsi_defaults_bar5_high=105.5
-rsi_defaults_bar5_low=103.9
-rsi_defaults_bar5_close=104.5
-rsi_defaults_bar5_volume=1000.0
-rsi_defaults_bar6_open=103.9
-rsi_defaults_bar6_high=105.2
-rsi_defaults_bar6_low=103.60000000000001
-rsi_defaults_bar6_close=104.2
-rsi_defaults_bar6_volume=1000.0
-rsi_defaults_bar7_open=102.30000000000001
-rsi_defaults_bar7_high=103.60000000000001
-rsi_defaults_bar7_low=102.00000000000001
-rsi_defaults_bar7_close=102.60000000000001
-rsi_defaults_bar7_volume=1000.0
-rsi_defaults_bar8_open=100.9
-rsi_defaults_bar8_high=102.2
-rsi_defaults_bar8_low=100.60000000000001
-rsi_defaults_bar8_close=101.2
-rsi_defaults_bar8_volume=1000.0
-rsi_defaults_bar9_open=99.80000000000001
-rsi_defaults_bar9_high=101.10000000000001
-rsi_defaults_bar9_low=99.50000000000001
-rsi_defaults_bar9_close=100.10000000000001
-rsi_defaults_bar9_volume=1000.0
-rsi_defaults_bar10_open=98.9
-rsi_defaults_bar10_high=100.2
-rsi_defaults_bar10_low=98.60000000000001
-rsi_defaults_bar10_close=99.2
-rsi_defaults_bar10_volume=1000.0
-rsi_defaults_bar11_open=99.30000000000001
-rsi_defaults_bar11_high=100.60000000000001
-rsi_defaults_bar11_low=99.00000000000001
-rsi_defaults_bar11_close=99.60000000000001
-rsi_defaults_bar11_volume=1000.0
-rsi_defaults_bar12_open=100.80000000000001
-rsi_defaults_bar12_high=102.10000000000001
-rsi_defaults_bar12_low=100.50000000000001
-rsi_defaults_bar12_close=101.10000000000001
-rsi_defaults_bar12_volume=1000.0
-rsi_defaults_bar13_open=102.00000000000001
-rsi_defaults_bar13_high=103.30000000000001
-rsi_defaults_bar13_low=101.70000000000002
-rsi_defaults_bar13_close=102.30000000000001
-rsi_defaults_bar13_volume=1000.0
-rsi_defaults_bar14_open=103.00000000000001
-rsi_defaults_bar14_high=104.30000000000001
-rsi_defaults_bar14_low=102.70000000000002
-rsi_defaults_bar14_close=103.30000000000001
-rsi_defaults_bar14_volume=1000.0
-rsi_defaults_bar15_open=103.80000000000001
-rsi_defaults_bar15_high=105.10000000000001
-rsi_defaults_bar15_low=103.50000000000001
-rsi_defaults_bar15_close=104.10000000000001
-rsi_defaults_bar15_volume=1000.0
-rsi_defaults_bar16_open=103.50000000000001
-rsi_defaults_bar16_high=104.80000000000001
-rsi_defaults_bar16_low=103.20000000000002
-rsi_defaults_bar16_close=103.80000000000001
-rsi_defaults_bar16_volume=1000.0
-rsi_defaults_bar17_open=101.90000000000002
-rsi_defaults_bar17_high=103.20000000000002
-rsi_defaults_bar17_low=101.60000000000002
-rsi_defaults_bar17_close=102.20000000000002
-rsi_defaults_bar17_volume=1000.0
-rsi_defaults_bar18_open=100.50000000000001
-rsi_defaults_bar18_high=101.80000000000001
-rsi_defaults_bar18_low=100.20000000000002
-rsi_defaults_bar18_close=100.80000000000001
-rsi_defaults_bar18_volume=1000.0
-rsi_defaults_bar19_open=99.40000000000002
-rsi_defaults_bar19_high=100.70000000000002
-rsi_defaults_bar19_low=99.10000000000002
-rsi_defaults_bar19_close=99.70000000000002
-rsi_defaults_bar19_volume=1000.0
-rsi_defaults_bar20_open=98.50000000000001
-rsi_defaults_bar20_high=99.80000000000001
-rsi_defaults_bar20_low=98.20000000000002
-rsi_defaults_bar20_close=98.80000000000001
-rsi_defaults_bar20_volume=1000.0
-rsi_defaults_bar21_open=98.90000000000002
-rsi_defaults_bar21_high=100.20000000000002
-rsi_defaults_bar21_low=98.60000000000002
-rsi_defaults_bar21_close=99.20000000000002
-rsi_defaults_bar21_volume=1000.0
-rsi_defaults_bar22_open=100.40000000000002
-rsi_defaults_bar22_high=101.70000000000002
-rsi_defaults_bar22_low=100.10000000000002
-rsi_defaults_bar22_close=100.70000000000002
-rsi_defaults_bar22_volume=1000.0
-rsi_defaults_bar23_open=101.60000000000002
-rsi_defaults_bar23_high=102.90000000000002
-rsi_defaults_bar23_low=101.30000000000003
-rsi_defaults_bar23_close=101.90000000000002
-rsi_defaults_bar23_volume=1000.0
-rsi_defaults_bar24_open=102.60000000000002
-rsi_defaults_bar24_high=103.90000000000002
-rsi_defaults_bar24_low=102.30000000000003
-rsi_defaults_bar24_close=102.90000000000002
-rsi_defaults_bar24_volume=1000.0
-rsi_defaults_bar25_open=103.40000000000002
-rsi_defaults_bar25_high=104.70000000000002
-rsi_defaults_bar25_low=103.10000000000002
-rsi_defaults_bar25_close=103.70000000000002
-rsi_defaults_bar25_volume=1000.0
-rsi_defaults_bar26_open=103.10000000000002
-rsi_defaults_bar26_high=104.40000000000002
-rsi_defaults_bar26_low=102.80000000000003
-rsi_defaults_bar26_close=103.40000000000002
-rsi_defaults_bar26_volume=1000.0
-rsi_defaults_bar27_open=101.50000000000003
-rsi_defaults_bar27_high=102.80000000000003
-rsi_defaults_bar27_low=101.20000000000003
-rsi_defaults_bar27_close=101.80000000000003
-rsi_defaults_bar27_volume=1000.0
-rsi_defaults_bar28_open=100.10000000000002
-rsi_defaults_bar28_high=101.40000000000002
-rsi_defaults_bar28_low=99.80000000000003
-rsi_defaults_bar28_close=100.40000000000002
-rsi_defaults_bar28_volume=1000.0
-rsi_defaults_bar29_open=99.00000000000003
-rsi_defaults_bar29_high=100.30000000000003
-rsi_defaults_bar29_low=98.70000000000003
-rsi_defaults_bar29_close=99.30000000000003
-rsi_defaults_bar29_volume=1000.0
-rsi_defaults_bar30_open=98.10000000000002
-rsi_defaults_bar30_high=99.40000000000002
-rsi_defaults_bar30_low=97.80000000000003
-rsi_defaults_bar30_close=98.40000000000002
-rsi_defaults_bar30_volume=1000.0
-rsi_defaults_bar31_open=98.50000000000003
-rsi_defaults_bar31_high=99.80000000000003
-rsi_defaults_bar31_low=98.20000000000003
-rsi_defaults_bar31_close=98.80000000000003
-rsi_defaults_bar31_volume=1000.0
-rsi_defaults_bar32_open=100.00000000000003
-rsi_defaults_bar32_high=101.30000000000003
-rsi_defaults_bar32_low=99.70000000000003
-rsi_defaults_bar32_close=100.30000000000003
-rsi_defaults_bar32_volume=1000.0
-rsi_defaults_bar33_open=101.20000000000003
-rsi_defaults_bar33_high=102.50000000000003
-rsi_defaults_bar33_low=100.90000000000003
-rsi_defaults_bar33_close=101.50000000000003
-rsi_defaults_bar33_volume=1000.0
-rsi_defaults_bar34_open=102.20000000000003
-rsi_defaults_bar34_high=103.50000000000003
-rsi_defaults_bar34_low=101.90000000000003
-rsi_defaults_bar34_close=102.50000000000003
-rsi_defaults_bar34_volume=1000.0
-rsi_defaults_bar35_open=103.00000000000003
-rsi_defaults_bar35_high=104.30000000000003
-rsi_defaults_bar35_low=102.70000000000003
-rsi_defaults_bar35_close=103.30000000000003
-rsi_defaults_bar35_volume=1000.0
-rsi_defaults_bar36_open=102.70000000000003
-rsi_defaults_bar36_high=104.00000000000003
-rsi_defaults_bar36_low=102.40000000000003
-rsi_defaults_bar36_close=103.00000000000003
-rsi_defaults_bar36_volume=1000.0
-rsi_defaults_bar37_open=101.10000000000004
-rsi_defaults_bar37_high=102.40000000000003
-rsi_defaults_bar37_low=100.80000000000004
-rsi_defaults_bar37_close=101.40000000000003
-rsi_defaults_bar37_volume=1000.0
-rsi_defaults_bar38_open=99.70000000000003
-rsi_defaults_bar38_high=101.00000000000003
-rsi_defaults_bar38_low=99.40000000000003
-rsi_defaults_bar38_close=100.00000000000003
-rsi_defaults_bar38_volume=1000.0
-rsi_defaults_bar39_open=98.60000000000004
-rsi_defaults_bar39_high=99.90000000000003
-rsi_defaults_bar39_low=98.30000000000004
-rsi_defaults_bar39_close=98.90000000000003
-rsi_defaults_bar39_volume=1000.0
-rsi_defaults_bar40_open=97.70000000000003
-rsi_defaults_bar40_high=99.00000000000003
-rsi_defaults_bar40_low=97.40000000000003
-rsi_defaults_bar40_close=98.00000000000003
-rsi_defaults_bar40_volume=1000.0
-rsi_defaults_bar41_open=98.10000000000004
-rsi_defaults_bar41_high=99.40000000000003
-rsi_defaults_bar41_low=97.80000000000004
-rsi_defaults_bar41_close=98.40000000000003
-rsi_defaults_bar41_volume=1000.0
-rsi_defaults_bar42_open=99.60000000000004
-rsi_defaults_bar42_high=100.90000000000003
-rsi_defaults_bar42_low=99.30000000000004
-rsi_defaults_bar42_close=99.90000000000003
-rsi_defaults_bar42_volume=1000.0
-rsi_defaults_bar43_open=100.80000000000004
-rsi_defaults_bar43_high=102.10000000000004
-rsi_defaults_bar43_low=100.50000000000004
-rsi_defaults_bar43_close=101.10000000000004
-rsi_defaults_bar43_volume=1000.0
-rsi_defaults_bar44_open=101.80000000000004
-rsi_defaults_bar44_high=103.10000000000004
-rsi_defaults_bar44_low=101.50000000000004
-rsi_defaults_bar44_close=102.10000000000004
-rsi_defaults_bar44_volume=1000.0
-rsi_defaults_bar45_open=102.60000000000004
-rsi_defaults_bar45_high=103.90000000000003
-rsi_defaults_bar45_low=102.30000000000004
-rsi_defaults_bar45_close=102.90000000000003
-rsi_defaults_bar45_volume=1000.0
-rsi_defaults_bar46_open=102.30000000000004
-rsi_defaults_bar46_high=103.60000000000004
-rsi_defaults_bar46_low=102.00000000000004
-rsi_defaults_bar46_close=102.60000000000004
-rsi_defaults_bar46_volume=1000.0
-rsi_defaults_bar47_open=100.70000000000005
-rsi_defaults_bar47_high=102.00000000000004
-rsi_defaults_bar47_low=100.40000000000005
-rsi_defaults_bar47_close=101.00000000000004
-rsi_defaults_bar47_volume=1000.0
-rsi_defaults_bar48_open=99.30000000000004
-rsi_defaults_bar48_high=100.60000000000004
-rsi_defaults_bar48_low=99.00000000000004
-rsi_defaults_bar48_close=99.60000000000004
-rsi_defaults_bar48_volume=1000.0
-rsi_defaults_bar49_open=98.20000000000005
-rsi_defaults_bar49_high=99.50000000000004
-rsi_defaults_bar49_low=97.90000000000005
-rsi_defaults_bar49_close=98.50000000000004
-rsi_defaults_bar49_volume=1000.0
-rsi_defaults_bar50_open=97.30000000000004
-rsi_defaults_bar50_high=98.60000000000004
-rsi_defaults_bar50_low=97.00000000000004
-rsi_defaults_bar50_close=97.60000000000004
-rsi_defaults_bar50_volume=1000.0
-rsi_defaults_bar51_open=97.70000000000005
-rsi_defaults_bar51_high=99.00000000000004
-rsi_defaults_bar51_low=97.40000000000005
-rsi_defaults_bar51_close=98.00000000000004
-rsi_defaults_bar51_volume=1000.0
-rsi_defaults_bar52_open=99.20000000000005
-rsi_defaults_bar52_high=100.50000000000004
-rsi_defaults_bar52_low=98.90000000000005
-rsi_defaults_bar52_close=99.50000000000004
-rsi_defaults_bar52_volume=1000.0
-rsi_defaults_bar53_open=100.40000000000005
-rsi_defaults_bar53_high=101.70000000000005
-rsi_defaults_bar53_low=100.10000000000005
-rsi_defaults_bar53_close=100.70000000000005
-rsi_defaults_bar53_volume=1000.0
-rsi_defaults_bar54_open=101.40000000000005
-rsi_defaults_bar54_high=102.70000000000005
-rsi_defaults_bar54_low=101.10000000000005
-rsi_defaults_bar54_close=101.70000000000005
-rsi_defaults_bar54_volume=1000.0
-rsi_defaults_bar55_open=102.20000000000005
-rsi_defaults_bar55_high=103.50000000000004
-rsi_defaults_bar55_low=101.90000000000005
-rsi_defaults_bar55_close=102.50000000000004
-rsi_defaults_bar55_volume=1000.0
-rsi_defaults_bar56_open=101.90000000000005
-rsi_defaults_bar56_high=103.20000000000005
-rsi_defaults_bar56_low=101.60000000000005
-rsi_defaults_bar56_close=102.20000000000005
-rsi_defaults_bar56_volume=1000.0
-rsi_defaults_bar57_open=100.30000000000005
-rsi_defaults_bar57_high=101.60000000000005
-rsi_defaults_bar57_low=100.00000000000006
-rsi_defaults_bar57_close=100.60000000000005
-rsi_defaults_bar57_volume=1000.0
-rsi_defaults_bar58_open=98.90000000000005
-rsi_defaults_bar58_high=100.20000000000005
-rsi_defaults_bar58_low=98.60000000000005
-rsi_defaults_bar58_close=99.20000000000005
-rsi_defaults_bar58_volume=1000.0
-rsi_defaults_bar59_open=97.80000000000005
-rsi_defaults_bar59_high=99.10000000000005
-rsi_defaults_bar59_low=97.50000000000006
-rsi_defaults_bar59_close=98.10000000000005
-rsi_defaults_bar59_volume=1000.0
-rsi_defaults_bar60_open=96.90000000000005
-rsi_defaults_bar60_high=98.20000000000005
-rsi_defaults_bar60_low=96.60000000000005
-rsi_defaults_bar60_close=97.20000000000005
-rsi_defaults_bar60_volume=1000.0
-rsi_defaults_out15_value=63.945578231292544
-rsi_defaults_out15_extra_signal=63.945578231292544
-rsi_defaults_out16_value=63.25799136859048
-rsi_defaults_out16_extra_signal=63.60178479994151
-rsi_defaults_out17_value=59.47474502697713
-rsi_defaults_out17_extra_signal=61.53826491345932
-rsi_defaults_out18_value=54.96920412371337
-rsi_defaults_out18_extra_signal=58.25373451858634
-rsi_defaults_out19_value=50.85975479900567
-rsi_defaults_out19_extra_signal=54.556744658796006
-rsi_defaults_out20_value=47.38173857909746
-rsi_defaults_out20_extra_signal=50.96924161894673
-rsi_defaults_alert20_bear_mid_cross=1.0
-rsi_defaults_out21_value=46.43700328251391
-rsi_defaults_out21_extra_signal=48.70312245073032
-rsi_defaults_out22_value=48.76157748437767
-rsi_defaults_out22_extra_signal=48.73234996755399
-rsi_defaults_out23_value=51.910586038503
-rsi_defaults_out23_extra_signal=50.3214680030285
-rsi_defaults_alert23_bull_mid_cross=1.0
-rsi_defaults_out24_value=55.011902354975405
-rsi_defaults_out24_extra_signal=52.66668517900195
-rsi_defaults_out25_value=57.72078554393688
-rsi_defaults_out25_extra_signal=55.193735361469415
-rsi_defaults_out26_value=58.41515801533855
-rsi_defaults_out26_extra_signal=56.804446688403985
-rsi_defaults_out27_value=55.46742493195471
-rsi_defaults_out27_extra_signal=56.13593581017935
-rsi_defaults_out28_value=51.49713107672524
-rsi_defaults_out28_extra_signal=53.81653344345229
-rsi_defaults_out29_value=47.74275514847275
-rsi_defaults_out29_extra_signal=50.77964429596253
-rsi_defaults_alert29_bear_mid_cross=1.0
-rsi_defaults_out30_value=44.51155355906463
-rsi_defaults_out30_extra_signal=47.645598927513575
-rsi_defaults_out31_value=43.73630002445353
-rsi_defaults_out31_extra_signal=45.69094947598355
-rsi_defaults_out32_value=46.303677614378984
-rsi_defaults_out32_extra_signal=45.99731354518127
-rsi_defaults_out33_value=49.68241309604023
-rsi_defaults_out33_extra_signal=47.839863320610746
-rsi_defaults_out34_value=52.97961786973072
-rsi_defaults_out34_extra_signal=50.40974059517073
-rsi_defaults_alert34_bull_mid_cross=1.0
-rsi_defaults_out35_value=55.84662324158923
-rsi_defaults_out35_extra_signal=53.12818191837998
-rsi_defaults_out36_value=56.633924882922415
-rsi_defaults_out36_extra_signal=54.8810534006512
-rsi_defaults_out37_value=53.805161971839105
-rsi_defaults_out37_extra_signal=54.34310768624515
-rsi_defaults_out38_value=49.95291984577612
-rsi_defaults_out38_extra_signal=52.148013766010635
-rsi_defaults_alert38_bear_mid_cross=1.0
-rsi_defaults_out39_value=46.30096849236783
-rsi_defaults_out39_extra_signal=49.22449112918923
-rsi_defaults_out40_value=43.15525158400829
-rsi_defaults_out40_extra_signal=46.18987135659876
-rsi_defaults_out41_value=42.44534467575582
-rsi_defaults_out41_extra_signal=44.31760801617729
-rsi_defaults_out42_value=45.12280478637805
-rsi_defaults_out42_extra_signal=44.720206401277665
-rsi_defaults_out43_value=48.60950630748803
-rsi_defaults_out43_extra_signal=46.66485635438285
-rsi_defaults_out44_value=52.0002111332865
-rsi_defaults_out44_extra_signal=49.332533743834674
-rsi_defaults_alert44_bull_mid_cross=1.0
-rsi_defaults_out45_value=54.94327653034503
-rsi_defaults_out45_extra_signal=52.13790513708985
-rsi_defaults_out46_value=55.77539626433027
-rsi_defaults_out46_extra_signal=53.95665070071006
-rsi_defaults_out47_value=53.0044544596318
-rsi_defaults_out47_extra_signal=53.48055258017093
-rsi_defaults_out48_value=49.20964076329503
-rsi_defaults_out48_extra_signal=51.345096671732975
-rsi_defaults_alert48_bear_mid_cross=1.0
-rsi_defaults_out49_value=45.6074909915181
-rsi_defaults_out49_extra_signal=48.47629383162554
-rsi_defaults_out50_value=42.503302737264505
-rsi_defaults_out50_extra_signal=45.48979828444502
-rsi_defaults_out51_value=41.825083881798825
-rsi_defaults_out51_extra_signal=43.657441083121924
-rsi_defaults_out52_value=44.555764895769315
-rsi_defaults_out52_extra_signal=44.10660298944562
-rsi_defaults_out53_value=48.09460219083632
-rsi_defaults_out53_extra_signal=46.100602590140966
-rsi_defaults_out54_value=51.53041761787708
-rsi_defaults_out54_extra_signal=48.81551010400902
-rsi_defaults_alert54_bull_mid_cross=1.0
-rsi_defaults_out55_value=54.51015322652606
-rsi_defaults_out55_extra_signal=51.66283166526754
-rsi_defaults_out56_value=55.36388466338572
-rsi_defaults_out56_extra_signal=53.51335816432663
-rsi_defaults_out57_value=52.62082425295054
-rsi_defaults_out57_extra_signal=53.06709120863859
-rsi_defaults_out58_value=48.85368264882132
-rsi_defaults_out58_extra_signal=50.96038692872995
-rsi_defaults_alert58_bear_mid_cross=1.0
-rsi_defaults_out59_value=45.275512247942586
-rsi_defaults_out59_extra_signal=48.11794958833627
-rsi_defaults_out60_value=42.19130617785861
-rsi_defaults_out60_extra_signal=45.15462788309744
+@rsi_defaults open high low close volume value extra:signal alert:bear_mid_cross alert:bull_mid_cross
+99.7 101.0 99.4 100.0 1000.0 - - - -
+101.2 102.5 100.9 101.5 1000.0 - - - -
+102.4 103.7 102.10000000000001 102.7 1000.0 - - - -
+103.4 104.7 103.10000000000001 103.7 1000.0 - - - -
+104.2 105.5 103.9 104.5 1000.0 - - - -
+103.9 105.2 103.60000000000001 104.2 1000.0 - - - -
+102.30000000000001 103.60000000000001 102.00000000000001 102.60000000000001 1000.0 - - - -
+100.9 102.2 100.60000000000001 101.2 1000.0 - - - -
+99.80000000000001 101.10000000000001 99.50000000000001 100.10000000000001 1000.0 - - - -
+98.9 100.2 98.60000000000001 99.2 1000.0 - - - -
+99.30000000000001 100.60000000000001 99.00000000000001 99.60000000000001 1000.0 - - - -
+100.80000000000001 102.10000000000001 100.50000000000001 101.10000000000001 1000.0 - - - -
+102.00000000000001 103.30000000000001 101.70000000000002 102.30000000000001 1000.0 - - - -
+103.00000000000001 104.30000000000001 102.70000000000002 103.30000000000001 1000.0 - - - -
+103.80000000000001 105.10000000000001 103.50000000000001 104.10000000000001 1000.0 63.945578231292544 63.945578231292544 - -
+103.50000000000001 104.80000000000001 103.20000000000002 103.80000000000001 1000.0 63.25799136859048 63.60178479994151 - -
+101.90000000000002 103.20000000000002 101.60000000000002 102.20000000000002 1000.0 59.47474502697713 61.53826491345932 - -
+100.50000000000001 101.80000000000001 100.20000000000002 100.80000000000001 1000.0 54.96920412371337 58.25373451858634 - -
+99.40000000000002 100.70000000000002 99.10000000000002 99.70000000000002 1000.0 50.85975479900567 54.556744658796006 - -
+98.50000000000001 99.80000000000001 98.20000000000002 98.80000000000001 1000.0 47.38173857909746 50.96924161894673 1.0 -
+98.90000000000002 100.20000000000002 98.60000000000002 99.20000000000002 1000.0 46.43700328251391 48.70312245073032 - -
+100.40000000000002 101.70000000000002 100.10000000000002 100.70000000000002 1000.0 48.76157748437767 48.73234996755399 - -
+101.60000000000002 102.90000000000002 101.30000000000003 101.90000000000002 1000.0 51.910586038503 50.3214680030285 - 1.0
+102.60000000000002 103.90000000000002 102.30000000000003 102.90000000000002 1000.0 55.011902354975405 52.66668517900195 - -
+103.40000000000002 104.70000000000002 103.10000000000002 103.70000000000002 1000.0 57.72078554393688 55.193735361469415 - -
+103.10000000000002 104.40000000000002 102.80000000000003 103.40000000000002 1000.0 58.41515801533855 56.804446688403985 - -
+101.50000000000003 102.80000000000003 101.20000000000003 101.80000000000003 1000.0 55.46742493195471 56.13593581017935 - -
+100.10000000000002 101.40000000000002 99.80000000000003 100.40000000000002 1000.0 51.49713107672524 53.81653344345229 - -
+99.00000000000003 100.30000000000003 98.70000000000003 99.30000000000003 1000.0 47.74275514847275 50.77964429596253 1.0 -
+98.10000000000002 99.40000000000002 97.80000000000003 98.40000000000002 1000.0 44.51155355906463 47.645598927513575 - -
+98.50000000000003 99.80000000000003 98.20000000000003 98.80000000000003 1000.0 43.73630002445353 45.69094947598355 - -
+100.00000000000003 101.30000000000003 99.70000000000003 100.30000000000003 1000.0 46.303677614378984 45.99731354518127 - -
+101.20000000000003 102.50000000000003 100.90000000000003 101.50000000000003 1000.0 49.68241309604023 47.839863320610746 - -
+102.20000000000003 103.50000000000003 101.90000000000003 102.50000000000003 1000.0 52.97961786973072 50.40974059517073 - 1.0
+103.00000000000003 104.30000000000003 102.70000000000003 103.30000000000003 1000.0 55.84662324158923 53.12818191837998 - -
+102.70000000000003 104.00000000000003 102.40000000000003 103.00000000000003 1000.0 56.633924882922415 54.8810534006512 - -
+101.10000000000004 102.40000000000003 100.80000000000004 101.40000000000003 1000.0 53.805161971839105 54.34310768624515 - -
+99.70000000000003 101.00000000000003 99.40000000000003 100.00000000000003 1000.0 49.95291984577612 52.148013766010635 1.0 -
+98.60000000000004 99.90000000000003 98.30000000000004 98.90000000000003 1000.0 46.30096849236783 49.22449112918923 - -
+97.70000000000003 99.00000000000003 97.40000000000003 98.00000000000003 1000.0 43.15525158400829 46.18987135659876 - -
+98.10000000000004 99.40000000000003 97.80000000000004 98.40000000000003 1000.0 42.44534467575582 44.31760801617729 - -
+99.60000000000004 100.90000000000003 99.30000000000004 99.90000000000003 1000.0 45.12280478637805 44.720206401277665 - -
+100.80000000000004 102.10000000000004 100.50000000000004 101.10000000000004 1000.0 48.60950630748803 46.66485635438285 - -
+101.80000000000004 103.10000000000004 101.50000000000004 102.10000000000004 1000.0 52.0002111332865 49.332533743834674 - 1.0
+102.60000000000004 103.90000000000003 102.30000000000004 102.90000000000003 1000.0 54.94327653034503 52.13790513708985 - -
+102.30000000000004 103.60000000000004 102.00000000000004 102.60000000000004 1000.0 55.77539626433027 53.95665070071006 - -
+100.70000000000005 102.00000000000004 100.40000000000005 101.00000000000004 1000.0 53.0044544596318 53.48055258017093 - -
+99.30000000000004 100.60000000000004 99.00000000000004 99.60000000000004 1000.0 49.20964076329503 51.345096671732975 1.0 -
+98.20000000000005 99.50000000000004 97.90000000000005 98.50000000000004 1000.0 45.6074909915181 48.47629383162554 - -
+97.30000000000004 98.60000000000004 97.00000000000004 97.60000000000004 1000.0 42.503302737264505 45.48979828444502 - -
+97.70000000000005 99.00000000000004 97.40000000000005 98.00000000000004 1000.0 41.825083881798825 43.657441083121924 - -
+99.20000000000005 100.50000000000004 98.90000000000005 99.50000000000004 1000.0 44.555764895769315 44.10660298944562 - -
+100.40000000000005 101.70000000000005 100.10000000000005 100.70000000000005 1000.0 48.09460219083632 46.100602590140966 - -
+101.40000000000005 102.70000000000005 101.10000000000005 101.70000000000005 1000.0 51.53041761787708 48.81551010400902 - 1.0
+102.20000000000005 103.50000000000004 101.90000000000005 102.50000000000004 1000.0 54.51015322652606 51.66283166526754 - -
+101.90000000000005 103.20000000000005 101.60000000000005 102.20000000000005 1000.0 55.36388466338572 53.51335816432663 - -
+100.30000000000005 101.60000000000005 100.00000000000006 100.60000000000005 1000.0 52.62082425295054 53.06709120863859 - -
+98.90000000000005 100.20000000000005 98.60000000000005 99.20000000000005 1000.0 48.85368264882132 50.96038692872995 1.0 -
+97.80000000000005 99.10000000000005 97.50000000000006 98.10000000000005 1000.0 45.275512247942586 48.11794958833627 - -
+96.90000000000005 98.20000000000005 96.60000000000005 97.20000000000005 1000.0 42.19130617785861 45.15462788309744 - -
 
 # RSI(3): flat closes give 50, a rise without losses 100
 rsi_flatrise_tolerance=1e-09
@@ -959,463 +187,77 @@ rsi_flatrise_param_avg_len=1.0
 rsi_flatrise_param_sig_len=2.0
 rsi_flatrise_param_overbought=70.0
 rsi_flatrise_param_oversold=30.0
-rsi_flatrise_bar1_open=9.7
-rsi_flatrise_bar1_high=11.0
-rsi_flatrise_bar1_low=9.4
-rsi_flatrise_bar1_close=10.0
-rsi_flatrise_bar1_volume=1000.0
-rsi_flatrise_bar2_open=9.7
-rsi_flatrise_bar2_high=11.0
-rsi_flatrise_bar2_low=9.4
-rsi_flatrise_bar2_close=10.0
-rsi_flatrise_bar2_volume=1000.0
-rsi_flatrise_bar3_open=9.7
-rsi_flatrise_bar3_high=11.0
-rsi_flatrise_bar3_low=9.4
-rsi_flatrise_bar3_close=10.0
-rsi_flatrise_bar3_volume=1000.0
-rsi_flatrise_bar4_open=9.7
-rsi_flatrise_bar4_high=11.0
-rsi_flatrise_bar4_low=9.4
-rsi_flatrise_bar4_close=10.0
-rsi_flatrise_bar4_volume=1000.0
-rsi_flatrise_bar5_open=9.7
-rsi_flatrise_bar5_high=11.0
-rsi_flatrise_bar5_low=9.4
-rsi_flatrise_bar5_close=10.0
-rsi_flatrise_bar5_volume=1000.0
-rsi_flatrise_bar6_open=9.7
-rsi_flatrise_bar6_high=11.0
-rsi_flatrise_bar6_low=9.4
-rsi_flatrise_bar6_close=10.0
-rsi_flatrise_bar6_volume=1000.0
-rsi_flatrise_bar7_open=10.7
-rsi_flatrise_bar7_high=12.0
-rsi_flatrise_bar7_low=10.4
-rsi_flatrise_bar7_close=11.0
-rsi_flatrise_bar7_volume=1000.0
-rsi_flatrise_bar8_open=11.7
-rsi_flatrise_bar8_high=13.0
-rsi_flatrise_bar8_low=11.4
-rsi_flatrise_bar8_close=12.0
-rsi_flatrise_bar8_volume=1000.0
-rsi_flatrise_bar9_open=12.7
-rsi_flatrise_bar9_high=14.0
-rsi_flatrise_bar9_low=12.4
-rsi_flatrise_bar9_close=13.0
-rsi_flatrise_bar9_volume=1000.0
-rsi_flatrise_bar10_open=13.7
-rsi_flatrise_bar10_high=15.0
-rsi_flatrise_bar10_low=13.4
-rsi_flatrise_bar10_close=14.0
-rsi_flatrise_bar10_volume=1000.0
-rsi_flatrise_out4_value=50.0
-rsi_flatrise_out4_extra_signal=50.0
-rsi_flatrise_out5_value=50.0
-rsi_flatrise_out5_extra_signal=50.0
-rsi_flatrise_out6_value=50.0
-rsi_flatrise_out6_extra_signal=50.0
-rsi_flatrise_out7_value=100.0
-rsi_flatrise_out7_extra_signal=83.33333333333333
-rsi_flatrise_alert7_bull_mid_cross=1.0
-rsi_flatrise_out8_value=100.0
-rsi_flatrise_out8_extra_signal=94.44444444444444
-rsi_flatrise_out9_value=100.0
-rsi_flatrise_out9_extra_signal=98.14814814814815
-rsi_flatrise_out10_value=100.0
-rsi_flatrise_out10_extra_signal=99.38271604938272
+@rsi_flatrise open high low close volume value extra:signal alert:bull_mid_cross
+9.7 11.0 9.4 10.0 1000.0 - - -
+9.7 11.0 9.4 10.0 1000.0 - - -
+9.7 11.0 9.4 10.0 1000.0 - - -
+9.7 11.0 9.4 10.0 1000.0 50.0 50.0 -
+9.7 11.0 9.4 10.0 1000.0 50.0 50.0 -
+9.7 11.0 9.4 10.0 1000.0 50.0 50.0 -
+10.7 12.0 10.4 11.0 1000.0 100.0 83.33333333333333 1.0
+11.7 13.0 11.4 12.0 1000.0 100.0 94.44444444444444 -
+12.7 14.0 12.4 13.0 1000.0 100.0 98.14814814814815 -
+13.7 15.0 13.4 14.0 1000.0 100.0 99.38271604938272 -
 
 # ATR(5), signal 3: gaps and wide ranges between quiet phases
 atr_gaps_tolerance=1e-09
 atr_gaps_bars=35.0
 atr_gaps_param_atr_len=5.0
 atr_gaps_param_sig_len=3.0
-atr_gaps_bar1_open=50.0
-atr_gaps_bar1_high=50.4
-atr_gaps_bar1_low=49.699999999999996
-atr_gaps_bar1_close=49.9
-atr_gaps_bar1_volume=1000.0
-atr_gaps_bar2_open=49.9
-atr_gaps_bar2_high=50.4
-atr_gaps_bar2_low=49.699999999999996
-atr_gaps_bar2_close=50.0
-atr_gaps_bar2_volume=1000.0
-atr_gaps_bar3_open=50.0
-atr_gaps_bar3_high=50.4
-atr_gaps_bar3_low=49.699999999999996
-atr_gaps_bar3_close=49.9
-atr_gaps_bar3_volume=1000.0
-atr_gaps_bar4_open=49.9
-atr_gaps_bar4_high=50.4
-atr_gaps_bar4_low=49.699999999999996
-atr_gaps_bar4_close=50.0
-atr_gaps_bar4_volume=1000.0
-atr_gaps_bar5_open=50.0
-atr_gaps_bar5_high=50.4
-atr_gaps_bar5_low=49.699999999999996
-atr_gaps_bar5_close=49.9
-atr_gaps_bar5_volume=1000.0
-atr_gaps_bar6_open=49.9
-atr_gaps_bar6_high=50.4
-atr_gaps_bar6_low=49.699999999999996
-atr_gaps_bar6_close=50.0
-atr_gaps_bar6_volume=1000.0
-atr_gaps_bar7_open=50.0
-atr_gaps_bar7_high=50.4
-atr_gaps_bar7_low=49.699999999999996
-atr_gaps_bar7_close=49.9
-atr_gaps_bar7_volume=1000.0
-atr_gaps_bar8_open=49.9
-atr_gaps_bar8_high=50.4
-atr_gaps_bar8_low=49.699999999999996
-atr_gaps_bar8_close=50.0
-atr_gaps_bar8_volume=1000.0
-atr_gaps_bar9_open=50.0
-atr_gaps_bar9_high=50.4
-atr_gaps_bar9_low=49.699999999999996
-atr_gaps_bar9_close=49.9
-atr_gaps_bar9_volume=1000.0
-atr_gaps_bar10_open=49.9
-atr_gaps_bar10_high=50.4
-atr_gaps_bar10_low=49.699999999999996
-atr_gaps_bar10_close=50.0
-atr_gaps_bar10_volume=1000.0
-atr_gaps_bar11_open=52.5
-atr_gaps_bar11_high=55.0
-atr_gaps_bar11_low=51.15
-atr_gaps_bar11_close=52.4
-atr_gaps_bar11_volume=1000.0
-atr_gaps_bar12_open=50.4
-atr_gaps_bar12_high=52.5
-atr_gaps_bar12_low=49.4
-atr_gaps_bar12_close=50.5
-atr_gaps_bar12_volume=1000.0
-atr_gaps_bar13_open=53.5
-atr_gaps_bar13_high=56.5
-atr_gaps_bar13_low=51.9
-atr_gaps_bar13_close=53.4
-atr_gaps_bar13_volume=1000.0
-atr_gaps_bar14_open=50.9
-atr_gaps_bar14_high=53.5
-atr_gaps_bar14_low=49.65
-atr_gaps_bar14_close=51.0
-atr_gaps_bar14_volume=1000.0
-atr_gaps_bar15_open=53.0
-atr_gaps_bar15_high=55.0
-atr_gaps_bar15_low=51.9
-atr_gaps_bar15_close=52.9
-atr_gaps_bar15_volume=1000.0
-atr_gaps_bar16_open=52.9
-atr_gaps_bar16_high=53.4
-atr_gaps_bar16_low=52.699999999999996
-atr_gaps_bar16_close=53.0
-atr_gaps_bar16_volume=1000.0
-atr_gaps_bar17_open=53.0
-atr_gaps_bar17_high=53.4
-atr_gaps_bar17_low=52.699999999999996
-atr_gaps_bar17_close=52.9
-atr_gaps_bar17_volume=1000.0
-atr_gaps_bar18_open=52.9
-atr_gaps_bar18_high=53.4
-atr_gaps_bar18_low=52.699999999999996
-atr_gaps_bar18_close=53.0
-atr_gaps_bar18_volume=1000.0
-atr_gaps_bar19_open=53.0
-atr_gaps_bar19_high=53.4
-atr_gaps_bar19_low=52.699999999999996
-atr_gaps_bar19_close=52.9
-atr_gaps_bar19_volume=1000.0
-atr_gaps_bar20_open=52.9
-atr_gaps_bar20_high=53.4
-atr_gaps_bar20_low=52.699999999999996
-atr_gaps_bar20_close=53.0
-atr_gaps_bar20_volume=1000.0
-atr_gaps_bar21_open=53.0
-atr_gaps_bar21_high=53.4
-atr_gaps_bar21_low=52.699999999999996
-atr_gaps_bar21_close=52.9
-atr_gaps_bar21_volume=1000.0
-atr_gaps_bar22_open=52.9
-atr_gaps_bar22_high=53.4
-atr_gaps_bar22_low=52.699999999999996
-atr_gaps_bar22_close=53.0
-atr_gaps_bar22_volume=1000.0
-atr_gaps_bar23_open=53.0
-atr_gaps_bar23_high=53.4
-atr_gaps_bar23_low=52.699999999999996
-atr_gaps_bar23_close=52.9
-atr_gaps_bar23_volume=1000.0
-atr_gaps_bar24_open=52.9
-atr_gaps_bar24_high=53.4
-atr_gaps_bar24_low=52.699999999999996
-atr_gaps_bar24_close=53.0
-atr_gaps_bar24_volume=1000.0
-atr_gaps_bar25_open=53.0
-atr_gaps_bar25_high=53.4
-atr_gaps_bar25_low=52.699999999999996
-atr_gaps_bar25_close=52.9
-atr_gaps_bar25_volume=1000.0
-atr_gaps_bar26_open=54.4
-atr_gaps_bar26_high=56.0
-atr_gaps_bar26_low=53.65
-atr_gaps_bar26_close=54.5
-atr_gaps_bar26_volume=1000.0
-atr_gaps_bar27_open=53.0
-atr_gaps_bar27_high=54.5
-atr_gaps_bar27_low=52.15
-atr_gaps_bar27_close=52.9
-atr_gaps_bar27_volume=1000.0
-atr_gaps_bar28_open=52.9
-atr_gaps_bar28_high=53.4
-atr_gaps_bar28_low=52.699999999999996
-atr_gaps_bar28_close=53.0
-atr_gaps_bar28_volume=1000.0
-atr_gaps_bar29_open=53.0
-atr_gaps_bar29_high=53.4
-atr_gaps_bar29_low=52.699999999999996
-atr_gaps_bar29_close=52.9
-atr_gaps_bar29_volume=1000.0
-atr_gaps_bar30_open=52.9
-atr_gaps_bar30_high=53.4
-atr_gaps_bar30_low=52.699999999999996
-atr_gaps_bar30_close=53.0
-atr_gaps_bar30_volume=1000.0
-atr_gaps_bar31_open=53.0
-atr_gaps_bar31_high=53.4
-atr_gaps_bar31_low=52.699999999999996
-atr_gaps_bar31_close=52.9
-atr_gaps_bar31_volume=1000.0
-atr_gaps_bar32_open=52.9
-atr_gaps_bar32_high=53.4
-atr_gaps_bar32_low=52.699999999999996
-atr_gaps_bar32_close=53.0
-atr_gaps_bar32_volume=1000.0
-atr_gaps_bar33_open=53.0
-atr_gaps_bar33_high=53.4
-atr_gaps_bar33_low=52.699999999999996
-atr_gaps_bar33_close=52.9
-atr_gaps_bar33_volume=1000.0
-atr_gaps_bar34_open=52.9
-atr_gaps_bar34_high=53.4
-atr_gaps_bar34_low=52.699999999999996
-atr_gaps_bar34_close=53.0
-atr_gaps_bar34_volume=1000.0
-atr_gaps_bar35_open=53.0
-atr_gaps_bar35_high=53.4
-atr_gaps_bar35_low=52.699999999999996
-atr_gaps_bar35_close=52.9
-atr_gaps_bar35_volume=1000.0
-atr_gaps_out7_value=1.4028056112224507
-atr_gaps_out7_extra_raw=0.7000000000000028
-atr_gaps_out7_extra_signal=1.4018704074816357
-atr_gaps_out8_value=1.4000000000000057
-atr_gaps_out8_extra_raw=0.7000000000000028
-atr_gaps_out8_extra_signal=1.4012469383210924
-atr_gaps_alert8_contraction=0.0008898776418242957
-atr_gaps_out9_value=1.4028056112224507
-atr_gaps_out9_extra_raw=0.7000000000000028
-atr_gaps_out9_extra_signal=1.4017664959548786
-atr_gaps_alert9_expansion=0.0007412898443291186
-atr_gaps_out10_value=1.4000000000000057
-atr_gaps_out10_extra_raw=0.7000000000000028
-atr_gaps_out10_extra_signal=1.401177663969921
-atr_gaps_alert10_contraction=0.0008404815464861247
-atr_gaps_out11_value=2.9770992366412257
-atr_gaps_out11_extra_raw=1.5600000000000023
-atr_gaps_out11_extra_signal=1.9264848548603557
-atr_gaps_alert11_expansion=0.5453530450188904
-atr_gaps_out12_value=3.699009900990103
-atr_gaps_out12_extra_raw=1.868000000000002
-atr_gaps_out12_extra_signal=2.517326536903605
-atr_gaps_out13_value=5.045692883895135
-atr_gaps_out13_extra_raw=2.6944000000000017
-atr_gaps_out13_extra_signal=3.3601153192341147
-atr_gaps_out14_value=5.736313725490199
-atr_gaps_out14_extra_raw=2.9255200000000015
-atr_gaps_out14_extra_signal=4.152181454652809
-atr_gaps_out15_value=5.9365141776937635
-atr_gaps_out15_extra_raw=3.140416000000001
-atr_gaps_out15_extra_signal=4.746959028999794
-atr_gaps_out16_value=5.004401509433965
-atr_gaps_out16_extra_raw=2.6523328000000013
-atr_gaps_out16_extra_signal=4.832773189144517
-atr_gaps_out17_value=4.275739584120986
-atr_gaps_out17_extra_raw=2.2618662400000016
-atr_gaps_out17_extra_signal=4.6470953208033405
-atr_gaps_alert17_contraction=0.07991136635823483
-atr_gaps_out18_value=3.678288664150947
-atr_gaps_out18_extra_raw=1.949492992000002
-atr_gaps_out18_extra_signal=4.324159768585876
-atr_gaps_out19_value=3.212843844234409
-atr_gaps_out19_extra_raw=1.6995943936000022
-atr_gaps_out19_extra_signal=3.953721127135387
-atr_gaps_out20_value=2.8295764431698154
-atr_gaps_out20_extra_raw=1.4996755148800023
-atr_gaps_out20_extra_signal=3.5790062324801966
-atr_gaps_out21_value=2.532590570706999
-atr_gaps_out21_extra_raw=1.3397404119040024
-atr_gaps_out21_extra_signal=3.2302010118891307
-atr_gaps_out22_value=2.2864006217418913
-atr_gaps_out22_extra_raw=1.2117923295232025
-atr_gaps_out22_extra_signal=2.9156008818400507
-atr_gaps_out23_value=2.0972284756494566
-atr_gaps_out23_extra_raw=1.1094338636185626
-atr_gaps_out23_extra_signal=2.6428100797765195
-atr_gaps_out24_value=1.9387680960280198
-atr_gaps_out24_extra_raw=1.0275470908948505
-atr_gaps_out24_extra_signal=2.4081294185270194
-atr_gaps_out25_value=1.8185967348126297
-atr_gaps_out25_extra_raw=0.962037672715881
-atr_gaps_out25_extra_signal=2.2116185239555564
-atr_gaps_out26_value=2.5497800700416606
-atr_gaps_out26_extra_raw=1.3896301381727052
-atr_gaps_out26_extra_signal=2.324339039317591
-atr_gaps_alert26_expansion=0.09699145731780048
-atr_gaps_out27_value=2.9899888668018235
-atr_gaps_out27_extra_raw=1.5817041105381644
-atr_gaps_out27_extra_signal=2.5462223151456684
-atr_gaps_out28_value=2.6516288460953437
-atr_gaps_out28_extra_raw=1.405363288430532
-atr_gaps_out28_extra_signal=2.5813578254622267
-atr_gaps_out29_value=2.389963385150144
-atr_gaps_out29_extra_raw=1.2642906307444262
-atr_gaps_out29_extra_signal=2.5175596786915326
-atr_gaps_alert29_contraction=0.05068252984084374
-atr_gaps_out30_value=2.1725141596142294
-atr_gaps_out30_extra_raw=1.1514325045955416
-atr_gaps_out30_extra_signal=2.402544505665765
-atr_gaps_out31_value=2.0059470768930696
-atr_gaps_out31_extra_raw=1.0611460036764337
-atr_gaps_out31_extra_signal=2.270345362741533
-atr_gaps_out32_value=1.8658807602663163
-atr_gaps_out32_extra_raw=0.9889168029411476
-atr_gaps_out32_extra_signal=2.1355238285831275
-atr_gaps_out33_value=1.7601766396085419
-atr_gaps_out33_extra_raw=0.9311334423529186
-atr_gaps_out33_extra_signal=2.010408098924932
-atr_gaps_out34_value=1.6696353846836518
-atr_gaps_out34_extra_raw=0.8849067538823354
-atr_gaps_out34_extra_signal=1.8968171941778387
-atr_gaps_out35_value=1.6028835597464444
-atr_gaps_out35_extra_raw=0.847925403105869
-atr_gaps_out35_extra_signal=1.7988393160340406
+@atr_gaps open high low close volume value extra:raw extra:signal alert:contraction alert:expansion
+50.0 50.4 49.699999999999996 49.9 1000.0 - - - - -
+49.9 50.4 49.699999999999996 50.0 1000.0 - - - - -
+50.0 50.4 49.699999999999996 49.9 1000.0 - - - - -
+49.9 50.4 49.699999999999996 50.0 1000.0 - - - - -
+50.0 50.4 49.699999999999996 49.9 1000.0 - - - - -
+49.9 50.4 49.699999999999996 50.0 1000.0 - - - - -
+50.0 50.4 49.699999999999996 49.9 1000.0 1.4028056112224507 0.7000000000000028 1.4018704074816357 - -
+49.9 50.4 49.699999999999996 50.0 1000.0 1.4000000000000057 0.7000000000000028 1.4012469383210924 0.0008898776418242957 -
+50.0 50.4 49.699999999999996 49.9 1000.0 1.4028056112224507 0.7000000000000028 1.4017664959548786 - 0.0007412898443291186
+49.9 50.4 49.699999999999996 50.0 1000.0 1.4000000000000057 0.7000000000000028 1.401177663969921 0.0008404815464861247 -
+52.5 55.0 51.15 52.4 1000.0 2.9770992366412257 1.5600000000000023 1.9264848548603557 - 0.5453530450188904
+50.4 52.5 49.4 50.5 1000.0 3.699009900990103 1.868000000000002 2.517326536903605 - -
+53.5 56.5 51.9 53.4 1000.0 5.045692883895135 2.6944000000000017 3.3601153192341147 - -
+50.9 53.5 49.65 51.0 1000.0 5.736313725490199 2.9255200000000015 4.152181454652809 - -
+53.0 55.0 51.9 52.9 1000.0 5.9365141776937635 3.140416000000001 4.746959028999794 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 5.004401509433965 2.6523328000000013 4.832773189144517 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 4.275739584120986 2.2618662400000016 4.6470953208033405 0.07991136635823483 -
+52.9 53.4 52.699999999999996 53.0 1000.0 3.678288664150947 1.949492992000002 4.324159768585876 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 3.212843844234409 1.6995943936000022 3.953721127135387 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 2.8295764431698154 1.4996755148800023 3.5790062324801966 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 2.532590570706999 1.3397404119040024 3.2302010118891307 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 2.2864006217418913 1.2117923295232025 2.9156008818400507 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 2.0972284756494566 1.1094338636185626 2.6428100797765195 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 1.9387680960280198 1.0275470908948505 2.4081294185270194 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 1.8185967348126297 0.962037672715881 2.2116185239555564 - -
+54.4 56.0 53.65 54.5 1000.0 2.5497800700416606 1.3896301381727052 2.324339039317591 - 0.09699145731780048
+53.0 54.5 52.15 52.9 1000.0 2.9899888668018235 1.5817041105381644 2.5462223151456684 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 2.6516288460953437 1.405363288430532 2.5813578254622267 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 2.389963385150144 1.2642906307444262 2.5175596786915326 0.05068252984084374 -
+52.9 53.4 52.699999999999996 53.0 1000.0 2.1725141596142294 1.1514325045955416 2.402544505665765 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 2.0059470768930696 1.0611460036764337 2.270345362741533 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 1.8658807602663163 0.9889168029411476 2.1355238285831275 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 1.7601766396085419 0.9311334423529186 2.010408098924932 - -
+52.9 53.4 52.699999999999996 53.0 1000.0 1.6696353846836518 0.8849067538823354 1.8968171941778387 - -
+53.0 53.4 52.699999999999996 52.9 1000.0 1.6028835597464444 0.847925403105869 1.7988393160340406 - -
 
 # Order block: bullish and bearish zone, each born, retested, invalidated
 order_block_cycle_tolerance=1e-09
 order_block_cycle_bars=14.0
 order_block_cycle_param_atr_len=3.0
 order_block_cycle_param_min_disp=1.0
-order_block_cycle_bar1_open=100.0
-order_block_cycle_bar1_high=100.5
-order_block_cycle_bar1_low=99.5
-order_block_cycle_bar1_close=100.0
-order_block_cycle_bar1_volume=1000.0
-order_block_cycle_bar2_open=100.0
-order_block_cycle_bar2_high=100.5
-order_block_cycle_bar2_low=99.5
-order_block_cycle_bar2_close=100.0
-order_block_cycle_bar2_volume=1000.0
-order_block_cycle_bar3_open=100.0
-order_block_cycle_bar3_high=100.5
-order_block_cycle_bar3_low=99.5
-order_block_cycle_bar3_close=100.0
-order_block_cycle_bar3_volume=1000.0
-order_block_cycle_bar4_open=100.0
-order_block_cycle_bar4_high=100.5
-order_block_cycle_bar4_low=99.5
-order_block_cycle_bar4_close=100.0
-order_block_cycle_bar4_volume=1000.0
-order_block_cycle_bar5_open=100.5
-order_block_cycle_bar5_high=101.0
-order_block_cycle_bar5_low=99.0
-order_block_cycle_bar5_close=99.5
-order_block_cycle_bar5_volume=1000.0
-order_block_cycle_bar6_open=99.6
-order_block_cycle_bar6_high=106.0
-order_block_cycle_bar6_low=99.6
-order_block_cycle_bar6_close=105.5
-order_block_cycle_bar6_volume=1000.0
-order_block_cycle_bar7_open=105.5
-order_block_cycle_bar7_high=106.5
-order_block_cycle_bar7_low=105.0
-order_block_cycle_bar7_close=106.0
-order_block_cycle_bar7_volume=1000.0
-order_block_cycle_bar8_open=103.0
-order_block_cycle_bar8_high=103.5
-order_block_cycle_bar8_low=100.5
-order_block_cycle_bar8_close=101.5
-order_block_cycle_bar8_volume=1000.0
-order_block_cycle_bar9_open=101.5
-order_block_cycle_bar9_high=101.5
-order_block_cycle_bar9_low=97.0
-order_block_cycle_bar9_close=98.0
-order_block_cycle_bar9_volume=1000.0
-order_block_cycle_bar10_open=98.0
-order_block_cycle_bar10_high=99.0
-order_block_cycle_bar10_low=97.5
-order_block_cycle_bar10_close=98.8
-order_block_cycle_bar10_volume=1000.0
-order_block_cycle_bar11_open=98.7
-order_block_cycle_bar11_high=98.7
-order_block_cycle_bar11_low=92.0
-order_block_cycle_bar11_close=92.5
-order_block_cycle_bar11_volume=1000.0
-order_block_cycle_bar12_open=92.5
-order_block_cycle_bar12_high=93.0
-order_block_cycle_bar12_low=91.5
-order_block_cycle_bar12_close=92.0
-order_block_cycle_bar12_volume=1000.0
-order_block_cycle_bar13_open=92.0
-order_block_cycle_bar13_high=98.0
-order_block_cycle_bar13_low=92.0
-order_block_cycle_bar13_close=96.5
-order_block_cycle_bar13_volume=1000.0
-order_block_cycle_bar14_open=96.5
-order_block_cycle_bar14_high=100.0
-order_block_cycle_bar14_low=96.0
-order_block_cycle_bar14_close=99.5
-order_block_cycle_bar14_volume=1000.0
-order_block_cycle_out4_value=0.0
-order_block_cycle_out4_extra_active_count=0.0
-order_block_cycle_out5_value=0.0
-order_block_cycle_out5_extra_active_count=0.0
-order_block_cycle_out6_value=1.0
-order_block_cycle_out6_extra_active_count=1.0
-order_block_cycle_out6_extra_active_ob_bottom=99.0
-order_block_cycle_out6_extra_active_ob_duration=0.0
-order_block_cycle_out6_extra_active_ob_top=101.0
-order_block_cycle_alert6_bullish_order_block=0.9
-order_block_cycle_out7_value=1.0
-order_block_cycle_out7_extra_active_count=1.0
-order_block_cycle_out7_extra_active_ob_bottom=99.0
-order_block_cycle_out7_extra_active_ob_duration=1.0
-order_block_cycle_out7_extra_active_ob_top=101.0
-order_block_cycle_out8_value=1.0
-order_block_cycle_out8_extra_active_count=1.0
-order_block_cycle_out8_extra_active_ob_bottom=99.0
-order_block_cycle_out8_extra_active_ob_duration=2.0
-order_block_cycle_out8_extra_active_ob_top=101.0
-order_block_cycle_alert8_ob_retest_bullish=0.8
-order_block_cycle_out9_value=0.0
-order_block_cycle_out9_extra_active_count=0.0
-order_block_cycle_out10_value=0.0
-order_block_cycle_out10_extra_active_count=0.0
-order_block_cycle_out11_value=-1.0
-order_block_cycle_out11_extra_active_count=-1.0
-order_block_cycle_out11_extra_active_ob_bottom=97.5
-order_block_cycle_out11_extra_active_ob_duration=0.0
-order_block_cycle_out11_extra_active_ob_top=99.0
-order_block_cycle_alert11_bearish_order_block=0.9
-order_block_cycle_out12_value=-1.0
-order_block_cycle_out12_extra_active_count=-1.0
-order_block_cycle_out12_extra_active_ob_bottom=97.5
-order_block_cycle_out12_extra_active_ob_duration=1.0
-order_block_cycle_out12_extra_active_ob_top=99.0
-order_block_cycle_out13_value=-1.0
-order_block_cycle_out13_extra_active_count=-1.0
-order_block_cycle_out13_extra_active_ob_bottom=97.5
-order_block_cycle_out13_extra_active_ob_duration=2.0
-order_block_cycle_out13_extra_active_ob_top=99.0
-order_block_cycle_alert13_ob_retest_bearish=0.8
-order_block_cycle_out14_value=0.0
-order_block_cycle_out14_extra_active_count=0.0
+@order_block_cycle open high low close volume value extra:active_count extra:active_ob_bottom extra:active_ob_duration extra:active_ob_top alert:bearish_order_block alert:bullish_order_block alert:ob_retest_bearish alert:ob_retest_bullish
+100.0 100.5 99.5 100.0 1000.0 - - - - - - - - -
+100.0 100.5 99.5 100.0 1000.0 - - - - - - - - -
+100.0 100.5 99.5 100.0 1000.0 - - - - - - - - -
+100.0 100.5 99.5 100.0 1000.0 0.0 0.0 - - - - - - -
+100.5 101.0 99.0 99.5 1000.0 0.0 0.0 - - - - - - -
+99.6 106.0 99.6 105.5 1000.0 1.0 1.0 99.0 0.0 101.0 - 0.9 - -
+105.5 106.5 105.0 106.0 1000.0 1.0 1.0 99.0 1.0 101.0 - - - -
+103.0 103.5 100.5 101.5 1000.0 1.0 1.0 99.0 2.0 101.0 - - - 0.8
+101.5 101.5 97.0 98.0 1000.0 0.0 0.0 - - - - - - -
+98.0 99.0 97.5 98.8 1000.0 0.0 0.0 - - - - - - -
+98.7 98.7 92.0 92.5 1000.0 -1.0 -1.0 97.5 0.0 99.0 0.9 - - -
+92.5 93.0 91.5 92.0 1000.0 -1.0 -1.0 97.5 1.0 99.0 - - - -
+92.0 98.0 92.0 96.5 1000.0 -1.0 -1.0 97.5 2.0 99.0 - - 0.8 -
+96.5 100.0 96.0 99.5 1000.0 0.0 0.0 - - - - - - -
