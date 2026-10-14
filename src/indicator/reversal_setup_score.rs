@@ -253,7 +253,8 @@ impl Indicator for ReversalSetupScore {
     }
 
     fn warmup_period(&self) -> usize {
-        68
+        // SMA(50) of the Bollinger(20) width.
+        20 + 50 - 1
     }
 
     fn reset(&mut self) {

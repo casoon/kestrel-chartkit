@@ -312,9 +312,23 @@ impl Indicator for TradabilityFilter {
 
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        (2 * c.range_len + 5)
-            .max(3 * c.quality_len + 5)
-            .max(c.rank_len + 2 * c.range_len)
+        let q = c.quality_len;
+        // The range bands cover the bars before the current one; a percent rank needs its input
+        // on the current and `rank_len` previous bars.
+        let scores = (c
+            .atr_len
+            .max(q + 1)
+            .max(c.range_len + 1)
+            .max(self.adx.warmup_period())
+            + c.rank_len)
+            .max(2 * c.range_len + 1);
+        let short = (q / 4).max(3);
+        let data_ready = (2 * c.range_len + 5).max(3 * q + 5).max(c.rank_len) + 2;
+        data_ready
+            .max(scores + c.impulse_lookback.max(1) - 1)
+            .max(c.atr_len + 3)
+            .max(q + 1 + short)
+            .max(c.atr_len.max(q) + short - 1)
     }
 
     fn reset(&mut self) {

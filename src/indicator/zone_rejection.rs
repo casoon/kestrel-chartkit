@@ -127,9 +127,9 @@ impl Indicator for ZoneRejection {
         "zone_rejection"
     }
 
-    /// The first output comes with the ATR; pivots need their own window too.
+    /// The first output comes with the ATR; pivots fill their window meanwhile.
     fn warmup_period(&self) -> usize {
-        (2 * self.pivot_len + 1).max(self.atr_len)
+        self.atr_len
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

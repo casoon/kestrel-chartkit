@@ -113,6 +113,11 @@ impl LegConviction {
         &self.cfg
     }
 
+    /// Bars a pivot needs: left neighbours, the centre and right neighbours.
+    fn pivot_window(&self) -> usize {
+        self.cfg.pivot_left + self.cfg.pivot_right + 1
+    }
+
     fn at(&self, k: usize) -> Option<&Bar> {
         self.rows.len().checked_sub(k + 1).map(|i| &self.rows[i])
     }
@@ -194,8 +199,9 @@ impl Indicator for LegConviction {
         "leg_conviction"
     }
 
+    /// The first output comes on the bar after the first full pivot window.
     fn warmup_period(&self) -> usize {
-        self.cfg.pivot_left + self.cfg.pivot_right + 1
+        self.pivot_window() + 1
     }
 
     fn reset(&mut self) {
@@ -271,7 +277,7 @@ impl Indicator for LegConviction {
         // Konviktion liest, erkennt am fehlenden `bull_last`, dass noch nichts
         // gemessen ist (Vertrag: nach dem Vorlauf liefert jede Bar einen Wert).
         let (Some(bull), Some(bear)) = (self.bull_last, self.bear_last) else {
-            return (t >= self.warmup_period())
+            return (t >= self.pivot_window())
                 .then(|| IndicatorOutput::new(0.0).with_secondary(0.0));
         };
         let mut extra = HashMap::new();

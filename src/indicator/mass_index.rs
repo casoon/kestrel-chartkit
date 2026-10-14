@@ -10,8 +10,8 @@ use std::collections::VecDeque;
 /// `e2`). The index is the sum of the last `period` ratios (default 25). A constant range gives
 /// exactly `period`; widening ranges push it up.
 ///
-/// First output: with the `period`-th bar. [`Indicator::warmup_period`] nonetheless reports
-/// `period + 18`. [`Indicator::reset`] clears both averages and the window.
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears both averages and the
+/// window.
 #[derive(Debug, Clone)]
 pub struct MassIndexEngine {
     period: usize,
@@ -41,7 +41,7 @@ impl Indicator for MassIndexEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period + 18
+        self.period
     }
 
     fn reset(&mut self) {

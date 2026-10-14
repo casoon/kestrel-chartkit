@@ -200,7 +200,7 @@ impl Indicator for TrendBreakRisk {
     }
 
     fn warmup_period(&self) -> usize {
-        self.cfg.rsi_len.max(self.cfg.atr_len - 1)
+        (self.cfg.rsi_len + 1).max(self.cfg.atr_len)
     }
 
     fn reset(&mut self) {

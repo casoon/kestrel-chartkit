@@ -46,7 +46,7 @@ impl Indicator for KstEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        54
+        53
     }
 
     fn reset(&mut self) {

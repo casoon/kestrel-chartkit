@@ -255,7 +255,7 @@ impl Indicator for RsiCycleStats {
     }
 
     fn warmup_period(&self) -> usize {
-        self.cfg.rsi_len
+        self.cfg.rsi_len + 1
     }
 
     fn reset(&mut self) {

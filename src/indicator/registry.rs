@@ -3667,38 +3667,54 @@ mod tests {
         );
     }
 
+    /// Keltner basis over a short rising series; the EMA length is the only thing that moves it.
+    fn keltner_basis(params: &HashMap<String, f64>) -> Vec<f64> {
+        let mut ind = build_checked("keltner", params).unwrap();
+        (0..10)
+            .filter_map(|i| {
+                let close = 100.0 + i as f64;
+                ind.on_bar(&crate::model::Bar::new(
+                    i,
+                    close,
+                    close + 1.0,
+                    close - 1.0,
+                    close,
+                    1.0,
+                ))
+            })
+            .map(|o| o.value)
+            .collect()
+    }
+
     #[test]
     fn test_keltner_ema_period_is_the_canonical_catalog_key() {
         // Finding 05: the catalog publishes "ema_period"; the builder must actually read it
         // rather than silently ignoring it and falling back to the period-20 default.
-        // `warmup_period` is `max(ema_period, atr_period)`, so atr_period is pinned to 1 here to
-        // isolate what ema_period alone drove.
-        let ind = build_checked(
-            "keltner",
-            &HashMap::from([
-                ("ema_period".to_string(), 5.0),
-                ("atr_period".to_string(), 1.0),
-            ]),
-        )
-        .unwrap();
-        assert_eq!(ind.warmup_period(), 5);
-
-        let default_ind =
-            build_checked("keltner", &HashMap::from([("atr_period".to_string(), 1.0)])).unwrap();
-        assert_eq!(default_ind.warmup_period(), 20);
+        // `warmup_period` follows `atr_period` alone, so the basis shows what ema_period drove.
+        let ind = keltner_basis(&HashMap::from([
+            ("ema_period".to_string(), 5.0),
+            ("atr_period".to_string(), 1.0),
+        ]));
+        let explicit_default = keltner_basis(&HashMap::from([
+            ("ema_period".to_string(), 20.0),
+            ("atr_period".to_string(), 1.0),
+        ]));
+        let default_ind = keltner_basis(&HashMap::from([("atr_period".to_string(), 1.0)]));
+        assert_ne!(ind, default_ind);
+        assert_eq!(default_ind, explicit_default);
     }
 
     #[test]
     fn test_keltner_ma_period_legacy_alias_still_works() {
-        let ind = build_checked(
-            "keltner",
-            &HashMap::from([
-                ("ma_period".to_string(), 5.0),
-                ("atr_period".to_string(), 1.0),
-            ]),
-        )
-        .unwrap();
-        assert_eq!(ind.warmup_period(), 5);
+        let alias = keltner_basis(&HashMap::from([
+            ("ma_period".to_string(), 5.0),
+            ("atr_period".to_string(), 1.0),
+        ]));
+        let canonical = keltner_basis(&HashMap::from([
+            ("ema_period".to_string(), 5.0),
+            ("atr_period".to_string(), 1.0),
+        ]));
+        assert_eq!(alias, canonical);
     }
 
     #[test]

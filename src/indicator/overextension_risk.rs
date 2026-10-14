@@ -289,10 +289,14 @@ impl Indicator for OverextensionRisk {
 
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        c.structure_len
-            .max(c.atr_len + 49)
-            .max(c.rsi_len + c.stoch_len + 1)
-            .max(2 * c.adx_len)
+        // The previous bar's structure range, the ATR's SMA(50), SMA(3) of the StochRSI, the
+        // WaveTrend two bars back, ADX.
+        (c.structure_len + 1)
+            .max(c.atr_len + 50 - 1)
+            .max(c.bb_len)
+            .max(c.rsi_len + 1 + c.stoch_len - 1 + 3 - 1)
+            .max(self.wt.warmup_period() + 2)
+            .max(self.adx.warmup_period())
     }
 
     fn reset(&mut self) {

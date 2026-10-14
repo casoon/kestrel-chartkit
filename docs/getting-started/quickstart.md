@@ -60,7 +60,8 @@ Three things to note:
   panic.
 - `Bar::try_new` rejects non-finite or non-positive prices and a high/low range that does not
   contain open and close. Use it wherever bars enter your program.
-- `on_bar` returns `None` until the warmup is complete, then `Some` on every bar.
+- `on_bar` returns `None` until the warmup is complete, then `Some` on every bar. The first value
+  arrives on bar `warmup_period()`.
 
 ## Draw it
 

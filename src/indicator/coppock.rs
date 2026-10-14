@@ -34,7 +34,7 @@ impl Indicator for CoppockCurveEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        25
+        24
     }
 
     fn reset(&mut self) {

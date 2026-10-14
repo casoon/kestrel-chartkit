@@ -115,7 +115,7 @@ impl Indicator for Cci {
     }
 
     fn warmup_period(&self) -> usize {
-        self.cci_len.max(self.ctx_len)
+        self.cci_len
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

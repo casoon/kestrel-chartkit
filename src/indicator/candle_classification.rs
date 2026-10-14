@@ -207,7 +207,7 @@ impl Indicator for CandleClassificationEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        2
+        1
     }
 
     fn reset(&mut self) {

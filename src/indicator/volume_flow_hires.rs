@@ -175,6 +175,10 @@ impl Indicator for HiResVolumeFlowEngine {
         "hires_volume_flow"
     }
 
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
     fn reset(&mut self) {
         HiResVolumeFlowEngine::reset(self)
     }

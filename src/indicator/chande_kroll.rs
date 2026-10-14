@@ -85,7 +85,7 @@ impl Indicator for ChandeKrollStop {
     }
 
     fn warmup_period(&self) -> usize {
-        self.atr_len + self.stop_len
+        self.atr_len + self.stop_len - 1
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

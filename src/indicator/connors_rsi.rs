@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 ///
 /// `CRSI = (rsi_close + rsi_streak + rank) / 3`, clamped to `0..=100`.
 ///
-/// First output: once the streak RSI exists. [`Indicator::reset`] clears all state.
+/// First output: once the streak RSI exists, i.e. with the `rsi_len + streak_len + 1`-th bar. [`Indicator::reset`] clears all state.
 #[derive(Debug, Clone)]
 pub struct ConnorsRsiEngine {
     rsi_close: Rsi,
@@ -50,7 +50,8 @@ impl Indicator for ConnorsRsiEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        100
+        // The streak RSI is fed from the price RSI's first bar on, so its warmup counts from there.
+        self.rsi_close.warmup_period() + self.rsi_streak.warmup_period() - 1
     }
 
     fn reset(&mut self) {

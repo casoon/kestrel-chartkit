@@ -31,8 +31,6 @@ pub struct WaveTrendAlerts {
 /// averages.
 #[derive(Debug, Clone)]
 pub struct WaveTrendEngine {
-    n1: usize,
-    n2: usize,
     ob_level: f64,
     os_level: f64,
     ema_ap: Ema,
@@ -47,8 +45,6 @@ pub struct WaveTrendEngine {
 impl WaveTrendEngine {
     pub fn new(n1: usize, n2: usize, ob_level: f64, os_level: f64) -> Self {
         Self {
-            n1,
-            n2,
             ob_level,
             os_level,
             ema_ap: Ema::new(n1),
@@ -76,7 +72,7 @@ impl Indicator for WaveTrendEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.n1 + self.n2 + 4
+        4
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

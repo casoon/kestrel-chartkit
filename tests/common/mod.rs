@@ -3,6 +3,15 @@
 use kestrel_chartkit::indicator::{Indicator, IndicatorOutput};
 use kestrel_chartkit::model::Bar;
 
+/// Indicators whose first output depends on the data, not only on the bar count. For them
+/// `warmup_period()` is the earliest possible first output: no series may produce one sooner,
+/// but a later one is no breach, and `None` may follow the warmup.
+///
+/// - `leg_character`: waits for the first completed leg.
+/// - `structure_zones`: bar 15 without volume, bar 20 with real volume (MFI and the 20-bar
+///   volume average then gate the output).
+pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &["leg_character", "structure_zones"];
+
 /// Generiert eine Flachpreis-Serie mit konstantem Preis und Volumen.
 pub fn generate_flat_bars(count: usize, price: f64, volume: f64) -> Vec<Bar> {
     (0..count)

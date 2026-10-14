@@ -103,7 +103,7 @@ impl Indicator for KeltnerChannelEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.ema_period.max(self.atr_period)
+        self.atr_period
     }
 
     fn reset(&mut self) {

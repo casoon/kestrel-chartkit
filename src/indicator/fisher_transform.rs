@@ -112,7 +112,7 @@ impl Indicator for FisherTransform {
     }
 
     fn warmup_period(&self) -> usize {
-        self.fish_len.max(self.ctx_len)
+        self.fish_len
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

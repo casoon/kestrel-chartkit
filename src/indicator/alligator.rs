@@ -49,7 +49,7 @@ impl Indicator for AlligatorEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        13 + 8
+        13
     }
 
     fn reset(&mut self) {

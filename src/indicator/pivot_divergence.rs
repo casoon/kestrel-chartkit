@@ -86,7 +86,6 @@ pub struct PivotDivergence {
     pivot_source: PivotSource,
     inner: Box<dyn Indicator>,
     engine: PivotDivergenceEngine,
-    left: usize,
     right: usize,
     alerts: Vec<IndicatorAlert>,
 }
@@ -155,7 +154,6 @@ impl PivotDivergence {
             .with_max_prior_pivots(max_prior_pivots)
             .with_oscillator_anchor(OscillatorAnchor::AtPivot)
             .with_pivot_source(pivot_source),
-            left: left.max(1),
             right: right.max(1),
             alerts: Vec::new(),
         }
@@ -174,8 +172,9 @@ impl Indicator for PivotDivergence {
         }
     }
 
+    /// Every oscillator value is output; divergences only add to it.
     fn warmup_period(&self) -> usize {
-        self.inner.warmup_period() + self.left + self.right
+        self.inner.warmup_period()
     }
 
     fn reset(&mut self) {

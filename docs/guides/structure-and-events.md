@@ -101,8 +101,11 @@ fn events(bars: &[Bar]) -> Result<(), Box<dyn std::error::Error>> {
 
 ## Warmup and settling
 
-`warmup_period()` says when the first value arrives. Recursive state keeps the imprint of the
-series start much longer. `indicator::settle::settle_bars(name, &params, bar_seconds)` measures
+`warmup_period()` is the 1-based bar of the first value — SMA(20) answers 20. Where the first
+value depends on the data (`leg_character` waits for a completed leg, `structure_zones` for the
+volume average when there is volume), it is the earliest possible bar. Size a history window by the
+settle measures below, not by the warmup: recursive state keeps the imprint of the series start
+much longer. `indicator::settle::settle_bars(name, &params, bar_seconds)` measures
 after how many bars all outputs no longer depend on where the series began;
 `alert_settle_bars` asks the same for alert kinds only, the measure for warming up a backtest or a
 live process. Both return `None` for indicators that never converge, such as cumulative ones.

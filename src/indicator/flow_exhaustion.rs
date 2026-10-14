@@ -350,7 +350,10 @@ impl Indicator for FlowExhaustion {
 
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        (c.mfi_len - 1).max(c.rsi_len + c.stoch_len - 1 + c.k_smooth - 1)
+        // MFI from bar `mfi_len`; K = SMA(`k_smooth`) of a stochastic over `stoch_len` RSI values,
+        // the RSI first at bar `rsi_len + 1`.
+        c.mfi_len
+            .max(c.rsi_len + 1 + c.stoch_len - 1 + c.k_smooth - 1)
     }
 
     fn reset(&mut self) {

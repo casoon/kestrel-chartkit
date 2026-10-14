@@ -218,7 +218,7 @@ impl Indicator for Rsi {
     }
 
     fn warmup_period(&self) -> usize {
-        self.warmup_period.max(self.ctx_len + 1)
+        self.warmup_period
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

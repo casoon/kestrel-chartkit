@@ -523,7 +523,25 @@ impl Indicator for PriceAverageRelation {
 
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        (c.atr_len - 1 + c.statistics_len - 1).max(c.respect_lookback + c.atr_len)
+        // First bar of each input; a quantity read `k` bars back exists `k` bars later.
+        let ma = self.ma.warmup_period().max(1);
+        let atr = c.atr_len;
+        let distance = ma.max(atr);
+        let trend = distance
+            .max(ma + c.slope_len)
+            .max(ma + c.persistence_len)
+            .max(c.efficiency_len + 1);
+        let respect = (distance + c.respect_lookback + 1).max(ma + c.persistence_len);
+        let extension = distance + c.statistics_len - 1;
+        let compression = (distance + c.compression_len - 1).max(atr + c.statistics_len - 1);
+        let l = c.acceleration_len;
+        let acceleration = (trend + l).max(ma + l + c.slope_len).max(2 * l + 1);
+        let x = c.exhaustion_len;
+        let exhaustion = (acceleration + x)
+            .max(c.efficiency_len + 1 + x)
+            .max(trend + x - 1)
+            .max(extension);
+        respect.max(compression).max(exhaustion)
     }
 
     fn reset(&mut self) {

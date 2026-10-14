@@ -267,7 +267,7 @@ impl Indicator for ParabolicSarEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        2
+        1
     }
 
     fn reset(&mut self) {

@@ -170,7 +170,7 @@ impl Indicator for RelativeVolatilityIndex {
     }
 
     fn warmup_period(&self) -> usize {
-        self.stdev_len + self.smooth_len
+        self.stdev_len + self.smooth_len - 1
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

@@ -98,7 +98,6 @@ impl Indicator for CvdEngine {
 pub struct KlingerVolumeForceEngine {
     fast_len: usize,
     slow_len: usize,
-    signal_len: usize,
     fast_ema: Ema,
     slow_ema: Ema,
     signal_ema: Ema,
@@ -114,7 +113,6 @@ impl KlingerVolumeForceEngine {
         Self {
             fast_len,
             slow_len,
-            signal_len,
             fast_ema: Ema::new(fast_len),
             slow_ema: Ema::new(slow_len),
             signal_ema: Ema::new(signal_len),
@@ -141,7 +139,7 @@ impl Indicator for KlingerVolumeForceEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.slow_len + self.signal_len
+        self.slow_len
     }
 
     fn reset(&mut self) {

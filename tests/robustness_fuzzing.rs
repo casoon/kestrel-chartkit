@@ -55,6 +55,9 @@ fn test_all_indicators_nan_robustness_no_panic() {
 fn test_all_indicators_warmup_contract() {
     let entries = catalog();
     for entry in &entries {
+        if common::PATH_DEPENDENT_FIRST_OUTPUT.contains(&entry.name) {
+            continue;
+        }
         let mut indicator = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
 

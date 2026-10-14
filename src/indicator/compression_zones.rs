@@ -234,7 +234,12 @@ impl Indicator for CompressionZones {
     }
 
     fn warmup_period(&self) -> usize {
-        27.max(self.cfg.lookback).max(self.cfg.impulse_lookback)
+        let c = &self.cfg;
+        self.adx
+            .warmup_period()
+            .max(c.atr_len)
+            .max(c.lookback)
+            .max(c.impulse_lookback + 1)
     }
 
     fn reset(&mut self) {

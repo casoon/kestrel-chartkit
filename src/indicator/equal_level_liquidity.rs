@@ -262,8 +262,9 @@ impl Indicator for EqualLevelLiquidity {
         "equal_level_liquidity"
     }
 
+    /// The first output comes with the ATR.
     fn warmup_period(&self) -> usize {
-        self.cfg.atr_len - 1
+        self.cfg.atr_len
     }
 
     fn reset(&mut self) {

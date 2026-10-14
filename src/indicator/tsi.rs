@@ -20,7 +20,6 @@ pub struct Tsi {
     oversold: f64,
     overbought: f64,
     require_extreme_zone: bool,
-    div_len: usize,
 
     prev_close: Option<f64>,
     mom_long: Ema,
@@ -75,7 +74,6 @@ impl Tsi {
             oversold,
             overbought,
             require_extreme_zone,
-            div_len,
             prev_close: None,
             mom_long: Ema::new(long_len),
             mom_short: Ema::new(short_len),
@@ -106,7 +104,7 @@ impl Indicator for Tsi {
     }
 
     fn warmup_period(&self) -> usize {
-        1 + self.div_len
+        2
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

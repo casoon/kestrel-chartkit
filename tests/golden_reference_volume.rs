@@ -691,12 +691,13 @@ fn test_rvat_reset_restarts_deterministically() {
     assert_eq!(first, run(&mut rvat));
 }
 
-/// Der deklarierte Warmup ist ein Tag in Bars — bei Stundenbars 24, bei Tagesbars einer.
+/// Der deklarierte Warmup ist die Bar nach einem Tag in Bars — bei Stundenbars 25, bei
+/// Tagesbars 2.
 #[test]
 fn test_rvat_declared_warmup_is_one_day_of_bars() {
-    assert_eq!(RelativeVolumeAtTime::new(5, 0, 3600).warmup_period(), 24);
-    assert_eq!(RelativeVolumeAtTime::new(5, 0, 60).warmup_period(), 1440);
-    assert_eq!(RelativeVolumeAtTime::new(5, 0, 86_400).warmup_period(), 1);
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 3600).warmup_period(), 25);
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 60).warmup_period(), 1441);
+    assert_eq!(RelativeVolumeAtTime::new(5, 0, 86_400).warmup_period(), 2);
 }
 
 // --- Paket 37: Price Volume Trend -----------------------------------------------------------

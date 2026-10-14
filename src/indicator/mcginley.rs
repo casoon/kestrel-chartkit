@@ -13,8 +13,7 @@ use crate::model::Bar;
 /// by a constant `0.6`; this type does not.
 ///
 /// The first value is the first close, and output starts with the first bar — the recursion needs
-/// no window. [`Indicator::warmup_period`] nonetheless reports `period`. [`Indicator::reset`]
-/// clears the average.
+/// no window. [`Indicator::reset`] clears the average.
 #[derive(Debug, Clone)]
 pub struct McGinleyDynamicEngine {
     period: usize,
@@ -36,7 +35,7 @@ impl Indicator for McGinleyDynamicEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period
+        1
     }
 
     fn reset(&mut self) {

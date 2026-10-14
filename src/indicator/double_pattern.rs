@@ -192,7 +192,7 @@ impl Indicator for DoublePattern {
     }
 
     fn warmup_period(&self) -> usize {
-        (2 * self.pivot_len + 1).max(self.atr_len)
+        self.atr_len
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

@@ -33,7 +33,7 @@ impl Indicator for LegEfficiencyEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.len
+        self.len + 1
     }
 
     fn reset(&mut self) {

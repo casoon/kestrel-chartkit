@@ -330,8 +330,11 @@ impl Indicator for StructureZones {
         "structure_zones"
     }
 
+    /// The earliest possible first output: without volume it starts with ATR (14) and RSI (14,
+    /// from the second bar) on bar 15. With real volume it also waits for the MFI and the 20-bar
+    /// volume average: first output on bar 20.
     fn warmup_period(&self) -> usize {
-        19
+        15
     }
 
     fn reset(&mut self) {

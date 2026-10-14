@@ -53,7 +53,7 @@ impl Indicator for LiquidityFvgEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.lookback.max(3)
+        1
     }
 
     fn reset(&mut self) {

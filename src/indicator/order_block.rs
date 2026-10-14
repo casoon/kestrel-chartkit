@@ -54,7 +54,7 @@ impl Indicator for OrderBlockEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.atr_len + 5
+        self.atr_len + 1
     }
 
     fn reset(&mut self) {

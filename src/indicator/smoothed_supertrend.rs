@@ -141,7 +141,8 @@ impl Indicator for SmoothedSupertrend {
     }
 
     fn warmup_period(&self) -> usize {
-        self.cfg.atr_len + self.cfg.wma_len - 2
+        // WMA over the bands, which start with the ATR; the EMA on top emits from its first value.
+        self.cfg.atr_len + self.cfg.wma_len - 1
     }
 
     fn reset(&mut self) {

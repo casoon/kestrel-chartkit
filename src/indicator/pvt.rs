@@ -40,7 +40,7 @@ impl Indicator for PriceVolumeTrend {
     }
 
     fn warmup_period(&self) -> usize {
-        1
+        2
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

@@ -404,8 +404,10 @@ impl Indicator for StructuralFlow {
         "structural_flow"
     }
 
+    /// The slow horizon's persistence needs `len` change terms, each against the close `len` bars
+    /// back: first output on bar `2 · len`.
     fn warmup_period(&self) -> usize {
-        HISTORY - 3
+        2 * LENS[2]
     }
 
     fn reset(&mut self) {

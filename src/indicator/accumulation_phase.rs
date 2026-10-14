@@ -33,7 +33,7 @@
 //! averages of the close changes, SMA-seeded; population standard deviation; pivots strict on both
 //! sides. The original evaluates the scores with `na` fallbacks during the warm-up; here the
 //! sweep/spring counters run from the first bar (their decay keyed to the bar count, like
-//! `bar_index`), while scores, phases and output start once every input exists (bar 38 with the
+//! `bar_index`), while scores, phases and output start once every input exists (bar 39 with the
 //! defaults).
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/accumulation_phase.py`.
@@ -217,9 +217,10 @@ impl Indicator for AccumulationPhase {
 
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        (c.atr_len + c.lookback - 2)
-            .max(20 + c.lookback - 2)
-            .max(14 + c.lookback)
+        // ATR average, Bollinger-width average, and the RSI (first at bar 15) `lookback` bars back.
+        (c.atr_len + c.lookback - 1)
+            .max(20 + c.lookback - 1)
+            .max(14 + 1 + c.lookback)
     }
 
     fn reset(&mut self) {

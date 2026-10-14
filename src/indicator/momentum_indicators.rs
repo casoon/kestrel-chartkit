@@ -37,7 +37,7 @@ impl Indicator for StochasticEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.k_period + self.d_period
+        self.k_period + self.d_period - 1
     }
 
     fn reset(&mut self) {
@@ -363,7 +363,7 @@ impl Indicator for PpoEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.slow_period + self.signal_period
+        self.slow_period
     }
 
     fn reset(&mut self) {

@@ -14,19 +14,17 @@ use std::collections::HashMap;
 /// - `raw = (0.6 · location + 0.4 · wick_balance) · 100`.
 ///
 /// `value = clamp(EMA(period)(raw), -100, 100)` with the EMA seeded by the first bar's raw value
-/// (see [`Ema`]), so the first output comes with the first bar, although `warmup_period()`
-/// reports `period`. `extra["location"]` and `extra["wick_balance"]` are the current bar's,
+/// (see [`Ema`]), so the first output comes with the first bar (`warmup_period()` is 1).
+/// `extra["location"]` and `extra["wick_balance"]` are the current bar's,
 /// unsmoothed. Volume does not enter.
 #[derive(Debug, Clone)]
 pub struct BuySellPressureEstimator {
-    period: usize,
     ema: Ema,
 }
 
 impl BuySellPressureEstimator {
     pub fn new(period: usize) -> Self {
         Self {
-            period: period.max(1),
             ema: Ema::new(period),
         }
     }
@@ -42,7 +40,7 @@ impl Indicator for BuySellPressureEstimator {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period
+        1
     }
 
     fn reset(&mut self) {

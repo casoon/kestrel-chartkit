@@ -35,7 +35,7 @@ impl Indicator for RviEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period + 4
+        self.period + 3
     }
 
     fn reset(&mut self) {

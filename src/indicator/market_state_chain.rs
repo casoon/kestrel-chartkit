@@ -177,9 +177,12 @@ impl Indicator for MarketStateChain {
     }
 
     fn warmup_period(&self) -> usize {
-        (self.cfg.bb_len + self.cfg.rank_len - 2)
-            .max(self.cfg.atr_len + self.cfg.rank_len - 2)
-            .max(2 * self.cfg.adx_len - 1)
+        let c = &self.cfg;
+        (c.bb_len + c.rank_len - 1)
+            .max(c.atr_len + c.rank_len - 1)
+            .max(self.adx.warmup_period())
+            .max(c.eff_len)
+            .max(6)
     }
 
     fn reset(&mut self) {

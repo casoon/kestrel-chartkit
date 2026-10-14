@@ -458,8 +458,9 @@ impl Indicator for BottomFormation {
         "bottom_formation"
     }
 
+    /// Every bar outputs the stages so far (0 before the first pivot).
     fn warmup_period(&self) -> usize {
-        2 * self.bottom.pivot_len + 1
+        1
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

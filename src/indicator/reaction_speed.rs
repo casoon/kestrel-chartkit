@@ -177,7 +177,7 @@ impl Indicator for ReactionSpeed {
     }
 
     fn warmup_period(&self) -> usize {
-        self.cfg.atr_len + self.cfg.atr_base - 2
+        self.cfg.atr_len + self.cfg.atr_base - 1
     }
 
     fn reset(&mut self) {

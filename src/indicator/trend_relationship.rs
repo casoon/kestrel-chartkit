@@ -83,6 +83,10 @@ impl Indicator for AdaptiveTrendRelationship {
         "trend_relationship"
     }
 
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
     fn reset(&mut self) {
         self.fast.reset();
         self.slow.reset();

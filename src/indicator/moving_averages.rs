@@ -304,7 +304,8 @@ impl Indicator for HmaEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period + ((self.period as f64).sqrt().round() as usize)
+        let root = ((self.period as f64).sqrt().round() as usize).max(1);
+        self.period + root - 1
     }
 
     fn reset(&mut self) {
@@ -369,7 +370,7 @@ impl Indicator for DemaEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period * 2
+        self.period * 2 - 1
     }
 
     fn reset(&mut self) {

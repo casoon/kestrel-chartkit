@@ -149,7 +149,19 @@ impl Indicator for RocContext {
     }
 
     fn warmup_period(&self) -> usize {
-        (self.cfg.ctx_len + self.cfg.div_len).max(self.cfg.roc_len + self.cfg.stall_len)
+        let c = &self.cfg;
+        // Samples a smoother needs for its first value (`0` = emits from the first one).
+        let first = |s: &dyn Smoother| s.warmup_period().max(1);
+        // ROC over `len` first exists at bar `len + 1`.
+        let line = c.roc_len + first(self.line_ma.as_ref());
+        let signal = line + first(self.sig_ma.as_ref()) - 1;
+        let ctx = c.ctx_len + first(self.ctx_ma.as_ref());
+        signal
+            .max(ctx + c.div_len)
+            .max(line + c.stall_len.max(c.div_len))
+            .max(line + c.lookback_extreme.max(1) - 1)
+            .max(c.stall_len + 1)
+            .max(14)
     }
 
     fn reset(&mut self) {

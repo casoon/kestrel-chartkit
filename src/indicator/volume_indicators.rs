@@ -33,7 +33,7 @@ impl Indicator for VolumeEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.ma_period
+        1
     }
 
     fn reset(&mut self) {

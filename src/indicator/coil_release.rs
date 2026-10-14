@@ -272,7 +272,13 @@ impl Indicator for CoilRelease {
     }
 
     fn warmup_period(&self) -> usize {
-        13 + self.cfg.len - 2 + self.cfg.break_len
+        let c = &self.cfg;
+        // Complexity needs ATR(14) on its `len - 1` newest bars; the coil score needs the coil
+        // `break_len` bars back and the 3-bar complexity mean the bar before.
+        let coil = 14 + c.len - 2;
+        (coil + c.break_len.max(3))
+            .max(c.slope_len + 1)
+            .max(c.chop_len)
     }
 
     fn reset(&mut self) {

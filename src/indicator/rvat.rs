@@ -40,8 +40,8 @@ const SECONDS_PER_DAY: i64 = 86_400;
 /// comparison slots produces no output — a ratio against nothing has no meaning.
 ///
 /// First output: the first bar whose slot has at least one previous day to compare against —
-/// one day of bars. How many bars that is depends on the timeframe, which this indicator cannot
-/// know from a timestamp alone, so `bar_seconds` states it. That parameter is *declarative only*:
+/// the bar after one day of bars. How many bars that is depends on the timeframe, which this
+/// indicator cannot know from a timestamp alone, so `bar_seconds` states it. That parameter is *declarative only*:
 /// it makes [`Indicator::warmup_period`] an honest number of bars and has no influence on the
 /// calculation, which always derives slots from timestamps. A wrong value misstates the declared
 /// warmup, never a ratio.
@@ -99,10 +99,10 @@ impl Indicator for RelativeVolumeAtTime {
     }
 
     fn warmup_period(&self) -> usize {
-        // One day of bars: a slot cannot repeat sooner than that. Expressed in bars via the
-        // declared `bar_seconds`, since the trait speaks in bars and this indicator thinks in
-        // days.
-        (SECONDS_PER_DAY / self.bar_seconds) as usize
+        // One day of bars: a slot cannot repeat sooner than that, so the first output comes
+        // with the bar after it. Expressed in bars via the declared `bar_seconds`, since the
+        // trait speaks in bars and this indicator thinks in days.
+        (SECONDS_PER_DAY / self.bar_seconds) as usize + 1
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

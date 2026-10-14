@@ -40,7 +40,6 @@ pub struct StochRsi {
     ctx_stoch_window: ExtremeWindow,
     ctx_k_avg: Sma,
     ctx_bars_seen: usize,
-    ctx_warmup_period: usize,
     divergence: SlopeDivergence,
 
     alerts: StochRsiAlerts,
@@ -101,10 +100,6 @@ impl StochRsi {
             ctx_stoch_window: ExtremeWindow::new(ctx_stoch_len),
             ctx_k_avg: Sma::new(k_len),
             ctx_bars_seen: 0,
-            ctx_warmup_period: ctx_rsi_len
-                + 1
-                + ctx_stoch_len.saturating_sub(1)
-                + k_len.saturating_sub(1),
             divergence: SlopeDivergence::new(div_len, div_min),
             alerts: StochRsiAlerts::default(),
         }
@@ -121,7 +116,7 @@ impl Indicator for StochRsi {
     }
 
     fn warmup_period(&self) -> usize {
-        self.warmup_period.max(self.ctx_warmup_period)
+        self.warmup_period
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

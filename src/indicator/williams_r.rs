@@ -101,7 +101,7 @@ impl Indicator for WilliamsR {
     }
 
     fn warmup_period(&self) -> usize {
-        self.wpr_len.max(self.ctx_len)
+        self.wpr_len
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

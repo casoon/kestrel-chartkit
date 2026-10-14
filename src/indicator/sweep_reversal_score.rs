@@ -137,11 +137,13 @@ impl Indicator for SweepReversalScore {
         "sweep_reversal_score"
     }
 
+    /// First output once the ATR baseline (an average of the ATR), the RSI (from the second bar
+    /// on) and the swing window (`swing_len` bars before this one) are all there.
     fn warmup_period(&self) -> usize {
         let c = &self.cfg;
-        (c.atr_len + c.atr_base_len - 2)
-            .max(c.rsi_len)
-            .max(c.swing_len)
+        (c.atr_len + c.atr_base_len - 1)
+            .max(c.rsi_len + 1)
+            .max(c.swing_len + 1)
     }
 
     fn reset(&mut self) {

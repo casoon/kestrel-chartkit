@@ -41,7 +41,7 @@ impl Indicator for TemaEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        self.period * 3
+        self.period
     }
 
     fn reset(&mut self) {

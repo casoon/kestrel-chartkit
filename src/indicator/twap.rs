@@ -110,7 +110,7 @@ impl Indicator for AnchoredTwap {
     }
 
     fn warmup_period(&self) -> usize {
-        0
+        1
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

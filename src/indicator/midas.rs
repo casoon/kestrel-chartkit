@@ -110,6 +110,10 @@ impl Indicator for MidasCurveEngine {
         "midas"
     }
 
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
     fn reset(&mut self) {
         self.cum_pv = 0.0;
         self.cum_v = 0.0;
