@@ -27,9 +27,18 @@ function lazyChart(name: string): string {
   return `${style}${img('light')}${img('dark')}`;
 }
 
+/** The catalog description up to its first parenthesis or sentence end, for a card. */
+const short = (text: string) => {
+  const cut = text.split(/ \(|\. /)[0];
+  return cut.length > 110 ? `${cut.slice(0, 107)}…` : cut;
+};
+
+const SIGNALS = 'Regime and signals';
+
 const features: ShowcaseExample[] = [
   {
     slug: 'market-regime',
+    group: SIGNALS,
     title: 'Market regime',
     description: String(spec('regime').description),
     file: FILE,
@@ -42,6 +51,7 @@ const features: ShowcaseExample[] = [
   },
   {
     slug: 'composite-signal',
+    group: SIGNALS,
     title: 'Composite signal',
     description: String(spec('composite').description),
     file: FILE,
@@ -59,11 +69,13 @@ const perIndicator: ShowcaseExample[] = indicators
   .map((entry) => ({
     slug: entry.name,
     title: entry.name,
-    description: `${entry.description} — ${entry.family}. Default parameters on synthetic 4-hour bars of a fictitious CASOON share (invented prices); the latest alerts as markers.`,
+    description: short(entry.description),
     file: FILE,
+    group: entry.family,
     tags: [entry.family, `unit: ${entry.unit}`],
-    input: { lang: 'rust', code: rustFor(entry.name, entry.defaults) },
+    input: { lang: 'rust', code: `// ${entry.description}\n${rustFor(entry.name, entry.defaults)}` },
     output: { html: lazyChart(entry.name), kind: 'panel' },
+    preview: { html: lazyChart(entry.name) },
   }));
 
 export const examples: ShowcaseExample[] = [...features, ...perIndicator];

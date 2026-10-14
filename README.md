@@ -1,14 +1,17 @@
 # kestrel-chartkit
 
 High-performance Rust technical analysis library for streaming indicator math, market regime
-classification, composite signal scoring, trade evaluation, instrument valuation, and static SVG
-visualization.
+classification, composite signal scoring, trade evaluation and instrument valuation. It is a pure
+calculation library: it returns plain data and draws nothing itself — charts come from a renderer
+such as [chartlet](https://casoon.github.io/chartlet/) (static) or
+[kestrel-loom](https://github.com/casoon/kestrel-loom) (interactive, alpha).
 
 **Website and documentation:** [casoon.github.io/kestrel-chartkit](https://casoon.github.io/kestrel-chartkit/)
 
 The crate is at **0.32**, pre-1.0. Root-level re-exports are the preferred consumer API;
 lower-level modules remain public for advanced composition but may change before 1.0. Breaking
-changes are marked with `!` in the commit subject and raise the minor version.
+changes are marked with `!` in the commit subject and raise the minor version. The crate is under
+active development: names, parameters and outputs can still change fundamentally between versions.
 
 ## Features
 
@@ -20,7 +23,7 @@ changes are marked with `!` in the commit subject and raise the minor version.
 - **Bar Transformations:** Heikin-Ashi candles as their own result type, carrying the observed bar they were derived from so computed prices cannot pass as traded ones (`transform`).
 - **Instrument Valuation:** European options (Black-Scholes-Merton, Black-76, Greeks, implied volatility) and fixed-rate bonds valued over real coupon schedules — month-end rule, stub periods, business-day conventions, day-count-driven coupons and accrued interest (`option`, `finance`).
 - **Portfolio, Risk and Stress:** Exposures, cashflow-adjusted returns, drawdown, VaR and expected shortfall, scenario revaluation and path simulation (`portfolio`, `risk`, `stress`).
-- **SVG Chart Renderer:** Export clean SVG preview charts with candlestick series, indicator polylines, market structure zones, and timestamped signal markers.
+- **Renderer-Neutral Output:** Every result is plain data (values, extras, alerts, zones); overlays such as signal markers, levels and zones can travel as a `viz::scene::Scene`, the model kestrel-loom draws. Draw static charts with chartlet — the [showcase](https://casoon.github.io/kestrel-chartkit/showcase/) shows every indicator that way. The small built-in `viz::render_chart_svg`/`render_scene_svg` are quick-look helpers for tests and debugging, not a presentation layer.
 
 ## Shared consumer calculations
 

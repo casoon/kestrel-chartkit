@@ -29,7 +29,7 @@ const contractCases = Object.values(contractFixtures)
   .map((text) => text.split('\n').filter((line) => line.startsWith('@')).length)
   .reduce((a, b) => a + b, 0);
 
-const version = '0.31.0';
+const version = '0.32.0';
 // A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
 // chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
 const hero = inlineChart(spec('hero'), 'hero');

@@ -75,6 +75,7 @@ export const collections = { docs: docsCollection() };
 | `demo` | `false` | Header label of a live demo page; the project supplies `src/pages/demo.astro` |
 | `mdxComponents` | – | Module exporting `components` for docs MDX, next to the theme's; see „Docs frontmatter" |
 | `lang` | `en` | `en` or `de`: `<html lang>` and the theme's own UI strings (`lib/i18n.ts`); props passed by the project win |
+| `showcaseLead` | – | Lead paragraph of the showcase overview, instead of the theme's generic one |
 
 ### Routes
 
@@ -126,6 +127,16 @@ own renderer. `ansiToHtml` renders the 16-colour palette as classes (so the them
 apply) and 256-colour and 24-bit colour — foreground and background — as inline styles. `@casoon/pages-theme/layouts/Base.astro` wraps custom pages in the frame, and
 `@casoon/pages-theme/url` exports `url()` — a project page that links or loads something
 site-internal needs it, because the base path changes per project.
+
+## Large showcases
+
+A showcase with many examples gets two optional fields per `ShowcaseExample`:
+
+- `group`: the heading the example is listed under. Examples of one group appear together, groups in
+  the order of their first example, with a jump list at the top of the overview.
+- `preview`: HTML for a small preview, typically a lazily loaded image. An example with a preview
+  appears on the overview as a card (title, description, preview, link to the detail page);
+  input and output stay on the detail page. Without it the overview shows the full panel as before.
 
 ## Live demo
 

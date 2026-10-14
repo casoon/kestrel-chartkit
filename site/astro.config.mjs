@@ -12,7 +12,7 @@ export default defineConfig({
       description:
         'Rust technical analysis library, in development: streaming indicators, market regime classification, composite scoring and SVG charts.',
       repo: 'casoon/kestrel-chartkit',
-      version: '0.31.0',
+      version: '0.32.0',
       license: 'BUSL-1.1',
       branch: 'master',
       packages: [
@@ -27,6 +27,8 @@ export default defineConfig({
       // No CHANGELOG.md and no release notes yet.
       changelog: false,
       mdxComponents: './src/mdx-components.ts',
+      showcaseLead:
+        'Every indicator of the catalog, drawn from what kestrel-chartkit computes: default parameters on synthetic 4-hour bars of a fictitious CASOON share with invented prices, the latest alerts as markers. chartlet does the drawing. Pick an indicator for its chart and the Rust call that builds it.',
     }),
   ],
 });
