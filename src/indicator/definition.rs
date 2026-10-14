@@ -8,8 +8,9 @@
 //! for its range, each pass in the order of the specs. The definition's `build` only reads
 //! resolved, valid values.
 //!
-//! The migration is gradual: [`definitions`] lists the indicators already defined here; every
-//! other name still goes through the registry's `match`.
+//! Every catalog indicator has a definition, listed per family under `definition/`; the
+//! registry's lookups (`catalog`, `canonical_name`, `threshold_params`, `build_checked`,
+//! `build_typed`) are answered from these lists.
 
 use std::collections::HashMap;
 
@@ -612,16 +613,9 @@ pub fn definition(name: &str) -> Option<&'static IndicatorDefinition> {
 
 #[cfg(test)]
 mod tests {
-    //! Difference test (plan 49, step 2): for every defined indicator, the definition and the
-    //! registry's legacy `match` give the same result — the same error, or indicators that agree
-    //! on name, warmup and every output and alert over a reference series.
-
     use super::*;
-    use crate::indicator::registry::{
-        build_checked_with, build_typed_with, canonical_name, catalog, threshold_params, Route,
-    };
+    use crate::indicator::registry::{build_checked, build_typed, canonical_name, catalog};
     use crate::indicator::settle::REFERENCE_SHAPES;
-    use crate::model::Source;
 
     /// Debug strings throughout: they compare bit for bit, NaN included (in values and errors).
     fn fingerprint(
@@ -651,187 +645,23 @@ mod tests {
         Ok(out)
     }
 
-    /// Valid and invalid values of one spec as the `f64` map carries them.
-    fn f64_values(spec: &ParamSpec) -> Vec<f64> {
-        let mut values = vec![f64::NAN, f64::INFINITY, f64::NEG_INFINITY];
-        match spec.kind {
-            ParamKind::Count { default, min, max } => values.extend([
-                min as f64,
-                max as f64,
-                default as f64,
-                default as f64 + 1.0,
-                default as f64 + 0.5,
-                min as f64 - 1.0,
-                max as f64 + 1.0,
-            ]),
-            ParamKind::Number { default, min, max } => {
-                values.extend([min, max, default, (min + max) / 2.0, min - 0.001, max + 1.0])
-            }
-            ParamKind::Choice { options, .. } => {
-                values.extend((0..=options.len()).map(|i| i as f64));
-                values.extend([-1.0, 0.5]);
-            }
-            ParamKind::Timestamp | ParamKind::Source { .. } => {}
-        }
-        values
-    }
-
-    /// Typed values of one spec beyond the numeric ones.
-    fn typed_values(spec: &ParamSpec) -> Vec<ParamValue> {
-        let mut values = vec![
-            ParamValue::Enum("nope".into()),
-            ParamValue::Text("x".into()),
-            ParamValue::Bool(true),
-        ];
-        match spec.kind {
-            ParamKind::Count { default, .. } => {
-                values.push(ParamValue::Int(default as i64));
-                values.push(ParamValue::Int(0));
-            }
-            ParamKind::Number { default, .. } => values.push(ParamValue::Float(default)),
-            ParamKind::Choice { options, .. } => {
-                for option in options {
-                    values.push(ParamValue::Enum(option.to_string()));
-                    values.push(ParamValue::Enum(option.to_uppercase()));
-                }
-                values.push(ParamValue::Int(1));
-            }
-            ParamKind::Timestamp | ParamKind::Source { .. } => {}
-        }
-        values
-    }
-
-    fn f64_cases(definition: &IndicatorDefinition) -> Vec<HashMap<String, f64>> {
-        let numeric: Vec<&ParamSpec> = definition
-            .params
-            .iter()
-            .filter(|p| p.in_f64_map())
-            .collect();
-        let mut cases = vec![HashMap::new(), HashMap::from([("peroid".to_string(), 2.0)])];
-        for spec in &numeric {
-            for value in f64_values(spec) {
-                cases.push(HashMap::from([(spec.name.to_string(), value)]));
-            }
-        }
-        // Two invalid values at once: which one is reported must not change.
-        for (i, a) in numeric.iter().enumerate() {
-            for b in &numeric[i + 1..] {
-                cases.push(HashMap::from([
-                    (a.name.to_string(), f64::NAN),
-                    (b.name.to_string(), f64::NAN),
-                ]));
-            }
-        }
-        cases
-    }
-
-    fn typed_cases(definition: &IndicatorDefinition) -> Vec<TypedParams> {
-        let mut cases: Vec<TypedParams> = f64_cases(definition)
-            .into_iter()
-            .map(|c| {
-                c.into_iter()
-                    .map(|(k, v)| (k, ParamValue::Float(v)))
-                    .collect()
-            })
-            .collect();
-        for spec in definition.params {
-            if spec.kind == ParamKind::Timestamp {
-                continue;
-            }
-            for value in typed_values(spec) {
-                cases.push(HashMap::from([(spec.name.to_string(), value)]));
-            }
-        }
-        cases.push(HashMap::from([(
-            "source".to_string(),
-            ParamValue::Enum("hl2".into()),
-        )]));
-        for source in [Source::Close, Source::Hl2, Source::Hlc3] {
-            cases.push(HashMap::from([(
-                "source".to_string(),
-                ParamValue::Source(source),
-            )]));
-        }
-        // A timestamp is only meaningful beside the choice that asks for it.
-        let manual = definition.params.iter().find(|p| {
-            matches!(p.kind, ParamKind::Choice { options, .. } if options.contains(&"manual_timestamp"))
-        });
-        if let Some(choice) = manual {
-            for spec in definition
-                .params
-                .iter()
-                .filter(|p| p.kind == ParamKind::Timestamp)
-            {
-                let kind = (
-                    choice.name.to_string(),
-                    ParamValue::Enum("manual_timestamp".into()),
-                );
-                cases.push(HashMap::from([kind.clone()]));
-                cases.push(HashMap::from([
-                    kind,
-                    (spec.name.to_string(), ParamValue::Timestamp(1_700_000_000)),
-                ]));
-            }
-        }
-        cases
-    }
-
-    /// Cases where the definition deliberately differs from the legacy path (operator decision
-    /// 2026-10-14): `zigzag_advanced` takes the same parameters on both entry points, so the
-    /// legacy f64 path's rejection of `deviation_mode`/`deviation_value` and the legacy typed
-    /// path's silent neglect of `deviation_pct` are not reproduced.
-    fn intended_difference(name: &str, keys: &[&String]) -> bool {
-        name == "zigzag_advanced"
-            && keys.iter().any(|k| {
-                ["deviation_mode", "deviation_value", "deviation_pct"].contains(&k.as_str())
-            })
-    }
-
+    /// Every definition is in the catalog under its name, every alias resolves to it, and both
+    /// entry points build it with its defaults. (Until step 4 of plan 49 a difference test
+    /// compared each definition with the registry's former `match`, over hundreds of valid and
+    /// invalid parameter combinations; it passed for all 130 before the `match` was removed.)
     #[test]
-    fn definitions_build_exactly_what_the_legacy_registry_builds() {
-        let mut checked = 0;
-        for definition in definitions() {
-            for name in std::iter::once(definition.name).chain(definition.aliases.iter().copied()) {
-                for params in f64_cases(definition) {
-                    if intended_difference(name, &params.keys().collect::<Vec<_>>()) {
-                        continue;
-                    }
-                    let new = fingerprint(build_checked_with(name, &params, Route::Definitions));
-                    let old = fingerprint(build_checked_with(name, &params, Route::Legacy));
-                    assert_eq!(new, old, "{name} f64 {params:?}");
-                    checked += 1;
-                }
-                for params in typed_cases(definition) {
-                    if intended_difference(name, &params.keys().collect::<Vec<_>>()) {
-                        continue;
-                    }
-                    let new = fingerprint(build_typed_with(name, &params, Route::Definitions));
-                    let old = fingerprint(build_typed_with(name, &params, Route::Legacy));
-                    assert_eq!(new, old, "{name} typed {params:?}");
-                    checked += 1;
-                }
-            }
-        }
-        assert!(checked > 200, "only {checked} combinations");
-    }
-
-    #[test]
-    fn definitions_agree_with_catalog_thresholds_and_aliases() {
+    fn every_definition_is_reachable_by_name_and_alias() {
         let catalog = catalog();
         for definition in definitions() {
-            let entry = catalog
-                .iter()
-                .find(|e| e.name == definition.name)
-                .unwrap_or_else(|| panic!("{} not in the catalog", definition.name));
-            assert_eq!(&definition.catalog_entry(), entry, "{}", definition.name);
-            assert_eq!(
-                definition.threshold_params(),
-                threshold_params(definition.name),
+            assert!(
+                catalog.iter().any(|e| e.name == definition.name),
                 "{}",
                 definition.name
             );
-            for alias in definition.aliases {
-                assert_eq!(canonical_name(alias), definition.name);
+            for name in std::iter::once(definition.name).chain(definition.aliases.iter().copied()) {
+                assert_eq!(canonical_name(name), definition.name);
+                assert!(build_checked(name, &HashMap::new()).is_ok(), "{name}");
+                assert!(build_typed(name, &TypedParams::new()).is_ok(), "{name}");
             }
         }
     }
@@ -895,43 +725,38 @@ mod tests {
     }
 
     /// The unified `zigzag_advanced`: the same deviation through either entry point and either
-    /// name, mode-dependent ranges, and the legacy typed build reproduced for `deviation_value`.
+    /// name, and mode-dependent ranges.
     #[test]
     fn zigzag_advanced_takes_the_same_parameters_on_both_entry_points() {
+        use crate::indicator::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
         let f64_build = |params: &[(&str, f64)]| {
             let params: HashMap<String, f64> =
                 params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
-            fingerprint(build_checked_with(
-                "zigzag_advanced",
-                &params,
-                Route::Definitions,
-            ))
+            fingerprint(build_checked("zigzag_advanced", &params))
         };
-        let typed_build = |params: Vec<(&str, ParamValue)>, route| {
+        let typed_build = |params: Vec<(&str, ParamValue)>| {
             let params: TypedParams = params
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v))
                 .collect();
-            fingerprint(build_typed_with("zigzag_advanced", &params, route))
+            fingerprint(build_typed("zigzag_advanced", &params))
         };
-        let atr_typed = || {
-            vec![
-                ("deviation_mode", ParamValue::Enum("atr_multiple".into())),
-                ("deviation_value", ParamValue::Float(2.5)),
-            ]
-        };
-        // The legacy typed path is the reference for the ATR mode.
-        let reference = typed_build(atr_typed(), Route::Legacy);
-        assert!(reference.is_ok());
-        assert_eq!(typed_build(atr_typed(), Route::Definitions), reference);
+        let atr_mode = || ("deviation_mode", ParamValue::Enum("atr_multiple".into()));
+        let reference = fingerprint(Ok(Box::new(AdvancedZigZagEngine::new(
+            3,
+            2,
+            ZigZagDeviationMode::AtrMultiple(2.5),
+            14,
+        ))));
         assert_eq!(
-            typed_build(
-                vec![
-                    ("deviation_mode", ParamValue::Enum("atr_multiple".into())),
-                    ("deviation_pct", ParamValue::Float(2.5)),
-                ],
-                Route::Definitions
-            ),
+            typed_build(vec![
+                atr_mode(),
+                ("deviation_value", ParamValue::Float(2.5))
+            ]),
+            reference
+        );
+        assert_eq!(
+            typed_build(vec![atr_mode(), ("deviation_pct", ParamValue::Float(2.5))]),
             reference
         );
         assert_eq!(
@@ -952,13 +777,10 @@ mod tests {
         assert!(f64_build(&[("deviation_mode", 1.0), ("deviation_pct", 500.0)]).is_ok());
         assert!(f64_build(&[("deviation_mode", 2.0)]).is_err());
 
-        // The typed path no longer ignores deviation_pct.
-        assert_ne!(
-            typed_build(
-                vec![("deviation_pct", ParamValue::Float(5.0))],
-                Route::Definitions
-            ),
-            typed_build(vec![], Route::Definitions)
+        // The typed path reads deviation_pct like the f64 path.
+        assert_eq!(
+            typed_build(vec![("deviation_pct", ParamValue::Float(5.0))]),
+            f64_build(&[("deviation_pct", 5.0)])
         );
     }
 
