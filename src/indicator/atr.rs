@@ -248,3 +248,37 @@ impl Indicator for Atr {
         out
     }
 }
+
+/// Registry definition of `atr` (plan 49). `smoothing` is chosen by name in the typed map and by
+/// its position (`0` rma … `3` wma) in the `f64` map.
+pub const ATR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "atr",
+        aliases: &[],
+        description: "Average True Range (true-range average: build_typed accepts smoothing=rma|sma|ema|wma, build_checked the same as smoothing=0|1|2|3; rma is the default and the signal line stays Wilder-smoothed)",
+        params: &[
+            super::definition::ParamSpec::choice(
+                "smoothing",
+                "rma",
+                &["rma", "sma", "ema", "wma"],
+                true,
+            )
+            .meaning("how the true range is averaged"),
+            super::definition::ParamSpec::count("atr_len", 14, 1, 10000)
+                .meaning("bars in the true-range average"),
+            super::definition::ParamSpec::count("sig_len", 20, 1, 10000)
+                .meaning("bars in the Wilder average of the percentage (signal)"),
+        ],
+        checks: &[],
+        build: |p| {
+            let smoothing = match p.choice("smoothing") {
+                "sma" => TrueRangeSmoothing::Sma,
+                "ema" => TrueRangeSmoothing::Ema,
+                "wma" => TrueRangeSmoothing::Wma,
+                _ => TrueRangeSmoothing::Rma,
+            };
+            Ok(Box::new(
+                Atr::new(p.count("atr_len"), p.count("sig_len")).with_smoothing(smoothing),
+            ))
+        },
+    };

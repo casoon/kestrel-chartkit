@@ -229,6 +229,74 @@ impl Indicator for AnchoredVwapEngine {
     }
 }
 
+/// Registry definition of `anchored_vwap` (plan 49). The anchor and the zero-volume policy are
+/// typed-map choices; `manual_timestamp` needs `anchor_timestamp` beside it.
+pub const ANCHORED_VWAP_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "anchored_vwap",
+        aliases: &["avwap"],
+        description: "Anchored VWAP Engine",
+        params: &[
+            super::definition::ParamSpec::choice(
+                "anchor_kind",
+                "session",
+                &[
+                    "session",
+                    "day",
+                    "week",
+                    "month",
+                    "external",
+                    "manual_timestamp",
+                ],
+                false,
+            )
+            .meaning("where the average restarts"),
+            super::definition::ParamSpec::timestamp("anchor_timestamp")
+                .meaning("the anchor for anchor_kind=manual_timestamp"),
+            super::definition::ParamSpec::choice(
+                "zero_volume_policy",
+                "equal_weight",
+                &["equal_weight", "skip"],
+                false,
+            )
+            .meaning("how a bar without volume enters the average"),
+            super::definition::ParamSpec::number("mult1", 1.0, 0.01, 100.0)
+                .meaning("inner band, in standard deviations"),
+            super::definition::ParamSpec::number("mult2", 2.0, 0.01, 100.0)
+                .meaning("outer band, in standard deviations"),
+        ],
+        checks: &[],
+        build: |p| {
+            let anchor = match p.choice("anchor_kind") {
+                "day" => VwapAnchorKind::Day,
+                "week" => VwapAnchorKind::Week,
+                "month" => VwapAnchorKind::Month,
+                "external" => VwapAnchorKind::External,
+                "manual_timestamp" => {
+                    let ts = p.timestamp("anchor_timestamp").ok_or_else(|| {
+                        super::registry::RegistryError::InvalidEnumValue {
+                            parameter: "anchor_kind".to_string(),
+                            value: "manual_timestamp".to_string(),
+                            reason:
+                                "requires an accompanying 'anchor_timestamp' Timestamp parameter"
+                                    .to_string(),
+                        }
+                    })?;
+                    VwapAnchorKind::ManualTimestamp(ts)
+                }
+                _ => VwapAnchorKind::Session,
+            };
+            let policy = match p.choice("zero_volume_policy") {
+                "skip" => ZeroVolumePolicy::Skip,
+                _ => ZeroVolumePolicy::EqualWeight,
+            };
+            Ok(Box::new(
+                AnchoredVwapEngine::new(anchor, p.number("mult1"), p.number("mult2"))
+                    .with_zero_volume_policy(policy),
+            ))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -493,3 +493,16 @@ impl Indicator for KamaEngine {
         self.alerts.clone()
     }
 }
+
+/// Registry definition of `sma` (plan 49).
+pub const SMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "sma",
+        aliases: &[],
+        description: "Simple Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(SmaEngine::new(p.count("period")))),
+    };

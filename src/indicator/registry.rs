@@ -1591,6 +1591,29 @@ pub fn build_checked(
     name: &str,
     params: &HashMap<String, f64>,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
+    build_checked_with(name, params, Route::Definitions)
+}
+
+/// Whether a build goes through the indicator definitions (plan 49) where one exists, or only
+/// through the registry's `match` — the latter kept for the difference test until every
+/// indicator has moved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Route {
+    Definitions,
+    #[cfg_attr(not(test), allow(dead_code))]
+    Legacy,
+}
+
+pub(crate) fn build_checked_with(
+    name: &str,
+    params: &HashMap<String, f64>,
+    route: Route,
+) -> Result<Box<dyn Indicator>, RegistryError> {
+    if route == Route::Definitions {
+        if let Some(definition) = super::definition::definition(name) {
+            return definition.build_from_f64(name, params);
+        }
+    }
     reject_unknown_params(name, params.keys(), false)?;
     match name.to_lowercase().as_str() {
         "rsi" => Ok(Box::new(build_rsi(params, RsiSmoothing::Wilder)?)),
@@ -2735,7 +2758,23 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
 const SOURCE_FIXED_INDICATORS: &[&str] = &["efi"];
 
 pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
-    reject_unknown_params(name, params.keys().filter(|k| *k != "source"), true)?;
+    build_typed_with(name, params, Route::Definitions)
+}
+
+pub(crate) fn build_typed_with(
+    name: &str,
+    params: &TypedParams,
+    route: Route,
+) -> Result<Box<dyn Indicator>, RegistryError> {
+    let definition = match route {
+        Route::Definitions => super::definition::definition(name),
+        Route::Legacy => None,
+    };
+    let keys = params.keys().filter(|k| *k != "source");
+    match definition {
+        Some(definition) => definition.reject_unknown(name, keys, true)?,
+        None => reject_unknown_params(name, keys, true)?,
+    }
 
     if name.to_lowercase() == "midas" {
         // Bypasses the generic `source` handling below; see `build_midas_typed`.
@@ -2784,19 +2823,22 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
     let mut remaining = params.clone();
     remaining.remove("source");
 
-    let built = match name.to_lowercase().as_str() {
-        "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
-        "atr" => build_atr_typed(&remaining)?,
-        "ema" => build_ema_typed(&remaining)?,
-        "rsi" => build_rsi_typed(&remaining)?,
-        "bbtrend" => build_bbtrend_typed(&remaining)?,
-        "relative_volatility" => build_relative_volatility_typed(&remaining)?,
-        "twap" => build_twap_typed(&remaining, source)?,
-        "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
-        "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
-        "trend_relationship" => build_trend_relationship_typed(&remaining)?,
-        "zigzag_advanced" => build_zigzag_advanced_typed(&remaining)?,
-        _ => build_typed_by_flattening(name, &remaining)?,
+    let built = match (definition, name.to_lowercase().as_str()) {
+        (Some(definition), _) => definition.build_from_typed(name, &remaining)?,
+        (None, name) => match name {
+            "anchored_vwap" | "avwap" => build_anchored_vwap_typed(&remaining)?,
+            "atr" => build_atr_typed(&remaining)?,
+            "ema" => build_ema_typed(&remaining)?,
+            "rsi" => build_rsi_typed(&remaining)?,
+            "bbtrend" => build_bbtrend_typed(&remaining)?,
+            "relative_volatility" => build_relative_volatility_typed(&remaining)?,
+            "twap" => build_twap_typed(&remaining, source)?,
+            "bollinger" | "bb" => build_bollinger_typed(&remaining)?,
+            "pivot_sets" | "multi_pivots" => build_pivot_sets_typed(&remaining)?,
+            "trend_relationship" => build_trend_relationship_typed(&remaining)?,
+            "zigzag_advanced" => build_zigzag_advanced_typed(&remaining)?,
+            _ => build_typed_by_flattening(name, &remaining, route)?,
+        },
     };
 
     // Wrapped whenever the requested source differs from what the indicator reads natively —
@@ -2817,8 +2859,9 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 fn build_typed_by_flattening(
     name: &str,
     params: &TypedParams,
+    route: Route,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
-    build_checked(name, &flatten_typed(params)?)
+    build_checked_with(name, &flatten_typed(params)?, route)
 }
 
 /// Flattens every entry to `f64`, rejecting values with no scalar form. Used both by
