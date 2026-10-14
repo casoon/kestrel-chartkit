@@ -222,6 +222,65 @@ impl Indicator for PivotDivergence {
     }
 }
 
+pub const PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "pivot_divergence",
+    aliases: &[],
+    description: "Price-pivot-anchored divergence (regular and hidden) on a selectable oscillator (0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI); fires on the confirmation bar, extra[\"pivot_price\"] is the pivot (natural stop)",
+    params: &[
+        super::definition::ParamSpec::count("oscillator", 0, 0, 4).meaning("oscillator code: 0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI"),
+        super::definition::ParamSpec::count("left", 7, 1, 1000).meaning("bars left of a pivot"),
+        super::definition::ParamSpec::count("right", 7, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),
+        super::definition::ParamSpec::count("min_distance", 10, 1, 100000).meaning("fewest bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_distance", 120, 1, 100000).meaning("most bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_prior_pivots", 5, 1, 100).meaning("earlier pivots each pivot is compared with"),
+    ],
+    checks: &[super::definition::Check::Less {
+        lower: "min_distance",
+        upper: "max_distance",
+    }],
+    build: |p| build_from_definition(p, PivotDivergence::new),
+};
+
+/// Same knobs as [`PIVOT_DIVERGENCE_DEFINITION`], pivots of the oscillator and TradingView's
+/// defaults.
+pub const OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "oscillator_pivot_divergence",
+    aliases: &[],
+    description: "Divergence with the pivots found in the oscillator (TradingView's divergence scripts: ta.pivotlow/pivothigh of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence",
+    params: &[
+        super::definition::ParamSpec::count("oscillator", 0, 0, 4).meaning("oscillator code: 0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI"),
+        super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
+        super::definition::ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),
+        super::definition::ParamSpec::count("min_distance", 5, 1, 100000).meaning("fewest bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_distance", 60, 1, 100000).meaning("most bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_prior_pivots", 1, 1, 100).meaning("earlier pivots each pivot is compared with"),
+    ],
+    checks: &[super::definition::Check::Less {
+        lower: "min_distance",
+        upper: "max_distance",
+    }],
+    build: |p| build_from_definition(p, PivotDivergence::oscillator_pivots),
+};
+
+type PivotDivergenceConstructor =
+    fn(DivergenceOscillator, usize, usize, usize, usize, usize) -> PivotDivergence;
+
+fn build_from_definition(
+    p: &super::definition::ResolvedParams,
+    build: PivotDivergenceConstructor,
+) -> Result<Box<dyn Indicator>, super::registry::RegistryError> {
+    let oscillator = DivergenceOscillator::from_code(p.count("oscillator") as u32)
+        .expect("0..=4 checked by the spec");
+    Ok(Box::new(build(
+        oscillator,
+        p.count("left"),
+        p.count("right"),
+        p.count("min_distance"),
+        p.count("max_distance"),
+        p.count("max_prior_pivots"),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

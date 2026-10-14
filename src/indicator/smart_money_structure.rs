@@ -441,6 +441,18 @@ impl SmartMoneyStructureLinker {
     }
 }
 
+pub const LIQUIDITY_POOLS_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "liquidity_pools",
+    aliases: &[],
+    description: "BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)",
+    params: &[
+        super::definition::ParamSpec::count("pivot_len", 5, 2, 10000).meaning("bars on each side of a pivot"),
+        super::definition::ParamSpec::number("tolerance_pct", 0.2, 0.001, 100.0).meaning("distance, in percent, within which pivots join one pool"),
+    ],
+    checks: &[],
+    build: |p| Ok(Box::new(LiquidityPoolEngine::new(p.count("pivot_len"), p.number("tolerance_pct")))),
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

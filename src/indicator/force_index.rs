@@ -93,3 +93,14 @@ impl Indicator for ElderForceIndex {
         self.changes_seen = 0;
     }
 }
+
+pub const EFI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "efi",
+        aliases: &[],
+        description: "Elder's Force Index (price change times volume, EMA-smoothed)",
+        params: &[super::definition::ParamSpec::count("ema_len", 13, 1, 10000)
+            .meaning("bars in the EMA of the raw force")],
+        checks: &[],
+        build: |p| Ok(Box::new(ElderForceIndex::new(p.count("ema_len")))),
+    };

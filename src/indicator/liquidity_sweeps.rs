@@ -150,6 +150,26 @@ impl Indicator for LiquiditySweepEngine {
     }
 }
 
+pub const LIQUIDITY_SWEEPS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "liquidity_sweeps",
+        aliases: &["sweeps"],
+        description: "Liquidity Sweeps and EQH/EQL Detector",
+        params: &[
+            super::definition::ParamSpec::count("pivot_len", 5, 2, 10000)
+                .meaning("bars on each side of a pivot"),
+            super::definition::ParamSpec::number("tolerance_pct", 0.2, 0.01, 100.0)
+                .meaning("distance, in percent, within which two pivots count as equal highs/lows"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(LiquiditySweepEngine::new(
+                p.count("pivot_len"),
+                p.number("tolerance_pct"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

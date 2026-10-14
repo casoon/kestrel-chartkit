@@ -188,3 +188,38 @@ impl Indicator for BollingerBands {
         out
     }
 }
+
+/// Registry definition of `bollinger` (plan 49).
+pub const BOLLINGER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "bollinger",
+        aliases: &["bb"],
+        description: "Bollinger Bands (build_typed accepts variance=population|sample for the standard-deviation divisor; population is the default)",
+        params: &[
+            super::definition::ParamSpec::choice("variance", "population", &["population", "sample"], false)
+                .meaning("divisor of the standard deviation: N (population) or N - 1 (sample)"),
+            super::definition::ParamSpec::count("len", 20, 1, 10000)
+                .meaning("bars in the SMA basis and the standard deviation"),
+            super::definition::ParamSpec::number("mult", 2.0, 0.01, 100.0)
+                .meaning("band distance from the basis, in standard deviations"),
+        ],
+        checks: &[],
+        build: |p| {
+            let variance = match p.choice("variance") {
+                "sample" => VarianceConvention::Sample,
+                _ => VarianceConvention::Population,
+            };
+            let len = p.count("len");
+            if variance == VarianceConvention::Sample && len < 2 {
+                return Err(super::registry::RegistryError::IncompatibleParameter {
+                    parameter: "variance".to_string(),
+                    indicator: "bollinger".to_string(),
+                    reason: "sample variance divides by len - 1 and is undefined for len < 2"
+                        .to_string(),
+                });
+            }
+            Ok(Box::new(
+                BollingerBands::new(len, p.number("mult")).with_variance(variance),
+            ))
+        },
+    };

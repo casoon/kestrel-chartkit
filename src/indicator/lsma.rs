@@ -80,6 +80,18 @@ impl Indicator for LsmaEngine {
     }
 }
 
+/// Registry definition of `lsma` (plan 49).
+pub const LSMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "lsma",
+        aliases: &[],
+        description: "Least Squares Moving Average / Linear Regression",
+        params: &[super::definition::ParamSpec::count("period", 25, 2, 10000)
+            .meaning("bars in the regression window")],
+        checks: &[],
+        build: |p| Ok(Box::new(LsmaEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -593,3 +593,101 @@ impl Indicator for IchimokuEngine {
         self.alerts.clone()
     }
 }
+
+pub const DMI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "dmi",
+        aliases: &[],
+        description: "Directional Movement Index (+DI / -DI)",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars in the Wilder smoothing of the directional movement")],
+        checks: &[],
+        build: |p| Ok(Box::new(DmiEngine::new(p.count("period")))),
+    };
+
+pub const AROON_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "aroon",
+        aliases: &[],
+        description: "Aroon Indicator (Up, Down, Oscillator)",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars searched for the latest high and low")],
+        checks: &[],
+        build: |p| Ok(Box::new(AroonEngine::new(p.count("period")))),
+    };
+
+pub const PARABOLIC_SAR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "parabolic_sar",
+        aliases: &[],
+        description: "Parabolic SAR",
+        params: &[
+            super::definition::ParamSpec::number("step", 0.02, 0.001, 1.0)
+                .meaning("start and increment of the acceleration factor"),
+            super::definition::ParamSpec::number("max_step", 0.20, 0.001, 1.0)
+                .meaning("cap of the acceleration factor"),
+        ],
+        checks: &[],
+        build: |p| {
+            let (step, max_step) = (p.number("step"), p.number("max_step"));
+            if step > max_step {
+                return Err(super::registry::RegistryError::InvalidParameter {
+                    parameter: "step".to_string(),
+                    value: step,
+                    reason: "step must not exceed max_step".to_string(),
+                });
+            }
+            Ok(Box::new(ParabolicSarEngine::new(step, max_step)))
+        },
+    };
+
+pub const SUPERTREND_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "supertrend",
+        aliases: &[],
+        description: "Supertrend ATR Trailing Stop",
+        params: &[
+            super::definition::ParamSpec::count("period", 10, 1, 10000).meaning("bars in the ATR"),
+            super::definition::ParamSpec::number("multiplier", 3.0, 0.01, 100.0)
+                .meaning("band distance from hl2, in ATRs"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(SupertrendEngine::new(
+                p.count("period"),
+                p.number("multiplier"),
+            )))
+        },
+    };
+
+pub const ICHIMOKU_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "ichimoku",
+        aliases: &[],
+        description: "Ichimoku Kinko Hyo Cloud",
+        params: &[
+            super::definition::ParamSpec::count("tenkan_p", 9, 1, 10000)
+                .meaning("bars in the conversion line (Tenkan-sen) midpoint"),
+            super::definition::ParamSpec::count("kijun_p", 26, 1, 10000)
+                .meaning("bars in the base line (Kijun-sen) midpoint, also the cloud displacement"),
+            super::definition::ParamSpec::count("senkou_b_p", 52, 1, 10000)
+                .meaning("bars in the leading span B (Senkou Span B) midpoint"),
+        ],
+        checks: &[
+            super::definition::Check::Less {
+                lower: "tenkan_p",
+                upper: "kijun_p",
+            },
+            super::definition::Check::Less {
+                lower: "kijun_p",
+                upper: "senkou_b_p",
+            },
+        ],
+        build: |p| {
+            Ok(Box::new(IchimokuEngine::new(
+                p.count("tenkan_p"),
+                p.count("kijun_p"),
+                p.count("senkou_b_p"),
+            )))
+        },
+    };

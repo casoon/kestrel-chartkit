@@ -506,3 +506,103 @@ pub const SMA_DEFINITION: super::definition::IndicatorDefinition =
         checks: &[],
         build: |p| Ok(Box::new(SmaEngine::new(p.count("period")))),
     };
+
+/// Registry definition of `ema` (plan 49).
+pub const EMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "ema",
+        aliases: &[],
+        description: "Exponential Moving Average (build_typed accepts init=first_sample|sma for the seed; first_sample is the default)",
+        params: &[
+            super::definition::ParamSpec::choice("init", "first_sample", &["first_sample", "sma"], false)
+                .meaning("seed of the average: the first sample, or the SMA of the first period samples"),
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged"),
+        ],
+        checks: &[],
+        build: |p| {
+            let init = match p.choice("init") {
+                "sma" => EmaInit::Sma,
+                _ => EmaInit::FirstSample,
+            };
+            Ok(Box::new(EmaEngine::new(p.count("period")).with_init(init)))
+        },
+    };
+
+/// Registry definition of `wma` (plan 49).
+pub const WMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "wma",
+        aliases: &[],
+        description: "Weighted Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(WmaEngine::new(p.count("period")))),
+    };
+
+/// Registry definition of `vwma` (plan 49).
+pub const VWMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "vwma",
+        aliases: &[],
+        description: "Volume-Weighted Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(VwmaEngine::new(p.count("period")))),
+    };
+
+/// Registry definition of `hma` (plan 49).
+pub const HMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "hma",
+        aliases: &[],
+        description: "Hull Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(HmaEngine::new(p.count("period")))),
+    };
+
+/// Registry definition of `dema` (plan 49).
+pub const DEMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "dema",
+        aliases: &[],
+        description: "Double Exponential Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(DemaEngine::new(p.count("period")))),
+    };
+
+/// Registry definition of `kama` (plan 49).
+pub const KAMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "kama",
+        aliases: &[],
+        description: "Kaufman's Adaptive Moving Average",
+        params: &[
+            super::definition::ParamSpec::count("period", 10, 1, 10000)
+                .meaning("bars of the efficiency ratio"),
+            super::definition::ParamSpec::count("fast_period", 2, 1, 10000)
+                .meaning("EMA length of the fastest smoothing (efficiency 1)"),
+            super::definition::ParamSpec::count("slow_period", 30, 1, 10000)
+                .meaning("EMA length of the slowest smoothing (efficiency 0)"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_period",
+            upper: "slow_period",
+        }],
+        build: |p| {
+            Ok(Box::new(KamaEngine::new(
+                p.count("period"),
+                p.count("fast_period"),
+                p.count("slow_period"),
+            )))
+        },
+    };

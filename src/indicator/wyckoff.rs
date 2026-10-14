@@ -404,6 +404,25 @@ impl Indicator for WyckoffStateMachine {
     }
 }
 
+pub const WYCKOFF_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "wyckoff",
+    aliases: &[],
+    description: "Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/UTAD, SOS/SOW/LPS/LPSY, sequence validation and Cause/Quality scoring",
+    params: &[
+        super::definition::ParamSpec::count("range_lookback", 20, 3, 10000).meaning("bars the trading range is read from"),
+        super::definition::ParamSpec::number("range_atr_max", 3.0, 0.1, 1000.0).meaning("widest range, in ATR, that still locks as a trading range"),
+        super::definition::ParamSpec::count("min_range_bars", 6, 2, 10000).meaning("bars inside the range before it locks"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(WyckoffStateMachine::new(
+            p.count("range_lookback"),
+            p.number("range_atr_max"),
+            p.count("min_range_bars"),
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

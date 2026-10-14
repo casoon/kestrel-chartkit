@@ -77,3 +77,19 @@ impl Indicator for Vidya {
         self.state = None;
     }
 }
+
+/// Registry definition of `vidya` (plan 49).
+pub const VIDYA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "vidya",
+        aliases: &[],
+        description: "Variable Index Dynamic Average (CMO-scaled exponential smoothing)",
+        params: &[
+            super::definition::ParamSpec::count("cmo_len", 9, 1, 10000)
+                .meaning("bars over which the directionality (CMO) is measured"),
+            super::definition::ParamSpec::count("ema_len", 12, 1, 10000)
+                .meaning("base exponential smoothing that the CMO scales"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(Vidya::new(p.count("cmo_len"), p.count("ema_len")))),
+    };

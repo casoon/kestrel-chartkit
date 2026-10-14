@@ -487,3 +487,32 @@ impl Indicator for CompressionZones {
         self.alerts.clone()
     }
 }
+
+pub const COMPRESSION_ZONES_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "compression_zones",
+        aliases: &[],
+        description: "Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 16, 8, 100).meaning("bars the range compression is measured over"),
+            super::definition::ParamSpec::count("min_zone_bars", 5, 3, 50).meaning("bars a zone must last before its breakout alerts"),
+            super::definition::ParamSpec::number("range_atr", 4.2, 0.5, 20.0).meaning("widest zone range, in ATRs"),
+            super::definition::ParamSpec::number("adx_max", 27.0, 5.0, 60.0).meaning("ADX above which the market is not compressed"),
+            super::definition::ParamSpec::number("min_score", 35.0, 0.0, 80.0).meaning("score a zone needs"),
+            super::definition::ParamSpec::count("min_touches", 2, 2, 20).meaning("boundary touches a zone needs"),
+            super::definition::ParamSpec::count("watch_bars", 20, 1, 200).meaning("bars after the zone a breakout still alerts"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(CompressionZones::new(CompressionZonesConfig {
+                lookback: p.count("lookback"),
+                min_zone_bars: p.count("min_zone_bars"),
+                range_atr: p.number("range_atr"),
+                adx_max: p.number("adx_max"),
+                min_score: p.number("min_score"),
+                min_touches: p.count("min_touches"),
+                watch_bars: p.count("watch_bars"),
+                ..CompressionZonesConfig::default()
+            })))
+        },
+    };

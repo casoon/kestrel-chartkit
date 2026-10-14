@@ -151,6 +151,20 @@ pub fn build_vix_fix(params: &HashMap<String, f64>) -> WilliamsVixFix {
     WilliamsVixFix::new(pd, bband_len, mult)
 }
 
+pub const VIX_FIX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "vix_fix",
+        aliases: &["wvf"],
+        description: "Williams Vix Fix volatility spike detector: panic lows (WVF, alert panic_bottom) and, mirrored, blow-off tops (inverse VIX Fix, extra inverse/inverse_band, alert blowoff_top)",
+        params: &[
+            super::definition::ParamSpec::count("pd", 22, 1, 10000).meaning("bars in the highest-close (and lowest-close) lookback"),
+            super::definition::ParamSpec::count("bband_len", 20, 1, 10000).meaning("bars in the Bollinger band over the Vix Fix"),
+            super::definition::ParamSpec::number("mult", 2.0, 0.01, 100.0).meaning("standard deviations of the upper band"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(WilliamsVixFix::new(p.count("pd"), p.count("bband_len"), p.number("mult")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

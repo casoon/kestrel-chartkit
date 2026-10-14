@@ -78,6 +78,17 @@ impl Indicator for BuySellPressureEstimator {
     }
 }
 
+pub const BUY_SELL_PRESSURE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "buy_sell_pressure",
+        aliases: &["pressure"],
+        description: "Buy/Sell Pressure Estimator",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars in the EMA of the raw pressure")],
+        checks: &[],
+        build: |p| Ok(Box::new(BuySellPressureEstimator::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

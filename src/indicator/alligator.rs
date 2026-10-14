@@ -107,6 +107,17 @@ impl Indicator for AlligatorEngine {
     }
 }
 
+/// Registry definition of `alligator` (plan 49).
+pub const ALLIGATOR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "alligator",
+        aliases: &[],
+        description: "Williams Alligator (Jaw, Teeth, Lips)",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(AlligatorEngine::new())),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

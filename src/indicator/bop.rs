@@ -46,6 +46,17 @@ impl Indicator for BalanceOfPowerEngine {
     }
 }
 
+pub const BOP_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "bop",
+        aliases: &[],
+        description: "Balance of Power",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars in the SMA of the per-bar power")],
+        checks: &[],
+        build: |p| Ok(Box::new(BalanceOfPowerEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -215,6 +215,39 @@ impl Indicator for PivotSetsEngine {
     }
 }
 
+pub const PIVOT_SETS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "pivot_sets",
+        aliases: &["multi_pivots"],
+        description: "Multi-Pivot Set Engine",
+        params: &[super::definition::ParamSpec::choice(
+            "pivot_type",
+            "classic",
+            &[
+                "classic",
+                "fibonacci",
+                "camarilla",
+                "woodie",
+                "demark",
+                "cpr",
+            ],
+            false,
+        )
+        .meaning("which pivot formula the levels follow")],
+        checks: &[],
+        build: |p| {
+            let pivot_type = match p.choice("pivot_type") {
+                "fibonacci" => PivotSetType::Fibonacci,
+                "camarilla" => PivotSetType::Camarilla,
+                "woodie" => PivotSetType::Woodie,
+                "demark" => PivotSetType::DeMark,
+                "cpr" => PivotSetType::Cpr,
+                _ => PivotSetType::Classic,
+            };
+            Ok(Box::new(PivotSetsEngine::new(pivot_type)))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

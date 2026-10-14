@@ -568,3 +568,137 @@ impl Indicator for ElderRayEngine {
         Vec::new()
     }
 }
+
+pub const STOCHASTIC_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "stochastic",
+        aliases: &[],
+        description: "Classic Stochastic Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("k_period", 14, 1, 10000)
+                .meaning("bars in the high-low window of %K"),
+            super::definition::ParamSpec::count("d_period", 3, 1, 10000)
+                .meaning("bars in the SMA of %K (%D)"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(StochasticEngine::new(
+                p.count("k_period"),
+                p.count("d_period"),
+            )))
+        },
+    };
+
+pub const ROC_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "roc",
+        aliases: &[],
+        description: "Rate of Change / Momentum",
+        params: &[super::definition::ParamSpec::count("period", 12, 1, 10000)
+            .meaning("bars back to the compared close")],
+        checks: &[],
+        build: |p| Ok(Box::new(RocEngine::new(p.count("period")))),
+    };
+
+pub const ULTIMATE_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "ultimate_oscillator",
+        aliases: &[],
+        description: "Ultimate Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("period1", 7, 1, 10000)
+                .meaning("bars in the short window (weight 4)"),
+            super::definition::ParamSpec::count("period2", 14, 1, 10000)
+                .meaning("bars in the middle window (weight 2)"),
+            super::definition::ParamSpec::count("period3", 28, 1, 10000)
+                .meaning("bars in the long window (weight 1)"),
+        ],
+        checks: &[
+            super::definition::Check::Less {
+                lower: "period1",
+                upper: "period2",
+            },
+            super::definition::Check::Less {
+                lower: "period2",
+                upper: "period3",
+            },
+        ],
+        build: |p| {
+            Ok(Box::new(UltimateOscillatorEngine::new(
+                p.count("period1"),
+                p.count("period2"),
+                p.count("period3"),
+            )))
+        },
+    };
+
+pub const AWESOME_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "awesome_oscillator",
+        aliases: &[],
+        description: "Awesome Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("fast_period", 5, 1, 10000)
+                .meaning("bars in the fast SMA of the median price"),
+            super::definition::ParamSpec::count("slow_period", 34, 1, 10000)
+                .meaning("bars in the slow SMA of the median price"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_period",
+            upper: "slow_period",
+        }],
+        build: |p| {
+            Ok(Box::new(AwesomeOscillatorEngine::new(
+                p.count("fast_period"),
+                p.count("slow_period"),
+            )))
+        },
+    };
+
+pub const PPO_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "ppo",
+        aliases: &[],
+        description: "Percentage Price Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("fast_period", 12, 1, 10000)
+                .meaning("bars in the fast EMA of the close"),
+            super::definition::ParamSpec::count("slow_period", 26, 1, 10000)
+                .meaning("bars in the slow EMA of the close"),
+            super::definition::ParamSpec::count("signal_period", 9, 1, 10000)
+                .meaning("bars in the EMA of the PPO line (signal)"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_period",
+            upper: "slow_period",
+        }],
+        build: |p| {
+            Ok(Box::new(PpoEngine::new(
+                p.count("fast_period"),
+                p.count("slow_period"),
+                p.count("signal_period"),
+            )))
+        },
+    };
+
+pub const CMO_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "cmo",
+        aliases: &[],
+        description: "Chande Momentum Oscillator",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("changes of the close summed")],
+        checks: &[],
+        build: |p| Ok(Box::new(CmoEngine::new(p.count("period")))),
+    };
+
+pub const ELDER_RAY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "elder_ray",
+        aliases: &[],
+        description: "Elder Ray Index (Bull/Bear Power)",
+        params: &[super::definition::ParamSpec::count("period", 13, 1, 10000)
+            .meaning("bars in the EMA of the close")],
+        checks: &[],
+        build: |p| Ok(Box::new(ElderRayEngine::new(p.count("period")))),
+    };

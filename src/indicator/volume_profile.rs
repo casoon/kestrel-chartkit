@@ -298,6 +298,26 @@ pub fn build_volume_profile(params: &HashMap<String, f64>) -> VolumeProfileEngin
     VolumeProfileEngine::new(lookback, num_bins)
 }
 
+pub const VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "volume_profile",
+        aliases: &["vp"],
+        description: "Price/volume distribution profile with point-of-control",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 70, 1, 10000)
+                .meaning("bars in the profile window"),
+            super::definition::ParamSpec::count("num_bins", 30, 1, 1000)
+                .meaning("price bins across the window's range"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(VolumeProfileEngine::new(
+                p.count("lookback"),
+                p.count("num_bins"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

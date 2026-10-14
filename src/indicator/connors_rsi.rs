@@ -118,6 +118,30 @@ impl Indicator for ConnorsRsiEngine {
     }
 }
 
+pub const CONNORS_RSI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "connors_rsi",
+        aliases: &[],
+        description: "Connors RSI",
+        params: &[
+            super::definition::ParamSpec::count("rsi_len", 3, 1, 10000)
+                .meaning("bars in the price RSI"),
+            super::definition::ParamSpec::count("streak_len", 2, 1, 10000)
+                .meaning("bars in the streak RSI"),
+            super::definition::ParamSpec::count("rank_len", 100, 1, 10000).meaning(
+                "window of the percentile rank (has no effect: the rank uses the last 100 returns)",
+            ),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(ConnorsRsiEngine::new(
+                p.count("rsi_len"),
+                p.count("streak_len"),
+                p.count("rank_len"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -195,6 +195,19 @@ pub fn build_liquidity_fvg(params: &HashMap<String, f64>) -> LiquidityFvgEngine 
     LiquidityFvgEngine::new(lookback)
 }
 
+pub const LIQUIDITY_FVG_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "liquidity_fvg",
+        aliases: &["fvg", "smc"],
+        description: "Fair value gap (imbalance) detection",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 20, 1, 10000)
+                .meaning("bars kept for gap and sweep detection"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(LiquidityFvgEngine::new(p.count("lookback")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

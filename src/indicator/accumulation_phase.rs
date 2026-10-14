@@ -530,3 +530,34 @@ impl Indicator for AccumulationPhase {
         self.alerts.clone()
     }
 }
+
+pub const ACCUMULATION_PHASE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "accumulation_phase",
+        aliases: &[],
+        description: "Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
+        params: &[
+            super::definition::ParamSpec::count("atr_len", 14, 1, 500).meaning("bars in the Wilder ATR"),
+            super::definition::ParamSpec::count("lookback", 20, 10, 500).meaning("bars of the trend-loss, range and compression comparisons"),
+            super::definition::ParamSpec::count("min_phase_bars", 10, 3, 500).meaning("bars an active phase stays in transition"),
+            super::definition::ParamSpec::count("pivot_left", 3, 1, 50).meaning("bars left of a swing pivot"),
+            super::definition::ParamSpec::count("pivot_right", 3, 1, 50).meaning("bars right of a swing pivot"),
+            super::definition::ParamSpec::number("er_range", 0.3, 0.05, 1.0).meaning("efficiency ratio below which price ranges"),
+            super::definition::ParamSpec::number("bbw_compress", 0.7, 0.3, 5.0).meaning("Bollinger width against its average below which volatility compresses"),
+            super::definition::ParamSpec::number("atr_compress", 0.8, 0.3, 5.0).meaning("ATR against its average below which volatility compresses"),
+        ],
+        checks: &[],
+        build: |p| {
+            let cfg = AccumulationPhaseConfig {
+                atr_len: p.count("atr_len"),
+                lookback: p.count("lookback"),
+                min_phase_bars: p.count("min_phase_bars"),
+                pivot_left: p.count("pivot_left"),
+                pivot_right: p.count("pivot_right"),
+                er_range: p.number("er_range"),
+                bbw_compress: p.number("bbw_compress"),
+                atr_compress: p.number("atr_compress"),
+            };
+            Ok(Box::new(AccumulationPhase::new(cfg)))
+        },
+    };

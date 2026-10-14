@@ -170,6 +170,46 @@ impl Indicator for AdaptiveTrendRelationship {
     }
 }
 
+/// Registry definition of `trend_relationship` (plan 49).
+pub const TREND_RELATIONSHIP_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "trend_relationship",
+        aliases: &[],
+        description: "Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma)",
+        params: &[
+            super::definition::ParamSpec::choice("fast_kind", "ema", SMOOTHER_KINDS, false)
+                .meaning("smoother of the fast line"),
+            super::definition::ParamSpec::choice("slow_kind", "ema", SMOOTHER_KINDS, false)
+                .meaning("smoother of the slow line"),
+            super::definition::ParamSpec::count("fast_len", 9, 1, 10000)
+                .meaning("length of the fast smoother"),
+            super::definition::ParamSpec::count("slow_len", 21, 1, 10000)
+                .meaning("length of the slow smoother"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_len",
+            upper: "slow_len",
+        }],
+        build: |p| {
+            let kind = |name| match p.choice(name) {
+                "sma" => SmootherKind::Sma,
+                "rma" => SmootherKind::Rma,
+                "alma" => SmootherKind::Alma,
+                "jma" => SmootherKind::Jma,
+                _ => SmootherKind::Ema,
+            };
+            Ok(Box::new(AdaptiveTrendRelationship::new(
+                kind("fast_kind"),
+                p.count("fast_len"),
+                kind("slow_kind"),
+                p.count("slow_len"),
+            )))
+        },
+    };
+
+/// The smoother kinds selectable by name, in the order the registry's error lists them.
+const SMOOTHER_KINDS: &[&str] = &["ema", "sma", "rma", "alma", "jma"];
+
 #[cfg(test)]
 mod tests {
     use super::*;

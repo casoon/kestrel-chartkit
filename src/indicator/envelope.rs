@@ -59,6 +59,27 @@ impl Indicator for EnvelopeEngine {
     }
 }
 
+/// Registry definition of `envelope` (plan 49).
+pub const ENVELOPE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "envelope",
+        aliases: &[],
+        description: "Moving Average Envelopes",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000)
+                .meaning("bars in the SMA basis"),
+            super::definition::ParamSpec::number("percent", 2.5, 0.01, 100.0)
+                .meaning("band distance from the basis, in percent"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(EnvelopeEngine::new(
+                p.count("period"),
+                p.number("percent"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

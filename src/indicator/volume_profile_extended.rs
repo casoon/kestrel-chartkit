@@ -323,6 +323,21 @@ impl Indicator for ExtendedVolumeProfileEngine {
     }
 }
 
+pub const EXTENDED_VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "extended_volume_profile",
+        aliases: &["vp_extended"],
+        description: "Full-bin price/volume profile with HVN/LVN/AVN classification, a delta profile, and zone formation (use ExtendedVolumeProfileEngine::on_intrabar_group directly for intrabar-resolution distribution)",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 70, 1, 10000)
+                .meaning("bars in the profile window"),
+            super::definition::ParamSpec::count("num_bins", 30, 1, 1000)
+                .meaning("price bins across the window's range"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(ExtendedVolumeProfileEngine::new(p.count("lookback"), p.count("num_bins")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

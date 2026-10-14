@@ -211,6 +211,19 @@ impl Indicator for HiResVolumeFlowEngine {
     }
 }
 
+pub const HIRES_VOLUME_FLOW_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "hires_volume_flow",
+        aliases: &[],
+        description: "High-resolution volume flow with absorption detection (OHLC-estimated via this registry entry point; use HiResVolumeFlowEngine::on_bar_with_aggressor/on_intrabar_group directly for direct aggressor/intrabar-delta resolution)",
+        params: &[
+            super::definition::ParamSpec::count("window_len", 20, 2, 10000)
+                .meaning("bars in the rolling volume threshold for absorption"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(HiResVolumeFlowEngine::new(p.count("window_len")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

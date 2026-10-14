@@ -96,6 +96,17 @@ impl Indicator for VortexEngine {
     }
 }
 
+pub const VORTEX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "vortex",
+        aliases: &["vi"],
+        description: "Vortex Indicator (+VI, -VI)",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars summed for the vortex movements and the true range")],
+        checks: &[],
+        build: |p| Ok(Box::new(VortexEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

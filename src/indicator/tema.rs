@@ -70,6 +70,18 @@ impl Indicator for TemaEngine {
     }
 }
 
+/// Registry definition of `tema` (plan 49).
+pub const TEMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "tema",
+        aliases: &[],
+        description: "Triple Exponential Moving Average",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("length of each of the three chained EMAs")],
+        checks: &[],
+        build: |p| Ok(Box::new(TemaEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

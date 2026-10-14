@@ -210,6 +210,43 @@ impl Indicator for KlingerVolumeForceEngine {
     }
 }
 
+pub const CVD_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "cvd",
+        aliases: &[],
+        description: "Cumulative Volume Delta (Aufteilung aus der Bar-Form geschätzt, \
+                      nicht aus klassifizierten Abschlüssen)",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(CvdEngine::new())),
+    };
+
+pub const KLINGER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "klinger",
+        aliases: &["kvo"],
+        description: "Klinger Volume Force Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("fast_len", 34, 1, 10000)
+                .meaning("bars in the fast EMA of the volume force"),
+            super::definition::ParamSpec::count("slow_len", 55, 1, 10000)
+                .meaning("bars in the slow EMA of the volume force"),
+            super::definition::ParamSpec::count("signal_len", 13, 1, 10000)
+                .meaning("bars in the EMA of the oscillator (signal)"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_len",
+            upper: "slow_len",
+        }],
+        build: |p| {
+            Ok(Box::new(KlingerVolumeForceEngine::new(
+                p.count("fast_len"),
+                p.count("slow_len"),
+                p.count("signal_len"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

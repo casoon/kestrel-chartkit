@@ -439,3 +439,34 @@ impl Indicator for RsiCycleStats {
         self.alerts.clone()
     }
 }
+
+pub const RSI_CYCLE_STATS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rsi_cycle_stats",
+        aliases: &[],
+        description: "RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
+        params: &[
+            super::definition::ParamSpec::count("rsi_len", 14, 2, 200).meaning("bars in the RSI"),
+            super::definition::ParamSpec::number("overbought", 70.0, 51.0, 99.0).meaning("RSI level of the upper zone"),
+            super::definition::ParamSpec::number("oversold", 30.0, 1.0, 49.0).meaning("RSI level of the lower zone"),
+            super::definition::ParamSpec::count("max_cycle", 150, 5, 2000).meaning("bars after which a cycle times out"),
+            super::definition::ParamSpec::count("lookback", 1000, 100, 20000).meaning("bars of past cycles the statistics use"),
+            super::definition::ParamSpec::count("min_samples", 20, 1, 500).meaning("past cycles an opportunity needs"),
+            super::definition::ParamSpec::number("edge_th", 15.0, 0.0, 100.0).meaning("edge over the base rate an opportunity needs, in percent"),
+            super::definition::ParamSpec::number("max_ci", 40.0, 1.0, 100.0).meaning("widest Wilson interval an opportunity allows, in percent"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(RsiCycleStats::new(RsiCycleStatsConfig {
+                rsi_len: p.count("rsi_len"),
+                overbought: p.number("overbought"),
+                oversold: p.number("oversold"),
+                max_cycle: p.count("max_cycle"),
+                lookback: p.count("lookback"),
+                min_samples: p.count("min_samples"),
+                edge_th: p.number("edge_th"),
+                max_ci: p.number("max_ci"),
+                ..RsiCycleStatsConfig::default()
+            })))
+        },
+    };

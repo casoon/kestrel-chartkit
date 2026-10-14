@@ -139,6 +139,26 @@ impl Indicator for PviEngine {
     }
 }
 
+pub const NVI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "nvi",
+        aliases: &[],
+        description: "Negative Volume Index",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(NviEngine::new())),
+    };
+
+pub const PVI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "pvi",
+        aliases: &[],
+        description: "Positive Volume Index",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(PviEngine::new())),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

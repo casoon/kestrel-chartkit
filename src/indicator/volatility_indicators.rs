@@ -394,3 +394,74 @@ impl Indicator for GarmanKlassVolatilityEngine {
         self.alerts.clone()
     }
 }
+
+pub const TRUE_RANGE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "true_range",
+        aliases: &[],
+        description: "True Range in price units",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(TrueRangeEngine::new())),
+    };
+
+pub const HISTORICAL_VOLATILITY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "historical_volatility",
+        aliases: &[],
+        description: "Annualized Historical Volatility",
+        params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
+            .meaning("bars in the standard deviation of the log returns")],
+        checks: &[],
+        build: |p| Ok(Box::new(HistoricalVolatilityEngine::new(p.count("period")))),
+    };
+
+pub const GARMAN_KLASS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "garman_klass",
+        aliases: &[],
+        description: "Garman-Klass Volatility Estimator",
+        params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
+            .meaning("bars averaged in the open-high-low-close variance estimate")],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(GarmanKlassVolatilityEngine::new(
+                p.count("period"),
+            )))
+        },
+    };
+
+pub const KELTNER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "keltner",
+        aliases: &[],
+        description: "Keltner Channels",
+        params: &[
+            super::definition::ParamSpec::count("ema_period", 20, 1, 10000)
+                .meaning("bars in the EMA basis")
+                .legacy_alias("ma_period"),
+            super::definition::ParamSpec::count("atr_period", 10, 1, 10000)
+                .meaning("bars in the ATR"),
+            super::definition::ParamSpec::number("multiplier", 2.0, 0.01, 100.0)
+                .meaning("band distance from the basis, in ATRs"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(KeltnerChannelEngine::new(
+                p.count("ema_period"),
+                p.count("atr_period"),
+                p.number("multiplier"),
+            )))
+        },
+    };
+
+pub const DONCHIAN_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "donchian",
+        aliases: &[],
+        description: "Donchian Channels",
+        params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
+            .meaning("bars searched for the highest high and lowest low")],
+        checks: &[],
+        build: |p| Ok(Box::new(DonchianChannelEngine::new(p.count("period")))),
+    };

@@ -471,3 +471,31 @@ impl Indicator for TrendBreakRisk {
         self.alerts.clone()
     }
 }
+
+pub const TREND_BREAK_RISK_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "trend_break_risk",
+        aliases: &[],
+        description: "Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
+        params: &[
+            super::definition::ParamSpec::count("bias_len", 50, 2, 1000).meaning("bars in the EMA that latches the trend"),
+            super::definition::ParamSpec::count("pivot_len", 5, 1, 50).meaning("bars on each side of a swing pivot"),
+            super::definition::ParamSpec::number("near_atr", 1.5, 0.01, 100.0).meaning("distance to the break level, in ATR, below which the near sensor rises"),
+            super::definition::ParamSpec::count("rsi_len", 14, 2, 500).meaning("bars in the RSI of the divergence sensor"),
+            super::definition::ParamSpec::count("hold_bars", 10, 1, 500).meaning("bars over which a held sensor decays"),
+            super::definition::ParamSpec::count("smooth_len", 3, 1, 100).meaning("bars in the EMA of the raw risk"),
+        ],
+        checks: &[],
+        build: |p| {
+            let cfg = TrendBreakRiskConfig {
+                bias_len: p.count("bias_len"),
+                pivot_len: p.count("pivot_len"),
+                near_atr: p.number("near_atr"),
+                rsi_len: p.count("rsi_len"),
+                hold_bars: p.count("hold_bars"),
+                smooth_len: p.count("smooth_len"),
+                ..TrendBreakRiskConfig::default()
+            };
+            Ok(Box::new(TrendBreakRisk::new(cfg)))
+        },
+    };

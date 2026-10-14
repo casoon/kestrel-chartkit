@@ -164,3 +164,26 @@ pub fn build_pivots_structure(params: &HashMap<String, f64>) -> PivotStructureEn
     let score_window = params.get("score_window").copied().unwrap_or(10.0) as usize;
     PivotStructureEngine::new(left_bars, right_bars, score_window)
 }
+
+pub const PIVOTS_STRUCTURE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "pivots_structure",
+        aliases: &["pivots"],
+        description: "Swing pivot detection with a rolling structure score",
+        params: &[
+            super::definition::ParamSpec::count("left_bars", 5, 1, 10000)
+                .meaning("bars left of a pivot"),
+            super::definition::ParamSpec::count("right_bars", 5, 1, 10000)
+                .meaning("bars right of a pivot (confirmation delay)"),
+            super::definition::ParamSpec::count("score_window", 10, 1, 10000)
+                .meaning("pivots in the rolling structure score"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(PivotStructureEngine::new(
+                p.count("left_bars"),
+                p.count("right_bars"),
+                p.count("score_window"),
+            )))
+        },
+    };

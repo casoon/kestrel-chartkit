@@ -142,6 +142,29 @@ impl Indicator for VolatilityRegimeDetector {
     }
 }
 
+pub const VOLATILITY_REGIME_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "volatility_regime",
+        aliases: &[],
+        description: "Volatility Regime & Squeeze Detector",
+        params: &[
+            super::definition::ParamSpec::count("period", 20, 1, 10000)
+                .meaning("bars in the Bollinger and Keltner sets"),
+            super::definition::ParamSpec::number("bb_mult", 2.0, 0.01, 100.0)
+                .meaning("standard deviations of the Bollinger band"),
+            super::definition::ParamSpec::number("kc_mult", 1.5, 0.01, 100.0)
+                .meaning("ATR multiple of the Keltner channel"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(VolatilityRegimeDetector::new(
+                p.count("period"),
+                p.number("bb_mult"),
+                p.number("kc_mult"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

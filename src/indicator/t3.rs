@@ -99,3 +99,21 @@ impl Indicator for T3 {
         self.bars_seen = 0;
     }
 }
+
+/// Registry definition of `t3` (plan 49).
+pub const T3_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "t3",
+        aliases: &[],
+        description:
+            "Tillson T3 (weighted combination of six chained EMAs; v is a shape factor, not volume)",
+        params: &[
+            super::definition::ParamSpec::count("period", 5, 1, 10000)
+                .meaning("length of each of the six chained EMAs"),
+            super::definition::ParamSpec::number("v", 0.7, 0.0, 1.0).meaning(
+                "shape factor weighting the stages (0 is a triple EMA of EMAs, higher reduces lag)",
+            ),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(T3::new(p.count("period"), p.number("v")))),
+    };

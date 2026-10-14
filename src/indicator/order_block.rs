@@ -200,6 +200,26 @@ pub fn build_order_block(params: &HashMap<String, f64>) -> OrderBlockEngine {
     OrderBlockEngine::new(atr_len, min_disp_mult)
 }
 
+pub const ORDER_BLOCK_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "order_block",
+        aliases: &["ob"],
+        description: "Order block detection from displacement candles (ATR-filtered)",
+        params: &[
+            super::definition::ParamSpec::count("atr_len", 14, 1, 10000)
+                .meaning("bars in the ATR the displacement is measured against"),
+            super::definition::ParamSpec::number("min_disp", 1.0, 0.01, 100.0)
+                .meaning("minimum displacement candle range, in ATR"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(OrderBlockEngine::new(
+                p.count("atr_len"),
+                p.number("min_disp"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

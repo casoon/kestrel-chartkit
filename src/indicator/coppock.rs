@@ -78,6 +78,16 @@ impl Indicator for CoppockCurveEngine {
     }
 }
 
+pub const COPPOCK_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "coppock",
+        aliases: &[],
+        description: "Coppock Curve",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(CoppockCurveEngine::new())),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

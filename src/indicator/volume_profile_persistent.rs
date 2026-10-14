@@ -378,6 +378,21 @@ impl Indicator for PersistentVolumeProfileEngine {
     }
 }
 
+pub const PERSISTENT_VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "persistent_volume_profile",
+        aliases: &["vp_persistent"],
+        description: "Fixed-price-grid volume profile with real bin lifecycle (birth/growth/expiry across updates) and a per-bin absorption profile",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 70, 1, 10000)
+                .meaning("bars in the profile window"),
+            super::definition::ParamSpec::number("bin_width", 1.0, 1e-6, 1_000_000.0)
+                .meaning("fixed price-grid resolution, in price units"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(PersistentVolumeProfileEngine::new(p.count("lookback"), p.number("bin_width")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -117,6 +117,17 @@ impl Indicator for TrendQualityScoreEngine {
     }
 }
 
+pub const TREND_QUALITY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "trend_quality",
+        aliases: &[],
+        description: "Trend Quality Score Engine",
+        params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
+            .meaning("bars in the EMA, efficiency ratio, ADX and RVOL")],
+        checks: &[],
+        build: |p| Ok(Box::new(TrendQualityScoreEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

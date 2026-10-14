@@ -63,6 +63,18 @@ impl Indicator for McGinleyDynamicEngine {
     }
 }
 
+/// Registry definition of `mcginley` (plan 49).
+pub const MCGINLEY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "mcginley",
+        aliases: &[],
+        description: "McGinley Dynamic Moving Average",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("nominal length of the dynamic average")],
+        checks: &[],
+        build: |p| Ok(Box::new(McGinleyDynamicEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

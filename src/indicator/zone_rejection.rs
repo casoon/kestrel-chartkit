@@ -257,6 +257,29 @@ impl Indicator for ZoneRejection {
     }
 }
 
+pub const ZONE_REJECTION_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "zone_rejection",
+    aliases: &[],
+    description: "Failed breakout at a confirmed pivot-cluster zone: wick through support/resistance, close back; extra[\"wick\"] is the wick tip (natural stop)",
+    params: &[
+        super::definition::ParamSpec::count("pivot_len", 5, 1, 10000).meaning("bars on each side of a pivot"),
+        super::definition::ParamSpec::count("atr_len", 14, 1, 10000).meaning("bars in the ATR the zone widths are measured in"),
+        super::definition::ParamSpec::number("tolerance_atr", 0.25, 0.0, 100.0).meaning("widening of a zone's band, in ATR, within which a pivot joins it"),
+        super::definition::ParamSpec::number("max_width_atr", 2.0, 0.0, 100.0).meaning("widest a zone may grow, in ATR"),
+        super::definition::ParamSpec::count("min_touches", 2, 1, 1000).meaning("pivots that confirm a zone"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(ZoneRejection::new(
+            p.count("pivot_len"),
+            p.count("atr_len"),
+            p.number("tolerance_atr"),
+            p.number("max_width_atr"),
+            p.count("min_touches") as u32,
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

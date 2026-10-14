@@ -256,3 +256,38 @@ impl Indicator for Tsi {
         out
     }
 }
+
+pub const TSI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "tsi",
+        aliases: &[],
+        description: "True Strength Index",
+        params: &[
+            super::definition::ParamSpec::count("long_len", 25, 1, 10000)
+                .meaning("bars in the first (long) EMA of the momentum"),
+            super::definition::ParamSpec::count("short_len", 13, 1, 10000)
+                .meaning("bars in the second (short) EMA of the momentum"),
+            super::definition::ParamSpec::count("sig_len", 7, 1, 10000)
+                .meaning("bars in the average of the TSI line (signal)"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "short_len",
+            upper: "long_len",
+        }],
+        build: |p| {
+            Ok(Box::new(Tsi::new(
+                p.count("long_len"),
+                p.count("short_len"),
+                p.count("sig_len"),
+                0.0,
+                25.0,
+                -25.0,
+                5,
+                true,
+                50,
+                25,
+                4,
+                5.0,
+            )))
+        },
+    };

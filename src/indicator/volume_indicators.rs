@@ -386,3 +386,58 @@ impl Indicator for AccDistEngine {
         self.alerts.clone()
     }
 }
+
+pub const VOLUME_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "volume",
+        aliases: &[],
+        description: "Volume and Average Volume",
+        params: &[
+            super::definition::ParamSpec::count("ma_period", 20, 1, 10000)
+                .meaning("bars in the volume average"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(VolumeEngine::new(p.count("ma_period")))),
+    };
+
+pub const RVOL_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rvol",
+        aliases: &[],
+        description: "Relative Volume vs Moving Average",
+        params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
+            .meaning("bars in the volume average compared against")],
+        checks: &[],
+        build: |p| Ok(Box::new(RvolEngine::new(p.count("period")))),
+    };
+
+pub const OBV_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "obv",
+        aliases: &[],
+        description: "On-Balance Volume",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(ObvEngine::new())),
+    };
+
+pub const CMF_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "cmf",
+        aliases: &[],
+        description: "Chaikin Money Flow",
+        params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
+            .meaning("bars summed for money flow and volume")],
+        checks: &[],
+        build: |p| Ok(Box::new(CmfEngine::new(p.count("period")))),
+    };
+
+pub const ACC_DIST_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "acc_dist",
+        aliases: &[],
+        description: "Accumulation / Distribution Line",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(AccDistEngine::new())),
+    };

@@ -82,6 +82,17 @@ impl Indicator for ChoppinessIndexEngine {
     }
 }
 
+pub const CHOPPINESS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "choppiness",
+        aliases: &["chop"],
+        description: "Choppiness Index",
+        params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
+            .meaning("bars whose true ranges are compared with their overall range")],
+        checks: &[],
+        build: |p| Ok(Box::new(ChoppinessIndexEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

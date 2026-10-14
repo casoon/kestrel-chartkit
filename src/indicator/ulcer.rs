@@ -140,3 +140,15 @@ impl Indicator for UlcerIndexEngine {
         self.core.reset();
     }
 }
+
+pub const ULCER_INDEX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "ulcer_index",
+        aliases: &[],
+        description:
+            "Ulcer Index (root mean square of the percentage drawdowns below the running high)",
+        params: &[super::definition::ParamSpec::count("len", 14, 1, 10000)
+            .meaning("bars in the running high and in the mean of the squared drawdowns")],
+        checks: &[],
+        build: |p| Ok(Box::new(UlcerIndexEngine::new(p.count("len")))),
+    };

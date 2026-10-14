@@ -62,6 +62,17 @@ impl Indicator for RviEngine {
     }
 }
 
+pub const RVI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rvi",
+        aliases: &[],
+        description: "Relative Vigor Index",
+        params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
+            .meaning("bars in the averages of the vigor")],
+        checks: &[],
+        build: |p| Ok(Box::new(RviEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

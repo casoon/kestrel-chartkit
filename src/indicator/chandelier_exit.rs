@@ -168,6 +168,26 @@ impl Indicator for ChandelierExitEngine {
     }
 }
 
+pub const CHANDELIER_EXIT_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "chandelier_exit",
+        aliases: &["ce"],
+        description: "Chandelier Exit (ATR trailing stop with direction flip)",
+        params: &[
+            super::definition::ParamSpec::count("length", 22, 1, 10000)
+                .meaning("bars in the highest-high/lowest-low lookback and the ATR"),
+            super::definition::ParamSpec::number("atr_mult", 3.0, 0.01, 100.0)
+                .meaning("ATR multiple between the extreme and the stop"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(ChandelierExitEngine::new(
+                p.count("length"),
+                p.number("atr_mult"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -163,6 +163,26 @@ impl Indicator for ZigZagEngine {
     }
 }
 
+pub const ZIGZAG_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "zigzag",
+        aliases: &[],
+        description: "ZigZag Swing Leg Engine",
+        params: &[
+            super::definition::ParamSpec::count("depth", 12, 2, 10000)
+                .meaning("bars a swing point must dominate"),
+            super::definition::ParamSpec::number("deviation_pct", 5.0, 0.01, 100.0)
+                .meaning("minimum price move, in percent, that starts a new leg"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(ZigZagEngine::new(
+                p.count("depth"),
+                p.number("deviation_pct"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

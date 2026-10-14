@@ -984,3 +984,36 @@ impl Indicator for PriceAverageRelation {
         self.alerts.clone()
     }
 }
+
+pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "price_average_relation",
+        aliases: &[],
+        description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down",
+        params: &[
+            super::definition::ParamSpec::count("ma_kind", 0, 0, 3).meaning("the moving average price is related to: 0 EMA, 1 SMA, 2 RMA, 3 ALMA"),
+            super::definition::ParamSpec::count("ma_len", 50, 2, 1000).meaning("bars in the moving average"),
+            super::definition::ParamSpec::count("atr_len", 14, 2, 200).meaning("bars in the ATR that scales distances"),
+            super::definition::ParamSpec::count("cooldown", 8, 0, 100).meaning("bars between two alerts of one kind"),
+            super::definition::ParamSpec::number("turn_level", 55.0, 10.0, 100.0).meaning("oscillator level a turn must come from"),
+            super::definition::ParamSpec::count("turn_lookback", 30, 5, 150).meaning("bars a turn looks back for that level"),
+        ],
+        checks: &[],
+        build: |p| {
+            let ma_kind = match p.count("ma_kind") {
+                0 => SmootherKind::Ema,
+                1 => SmootherKind::Sma,
+                2 => SmootherKind::Rma,
+                _ => SmootherKind::Alma,
+            };
+            Ok(Box::new(PriceAverageRelation::new(PriceAverageRelationConfig {
+                ma_kind,
+                ma_len: p.count("ma_len"),
+                atr_len: p.count("atr_len"),
+                cooldown: p.count("cooldown"),
+                turn_level: p.number("turn_level"),
+                turn_lookback: p.count("turn_lookback"),
+                ..PriceAverageRelationConfig::default()
+            })))
+        },
+    };

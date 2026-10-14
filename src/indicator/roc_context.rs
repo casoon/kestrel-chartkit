@@ -346,3 +346,39 @@ impl Indicator for RocContext {
         self.alerts.clone()
     }
 }
+
+pub const ROC_CONTEXT_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "roc_context",
+        aliases: &[],
+        description: "ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
+        params: &[
+            super::definition::ParamSpec::count("ma_kind", 0, 0, 2).meaning("how the ROC is smoothed: 0 EMA, 1 SMA, 2 RMA"),
+            super::definition::ParamSpec::count("roc_len", 12, 1, 1000).meaning("bars in the rate of change"),
+            super::definition::ParamSpec::count("avg_len", 3, 1, 200).meaning("bars smoothing the ROC (the line)"),
+            super::definition::ParamSpec::count("sig_len", 9, 1, 200).meaning("bars in the signal line"),
+            super::definition::ParamSpec::number("ob_level", 5.0, 0.01, 1000.0).meaning("upper stretch level, in percent"),
+            super::definition::ParamSpec::number("os_level", -5.0, -1000.0, -0.01).meaning("lower stretch level, in percent"),
+            super::definition::ParamSpec::count("ctx_len", 50, 2, 2000).meaning("bars in the slow context ROC"),
+            super::definition::ParamSpec::count("stall_len", 5, 1, 200).meaning("bars a stall is measured over"),
+        ],
+        checks: &[],
+        build: |p| {
+            let ma_kind = match p.count("ma_kind") {
+                0 => SmootherKind::Ema,
+                1 => SmootherKind::Sma,
+                _ => SmootherKind::Rma,
+            };
+            Ok(Box::new(RocContext::new(RocContextConfig {
+                ma_kind,
+                roc_len: p.count("roc_len"),
+                avg_len: p.count("avg_len"),
+                sig_len: p.count("sig_len"),
+                ob_level: p.number("ob_level"),
+                os_level: p.number("os_level"),
+                ctx_len: p.count("ctx_len"),
+                stall_len: p.count("stall_len"),
+                ..RocContextConfig::default()
+            })))
+        },
+    };

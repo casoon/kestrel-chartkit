@@ -1093,3 +1093,62 @@ impl CandleClassificationEngine {
 pub fn build_candle_classification(_params: &HashMap<String, f64>) -> CandleClassificationEngine {
     CandleClassificationEngine::new()
 }
+
+pub const CANDLE_CLASSIFICATION_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "candle_classification",
+        aliases: &["pinbar"],
+        description: "Normalised candle classification — reports every pattern it recognises",
+        params: &[
+            super::definition::ParamSpec::number("pin_wick_min", 0.55, 0.1, 0.95)
+                .meaning("minimum wick share of the range for a pinbar"),
+            super::definition::ParamSpec::number("pin_close_pos", 0.65, 0.5, 1.0)
+                .meaning("how far towards the opposite end the close must sit for a pinbar"),
+            super::definition::ParamSpec::number("marubozu_body_min", 0.82, 0.5, 1.0)
+                .meaning("minimum body share of the range for a marubozu"),
+            super::definition::ParamSpec::number("belt_hold_body_min", 0.6, 0.3, 1.0)
+                .meaning("minimum body share of the range for a belt hold"),
+            super::definition::ParamSpec::number("belt_hold_open_wick_max", 0.03, 0.0, 0.3)
+                .meaning("maximum opening-side wick share of the range for a belt hold"),
+            super::definition::ParamSpec::number("doji_body_max", 0.08, 0.0, 0.4)
+                .meaning("maximum body share of the range for a doji"),
+            super::definition::ParamSpec::number("spinning_top_body_max", 0.3, 0.05, 0.6)
+                .meaning("maximum body share of the range for a spinning top"),
+            super::definition::ParamSpec::number("hammer_wick_body_min", 2.0, 0.5, 20.0)
+                .meaning("wick length as a multiple of the body for hammer and inverted hammer"),
+            super::definition::ParamSpec::number("hammer_opposite_max", 0.5, 0.0, 5.0).meaning(
+                "maximum opposite wick, as a multiple of the body, for hammer and inverted hammer",
+            ),
+            super::definition::ParamSpec::number("tweezer_tolerance", 0.0015, 0.0, 0.1)
+                .meaning("relative tolerance for two highs or lows counting as equal (tweezer)"),
+            super::definition::ParamSpec::number("min_range_atr", 0.5, 0.0, 10.0)
+                .meaning("minimum range, in ATR, before a shape is reported"),
+            super::definition::ParamSpec::count("atr_len", 14, 1, 10000)
+                .meaning("bars in the ATR behind min_range_atr"),
+            super::definition::ParamSpec::count("trend_lookback", 10, 1, 10000)
+                .meaning("bars used to determine the prior move"),
+            super::definition::ParamSpec::number("trend_min_atr", 1.0, 0.0, 100.0)
+                .meaning("close move over the lookback, in ATR, that counts as a trend"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(CandleClassificationEngine::with_config(
+                CandleClassificationConfig {
+                    pin_wick_min: p.number("pin_wick_min"),
+                    pin_close_pos: p.number("pin_close_pos"),
+                    marubozu_body_min: p.number("marubozu_body_min"),
+                    belt_hold_body_min: p.number("belt_hold_body_min"),
+                    belt_hold_open_wick_max: p.number("belt_hold_open_wick_max"),
+                    doji_body_max: p.number("doji_body_max"),
+                    spinning_top_body_max: p.number("spinning_top_body_max"),
+                    hammer_wick_body_min: p.number("hammer_wick_body_min"),
+                    hammer_opposite_max: p.number("hammer_opposite_max"),
+                    tweezer_tolerance: p.number("tweezer_tolerance"),
+                    min_range_atr: p.number("min_range_atr"),
+                    atr_len: p.count("atr_len"),
+                    trend_lookback: p.count("trend_lookback"),
+                    trend_min_atr: p.number("trend_min_atr"),
+                },
+            )))
+        },
+    };

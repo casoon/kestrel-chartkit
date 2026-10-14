@@ -94,3 +94,14 @@ pub fn build_efficiency(params: &HashMap<String, f64>) -> LegEfficiencyEngine {
     let len = params.get("len").copied().unwrap_or(14.0) as usize;
     LegEfficiencyEngine::new(len)
 }
+
+pub const EFFICIENCY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "efficiency",
+        aliases: &["leg_efficiency", "er"],
+        description: "Kaufman-style leg efficiency ratio",
+        params: &[super::definition::ParamSpec::count("len", 14, 1, 10000)
+            .meaning("bars between the two closes compared with the path travelled")],
+        checks: &[],
+        build: |p| Ok(Box::new(LegEfficiencyEngine::new(p.count("len")))),
+    };

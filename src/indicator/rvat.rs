@@ -165,3 +165,24 @@ impl Indicator for RelativeVolumeAtTime {
         self.cumulative_today = 0.0;
     }
 }
+
+pub const RVAT_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rvat",
+        aliases: &[],
+        description: "Relative Volume at Time (volume against the same time of day on previous days, regular and cumulative)",
+        params: &[
+            super::definition::ParamSpec::count("days", 10, 1, 1000)
+                .meaning("previous days compared at the same time of day"),
+            super::definition::ParamSpec::number("day_start_offset", 0.0, -86_400.0, 86_400.0)
+                .meaning("seconds after midnight UTC at which the day starts"),
+            super::definition::ParamSpec::number("bar_seconds", 60.0, 1.0, 86_400.0)
+                .meaning("bar spacing in seconds; only declares the warmup"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(RelativeVolumeAtTime::new(
+                p.count("days"),
+                p.number("day_start_offset") as i64,
+                p.number("bar_seconds") as i64,
+            ))),
+    };

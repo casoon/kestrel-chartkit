@@ -197,3 +197,27 @@ impl Indicator for RelativeVolatilityIndex {
         self.low.reset();
     }
 }
+
+pub const RELATIVE_VOLATILITY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "relative_volatility",
+        aliases: &[],
+        description: "Relative Volatility Index (the RSI construction applied to the standard deviation; build_typed accepts variant=close|high_low). Unrelated to \"rvi\", the Relative Vigor Index",
+        params: &[
+            super::definition::ParamSpec::choice("variant", "close", &["close", "high_low"], false).meaning("measured on the close alone, or on highs and lows separately and averaged"),
+            super::definition::ParamSpec::count("stdev_len", 10, 2, 10000).meaning("bars in the standard deviation"),
+            super::definition::ParamSpec::count("smooth_len", 14, 1, 10000).meaning("bars in the smoothing of the up and down deviations"),
+        ],
+        checks: &[],
+        build: |p| {
+            let variant = match p.choice("variant") {
+                "high_low" => RelativeVolatilityVariant::HighLow,
+                _ => RelativeVolatilityVariant::Close,
+            };
+            Ok(Box::new(RelativeVolatilityIndex::new(
+                p.count("stdev_len"),
+                p.count("smooth_len"),
+                variant,
+            )))
+        },
+    };

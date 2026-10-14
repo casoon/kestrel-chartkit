@@ -121,6 +121,16 @@ impl Indicator for KstEngine {
     }
 }
 
+pub const KST_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "kst",
+        aliases: &[],
+        description: "Know Sure Thing Oscillator",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(KstEngine::new())),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

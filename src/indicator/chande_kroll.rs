@@ -138,3 +138,17 @@ impl Indicator for ChandeKrollStop {
         self.short_window.reset();
     }
 }
+
+pub const CHANDE_KROLL_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "chande_kroll",
+        aliases: &["cks"],
+        description: "Chande Kroll Stop (window extremes minus/plus a Wilder-smoothed ATR, passed through a second extreme window)",
+        params: &[
+            super::definition::ParamSpec::count("atr_len", 10, 1, 10000).meaning("bars in the first extreme window and the Wilder ATR"),
+            super::definition::ParamSpec::count("stop_len", 9, 1, 10000).meaning("bars in the second extreme window over the preliminary stops"),
+            super::definition::ParamSpec::number("mult", 3.0, 0.01, 100.0).meaning("ATR multiple between the window extreme and the preliminary stop"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(ChandeKrollStop::new(p.count("atr_len"), p.count("stop_len"), p.number("mult")))),
+    };

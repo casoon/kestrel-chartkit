@@ -118,6 +118,27 @@ pub fn build_vwap(params: &HashMap<String, f64>) -> Vwap {
     Vwap::new(window, slope_lookback)
 }
 
+/// Registry definition of `vwap` (plan 49).
+pub const VWAP_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "vwap",
+        aliases: &[],
+        description: "Rolling Volume Weighted Average Price with sigma bands and slope",
+        params: &[
+            super::definition::ParamSpec::count("window", 390, 1, 10000)
+                .meaning("bars in the rolling average"),
+            super::definition::ParamSpec::count("slope_lookback", 20, 1, 10000)
+                .meaning("bars back for the slope"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(Vwap::new(
+                p.count("window"),
+                p.count("slope_lookback"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

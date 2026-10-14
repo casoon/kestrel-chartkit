@@ -119,3 +119,18 @@ impl Indicator for Trix {
         self.lines_published = 0;
     }
 }
+
+pub const TRIX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "trix",
+        aliases: &[],
+        description: "TRIX (rate of change of a triple-smoothed price series, in percent)",
+        params: &[
+            super::definition::ParamSpec::count("len", 15, 1, 10000)
+                .meaning("bars in each of the three EMAs"),
+            super::definition::ParamSpec::count("signal_len", 9, 1, 10000)
+                .meaning("bars in the EMA of the TRIX line (signal)"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(Trix::new(p.count("len"), p.count("signal_len")))),
+    };

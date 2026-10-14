@@ -263,3 +263,37 @@ impl Indicator for SweepReversalScore {
         self.alerts.clone()
     }
 }
+
+pub const SWEEP_REVERSAL_SCORE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "sweep_reversal_score",
+        aliases: &[],
+        description: "Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
+        params: &[
+            super::definition::ParamSpec::count("swing_len", 10, 2, 500).meaning("bars whose extreme a sweep must take out"),
+            super::definition::ParamSpec::count("atr_len", 14, 1, 500).meaning("bars in the Wilder ATR"),
+            super::definition::ParamSpec::count("atr_base_len", 50, 1, 1000).meaning("bars in the SMA of the ATR (the gate's base)"),
+            super::definition::ParamSpec::number("atr_low_factor", 0.6, 0.0, 10.0).meaning("ATR gate: ATR must exceed this multiple of its SMA"),
+            super::definition::ParamSpec::count("rsi_len", 14, 1, 500).meaning("bars in the RSI of the quality score"),
+            super::definition::ParamSpec::count("pivot_len", 5, 1, 50).meaning("bars on each side of a swing pivot"),
+            super::definition::ParamSpec::count("min_quality_long", 2, 0, 2).meaning("quality points a long signal needs"),
+            super::definition::ParamSpec::count("min_quality_short", 2, 0, 2).meaning("quality points a short signal needs"),
+            super::definition::ParamSpec::count("cooldown", 5, 0, 500).meaning("bars after a signal before the next one"),
+        ],
+        checks: &[],
+        build: |p| {
+            let cfg = SweepReversalScoreConfig {
+                swing_len: p.count("swing_len"),
+                atr_len: p.count("atr_len"),
+                atr_base_len: p.count("atr_base_len"),
+                atr_low_factor: p.number("atr_low_factor"),
+                rsi_len: p.count("rsi_len"),
+                pivot_len: p.count("pivot_len"),
+                min_quality_long: p.count("min_quality_long") as u8,
+                min_quality_short: p.count("min_quality_short") as u8,
+                cooldown: p.count("cooldown"),
+                ..SweepReversalScoreConfig::default()
+            };
+            Ok(Box::new(SweepReversalScore::new(cfg)))
+        },
+    };

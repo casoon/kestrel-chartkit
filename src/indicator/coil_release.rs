@@ -500,3 +500,34 @@ impl Indicator for CoilRelease {
         self.alerts.clone()
     }
 }
+
+pub const COIL_RELEASE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "coil_release",
+        aliases: &[],
+        description: "Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
+        params: &[
+            super::definition::ParamSpec::count("len", 34, 10, 150).meaning("bars the coil strength is measured over"),
+            super::definition::ParamSpec::count("break_len", 12, 3, 50).meaning("bars of the band whose break is the release"),
+            super::definition::ParamSpec::count("ema_len", 55, 2, 2000).meaning("bars in the trend EMA"),
+            super::definition::ParamSpec::count("slope_len", 5, 1, 200).meaning("bars the EMA slope is measured over"),
+            super::definition::ParamSpec::number("thr_cont", 0.45, 0.0, 1.0).meaning("setup score a release with the trend needs"),
+            super::definition::ParamSpec::number("thr_base", 0.55, 0.0, 1.0).meaning("setup score a base break against the trend needs"),
+            super::definition::ParamSpec::count("cooldown", 8, 0, 100).meaning("bars between two alerts"),
+            super::definition::ParamSpec::number("chop_veto", 61.8, 30.0, 80.0).meaning("choppiness above which no alert fires"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(CoilRelease::new(CoilReleaseConfig {
+                len: p.count("len"),
+                break_len: p.count("break_len"),
+                ema_len: p.count("ema_len"),
+                slope_len: p.count("slope_len"),
+                thr_cont: p.number("thr_cont"),
+                thr_base: p.number("thr_base"),
+                cooldown: p.count("cooldown"),
+                chop_veto: p.number("chop_veto"),
+                ..CoilReleaseConfig::default()
+            })))
+        },
+    };

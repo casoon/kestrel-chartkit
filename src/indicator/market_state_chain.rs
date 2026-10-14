@@ -436,3 +436,34 @@ impl Indicator for MarketStateChain {
         self.alerts.clone()
     }
 }
+
+pub const MARKET_STATE_CHAIN_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "market_state_chain",
+        aliases: &[],
+        description: "Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
+        params: &[
+            super::definition::ParamSpec::count("ema_len", 55, 10, 1000).meaning("bars in the trend EMA"),
+            super::definition::ParamSpec::count("rank_len", 100, 20, 2000).meaning("bars the ATR and Bollinger width are ranked against"),
+            super::definition::ParamSpec::count("lookback", 500, 50, 1500).meaning("bars whose state exits give the probabilities"),
+            super::definition::ParamSpec::count("min_dwell", 2, 1, 50).meaning("bars a new state must hold before it counts"),
+            super::definition::ParamSpec::count("min_samples", 20, 5, 1000).meaning("exits of the context state for full reliability"),
+            super::definition::ParamSpec::number("conf_th", 55.0, 0.0, 100.0).meaning("exit probability an alert needs, in percent"),
+            super::definition::ParamSpec::number("rel_th", 40.0, 0.0, 100.0).meaning("reliability an alert needs, in percent"),
+            super::definition::ParamSpec::number("bias_margin", 8.0, 0.0, 100.0).meaning("probability lead that turns the bias, in percent"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(MarketStateChain::new(MarketStateChainConfig {
+                ema_len: p.count("ema_len"),
+                rank_len: p.count("rank_len"),
+                lookback: p.count("lookback"),
+                min_dwell: p.count("min_dwell"),
+                min_samples: p.count("min_samples"),
+                conf_th: p.number("conf_th"),
+                rel_th: p.number("rel_th"),
+                bias_margin: p.number("bias_margin"),
+                ..MarketStateChainConfig::default()
+            })))
+        },
+    };

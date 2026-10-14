@@ -75,6 +75,17 @@ impl Indicator for MassIndexEngine {
     }
 }
 
+pub const MASS_INDEX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "mass_index",
+        aliases: &[],
+        description: "Mass Index Reversal Detector",
+        params: &[super::definition::ParamSpec::count("period", 25, 1, 10000)
+            .meaning("number of EMA ratios summed")],
+        checks: &[],
+        build: |p| Ok(Box::new(MassIndexEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

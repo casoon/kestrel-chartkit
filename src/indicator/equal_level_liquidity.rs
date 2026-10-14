@@ -534,3 +534,35 @@ impl Indicator for EqualLevelLiquidity {
         self.alerts.clone()
     }
 }
+
+pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "equal_level_liquidity",
+        aliases: &[],
+        description: "Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
+        params: &[
+            super::definition::ParamSpec::count("pivot_len", 8, 1, 50).meaning("bars on each side of a level pivot"),
+            super::definition::ParamSpec::number("eq_tolerance_atr", 0.12, 0.0, 10.0).meaning("pivots within this many ATR join one level"),
+            super::definition::ParamSpec::count("min_touches", 2, 1, 20).meaning("touches a level needs before it takes part in events"),
+            super::definition::ParamSpec::count("max_age", 400, 1, 100000).meaning("bars after which an untouched level is dropped"),
+            super::definition::ParamSpec::number("max_distance_atr", 8.0, 0.1, 100.0).meaning("distance from the close, in ATR, beyond which a level is dropped"),
+            super::definition::ParamSpec::count("reclaim_bars", 3, 0, 100).meaning("bars after a sweep within which a reclaim counts"),
+            super::definition::ParamSpec::number("min_volume_ratio", 1.2, 0.0, 100.0).meaning("volume against its average a reclaim needs"),
+            super::definition::ParamSpec::number("alert_distance_atr", 1.0, 0.0, 100.0).meaning("distance to the primary level, in ATR, that counts as near"),
+        ],
+        checks: &[],
+        build: |p| {
+            let cfg = EqualLevelLiquidityConfig {
+                pivot_len: p.count("pivot_len"),
+                eq_tolerance_atr: p.number("eq_tolerance_atr"),
+                min_touches: p.count("min_touches") as u32,
+                max_age: p.count("max_age"),
+                max_distance_atr: p.number("max_distance_atr"),
+                reclaim_bars: p.count("reclaim_bars"),
+                min_volume_ratio: p.number("min_volume_ratio"),
+                alert_distance_atr: p.number("alert_distance_atr"),
+                ..EqualLevelLiquidityConfig::default()
+            };
+            Ok(Box::new(EqualLevelLiquidity::new(cfg)))
+        },
+    };

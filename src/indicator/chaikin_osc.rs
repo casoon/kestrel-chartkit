@@ -83,6 +83,29 @@ impl Indicator for ChaikinOscillatorEngine {
     }
 }
 
+pub const CHAIKIN_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "chaikin_oscillator",
+        aliases: &["cho"],
+        description: "Chaikin Oscillator",
+        params: &[
+            super::definition::ParamSpec::count("fast_len", 3, 1, 10000)
+                .meaning("bars in the fast EMA of the A/D line"),
+            super::definition::ParamSpec::count("slow_len", 10, 1, 10000)
+                .meaning("bars in the slow EMA of the A/D line"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_len",
+            upper: "slow_len",
+        }],
+        build: |p| {
+            Ok(Box::new(ChaikinOscillatorEngine::new(
+                p.count("fast_len"),
+                p.count("slow_len"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

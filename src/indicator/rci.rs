@@ -107,3 +107,14 @@ impl Indicator for RciEngine {
         self.window.clear();
     }
 }
+
+pub const RCI_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rci",
+        aliases: &[],
+        description: "Rank Correlation Index (rank of prices against rank of time, scaled by 100)",
+        params: &[super::definition::ParamSpec::count("len", 9, 2, 10000)
+            .meaning("bars ranked against time")],
+        checks: &[],
+        build: |p| Ok(Box::new(RciEngine::new(p.count("len")))),
+    };

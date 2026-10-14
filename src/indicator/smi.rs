@@ -148,3 +148,24 @@ impl Indicator for StochasticMomentumIndex {
         self.lines_published = 0;
     }
 }
+
+pub const SMI_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "smi",
+    aliases: &[],
+    description: "Stochastic Momentum Index (double-smoothed position of the close relative to the midpoint of the high-low range)",
+    params: &[
+            super::definition::ParamSpec::count("len", 10, 1, 10000).meaning("bars in the high-low window"),
+            super::definition::ParamSpec::count("smooth_1", 3, 1, 10000).meaning("bars in the first EMA stage"),
+            super::definition::ParamSpec::count("smooth_2", 3, 1, 10000).meaning("bars in the second EMA stage"),
+            super::definition::ParamSpec::count("signal_len", 3, 1, 10000).meaning("bars in the EMA of the SMI line (signal)"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(StochasticMomentumIndex::new(
+            p.count("len"),
+            p.count("smooth_1"),
+            p.count("smooth_2"),
+            p.count("signal_len"),
+        )))
+    },
+};

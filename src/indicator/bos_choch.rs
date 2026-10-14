@@ -156,6 +156,19 @@ impl Indicator for BosChochEngine {
     }
 }
 
+pub const BOS_CHOCH_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "bos_choch",
+        aliases: &[],
+        description: "BOS and CHoCH Market Structure Engine",
+        params: &[
+            super::definition::ParamSpec::count("pivot_len", 5, 2, 10000)
+                .meaning("bars on each side of a pivot"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(BosChochEngine::new(p.count("pivot_len")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

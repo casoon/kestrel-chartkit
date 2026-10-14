@@ -64,3 +64,14 @@ impl Indicator for PriceVolumeTrend {
         self.total = 0.0;
     }
 }
+
+pub const PVT_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "pvt",
+        aliases: &[],
+        description:
+            "Price Volume Trend (volume weighted by the relative price change, accumulated)",
+        params: &[],
+        checks: &[],
+        build: |_| Ok(Box::new(PriceVolumeTrend::new())),
+    };

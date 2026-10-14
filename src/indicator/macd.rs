@@ -139,3 +139,29 @@ impl Indicator for Macd {
         out
     }
 }
+
+pub const MACD_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "macd",
+        aliases: &[],
+        description: "Moving Average Convergence Divergence",
+        params: &[
+            super::definition::ParamSpec::count("fast_len", 12, 1, 10000)
+                .meaning("bars in the fast EMA of the close"),
+            super::definition::ParamSpec::count("slow_len", 26, 1, 10000)
+                .meaning("bars in the slow EMA of the close"),
+            super::definition::ParamSpec::count("signal_len", 9, 1, 10000)
+                .meaning("bars in the EMA of the MACD line (signal)"),
+        ],
+        checks: &[super::definition::Check::Less {
+            lower: "fast_len",
+            upper: "slow_len",
+        }],
+        build: |p| {
+            Ok(Box::new(Macd::new(
+                p.count("fast_len"),
+                p.count("slow_len"),
+                p.count("signal_len"),
+            )))
+        },
+    };

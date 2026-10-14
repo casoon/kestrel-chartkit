@@ -66,6 +66,17 @@ impl Indicator for ZScoreEngine {
     }
 }
 
+pub const ZSCORE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "zscore",
+        aliases: &[],
+        description: "Rolling Z-Score Engine",
+        params: &[super::definition::ParamSpec::count("period", 20, 2, 10000)
+            .meaning("closes in the mean and population standard deviation")],
+        checks: &[],
+        build: |p| Ok(Box::new(ZScoreEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

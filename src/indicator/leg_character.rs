@@ -657,3 +657,37 @@ impl Indicator for LegCharacter {
         self.alerts.clone()
     }
 }
+
+pub const LEG_CHARACTER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "leg_character",
+        aliases: &[],
+        description: "Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
+        params: &[
+            super::definition::ParamSpec::count("pivot_left", 5, 1, 50).meaning("bars left of a pivot"),
+            super::definition::ParamSpec::count("pivot_right", 5, 1, 50).meaning("bars right of a pivot, the confirmation delay"),
+            super::definition::ParamSpec::count("max_leg_bars", 350, 20, 1500).meaning("most bars of the live leg evaluated"),
+            super::definition::ParamSpec::number("min_leg_atr", 0.5, 0.0, 10.0).meaning("smallest leg, in ATR, that adds an opposite pivot"),
+            super::definition::ParamSpec::count("mature_bars", 8, 2, 100).meaning("bars until the leg's scores count fully"),
+            super::definition::ParamSpec::count("ma_len", 34, 2, 500).meaning("bars in the EMA of the MA-support feature"),
+            super::definition::ParamSpec::number("impulse_threshold", 62.0, 50.0, 95.0).meaning("impulse score that classifies the leg as impulse"),
+            super::definition::ParamSpec::number("correction_threshold", 62.0, 50.0, 95.0).meaning("correction score that classifies the leg as correction"),
+            super::definition::ParamSpec::number("change_buffer", 5.0, 0.0, 25.0).meaning("points below its threshold a class is kept (hysteresis)"),
+        ],
+        checks: &[],
+        build: |p| {
+            let cfg = LegCharacterConfig {
+                pivot_left: p.count("pivot_left"),
+                pivot_right: p.count("pivot_right"),
+                max_leg_bars: p.count("max_leg_bars"),
+                min_leg_atr: p.number("min_leg_atr"),
+                mature_bars: p.count("mature_bars"),
+                ma_len: p.count("ma_len"),
+                impulse_threshold: p.number("impulse_threshold"),
+                correction_threshold: p.number("correction_threshold"),
+                change_buffer: p.number("change_buffer"),
+                ..LegCharacterConfig::default()
+            };
+            Ok(Box::new(LegCharacter::new(cfg)))
+        },
+    };

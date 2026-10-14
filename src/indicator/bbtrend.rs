@@ -91,3 +91,42 @@ impl Indicator for BbTrend {
         self.long.reset();
     }
 }
+
+pub const BBTREND_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "bbtrend",
+    aliases: &[],
+    description: "BBTrend (how far a short Bollinger set has moved out of a long one, in percent of the short basis; build_typed accepts variance=population|sample for both sets)",
+    params: &[
+            super::definition::ParamSpec::choice("variance", "population", &["population", "sample"], false).meaning("variance convention of both band sets"),
+            super::definition::ParamSpec::count("short_len", 20, 1, 10000).meaning("bars in the short Bollinger set"),
+            super::definition::ParamSpec::count("long_len", 50, 1, 10000).meaning("bars in the long Bollinger set"),
+            super::definition::ParamSpec::number("mult", 2.0, 0.01, 100.0).meaning("band width in standard deviations, both sets"),
+    ],
+    checks: &[
+            super::definition::Check::Less {
+                lower: "short_len",
+                upper: "long_len",
+            },
+        ],
+    build: |p| {
+        let variance = match p.choice("variance") {
+            "sample" => VarianceConvention::Sample,
+            _ => VarianceConvention::Population,
+        };
+        let short_len = p.count("short_len");
+        if variance == VarianceConvention::Sample && short_len < 2 {
+            return Err(super::registry::RegistryError::IncompatibleParameter {
+                parameter: "variance".to_string(),
+                indicator: "bbtrend".to_string(),
+                reason: "sample variance divides by len - 1 and is undefined for len < 2"
+                    .to_string(),
+            });
+        }
+        Ok(Box::new(BbTrend::new(
+            short_len,
+            p.count("long_len"),
+            p.number("mult"),
+            variance,
+        )))
+    },
+};

@@ -65,6 +65,17 @@ impl Indicator for DpoEngine {
     }
 }
 
+pub const DPO_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "dpo",
+        aliases: &[],
+        description: "Detrended Price Oscillator",
+        params: &[super::definition::ParamSpec::count("period", 21, 2, 10000)
+            .meaning("bars in the SMA; the close is taken period/2 bars back")],
+        checks: &[],
+        build: |p| Ok(Box::new(DpoEngine::new(p.count("period")))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

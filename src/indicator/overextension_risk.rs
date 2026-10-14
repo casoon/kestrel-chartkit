@@ -645,3 +645,34 @@ impl Indicator for OverextensionRisk {
         self.alerts.clone()
     }
 }
+
+pub const OVEREXTENSION_RISK_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "overextension_risk",
+        aliases: &[],
+        description: "Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+        params: &[
+            super::definition::ParamSpec::number("w_stretch", 40.0, 0.0, 100.0).meaning("weight of the stretch role"),
+            super::definition::ParamSpec::number("w_exhaust", 35.0, 0.0, 100.0).meaning("weight of the exhaustion role"),
+            super::definition::ParamSpec::number("w_react", 25.0, 0.0, 100.0).meaning("weight of the reaction role"),
+            super::definition::ParamSpec::number("base_threshold", 40.0, 20.0, 80.0).meaning("score an alert needs before the regime raises it"),
+            super::definition::ParamSpec::count("confirm", 1, 0, 1).meaning("1: alert only with a reaction, 0: without"),
+            super::definition::ParamSpec::count("min_gap", 8, 0, 500).meaning("bars between two alerts of one side"),
+            super::definition::ParamSpec::count("ema_len", 50, 2, 1000).meaning("bars in the EMA the stretch is measured from"),
+            super::definition::ParamSpec::count("structure_len", 80, 2, 2000).meaning("bars the structure extremes are taken from"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(OverextensionRisk::new(OverextensionRiskConfig {
+                w_stretch: p.number("w_stretch"),
+                w_exhaust: p.number("w_exhaust"),
+                w_react: p.number("w_react"),
+                base_threshold: p.number("base_threshold"),
+                confirm: p.count("confirm") == 1,
+                min_gap: p.count("min_gap"),
+                ema_len: p.count("ema_len"),
+                structure_len: p.count("structure_len"),
+                ..OverextensionRiskConfig::default()
+            })))
+        },
+    };

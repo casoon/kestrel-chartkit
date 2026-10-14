@@ -155,3 +155,18 @@ pub fn build_market_structure_breaks(params: &HashMap<String, f64>) -> MarketStr
     let lookback = params.get("lookback").copied().unwrap_or(5.0) as usize;
     MarketStructureBreaksEngine::new(lookback)
 }
+
+pub const MARKET_STRUCTURE_BREAKS_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "market_structure_breaks",
+        aliases: &["bos", "choch"],
+        description: "Break of structure / change of character (BOS/CHoCH) detection",
+        params: &[super::definition::ParamSpec::count("lookback", 5, 1, 10000)
+            .meaning("bars on each side of a swing high/low")],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(MarketStructureBreaksEngine::new(
+                p.count("lookback"),
+            )))
+        },
+    };

@@ -524,6 +524,25 @@ impl Indicator for BottomFormation {
     }
 }
 
+pub const BOTTOM_FORMATION_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "bottom_formation",
+    aliases: &[],
+    description: "Bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage",
+    params: &[
+        super::definition::ParamSpec::count("pivot_len", 5, 1, 10000).meaning("bars on each side of a swing point"),
+        super::definition::ParamSpec::count("max_stage_bars", 30, 1, 100000).meaning("bars after which an open stage expires"),
+        super::definition::ParamSpec::number("retest_atr", 0.5, 0.0, 100.0).meaning("distance to the intermediate high, in ATR, that counts as a retest"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(BottomFormation::new(
+            p.count("pivot_len"),
+            p.count("max_stage_bars"),
+            p.number("retest_atr"),
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

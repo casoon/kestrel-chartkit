@@ -312,6 +312,27 @@ impl Indicator for MoneyFlowProfileEngine {
     }
 }
 
+pub const MONEY_FLOW_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "money_flow_profile",
+        aliases: &["mfp"],
+        description: "Volume-by-price profile binned by dollar volume (volume x price) instead of raw volume, plus an aggregate bull/bear flow-bias percentage",
+        params: &[
+            super::definition::ParamSpec::count("lookback", 200, 2, 10000)
+                .meaning("bars in the rolling window; a profile needs two"),
+            super::definition::ParamSpec::count("rows", 25, 1, 1000)
+                .meaning("bins across the window's high/low range"),
+            super::definition::ParamSpec::number("va_pct", 0.70, 0.0, 1.0)
+                .meaning("share of total flow the value area captures"),
+        ],
+        checks: &[],
+        build: |p| Ok(Box::new(MoneyFlowProfileEngine::new(
+                p.count("lookback"),
+                p.count("rows"),
+                p.number("va_pct"),
+            ))),
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

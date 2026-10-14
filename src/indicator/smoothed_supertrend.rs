@@ -300,3 +300,34 @@ impl Indicator for SmoothedSupertrend {
         self.alerts.clone()
     }
 }
+
+pub const SMOOTHED_SUPERTREND_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "smoothed_supertrend",
+        aliases: &[],
+        description: "Smoothed Supertrend: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend midline (factor x ATR(atr_len)); trend from the baseline slope over slope_lookback bars with an ATR threshold and hysteresis; value = baseline; extra: trend, st_lower, st_upper, adx, strength_rank (percentrank of |slope|/ATR), distance_rank, overextension (+1/-1); alerts bull/bear_flip (trend turn with ADX above adx_threshold), bull/bear_rejection and bull/bear_rejection_strong (baseline touch and close back on the trend side; strong = strength rank above strength_threshold)",
+        params: &[
+            super::definition::ParamSpec::number("factor", 12.0, 0.5, 100.0).meaning("supertrend band width, in ATRs"),
+            super::definition::ParamSpec::count("atr_len", 90, 1, 1000).meaning("bars in the ATR"),
+            super::definition::ParamSpec::count("wma_len", 40, 1, 1000).meaning("bars in the WMA of the supertrend midline"),
+            super::definition::ParamSpec::count("ema_len", 14, 1, 1000).meaning("bars in the EMA over the WMA (the baseline)"),
+            super::definition::ParamSpec::number("adx_threshold", 25.0, 5.0, 50.0).meaning("ADX a trend flip needs to alert"),
+            super::definition::ParamSpec::count("slope_lookback", 3, 1, 100).meaning("bars the baseline slope is measured over"),
+            super::definition::ParamSpec::number("slope_threshold", 0.05, 0.0, 10.0).meaning("slope in ATRs that turns the trend"),
+            super::definition::ParamSpec::count("touches", 2, 1, 5).meaning("baseline touches before a rejection alerts"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(SmoothedSupertrend::new(SmoothedSupertrendConfig {
+                factor: p.number("factor"),
+                atr_len: p.count("atr_len"),
+                wma_len: p.count("wma_len"),
+                ema_len: p.count("ema_len"),
+                adx_threshold: p.number("adx_threshold"),
+                slope_lookback: p.count("slope_lookback"),
+                slope_threshold: p.number("slope_threshold"),
+                touches: p.count("touches"),
+                ..SmoothedSupertrendConfig::default()
+            })))
+        },
+    };

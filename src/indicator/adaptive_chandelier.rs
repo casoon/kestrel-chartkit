@@ -353,6 +353,34 @@ impl Indicator for AdaptiveChandelierEngine {
     }
 }
 
+pub const ADAPTIVE_CHANDELIER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "adaptive_chandelier",
+        aliases: &["chfr"],
+        description: "Chandelier Exit ratchet extended with adaptive multiplier, body-filtered weak flips, and bull/bear trap detection (use AdaptiveChandelierEngine::new directly for use_close_extremes=false or simple_adaptive=true; this f64-only entry uses the documented defaults for both)",
+        params: &[
+            super::definition::ParamSpec::count("length", 30, 1, 10000).meaning("bars in the highest/lowest lookback and the internal ATR"),
+            super::definition::ParamSpec::number("atr_mult", 4.5, 0.01, 100.0).meaning("ATR multiple between the extreme and the stop"),
+            super::definition::ParamSpec::number("body_filter_atr", 0.80, 0.0, 100.0).meaning("minimum candle body, in ATRs, for a direction flip to count as real (0 disables the filter)"),
+            super::definition::ParamSpec::number("danger_dist_atr", 0.35, 0.0, 100.0).meaning("distance from the stop, in ATRs, below which the risk state is danger"),
+            super::definition::ParamSpec::number("warn_dist_atr", 0.75, 0.0, 100.0).meaning("distance from the stop, in ATRs, below which the risk state is warning"),
+        ],
+        checks: &[],
+        build: |p| {
+            // `use_close_extremes`/`simple_adaptive` fixed to their documented defaults
+            // (true/false), as in the f64-only registry entry.
+            Ok(Box::new(AdaptiveChandelierEngine::new(
+                p.count("length"),
+                p.number("atr_mult"),
+                true,
+                false,
+                p.number("body_filter_atr"),
+                p.number("danger_dist_atr"),
+                p.number("warn_dist_atr"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

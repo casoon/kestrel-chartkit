@@ -84,6 +84,26 @@ impl Indicator for EomEngine {
     }
 }
 
+pub const EOM_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "eom",
+        aliases: &[],
+        description: "Ease of Movement",
+        params: &[
+            super::definition::ParamSpec::count("period", 14, 1, 10000)
+                .meaning("bars in the SMA of the raw value"),
+            super::definition::ParamSpec::number("volume_divisor", 10000.0, 1.0, 1e9)
+                .meaning("rescales volume into a readable unit"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(EomEngine::new(
+                p.count("period"),
+                p.number("volume_divisor"),
+            )))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

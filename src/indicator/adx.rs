@@ -228,3 +228,28 @@ impl Indicator for Adx {
         out
     }
 }
+
+pub const ADX_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "adx",
+        aliases: &[],
+        description: "Average Directional Index",
+        params: &[
+            super::definition::ParamSpec::count("di_len", 14, 1, 10000)
+                .meaning("bars in the Wilder smoothing of the directional movement (+DI/-DI)"),
+            super::definition::ParamSpec::count("adx_smooth", 14, 1, 10000)
+                .meaning("bars in the Wilder smoothing of DX into the ADX"),
+            super::definition::ParamSpec::number("level_weak", 20.0, 0.0, 100.0)
+                .meaning("ADX level below which the trend counts as weak")
+                .threshold(),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(Adx::new(
+                p.count("di_len"),
+                p.count("adx_smooth"),
+                3,
+                p.number("level_weak"),
+            )))
+        },
+    };

@@ -152,3 +152,22 @@ impl Indicator for PriceMomentumOscillator {
         self.lines_published = 0;
     }
 }
+
+pub const PMO_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "pmo",
+    aliases: &[],
+    description: "Price Momentum Oscillator (twice-smoothed one-bar return with alpha = 2/length, scaled by ten)",
+    params: &[
+            super::definition::ParamSpec::count("length_1", 35, 1, 10000).meaning("length of the first smoothing stage (alpha = 2/length)"),
+            super::definition::ParamSpec::count("length_2", 20, 1, 10000).meaning("length of the second smoothing stage (alpha = 2/length)"),
+            super::definition::ParamSpec::count("signal_len", 10, 1, 10000).meaning("bars in the EMA of the PMO line (signal)"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(PriceMomentumOscillator::new(
+            p.count("length_1"),
+            p.count("length_2"),
+            p.count("signal_len"),
+        )))
+    },
+};

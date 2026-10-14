@@ -770,3 +770,34 @@ impl Indicator for TradabilityFilter {
         self.alerts.clone()
     }
 }
+
+pub const TRADABILITY_FILTER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "tradability_filter",
+        aliases: &[],
+        description: "Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
+        params: &[
+            super::definition::ParamSpec::count("quality_len", 20, 8, 100).meaning("bars the tradability scores are measured over"),
+            super::definition::ParamSpec::count("range_len", 30, 10, 200).meaning("bars of the reference range"),
+            super::definition::ParamSpec::count("baseline_len", 34, 5, 200).meaning("bars in the baseline average"),
+            super::definition::ParamSpec::count("rank_len", 150, 50, 500).meaning("bars the scores are ranked against"),
+            super::definition::ParamSpec::number("balance_threshold", 58.0, 30.0, 90.0).meaning("balance score that counts as balance"),
+            super::definition::ParamSpec::number("compression_threshold", 62.0, 30.0, 95.0).meaning("compression score that counts as compression"),
+            super::definition::ParamSpec::number("max_range_atr", 7.0, 2.0, 20.0).meaning("widest range for balance/compression, in ATRs"),
+            super::definition::ParamSpec::count("confirm_bars", 2, 1, 10).meaning("bars a candidate state must hold before it is entered"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(TradabilityFilter::new(TradabilityFilterConfig {
+                quality_len: p.count("quality_len"),
+                range_len: p.count("range_len"),
+                baseline_len: p.count("baseline_len"),
+                rank_len: p.count("rank_len"),
+                balance_threshold: p.number("balance_threshold"),
+                compression_threshold: p.number("compression_threshold"),
+                max_range_atr: p.number("max_range_atr"),
+                confirm_bars: p.count("confirm_bars"),
+                ..TradabilityFilterConfig::default()
+            })))
+        },
+    };

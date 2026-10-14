@@ -524,6 +524,41 @@ impl Indicator for FlowExhaustion {
     }
 }
 
+pub const FLOW_EXHAUSTION_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "flow_exhaustion",
+        aliases: &[],
+        description: "Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
+        params: &[
+            super::definition::ParamSpec::count("pivot_len", 7, 1, 50).meaning("bars left and right of a price pivot for the divergence"),
+            super::definition::ParamSpec::count("mfi_len", 14, 2, 500).meaning("bars in the money flow index"),
+            super::definition::ParamSpec::count("zone_lookback", 200, 10, 5000).meaning("MFI values the adaptive zones are taken from"),
+            super::definition::ParamSpec::count("rsi_len", 14, 2, 500).meaning("bars in the RSI under the StochRSI"),
+            super::definition::ParamSpec::count("stoch_len", 14, 1, 500).meaning("bars in the stochastic of the RSI"),
+            super::definition::ParamSpec::count("k_smooth", 3, 1, 100).meaning("bars smoothing the StochRSI K"),
+            super::definition::ParamSpec::count("jma_len", 20, 1, 500).meaning("length of the JMA smoothing MFI and K"),
+            super::definition::ParamSpec::count("confirm_bars", 1, 0, 5).meaning("bars an exhaustion must hold before it alerts"),
+            super::definition::ParamSpec::count("react_bars", 10, 2, 100).meaning("bars after a divergence until its final score"),
+        ],
+        checks: &[],
+        build: |p| {
+            let pivot_len = p.count("pivot_len");
+            Ok(Box::new(FlowExhaustion::new(FlowExhaustionConfig {
+                mfi_len: p.count("mfi_len"),
+                zone_lookback: p.count("zone_lookback"),
+                rsi_len: p.count("rsi_len"),
+                stoch_len: p.count("stoch_len"),
+                k_smooth: p.count("k_smooth"),
+                jma_len: p.count("jma_len"),
+                confirm_bars: p.count("confirm_bars"),
+                pivot_left: pivot_len,
+                pivot_right: pivot_len,
+                react_bars: p.count("react_bars"),
+                ..FlowExhaustionConfig::default()
+            })))
+        },
+    };
+
 #[cfg(test)]
 mod tests {
     use super::*;

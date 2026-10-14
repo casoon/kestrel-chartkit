@@ -337,6 +337,31 @@ impl Indicator for DoublePattern {
     }
 }
 
+pub const DOUBLE_PATTERN_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "double_pattern",
+    aliases: &[],
+    description: "Double bottom/top as a streaming event: forming on the second pivot (equal level within tolerance_atr, counter-swing ≥ min_depth_atr), confirmed on a close through the neckline; extra: neckline, target (measured move), wick (invalidation, natural stop)",
+    params: &[
+        super::definition::ParamSpec::count("pivot_len", 5, 1, 10000).meaning("bars on each side of a pivot"),
+        super::definition::ParamSpec::count("atr_len", 14, 1, 10000).meaning("bars in the ATR the distances are measured in"),
+        super::definition::ParamSpec::number("tolerance_atr", 0.5, 0.0, 100.0).meaning("distance, in ATR, within which the two pivots count as the same level"),
+        super::definition::ParamSpec::number("min_depth_atr", 1.5, 0.0, 100.0).meaning("minimum counter-swing between the pivots, in ATR"),
+        super::definition::ParamSpec::count("max_gap", 100, 2, 100000).meaning("most bars between the two pivots"),
+        super::definition::ParamSpec::count("max_wait", 50, 1, 100000).meaning("bars after forming within which the neckline must break"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(DoublePattern::new(
+            p.count("pivot_len"),
+            p.count("atr_len"),
+            p.number("tolerance_atr"),
+            p.number("min_depth_atr"),
+            p.count("max_gap"),
+            p.count("max_wait"),
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
