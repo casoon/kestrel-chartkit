@@ -1,5 +1,4 @@
 sma
-atr
 anchored_vwap
 ema
 wma
@@ -52,6 +51,7 @@ mfi
 williams_r
 fisher_transform
 wavetrend
+atr
 adx
 dmi
 aroon

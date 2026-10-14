@@ -8,15 +8,18 @@
 //! cargo run --example site_showcase
 //! ```
 //!
-//! Writes `examples/site/*.svg` and `examples/site/catalog.txt`.
+//! Writes `examples/site/*.svg`, `examples/site/catalog.txt` and `examples/site/demo-chart.json`
+//! — the last one a chartlet specification of a calm price chart (see `demo_chart`), drawn by
+//! the site at build time.
 
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use kestrel_chartkit::model::MarketRegime;
+use kestrel_chartkit::model::{MarketRegime, ZoneKind};
 use kestrel_chartkit::signal::TriggerAction;
+use kestrel_chartkit::structure::find_sr_zones;
 use kestrel_chartkit::synthetic::{random_walk_bars, trending_bars};
 use kestrel_chartkit::viz::{
     render_chart_svg, render_scene_svg, Axis, ChartBarData, ChartMarkerData, ChartRenderData,
@@ -373,6 +376,126 @@ fn composite_signal() -> Chart {
 }
 // showcase:end
 
+/// A calm price chart of a fictitious instrument as a chartlet specification (JSON), the way
+/// Kestrel draws its own: candles, two EMAs, the nearest support and resistance zones, the last
+/// price, the latest RSI signals, and volume and RSI panes below. Every number is computed by
+/// this crate; chartlet only draws (the site renders the spec at build time, light and dark).
+fn demo_chart() -> Result<String, Box<dyn Error>> {
+    // Up, pullback, up, sell-off, recovery — 4h bars from 5 January 2026, a fictitious price.
+    let raw = legs(
+        11,
+        &[(32, 0.28), (18, -0.22), (26, 0.32), (16, -0.45), (18, 0.18)],
+    );
+    let average_range = raw.iter().map(|b| b.high - b.low).sum::<f64>() / raw.len() as f64;
+    let bars: Vec<Bar> = raw
+        .iter()
+        .enumerate()
+        .map(|(i, b)| {
+            // Volume follows the bar's range, so the volume pane has something to say.
+            let volume = (800.0 + 2_400.0 * (b.high - b.low) / average_range).round();
+            Bar::new(
+                1_767_571_200 + i as i64 * 14_400,
+                b.open,
+                b.high,
+                b.low,
+                b.close,
+                volume,
+            )
+        })
+        .collect();
+
+    let mut ema_fast = build_checked("ema", &params(&[("period", 20.0)]))?;
+    let mut ema_slow = build_checked("ema", &params(&[("period", 50.0)]))?;
+    let mut rsi = build_checked("rsi", &HashMap::new())?;
+    let (mut fast, mut slow, mut rsi_line) = (Vec::new(), Vec::new(), Vec::new());
+    let mut signals: Vec<(usize, bool, &'static str)> = Vec::new();
+    for (i, bar) in bars.iter().enumerate() {
+        if let Some(o) = ema_fast.on_bar(bar) {
+            fast.push((bar.timestamp, o.value));
+        }
+        if let Some(o) = ema_slow.on_bar(bar) {
+            slow.push((bar.timestamp, o.value));
+        }
+        if let Some(o) = rsi.on_bar(bar) {
+            rsi_line.push((bar.timestamp, o.value));
+            for alert in rsi.alerts() {
+                match alert.kind.as_str() {
+                    "bull_extreme" => signals.push((i, true, "RSI up")),
+                    "bear_extreme" => signals.push((i, false, "RSI down")),
+                    _ => {}
+                }
+            }
+        }
+    }
+    let last = bars.last().ok_or("no bars")?;
+
+    let point = |(t, v): &(i64, f64)| format!(r#"{{"time":{t},"value":{v:.4}}}"#);
+    let line = |name: &str, points: &[(i64, f64)]| {
+        let points: Vec<String> = points.iter().map(point).collect();
+        format!(
+            r#"{{"mark":"line","name":"{name}","markers":false,"points":[{}]}}"#,
+            points.join(",")
+        )
+    };
+    let candles: Vec<String> = bars
+        .iter()
+        .map(|b| {
+            format!(
+                r#"{{"time":{},"open":{:.4},"high":{:.4},"low":{:.4},"close":{:.4}}}"#,
+                b.timestamp, b.open, b.high, b.low, b.close
+            )
+        })
+        .collect();
+    let mut price = vec![format!(
+        r#"{{"mark":"ohlc","name":"DEMO","data":[{}]}}"#,
+        candles.join(",")
+    )];
+    price.push(line("EMA 20", &fast));
+    price.push(line("EMA 50", &slow));
+    // The nearest pivot zone on either side of the last close (`find_sr_zones`, pivots of 5).
+    let zones = find_sr_zones(&bars, 5);
+    for (kind, label) in [
+        (ZoneKind::Support, "Support"),
+        (ZoneKind::Resistance, "Resistance"),
+    ] {
+        let nearest = zones
+            .iter()
+            .filter(|z| z.kind == kind)
+            .min_by(|a, b| a.distance_pct.abs().total_cmp(&b.distance_pct.abs()));
+        if let Some(z) = nearest {
+            price.push(format!(
+                r#"{{"mark":"band","label":"{label}","bottom":{:.4},"top":{:.4}}}"#,
+                z.price_bottom, z.price_top
+            ));
+        }
+    }
+    price.push(format!(
+        r#"{{"mark":"annotation","value":{:.4},"label":"Last {:.2}"}}"#,
+        last.close, last.close
+    ));
+    // The three latest signals, under the low of a turn up, over the high of a turn down.
+    for &(i, up, label) in signals.iter().rev().take(3) {
+        let bar = &bars[i];
+        price.push(format!(
+            r#"{{"mark":"annotation","time":{},"value":{:.4},"label":"{label}","shape":"{}"}}"#,
+            bar.timestamp,
+            if up { bar.low } else { bar.high },
+            if up { "triangle-up" } else { "triangle-down" }
+        ));
+    }
+    let volume: Vec<String> = bars
+        .iter()
+        .map(|b| point(&(b.timestamp, b.volume)))
+        .collect();
+
+    Ok(format!(
+        r#"{{"schemaVersion":1,"type":"time","title":"DEMO · fictitious instrument · 4h","description":"Synthetic 4-hour candles of a made-up instrument with EMA 20 and EMA 50, the nearest support and resistance zones from the confirmed pivots, the last price and the latest RSI signals, all computed by kestrel-chartkit. Volume and RSI(14) below.","width":640,"height":520,"timeAxis":{{"gaps":"collapse"}},"panes":[{{"heightRatio":8,"valueAxis":{{"title":"Price","decimals":2}},"layers":[{}]}},{{"heightRatio":2,"valueAxis":{{"title":"Volume"}},"layers":[{{"mark":"area","name":"Volume","stroke":"thin","points":[{}]}}]}},{{"heightRatio":2,"valueAxis":{{"title":"RSI","decimals":0}},"layers":[{},{{"mark":"annotation","value":70,"label":"70"}},{{"mark":"annotation","value":30,"label":"30"}}]}}]}}"#,
+        price.join(","),
+        volume.join(","),
+        line("RSI 14", &rsi_line),
+    ))
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/site");
     fs::create_dir_all(&dir)?;
@@ -382,7 +505,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("supertrend", supertrend()?),
         ("volume-profile", volume_profile()?),
         ("market-regime", market_regime(800, 440)?),
-        ("market-regime-hero", market_regime(520, 340)?),
         ("composite-signal", composite_signal()?),
     ];
     for (name, svg) in &charts {
@@ -390,6 +512,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         fs::write(&path, format!("{svg}\n"))?;
         println!("wrote {}", path.display());
     }
+
+    let spec = dir.join("demo-chart.json");
+    fs::write(&spec, format!("{}\n", demo_chart()?))?;
+    println!("wrote {}", spec.display());
 
     let entries = catalog();
     let names: String = entries.iter().map(|e| format!("{}\n", e.name)).collect();

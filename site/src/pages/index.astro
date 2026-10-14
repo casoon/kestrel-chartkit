@@ -14,6 +14,7 @@ import {
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
 import catalog from '../../../examples/site/catalog.txt?raw';
+import { chartletChart } from '../chartlet';
 import { figure } from '../showcase';
 
 // Written by `cargo run --example site_showcase`: one line per entry of `catalog()`.
@@ -31,7 +32,8 @@ const contractCases = Object.values(contractFixtures)
   .reduce((a, b) => a + b, 0);
 
 const version = '0.31.0';
-const hero = figure('market-regime-hero', 'Market regime chart');
+// A calm price chart of a fictitious instrument, as Kestrel draws its own with chartlet.
+const hero = chartletChart('demo-chart');
 const composite = figure('composite-signal', 'Composite signal chart');
 
 const cargoToml = `[dependencies]
