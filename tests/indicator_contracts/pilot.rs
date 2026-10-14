@@ -1,44 +1,35 @@
 //! Indicator contracts (plan 62, pilot): SMA, RSI, ATR and the order block, each run bar by bar
 //! against a complete expected sequence from `tests/fixtures/contract_pilot.txt`.
 //!
-//! Test names start with the catalog name, so `cargo test --test indicator_contracts rsi` checks
-//! one indicator. Not specified in the pilot (and therefore not checked here): the RSI context
+//! Not specified in the pilot (and therefore not checked here): the RSI context
 //! line with its divergences and the exhaustion alerts — both need more history than the cases
 //! carry —, the ATR smoothing modes other than Wilder, and source mapping.
 
-mod common;
-
-use std::collections::HashMap;
-
-use common::contract::{check, load, ContractCase};
-use kestrel_chartkit::indicator::registry::{build_checked, RegistryError};
+use super::{assert_holds, assert_rejected, Coverage, Status::Specified};
+use crate::common::contract::{check, load, ContractCase};
 use kestrel_chartkit::IndicatorUnit;
 
-const FIXTURE: &str = include_str!("fixtures/contract_pilot.txt");
+const FIXTURE: &str = include_str!("../fixtures/contract_pilot.txt");
 
 fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
     load(FIXTURE, name, indicator, unit)
 }
 
-fn assert_holds(case: &ContractCase) {
-    let failures = check(case);
-    assert!(
-        failures.is_empty(),
-        "{} deviations:\n  {}",
-        failures.len(),
-        failures.join("\n  ")
-    );
-}
+pub const PENDING: &[&str] = &[];
 
-/// A configuration outside the parameter contract is rejected, not built with a fallback.
-fn assert_rejected(indicator: &str, params: &[(&str, f64)]) {
-    let params: HashMap<String, f64> = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
-    match build_checked(indicator, &params) {
-        Err(RegistryError::InvalidParameter { .. } | RegistryError::UnknownParameter { .. }) => {}
-        Err(other) => panic!("{indicator} {params:?}: rejected for the wrong reason: {other}"),
-        Ok(_) => panic!("{indicator} {params:?}: built, expected a rejection"),
-    }
-}
+pub const COVERAGE: &[Coverage] = &[
+    Coverage::full("sma"),
+    Coverage {
+        indicator: "rsi",
+        values: Specified,
+        alerts: super::Status::Partial(
+            "extreme and mid crosses; divergence and exhaustion need more history than the cases",
+        ),
+        configuration: Specified,
+    },
+    Coverage::full("atr"),
+    Coverage::full("order_block"),
+];
 
 // --- SMA -------------------------------------------------------------------------------------
 

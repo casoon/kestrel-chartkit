@@ -61,6 +61,13 @@ Python 3.10 or newer; nothing else.
 | `golden_rsi_cycle_stats` | `kestrel_reference/fixtures/rsi_cycle_stats.py` |
 | `golden_reversal_types` | `kestrel_reference/fixtures/reversal_types.py` |
 | `contract_pilot` | `kestrel_reference/fixtures/contract_pilot.py` |
+| `contract_moving_averages` | `kestrel_reference/fixtures/contract_moving_averages.py` |
+| `contract_oscillators` | `kestrel_reference/fixtures/contract_oscillators.py` |
+| `contract_volatility` | `kestrel_reference/fixtures/contract_volatility.py` |
+| `contract_volume` | `kestrel_reference/fixtures/contract_volume.py` |
+| `contract_structure` | `kestrel_reference/fixtures/contract_structure.py` |
+| `contract_composites_a` | `kestrel_reference/fixtures/contract_composites_a.py` |
+| `contract_composites_b` | `kestrel_reference/fixtures/contract_composites_b.py` |
 
 The remaining fixtures state their derivation in their own header; they are being brought under
 this generator one by one.
