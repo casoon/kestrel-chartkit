@@ -11,6 +11,7 @@ export default defineConfig({
       name: 'kestrel-chartkit',
       description:
         'Rust technical analysis library, in development: streaming indicators, market regime classification, composite scoring and SVG charts.',
+      tagline: 'Technical analysis library for Rust',
       repo: 'casoon/kestrel-chartkit',
       version: '0.32.0',
       license: 'BUSL-1.1',
