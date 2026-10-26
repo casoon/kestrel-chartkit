@@ -28,8 +28,8 @@ Conventions assumed where the type documentation leaves them open:
   bars of line history and cannot occur either.
 - TSI publishes `ctx` from its first bar: the same construction with the registry's context
   lengths 50/25. Its divergence alerts are not documented on the type; assumed: once five line
-  values exist, `fast = line_t - line_(t-4)`, `slow = ctx_t - ctx_(t-4)`; `bull_divergence` when
-  fast < -5 and slow > 0, `bear_divergence` when fast > 5 and slow < 0, strength (|fast| - 5) / 5
+  values exist, `fast = line_t - line_(t-4)`, `slow = ctx_t - ctx_(t-4)`; `bull_trend_wedge` when
+  fast < -5 and slow > 0, `bear_trend_wedge` when fast > 5 and slow < 0, strength (|fast| - 5) / 5
   clamped to 0..1 (div_len 4, div_min 5 from the registry build). TSI extremes at +/-25.
 - Stochastic alerts are not documented on the type; assumed: `stoch_oversold` (0.8) when %K and
   %D are both at or below 20, otherwise `stoch_overbought` (0.8) when both are at or above 80.
@@ -332,9 +332,9 @@ def tsi_case(long_len, short_len, sig_len, bars):
             for x, y in ((fast, -5.0), (fast, 5.0), (slow, 0.0)):
                 _margin(x, y, "divergence")
             if fast < -5.0 and slow > 0.0:
-                alerts["bull_divergence"] = clamp((abs(fast) - 5.0) / 5.0, 0.0, 1.0)
+                alerts["bull_trend_wedge"] = clamp((abs(fast) - 5.0) / 5.0, 0.0, 1.0)
             if fast > 5.0 and slow < 0.0:
-                alerts["bear_divergence"] = clamp((abs(fast) - 5.0) / 5.0, 0.0, 1.0)
+                alerts["bear_trend_wedge"] = clamp((abs(fast) - 5.0) / 5.0, 0.0, 1.0)
         expected.append(((value, {"signal": sig, "ctx": c}), alerts))
     params = {"long_len": long_len, "short_len": short_len, "sig_len": sig_len}
     return _floats(params), bars, expected

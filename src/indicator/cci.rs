@@ -12,7 +12,8 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// `(price - SMA) / (0.015 * mean_abs_deviation)`, `0` for a zero deviation. **`value` is the
 /// line**: an exponential average over `avg_len` of the raw CCI, seeded with its first value.
 /// `extra["signal"]` is the same average over `sig_len` of the line; the context line uses
-/// `ctx_len`. Alerts fire on line/signal and zero crosses, on divergences and on exhaustion of
+/// `ctx_len`. Alerts fire on line/signal and zero crosses, on the trend wedge (`bull_/bear_trend_wedge`, see
+/// [`SlopeDivergence`]) and on exhaustion of
 /// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history before
 /// it can fire).
 ///
@@ -287,15 +288,15 @@ impl Indicator for Cci {
         }
         if a.bull_divergence {
             out.push(IndicatorAlert {
-                kind: "bull_divergence".to_string(),
-                note: "CCI · BULL DIVERGENCE".to_string(),
+                kind: "bull_trend_wedge".to_string(),
+                note: "CCI · BULL TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }
         if a.bear_divergence {
             out.push(IndicatorAlert {
-                kind: "bear_divergence".to_string(),
-                note: "CCI · BEAR DIVERGENCE".to_string(),
+                kind: "bear_trend_wedge".to_string(),
+                note: "CCI · BEAR TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }

@@ -353,6 +353,30 @@ fn test_scenario_candle_classification_separating_lines() {
     assert_eq!(out.extra["separating_lines"], 1.0);
 }
 
+/// Without the opening gap neither pattern exists: a continuous quote opens at the previous close,
+/// and a near-doji pair of opposite colours then matches closes and opens by construction.
+#[test]
+fn test_scenario_candle_classification_no_counterattack_or_separating_without_gap() {
+    let params: HashMap<String, f64> = [("min_range_atr".to_string(), 0.0)].into();
+    let mut ind = build_checked("candle_classification", &params).unwrap();
+
+    ind.on_bar(&Bar::new(0, 100.0, 100.6, 99.6, 100.05, 1000.0)); // tiny bullish body
+    let out = ind
+        .on_bar(&Bar::new(60, 100.05, 100.5, 99.5, 100.0, 1000.0)) // opens at the close, tiny bearish
+        .expect("output");
+
+    assert!(
+        !out.extra.contains_key("counterattack_lines"),
+        "{:?}",
+        out.extra
+    );
+    assert!(
+        !out.extra.contains_key("separating_lines"),
+        "{:?}",
+        out.extra
+    );
+}
+
 /// Matching low: two bearish candles closing at (almost) the same price.
 #[test]
 fn test_scenario_candle_classification_matching_low() {

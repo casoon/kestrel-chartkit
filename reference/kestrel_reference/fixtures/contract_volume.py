@@ -433,8 +433,8 @@ def persistent_profile_case(lookback, width, bars):
 
 def money_flow_profile_case(lookback, rows, va_pct, bars):
     """Profile per window from `volume._money_flow_profile` (its last output is the full window's);
-    alerts from the second output on with the crate's crossing tolerance: `vah_breakout` /
-    `val_breakdown` with strength (distance beyond the level) / (VAH - VAL) clamped to 0..1,
+    alerts from the second output on with the crate's crossing tolerance: `bull_value_area_break` /
+    `bear_value_area_break` with strength (distance beyond the level) / (VAH - VAL) clamped to 0..1,
     `bull_bias` / `bear_bias` 1.0 on crosses of bull_pct through 50."""
     expected, previous = [], None
     for i in range(len(bars)):
@@ -450,9 +450,9 @@ def money_flow_profile_case(lookback, rows, va_pct, bars):
             p_close, p_vah, p_val, p_bull = previous
             width = vah - val
             if crossed_over(p_close, p_vah, close, vah):
-                alerts["vah_breakout"] = clamp((close - vah) / width, 0.0, 1.0)
+                alerts["bull_value_area_break"] = clamp((close - vah) / width, 0.0, 1.0)
             if crossed_under(p_close, p_val, close, val):
-                alerts["val_breakdown"] = clamp((val - close) / width, 0.0, 1.0)
+                alerts["bear_value_area_break"] = clamp((val - close) / width, 0.0, 1.0)
             if crossed_over(p_bull, 50.0, bull, 50.0):
                 alerts["bull_bias"] = 1.0
             if crossed_under(p_bull, 50.0, bull, 50.0):

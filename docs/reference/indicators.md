@@ -1478,7 +1478,7 @@ Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real v
 
 ### `overextension_risk`
 
-Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)
+Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)
 
 [See it in the showcase](../../../showcase/overextension_risk/)
 
@@ -1646,7 +1646,7 @@ RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure /
 
 ### `price_average_relation`
 
-Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down
+Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase
 
 [See it in the showcase](../../../showcase/price_average_relation/)
 
@@ -1779,7 +1779,7 @@ Accumulation Phase: accumulation (bottom) and distribution (top) as process stat
 
 ### `reversal_setup_score`
 
-Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict
+Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict
 
 [See it in the showcase](../../../showcase/reversal_setup_score/)
 

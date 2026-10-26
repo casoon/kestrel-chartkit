@@ -4984,16 +4984,16 @@ candle_classification_homing_pigeon_bars=2.0
 # candle_classification: a bearish pinbar doji at the low, then a bearish engulfing range bar
 candle_classification_gravestone_tolerance=1e-09
 candle_classification_gravestone_bars=2.0
-@candle_classification_gravestone open high low close volume value extra:bearish_engulfing extra:bearish_engulfing_range extra:bearish_pinbar extra:body_ratio extra:close_position extra:counterattack_lines extra:doji extra:gravestone_doji extra:inverted_hammer_shape extra:lower_wick_ratio extra:pattern_count extra:pressure extra:separating_lines extra:upper_wick_ratio alert:bearish_engulfing alert:bearish_engulfing_range alert:bearish_pinbar alert:counterattack_lines alert:doji alert:gravestone_doji alert:inverted_hammer_shape alert:separating_lines
-100.0 103.0 99.98 100.05 1000.0 -95.36423841059647 - - 1.0 0.01655629139072756 0.02317880794701764 - 1.0 1.0 1.0 0.006622516556290082 4.0 -95.36423841059647 - 0.9768211920529823 - - 0.9 - 0.6 0.7 0.6 -
-100.1 103.5 99.5 99.9 1000.0 -79.99999999999972 1.0 1.0 1.0 0.04999999999999716 0.10000000000000142 1.0 1.0 1.0 - 0.10000000000000142 7.0 -79.99999999999972 1.0 0.8500000000000014 0.85 0.9 0.9 0.7 0.6 0.7 - 0.7
+@candle_classification_gravestone open high low close volume value extra:bearish_engulfing extra:bearish_engulfing_range extra:bearish_pinbar extra:body_ratio extra:close_position extra:doji extra:gravestone_doji extra:inverted_hammer_shape extra:lower_wick_ratio extra:pattern_count extra:pressure extra:upper_wick_ratio alert:bearish_engulfing alert:bearish_engulfing_range alert:bearish_pinbar alert:doji alert:gravestone_doji alert:inverted_hammer_shape
+100.0 103.0 99.98 100.05 1000.0 -95.36423841059647 - - 1.0 0.01655629139072756 0.02317880794701764 1.0 1.0 1.0 0.006622516556290082 4.0 -95.36423841059647 0.9768211920529823 - - 0.9 0.6 0.7 0.6
+100.1 103.5 99.5 99.9 1000.0 -79.99999999999972 1.0 1.0 1.0 0.04999999999999716 0.10000000000000142 1.0 1.0 - 0.10000000000000142 5.0 -79.99999999999972 0.8500000000000014 0.85 0.9 0.9 0.6 0.7 -
 
 # candle_classification: a bar without range outputs 0 only; the next bar pairs with it (equal opens)
 candle_classification_flat_tolerance=1e-09
 candle_classification_flat_bars=2.0
-@candle_classification_flat open high low close volume value extra:body_ratio extra:close_position extra:lower_wick_ratio extra:pattern_count extra:pressure extra:separating_lines extra:upper_wick_ratio alert:separating_lines
-100.0 100.0 100.0 100.0 1000.0 0.0 - - - - - - - -
-100.0 100.8 99.2 100.6 1000.0 74.99999999999956 0.3749999999999978 0.8749999999999978 0.5 1.0 74.99999999999956 1.0 0.12500000000000222 0.7
+@candle_classification_flat open high low close volume value extra:body_ratio extra:close_position extra:lower_wick_ratio extra:pattern_count extra:pressure extra:upper_wick_ratio
+100.0 100.0 100.0 100.0 1000.0 0.0 - - - - - -
+100.0 100.8 99.2 100.6 1000.0 74.99999999999956 0.3749999999999978 0.8749999999999978 0.5 0.0 74.99999999999956 0.12500000000000222
 
 # candle_classification: ATR(1), lookback 1: a decline of at least 0.2 ATR names the hammer
 candle_classification_hammer_trend_tolerance=1e-09

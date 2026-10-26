@@ -1,5 +1,12 @@
 use std::collections::VecDeque;
 
+/// Trend wedge of the oscillator family (the "Trend↔RSI divergence wedge" of the Pine originals):
+/// over `div_len` bars the fast line moves by more than `div_min` against its slower context line
+/// (`bull`: fast falls while the context rises — a dip inside a rising trend; `bear`: fast rises
+/// while the context falls). **Not** a price/oscillator divergence (lower price low with a higher
+/// oscillator low) — that is [`PivotDivergenceEngine`]. Emitted as `bull_/bear_trend_wedge` by RSI,
+/// Stoch RSI, CCI, Williams %R, Fisher Transform and TSI; up to 0.33 the kinds were named
+/// `bull_/bear_divergence`.
 #[derive(Debug, Clone)]
 pub struct SlopeDivergence {
     div_len: usize,

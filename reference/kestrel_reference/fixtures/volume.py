@@ -318,9 +318,9 @@ def _money_flow_profile(bars, lookback, rows, va_pct):
         if previous is not None:
             p_close, p_vah, p_val, p_bull = previous
             if p_close <= p_vah and close > vah:
-                alerts.add("vah_breakout")
+                alerts.add("bull_value_area_break")
             if p_close >= p_val and close < val:
-                alerts.add("val_breakdown")
+                alerts.add("bear_value_area_break")
             if p_bull <= 50.0 and bull_pct > 50.0:
                 alerts.add("bull_bias")
             if p_bull >= 50.0 and bull_pct < 50.0:

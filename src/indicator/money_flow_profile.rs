@@ -233,8 +233,8 @@ impl Indicator for MoneyFlowProfileEngine {
 
         let bull_pct = bull_flow.iter().sum::<f64>() / tot_sum * 100.0;
 
-        let mut vah_breakout = false;
-        let mut val_breakdown = false;
+        let mut bull_value_area_break = false;
+        let mut bear_value_area_break = false;
         let mut bull_bias = false;
         let mut bear_bias = false;
         let mut vah_breakout_strength = 0.0;
@@ -246,8 +246,8 @@ impl Indicator for MoneyFlowProfileEngine {
             self.prev_val,
             self.prev_bull_pct,
         ) {
-            vah_breakout = crossed_over(prev_close, prev_vah, bar.close, vah_price);
-            val_breakdown = crossed_under(prev_close, prev_val, bar.close, val_price);
+            bull_value_area_break = crossed_over(prev_close, prev_vah, bar.close, vah_price);
+            bear_value_area_break = crossed_under(prev_close, prev_val, bar.close, val_price);
             bull_bias = crossed_over(prev_bull_pct, 50.0, bull_pct, 50.0);
             bear_bias = crossed_under(prev_bull_pct, 50.0, bull_pct, 50.0);
 
@@ -264,16 +264,16 @@ impl Indicator for MoneyFlowProfileEngine {
             };
         }
 
-        if vah_breakout {
+        if bull_value_area_break {
             self.alerts.push(IndicatorAlert::new(
-                "vah_breakout",
+                "bull_value_area_break",
                 "Money Flow Profile: close crossed above the Value Area High",
                 vah_breakout_strength,
             ));
         }
-        if val_breakdown {
+        if bear_value_area_break {
             self.alerts.push(IndicatorAlert::new(
-                "val_breakdown",
+                "bear_value_area_break",
                 "Money Flow Profile: close crossed below the Value Area Low",
                 val_breakdown_strength,
             ));

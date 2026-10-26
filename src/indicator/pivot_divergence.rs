@@ -165,10 +165,23 @@ impl PivotDivergence {
 }
 
 impl Indicator for PivotDivergence {
+    /// RSI keeps the two historical names; every other oscillator names itself, so two instances
+    /// on different oscillators report apart (`wavetrend_divergence` with pivots in the
+    /// oscillator, `wavetrend_pivot_divergence` with pivots in the price, likewise `stoch_rsi_`,
+    /// `williams_r_`, `cci_`).
     fn name(&self) -> &str {
-        match self.pivot_source {
-            PivotSource::Price => "pivot_divergence",
-            PivotSource::Oscillator => "oscillator_pivot_divergence",
+        use DivergenceOscillator as O;
+        match (self.pivot_source, self.oscillator) {
+            (PivotSource::Price, O::Rsi) => "pivot_divergence",
+            (PivotSource::Oscillator, O::Rsi) => "oscillator_pivot_divergence",
+            (PivotSource::Oscillator, O::WaveTrend) => "wavetrend_divergence",
+            (PivotSource::Oscillator, O::StochRsi) => "stoch_rsi_divergence",
+            (PivotSource::Oscillator, O::WilliamsR) => "williams_r_divergence",
+            (PivotSource::Oscillator, O::Cci) => "cci_divergence",
+            (PivotSource::Price, O::WaveTrend) => "wavetrend_pivot_divergence",
+            (PivotSource::Price, O::StochRsi) => "stoch_rsi_pivot_divergence",
+            (PivotSource::Price, O::WilliamsR) => "williams_r_pivot_divergence",
+            (PivotSource::Price, O::Cci) => "cci_pivot_divergence",
         }
     }
 

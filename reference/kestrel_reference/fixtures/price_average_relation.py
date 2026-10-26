@@ -48,7 +48,7 @@ N_BARS = 900
 CHECKPOINTS = [200, 333, 450, 617, 780, 899]
 EVENTS = [
     "bull_pullback", "bear_pullback", "bull_momentum_release", "bear_momentum_release",
-    "do_not_chase_up", "do_not_chase_down", "bear_exhaustion", "bull_exhaustion",
+    "bear_do_not_chase", "bull_do_not_chase", "bear_exhaustion", "bull_exhaustion",
     "bear_relationship_break", "bull_relationship_break", "bull_divergence", "bear_divergence",
     "bull_turn", "bear_turn",
 ]
@@ -450,8 +450,8 @@ def compute(bars):
             ("pullback", "bear_pullback", cond_pullback(t, False)),
             ("momentum", "bull_momentum_release", cond_momentum(t, True)),
             ("momentum", "bear_momentum_release", cond_momentum(t, False)),
-            ("chase", "do_not_chase_up", cond_chase(t, True)),
-            ("chase", "do_not_chase_down", cond_chase(t, False)),
+            ("chase", "bear_do_not_chase", cond_chase(t, True)),
+            ("chase", "bull_do_not_chase", cond_chase(t, False)),
             ("exhaustion", "bear_exhaustion", cond_exhaustion(t, True)),
             ("exhaustion", "bull_exhaustion", cond_exhaustion(t, False)),
             ("broken", "bear_relationship_break", transition(broken_raw, t, True)),

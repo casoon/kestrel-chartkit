@@ -607,8 +607,8 @@ def price_average_relation_blocks():
 # Strength (assumed convention; the type documents none): the side's score / 100 clamped to
 # 0.05..1.
 
-OER_TOP = {1.0: "do_not_chase_up", -1.0: "bear_trend_exhaustion", 0.0: "bear_range_fade"}
-OER_BOT = {-1.0: "do_not_chase_down", 1.0: "bull_trend_exhaustion", 0.0: "bull_range_fade"}
+OER_TOP = {1.0: "bear_do_not_chase", -1.0: "bear_trend_exhaustion", 0.0: "bear_range_fade"}
+OER_BOT = {-1.0: "bull_do_not_chase", 1.0: "bull_trend_exhaustion", 0.0: "bull_range_fade"}
 
 
 def overextension_signals(out, n, gap):

@@ -24,7 +24,7 @@
 //!
 //! | alert | condition |
 //! |---|---|
-//! | `do_not_chase_up` / `do_not_chase_down` | top in an uptrend / bottom in a downtrend ("continuation risk") |
+//! | `bear_do_not_chase` / `bull_do_not_chase` | top in an uptrend / bottom in a downtrend ("continuation risk") |
 //! | `bear_trend_exhaustion` / `bull_trend_exhaustion` | top in a downtrend / bottom in an uptrend |
 //! | `bear_range_fade` / `bull_range_fade` | top / bottom without a trend regime |
 //!
@@ -573,7 +573,7 @@ impl Indicator for OverextensionRisk {
         if top_raw && gap_ok(self.last_top) {
             self.last_top = Some(t);
             let kind = if regime_up {
-                "do_not_chase_up"
+                "bear_do_not_chase"
             } else if regime_dn {
                 "bear_trend_exhaustion"
             } else {
@@ -588,7 +588,7 @@ impl Indicator for OverextensionRisk {
         if bot_raw && gap_ok(self.last_bot) {
             self.last_bot = Some(t);
             let kind = if regime_dn {
-                "do_not_chase_down"
+                "bull_do_not_chase"
             } else if regime_up {
                 "bull_trend_exhaustion"
             } else {
@@ -650,7 +650,7 @@ pub const OVEREXTENSION_RISK_DEFINITION: super::definition::IndicatorDefinition 
     super::definition::IndicatorDefinition {
         name: "overextension_risk",
         aliases: &[],
-        description: "Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts do_not_chase_up/down (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+        description: "Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
         params: &[
             super::definition::ParamSpec::number("w_stretch", 40.0, 0.0, 100.0).meaning("weight of the stretch role"),
             super::definition::ParamSpec::number("w_exhaust", 35.0, 0.0, 100.0).meaning("weight of the exhaustion role"),

@@ -56,7 +56,7 @@
 //! `bear_candidate` (status becomes candidate), `bull_spring`, `bear_upthrust`, `bull_major_bos`,
 //! `bear_major_bos`, `bull_choch`, `bear_choch`, `bear_failed_bull_reversal` /
 //! `bull_failed_bear_reversal` (a failed side while the other has a setup — a trap hint),
-//! `long_signal_invalidated` / `short_signal_invalidated` (a former candidate failed), `conflict`
+//! `bear_signal_invalidated` / `bull_signal_invalidated` (a former candidate failed), `conflict`
 //! (two or more conflicts, on entry). Candidate and conflict fire on entry rather
 //! than on every bar.
 //!
@@ -982,10 +982,10 @@ impl Indicator for ReversalSetupScore {
             fire("bear_action", bear_q / 100.0);
         }
         if bull.failed && !bull.prev_failed && bull.was_candidate {
-            fire("long_signal_invalidated", 0.6);
+            fire("bear_signal_invalidated", 0.6);
         }
         if bear.failed && !bear.prev_failed && bear.was_candidate {
-            fire("short_signal_invalidated", 0.6);
+            fire("bull_signal_invalidated", 0.6);
         }
         if bull_status == 5 && bull.prev_status != 5 {
             fire("bull_candidate", bull_q / 100.0);
@@ -1071,7 +1071,7 @@ pub const REVERSAL_SETUP_SCORE_DEFINITION: super::definition::IndicatorDefinitio
     super::definition::IndicatorDefinition {
         name: "reversal_setup_score",
         aliases: &[],
-        description: "Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/short_signal_invalidated, conflict",
+        description: "Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict",
         params: &[
 
         ],

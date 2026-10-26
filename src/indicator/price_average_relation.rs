@@ -26,7 +26,7 @@
 //! |---|---|
 //! | `bull_pullback` / `bear_pullback` | established, respected trend; prior extension in trend direction; rejection candle at the MA; bounded exhaustion |
 //! | `bull_momentum_release` / `bear_momentum_release` | compression in the last `compression_len` bars, distance crosses the band, slope, acceleration and efficiency agree |
-//! | `do_not_chase_up` / `do_not_chase_down` | extension crosses the chase threshold inside a trend — a warning, not a reversal |
+//! | `bear_do_not_chase` / `bull_do_not_chase` | extension crosses the chase threshold inside a trend — a warning, not a reversal |
 //! | `bear_exhaustion` / `bull_exhaustion` | exhaustion crosses its threshold; `bear_*` = an up-move tiring |
 //! | `bear_relationship_break` / `bull_relationship_break` | an established up-/downtrend: sustained closes on the other side of the MA and a flattening slope (transition only) |
 //! | `bull_divergence` / `bear_divergence` | regular divergence between strict price pivots and the oscillator at the pivot bar |
@@ -904,12 +904,12 @@ impl Indicator for PriceAverageRelation {
             (MOMENTUM, "bear_momentum_release", self.momentum(false)),
             (
                 CHASE,
-                "do_not_chase_up",
+                "bear_do_not_chase",
                 self.crossing(true, true, |r| r.extension, c.chase_extension),
             ),
             (
                 CHASE,
-                "do_not_chase_down",
+                "bull_do_not_chase",
                 self.crossing(false, true, |r| r.extension, c.chase_extension),
             ),
             (
@@ -989,7 +989,7 @@ pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinit
     super::definition::IndicatorDefinition {
         name: "price_average_relation",
         aliases: &[],
-        description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, do_not_chase_up/down",
+        description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase",
         params: &[
             super::definition::ParamSpec::count("ma_kind", 0, 0, 3).meaning("the moving average price is related to: 0 EMA, 1 SMA, 2 RMA, 3 ALMA"),
             super::definition::ParamSpec::count("ma_len", 50, 2, 1000).meaning("bars in the moving average"),

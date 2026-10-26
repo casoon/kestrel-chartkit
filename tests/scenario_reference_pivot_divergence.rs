@@ -121,3 +121,35 @@ fn the_series_never_looks_ahead() {
         assert_eq!(events, prefix, "cut {cut}");
     }
 }
+
+/// Jede Instanz trägt den Namen ihres Oszillators (RSI behält die beiden alten Namen), damit
+/// zwei Divergenz-Indikatoren auf verschiedenen Oszillatoren getrennt melden.
+#[test]
+fn each_oscillator_names_its_divergence() {
+    use DivergenceOscillator as O;
+    for (osc, preis, oszillator) in [
+        (O::Rsi, "pivot_divergence", "oscillator_pivot_divergence"),
+        (
+            O::WaveTrend,
+            "wavetrend_pivot_divergence",
+            "wavetrend_divergence",
+        ),
+        (
+            O::StochRsi,
+            "stoch_rsi_pivot_divergence",
+            "stoch_rsi_divergence",
+        ),
+        (
+            O::WilliamsR,
+            "williams_r_pivot_divergence",
+            "williams_r_divergence",
+        ),
+        (O::Cci, "cci_pivot_divergence", "cci_divergence"),
+    ] {
+        assert_eq!(PivotDivergence::new(osc, 3, 3, 5, 60, 5).name(), preis);
+        assert_eq!(
+            PivotDivergence::oscillator_pivots(osc, 3, 3, 5, 60, 1).name(),
+            oszillator
+        );
+    }
+}

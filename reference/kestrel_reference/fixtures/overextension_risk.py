@@ -27,7 +27,7 @@ NEAR_ATR = 0.75
 
 N_BARS = 900
 CHECKPOINTS = [120, 230, 333, 450, 617, 690, 780, 899]
-EVENTS = ["do_not_chase_up", "do_not_chase_down", "bear_trend_exhaustion",
+EVENTS = ["bear_do_not_chase", "bull_do_not_chase", "bear_trend_exhaustion",
           "bull_trend_exhaustion", "bear_range_fade", "bull_range_fade"]
 
 
@@ -198,12 +198,12 @@ def compute(bars):
         bot_sig = bot >= bot_th and bot_reacted and (last_bot is None or t - last_bot > GAP)
         if top_sig:
             last_top = t
-            kind = "do_not_chase_up" if regime_up else (
+            kind = "bear_do_not_chase" if regime_up else (
                 "bear_trend_exhaustion" if regime_dn else "bear_range_fade")
             events[kind].append(t)
         if bot_sig:
             last_bot = t
-            kind = "do_not_chase_down" if regime_dn else (
+            kind = "bull_do_not_chase" if regime_dn else (
                 "bull_trend_exhaustion" if regime_up else "bull_range_fade")
             events[kind].append(t)
 
@@ -230,7 +230,7 @@ HEADER = [
     "from the second bar); population standard deviation; StochRSI na when the RSI range is zero;",
     "MFI flow from the second bar, na (then 50) while its window has no volume; pivots strict on",
     "both sides. A bar reports when every role input exists. Signal kinds by regime: top in an",
-    "uptrend do_not_chase_up, in a downtrend bear_trend_exhaustion, in a range bear_range_fade;",
+    "uptrend bear_do_not_chase, in a downtrend bear_trend_exhaustion, in a range bear_range_fade;",
     "bottom mirrored.",
     "",
     "Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).",

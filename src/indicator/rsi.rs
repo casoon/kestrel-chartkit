@@ -88,9 +88,9 @@ impl ChangeSmoother {
 /// raw RSI itself.
 ///
 /// `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
-/// `ctx_len` changes (default 100), present once that many changes exist; divergences are judged
-/// between line and context. Alerts fire on line/signal crosses (inside the extreme zones when
-/// `require_extreme_zone` is set), on crosses of `mid_line`, on divergences and on exhaustion of
+/// `ctx_len` changes (default 100), present once that many changes exist; the trend wedge is judged
+/// between line and context ([`SlopeDivergence`]). Alerts fire on line/signal crosses (inside the extreme zones when
+/// `require_extreme_zone` is set), on crosses of `mid_line`, on the trend wedge (`bull_/bear_trend_wedge`) and on exhaustion of
 /// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history on top
 /// of the warmup before it can fire).
 ///
@@ -387,15 +387,15 @@ impl Indicator for Rsi {
         }
         if a.bull_divergence {
             out.push(IndicatorAlert {
-                kind: "bull_divergence".to_string(),
-                note: "RSI · BULL DIVERGENCE".to_string(),
+                kind: "bull_trend_wedge".to_string(),
+                note: "RSI · BULL TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }
         if a.bear_divergence {
             out.push(IndicatorAlert {
-                kind: "bear_divergence".to_string(),
-                note: "RSI · BEAR DIVERGENCE".to_string(),
+                kind: "bear_trend_wedge".to_string(),
+                note: "RSI · BEAR TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }

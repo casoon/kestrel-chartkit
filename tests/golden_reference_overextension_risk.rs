@@ -8,8 +8,8 @@ use std::collections::HashMap;
 const GOLDEN: &str = include_str!("fixtures/golden_overextension_risk.txt");
 const CHECKPOINTS: [usize; 8] = [120, 230, 333, 450, 617, 690, 780, 899];
 const EVENTS: [&str; 6] = [
-    "do_not_chase_up",
-    "do_not_chase_down",
+    "bear_do_not_chase",
+    "bull_do_not_chase",
     "bear_trend_exhaustion",
     "bull_trend_exhaustion",
     "bear_range_fade",

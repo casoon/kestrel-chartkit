@@ -16,7 +16,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// **`value` is the line**: `Ema(avg_len)` over the raw value with the first-sample seed.
 /// `extra["signal"]` is `Ema(sig_len)` over the line; the context line runs over `ctx_len` bars.
 /// Alerts fire on line/signal crosses inside the extreme zones, on crosses of `mid_line` and on
-/// divergences.
+/// the trend wedge (`bull_/bear_trend_wedge`, see [`SlopeDivergence`]).
 ///
 /// First output: with the `wpr_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct WilliamsR {
@@ -260,15 +260,15 @@ impl Indicator for WilliamsR {
         }
         if a.bull_divergence {
             out.push(IndicatorAlert {
-                kind: "bull_divergence".to_string(),
-                note: "WILLIAMS %R · BULL DIVERGENCE".to_string(),
+                kind: "bull_trend_wedge".to_string(),
+                note: "WILLIAMS %R · BULL TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }
         if a.bear_divergence {
             out.push(IndicatorAlert {
-                kind: "bear_divergence".to_string(),
-                note: "WILLIAMS %R · BEAR DIVERGENCE".to_string(),
+                kind: "bear_trend_wedge".to_string(),
+                note: "WILLIAMS %R · BEAR TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }

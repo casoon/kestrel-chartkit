@@ -1148,7 +1148,8 @@ def candle_pair(m, prev, bar, found, cfg):
         if (prev_bullish and not m["bullish"] and h < pl) or (prev_bearish and m["bullish"] and l > ph):
             out.append("kicking")
     tol = cfg["tweezer_tolerance"]
-    if prev_bullish != m["bullish"]:
+    # Both need the classic opening gap: no match when the bar opens at the previous close.
+    if prev_bullish != m["bullish"] and not nearly_equal(o, pc, tol):
         if nearly_equal(c, pc, tol):
             out.append("counterattack_lines")
         if nearly_equal(o, po, tol):

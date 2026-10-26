@@ -522,8 +522,8 @@ def leg_character_case(bars, pivot_left=5, pivot_right=5, max_leg_bars=350, min_
 # quality / 100 where the alert is about a ranked opportunity (action, candidate).
 REVERSAL_SETUP_STRENGTH = {
     "bull_review": 0.5, "bear_review": 0.5, "bull_action": "bull_quality",
-    "bear_action": "bear_quality", "long_signal_invalidated": 0.6,
-    "short_signal_invalidated": 0.6, "bull_candidate": "bull_quality",
+    "bear_action": "bear_quality", "bear_signal_invalidated": 0.6,
+    "bull_signal_invalidated": 0.6, "bull_candidate": "bull_quality",
     "bear_candidate": "bear_quality", "conflict": 0.4, "bull_spring": 0.5, "bear_upthrust": 0.5,
     "bull_major_bos": 0.6, "bear_major_bos": 0.6, "bear_failed_bull_reversal": 0.5,
     "bull_failed_bear_reversal": 0.5, "bull_choch": 0.5, "bear_choch": 0.5,

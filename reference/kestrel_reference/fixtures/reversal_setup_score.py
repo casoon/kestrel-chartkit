@@ -14,8 +14,8 @@ NAME = "golden_reversal_setup_score"
 N_BARS = 1000
 CHECKPOINTS = [90, 233, 377, 512, 640, 777, 901, 999]
 EVENTS = [
-    "bull_review", "bear_review", "bull_action", "bear_action", "long_signal_invalidated",
-    "short_signal_invalidated", "bull_candidate", "bear_candidate", "conflict", "bull_spring",
+    "bull_review", "bear_review", "bull_action", "bear_action", "bear_signal_invalidated",
+    "bull_signal_invalidated", "bull_candidate", "bear_candidate", "conflict", "bull_spring",
     "bear_upthrust", "bull_major_bos", "bear_major_bos", "bear_failed_bull_reversal",
     "bull_failed_bear_reversal", "bull_choch", "bear_choch",
 ]
@@ -538,9 +538,9 @@ def compute(bars):
                 and not s_trend_c and c[t] < st_ and sq >= 50:
             fired.append("bear_action")
         if side["bull"]["failed"] and not side["bull"]["prev_failed"] and side["bull"]["was_cand"]:
-            fired.append("long_signal_invalidated")
+            fired.append("bear_signal_invalidated")
         if side["bear"]["failed"] and not side["bear"]["prev_failed"] and side["bear"]["was_cand"]:
-            fired.append("short_signal_invalidated")
+            fired.append("bull_signal_invalidated")
         if b_status == "CANDIDATE" and side["bull"]["prev_status"] != 5:
             fired.append("bull_candidate")
         if s_status == "CANDIDATE" and side["bear"]["prev_status"] != 5:

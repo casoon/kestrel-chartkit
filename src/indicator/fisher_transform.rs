@@ -290,15 +290,15 @@ impl Indicator for FisherTransform {
         }
         if a.bull_divergence {
             out.push(IndicatorAlert {
-                kind: "bull_divergence".to_string(),
-                note: "FISHER · BULL DIVERGENCE".to_string(),
+                kind: "bull_trend_wedge".to_string(),
+                note: "FISHER · BULL TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }
         if a.bear_divergence {
             out.push(IndicatorAlert {
-                kind: "bear_divergence".to_string(),
-                note: "FISHER · BEAR DIVERGENCE".to_string(),
+                kind: "bear_trend_wedge".to_string(),
+                note: "FISHER · BEAR TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }

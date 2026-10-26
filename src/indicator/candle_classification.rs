@@ -630,7 +630,12 @@ impl CandleClassificationEngine {
         // Counterattack lines / separating lines: opposite colours, one price matching almost
         // exactly — the close for counterattack, the open for separating lines. Reusing the
         // tweezer tolerance rather than a new threshold for the same "almost equal" question.
-        if prev_bullish != m.bullish {
+        // Both need the opening gap of their classic definition — counterattack opens away from
+        // the previous close and comes back to it, separating lines open back at the previous
+        // open. Without that gap (a continuous quote opens at the previous close) any near-doji
+        // pair of opposite colours would match.
+        let eroeffnungsluecke = !nahezu_gleich(bar.open, prev.close, cfg.tweezer_tolerance);
+        if prev_bullish != m.bullish && eroeffnungsluecke {
             if nahezu_gleich(bar.close, prev.close, cfg.tweezer_tolerance) {
                 mark(
                     found,

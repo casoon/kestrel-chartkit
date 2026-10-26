@@ -12,7 +12,7 @@
 # from the second bar); population standard deviation; StochRSI na when the RSI range is zero;
 # MFI flow from the second bar, na (then 50) while its window has no volume; pivots strict on
 # both sides. A bar reports when every role input exists. Signal kinds by regime: top in an
-# uptrend do_not_chase_up, in a downtrend bear_trend_exhaustion, in a range bear_range_fade;
+# uptrend bear_do_not_chase, in a downtrend bear_trend_exhaustion, in a range bear_range_fade;
 # bottom mirrored.
 #
 # Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).
@@ -136,20 +136,20 @@ cp899_bot_thresh=40.0
 cp899_regime=0.0
 
 # events
-ev_do_not_chase_up_n=15.0
-ev_do_not_chase_up_0=89.0
-ev_do_not_chase_up_1=102.0
-ev_do_not_chase_up_2=165.0
-ev_do_not_chase_up_3=183.0
-ev_do_not_chase_up_4=222.0
-ev_do_not_chase_up_5=240.0
-ev_do_not_chase_down_n=7.0
-ev_do_not_chase_down_0=273.0
-ev_do_not_chase_down_1=347.0
-ev_do_not_chase_down_2=402.0
-ev_do_not_chase_down_3=411.0
-ev_do_not_chase_down_4=461.0
-ev_do_not_chase_down_5=470.0
+ev_bear_do_not_chase_n=15.0
+ev_bear_do_not_chase_0=89.0
+ev_bear_do_not_chase_1=102.0
+ev_bear_do_not_chase_2=165.0
+ev_bear_do_not_chase_3=183.0
+ev_bear_do_not_chase_4=222.0
+ev_bear_do_not_chase_5=240.0
+ev_bull_do_not_chase_n=7.0
+ev_bull_do_not_chase_0=273.0
+ev_bull_do_not_chase_1=347.0
+ev_bull_do_not_chase_2=402.0
+ev_bull_do_not_chase_3=411.0
+ev_bull_do_not_chase_4=461.0
+ev_bull_do_not_chase_5=470.0
 ev_bear_trend_exhaustion_n=0.0
 ev_bull_trend_exhaustion_n=0.0
 ev_bear_range_fade_n=1.0

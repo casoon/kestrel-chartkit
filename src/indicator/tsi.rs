@@ -241,15 +241,15 @@ impl Indicator for Tsi {
         }
         if a.bull_divergence {
             out.push(IndicatorAlert {
-                kind: "bull_divergence".to_string(),
-                note: "TSI · BULL DIVERGENCE".to_string(),
+                kind: "bull_trend_wedge".to_string(),
+                note: "TSI · BULL TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }
         if a.bear_divergence {
             out.push(IndicatorAlert {
-                kind: "bear_divergence".to_string(),
-                note: "TSI · BEAR DIVERGENCE".to_string(),
+                kind: "bear_trend_wedge".to_string(),
+                note: "TSI · BEAR TREND WEDGE".to_string(),
                 strength: a.divergence_strength,
             });
         }

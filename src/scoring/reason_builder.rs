@@ -25,6 +25,7 @@ pub fn score_indicator(
                 reasons.push(alert.note.clone());
             }
             "bull_divergence"
+            | "bull_trend_wedge"
             | "bullish_kangaroo_tail"
             | "bullish_engulfing"
             | "bullish_tweezer"
@@ -46,6 +47,7 @@ pub fn score_indicator(
                 reasons.push(alert.note.clone());
             }
             "bear_divergence"
+            | "bear_trend_wedge"
             | "bearish_kangaroo_tail"
             | "bearish_engulfing"
             | "bearish_tweezer"
