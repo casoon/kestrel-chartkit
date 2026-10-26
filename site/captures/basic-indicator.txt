@@ -1,0 +1,16 @@
+bar  0: close=44.34  RSI(14)=<warming up>
+bar  1: close=44.09  RSI(14)=<warming up>
+bar  2: close=44.15  RSI(14)=<warming up>
+bar  3: close=43.61  RSI(14)=<warming up>
+bar  4: close=44.33  RSI(14)=<warming up>
+bar  5: close=44.83  RSI(14)=<warming up>
+bar  6: close=45.10  RSI(14)=<warming up>
+bar  7: close=45.42  RSI(14)=<warming up>
+bar  8: close=45.84  RSI(14)=<warming up>
+bar  9: close=46.08  RSI(14)=<warming up>
+bar 10: close=45.89  RSI(14)=<warming up>
+bar 11: close=46.03  RSI(14)=<warming up>
+bar 12: close=45.61  RSI(14)=<warming up>
+bar 13: close=46.28  RSI(14)=<warming up>
+bar 14: close=46.28  RSI(14)=70.46
+bar 15: close=46.00  RSI(14)=68.36

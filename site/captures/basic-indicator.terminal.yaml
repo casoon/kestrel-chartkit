@@ -1,0 +1,15 @@
+# The start-page scene: basic-indicator.txt, the captured run of the basic_indicator example
+# (see capture.sh), shown unchanged. 48 columns, so one scene serves desktop and phones.
+version: 1
+terminal:
+  title: kestrel-chartkit
+  cols: 48
+  rows: 18
+  theme: catppuccin-mocha
+steps:
+  - run: cargo run -q --example basic_indicator
+  - wait: 900
+  - show: basic-indicator.txt
+    lang: text
+    delay: 90
+  - wait: 6000
