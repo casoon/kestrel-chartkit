@@ -14,6 +14,7 @@ import {
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
+import config from 'virtual:casoon-pages/config';
 import { indicators, inlineChart, spec } from '../chartlet';
 // Animated SVG built with castwright from site/captures/basic-indicator.terminal.yaml: the captured
 // run of examples/basic_indicator.rs (see site/captures/capture.sh), unchanged.
@@ -33,7 +34,8 @@ const contractCases = Object.values(contractFixtures)
   .map((text) => text.split('\n').filter((line) => line.startsWith('@')).length)
   .reduce((a, b) => a + b, 0);
 
-const version = '0.32.0';
+// The release the theme reads from Cargo.toml, so install line and badge follow every release.
+const version = config.version;
 // A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
 // chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
 const hero = inlineChart(spec('hero'), 'hero');
