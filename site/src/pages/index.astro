@@ -4,6 +4,7 @@ import {
   Badges,
   BuildOutput,
   Callout,
+  Button,
   CodeBlock,
   Facts,
   Features,
@@ -14,6 +15,9 @@ import {
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
 import { indicators, inlineChart, spec } from '../chartlet';
+// Animated SVG built with castwright from site/captures/basic-indicator.terminal.yaml: the captured
+// run of examples/basic_indicator.rs (see site/captures/capture.sh), unchanged.
+import basicIndicatorSvg from '../../captures/basic-indicator.svg?url';
 
 // Written by `cargo run --example site_showcase`: one entry per indicator of `catalog()`.
 const indicatorCount = indicators.length;
@@ -33,30 +37,23 @@ const version = '0.32.0';
 // A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
 // chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
 const hero = inlineChart(spec('hero'), 'hero');
+// The same chart laid out for phones, so its labels stay readable at 390 px.
+const heroNarrow = inlineChart({ ...spec('hero'), width: 380, height: 660 }, 'hero-narrow');
 const regime = inlineChart(spec('regime'), 'regime');
 
-const cargoToml = `[dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v${version}" }`;
+const mainRs = `let params = HashMap::from([("rsi_len".to_string(), 14.0)]);
+let mut rsi = build_checked("rsi", &params)?;
 
-const mainRs = `use kestrel_chartkit::{build_checked, Bar, Indicator};
-use std::collections::HashMap;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let params = HashMap::from([("rsi_len".to_string(), 14.0)]);
-    let mut rsi = build_checked("rsi", &params)?;
-
-    let bar = Bar::try_new(1700000000, 100.0, 105.0, 95.0, 104.0, 1000.0)?;
-    if let Some(output) = rsi.on_bar(&bar) {
-        println!("RSI: {:.2}", output.value);
-    }
-    Ok(())
+let bar = Bar::try_new(1700000000, 100.0, 105.0, 95.0, 104.0, 1000.0)?;
+if let Some(output) = rsi.on_bar(&bar) {
+    println!("RSI: {:.2}", output.value);
 }`;
 ---
 
 <Base>
   <Hero
-    title="Technical analysis as plain, testable Rust: indicators, regimes and signals."
-    lead="kestrel-chartkit turns a stream of price bars into the readings a trading tool needs: indicator values, the current market regime and a composite signal that explains itself. It is a library of mathematics, nothing more: you bring the bars, it computes, and a renderer of your choice draws."
+    title="Price bars in, readings out."
+    lead="kestrel-chartkit is technical analysis as plain, testable Rust. Feed it price bars one at a time and it returns indicator values, the current market regime and a composite signal that explains itself. It computes, nothing more: you bring the bars, a renderer of your choice draws."
   >
     <Install
       commands={[
@@ -72,15 +69,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       <Badge>BUSL-1.1</Badge>
       <Badge>Rust 1.87+</Badge>
     </Badges>
-    <div slot="output" set:html={hero} />
+    <img
+      slot="output"
+      class="terminal-demo"
+      src={basicIndicatorSvg}
+      width="427.2"
+      height="368"
+      alt="Terminal: cargo run -q --example basic_indicator streams 16 closing prices into RSI(14). Bars 0 to 13, closes from 44.34 to 46.28, print RSI(14)=<warming up>; bar 14 at close 46.28 prints RSI(14)=70.46 and bar 15 at close 46.00 prints RSI(14)=68.36."
+    />
   </Hero>
 
+  <section class="chart" aria-labelledby="chart-heading">
+    <div class="text">
+      <h2 id="chart-heading">From bars to a chart</h2>
+      <p>
+        The same streaming calls behind a whole chart: EMA 20 and EMA 50, support and resistance
+        zones from confirmed pivots, volume, RSI(14) and its latest signals. kestrel-chartkit computes
+        every value when this site is built; chartlet draws them.
+      </p>
+      <p class="note">
+        Synthetic 4-hour bars of a fictitious CASOON share with invented prices, no real quotes.
+      </p>
+      <div class="links">
+        <Button href={url('showcase/')} variant="secondary">All {String(indicatorCount)} indicators drawn</Button>
+        <Button href={url('docs/guides/visualising/')} variant="quiet">Visualising →</Button>
+      </div>
+    </div>
+    <div class="figure">
+      <div class="wide" set:html={hero} />
+      <div class="narrow" set:html={heroNarrow} />
+    </div>
+  </section>
+
+  <div class="wrap">
   <Callout type="caution" title="Work in progress">
     kestrel-chartkit is under active development and not yet a stable foundation. Indicator names,
     parameters, outputs and whole modules can still change fundamentally between versions, and
     there is no compatibility promise before 1.0. Pin a release tag and expect to adapt when you
     upgrade.
   </Callout>
+  </div>
 
   <Facts
     items={[
@@ -95,34 +123,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     items={[
       {
         title: 'Streaming by design',
-        body: 'Every indicator implements one trait, consumes one bar at a time and answers from the bar its warmup ends. The same code serves a backtest over years of history and a live feed.',
-      },
-      {
-        title: 'One definition per indicator',
-        body: `Name, aliases, every parameter with default, accepted range and meaning, and how it is built, in one place. Configuration typos and out-of-range values are errors, not silent defaults. The <a href="${url('docs/reference/indicators/')}">indicator reference</a> is generated from these definitions, the <a href="${url('showcase/')}">showcase</a> draws every one of them.`,
+        body: 'Every indicator consumes one bar at a time and answers from the bar its warmup ends. The same code serves a backtest over years of history and a live feed.',
       },
       {
         title: 'Checked against independent references',
-        body: 'Each indicator runs against expected values derived outside the crate: a second implementation of the documented formula, exact arithmetic or a hand-built scenario. A contract fixes every bar: whether a value exists, every field it carries and every alert it raises.',
+        body: `Each indicator runs against expected values derived outside the crate, and a contract fixes every bar: whether a value exists, every field it carries and every alert it raises. The <a href="${url('docs/reference/indicators/')}">indicator reference</a> lists all of them.`,
       },
       {
         title: 'Signals you can explain',
-        body: 'Regime and composite score follow a handful of fixed thresholds. A direction against the regime is vetoed, and every signal carries its subscores.',
-      },
-      {
-        title: 'Events with a known time',
-        body: 'Pivots and zones carry when they formed and when they became known. Detectors for breakouts, double bottoms, divergences and more alert on the bar the event is confirmed, never earlier.',
+        body: 'Regime and composite score follow a handful of fixed thresholds. A direction against the regime is vetoed, and every signal carries its subscores. Events alert on the bar they are confirmed, never earlier.',
       },
     ]}
   />
 
   <BuildOutput
-    caption="The market regime per bar, from classify_regime with ADX and ATR, on the fictitious CASOON share. kestrel-chartkit computes every value; chartlet draws them when this site is built. The showcase has one such chart for each of the 132 indicators."
+    caption="The market regime per bar, from classify_regime with ADX and ATR, on the fictitious CASOON share. kestrel-chartkit computes every value; chartlet draws them when this site is built."
     file="examples/site_showcase.rs"
   >
     <Fragment set:html={regime} />
   </BuildOutput>
 
+  <div class="wrap">
   <Callout type="note" title="Pure computation">
     The crate contains mathematics only: indicators, statistics and valuation formulas. It fetches
     no market data, connects to no broker or exchange, and holds no credentials, keys, account or
@@ -132,16 +153,95 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     browser, itself still in development. A composite signal is a rule-based summary of indicator
     readings, not a forecast, and nothing here is investment advice.
   </Callout>
+  </div>
 
   <Quickstart
-    lead="Add the crate from the repository, build an indicator by name and feed it bars. The full walkthrough lives in the documentation."
+    lead="Build an indicator by name and feed it bars. The quickstart in the documentation runs the full example from the terminal above."
     steps={[
       'Add the dependency, pinned to a release tag.',
       'Build an indicator from the registry with <code>build_checked</code>.',
       'Stream validated bars through <code>on_bar</code> and read the output.',
     ]}
   >
-    <CodeBlock code={cargoToml} lang="toml" title="Cargo.toml" label="Cargo.toml" />
-    <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
+    <div class="qs">
+      <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
+      <Button href={url('docs/getting-started/quickstart/')} variant="secondary">Read the quickstart</Button>
+    </div>
   </Quickstart>
 </Base>
+
+<style>
+  .terminal-demo {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+    margin-inline: auto;
+  }
+  .chart {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 48px;
+    align-items: center;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+  @media (max-width: 900px) {
+    .chart {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 24px;
+    }
+  }
+  h2 {
+    margin: 0 0 14px;
+    color: var(--heading);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .text p {
+    margin: 0 0 16px;
+    font-size: 15.5px;
+  }
+  .text .note {
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .wrap {
+    max-width: var(--max);
+    margin: 0 auto 64px;
+    padding: 0 24px;
+  }
+  .figure {
+    min-width: 0;
+  }
+  .narrow {
+    display: none;
+  }
+  @media (max-width: 640px) {
+    .wide {
+      display: none;
+    }
+    .narrow {
+      display: block;
+    }
+  }
+  .qs {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 0;
+  }
+  .qs > :global(*:first-child) {
+    align-self: stretch;
+  }
+</style>
