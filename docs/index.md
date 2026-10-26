@@ -16,7 +16,7 @@ renderer such as [chartlet](https://casoon.github.io/chartlet/) or
 
 ## What it covers
 
-- **Indicators:** 130 entries in the registry (`catalog()`), from moving averages and oscillators
+- **Indicators:** 132 entries in the registry (`catalog()`), from moving averages and oscillators
   to volume profiles and market-structure detectors. All of them implement one streaming trait,
   and each is described by one definition: parameters with defaults, ranges and meaning (see the
   [indicator reference](reference/indicators/)).

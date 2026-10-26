@@ -341,6 +341,8 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     // Its own definition since plan 49; until then an alias of `pivot_divergence` and covered
     // by its entry.
     "oscillator_pivot_divergence",
+    "wavetrend_divergence",
+    "stoch_rsi_divergence",
     "liquidity_fvg",
     "order_block",
     "bos_choch",
@@ -589,6 +591,8 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "structural_flow",
     "pivot_divergence",
     "oscillator_pivot_divergence",
+    "wavetrend_divergence",
+    "stoch_rsi_divergence",
     "liquidity_pools",
     "wyckoff",
     "trend_quality",
@@ -626,8 +630,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 130);
-        assert_eq!(catalog().len(), 130);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 132);
+        assert_eq!(catalog().len(), 132);
     }
 
     #[test]

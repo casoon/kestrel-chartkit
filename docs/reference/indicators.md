@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 130 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 132 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1403,6 +1403,42 @@ Divergence with the pivots found in the oscillator (TradingView's divergence scr
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `oscillator` | 0 | whole number 0 – 4 | oscillator code: 0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI |
+| `left` | 5 | whole number 1 – 1000 | bars left of a pivot |
+| `right` | 5 | whole number 1 – 1000 | bars right of a pivot (confirmation delay) |
+| `min_distance` | 5 | whole number 1 – 100000 | fewest bars between the two compared pivots |
+| `max_distance` | 60 | whole number 1 – 100000 | most bars between the two compared pivots |
+| `max_prior_pivots` | 1 | whole number 1 – 100 | earlier pivots each pivot is compared with |
+
+Requires `min_distance` to be smaller than `max_distance`.
+
+### `wavetrend_divergence`
+
+Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence
+
+[See it in the showcase](../../../showcase/wavetrend_divergence/)
+
+**Output** unit Unitless, range not declared · **warmup** 4 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `left` | 5 | whole number 1 – 1000 | bars left of a pivot |
+| `right` | 5 | whole number 1 – 1000 | bars right of a pivot (confirmation delay) |
+| `min_distance` | 5 | whole number 1 – 100000 | fewest bars between the two compared pivots |
+| `max_distance` | 60 | whole number 1 – 100000 | most bars between the two compared pivots |
+| `max_prior_pivots` | 1 | whole number 1 – 100 | earlier pivots each pivot is compared with |
+
+Requires `min_distance` to be smaller than `max_distance`.
+
+### `stoch_rsi_divergence`
+
+Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence
+
+[See it in the showcase](../../../showcase/stoch_rsi_divergence/)
+
+**Output** unit Unitless, range not declared · **warmup** 32 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
 | `left` | 5 | whole number 1 – 1000 | bars left of a pivot |
 | `right` | 5 | whole number 1 – 1000 | bars right of a pivot (confirmation delay) |
 | `min_distance` | 5 | whole number 1 – 100000 | fewest bars between the two compared pivots |

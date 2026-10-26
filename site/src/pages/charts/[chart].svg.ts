@@ -2,7 +2,7 @@ import type { APIRoute, GetStaticPaths } from 'astro';
 import { allIndicatorSpecs, chartFile, type Spec } from '../../chartlet';
 
 // The indicator charts of the showcase as files, light and dark, so the showcase page can load
-// them lazily instead of carrying 130 inline SVGs.
+// them lazily instead of carrying 132 inline SVGs.
 export const getStaticPaths = (() =>
   allIndicatorSpecs().flatMap(([name, spec]) =>
     (['light', 'dark'] as const).map((theme) => ({

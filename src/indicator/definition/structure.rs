@@ -17,6 +17,8 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::bottom_formation::BOTTOM_FORMATION_DEFINITION,
     &crate::indicator::pivot_divergence::PIVOT_DIVERGENCE_DEFINITION,
     &crate::indicator::pivot_divergence::OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION,
+    &crate::indicator::pivot_divergence::WAVETREND_DIVERGENCE_DEFINITION,
+    &crate::indicator::pivot_divergence::STOCH_RSI_DIVERGENCE_DEFINITION,
     &crate::indicator::smart_money_structure::LIQUIDITY_POOLS_DEFINITION,
     &crate::indicator::wyckoff::WYCKOFF_DEFINITION,
     &crate::indicator::zigzag_advanced::ZIGZAG_ADVANCED_DEFINITION,

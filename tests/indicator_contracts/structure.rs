@@ -66,8 +66,25 @@ pub const COVERAGE: &[Coverage] = &[
         alerts: Status::Partial(DIVERGENCE_OSCILLATORS),
         configuration: Status::Specified,
     },
+    Coverage {
+        indicator: "wavetrend_divergence",
+        values: Status::NotSpecified(FESTE_OSZILLATOREN),
+        alerts: Status::NotSpecified(FESTE_OSZILLATOREN),
+        configuration: Status::Specified,
+    },
+    Coverage {
+        indicator: "stoch_rsi_divergence",
+        values: Status::NotSpecified(FESTE_OSZILLATOREN),
+        alerts: Status::NotSpecified(FESTE_OSZILLATOREN),
+        configuration: Status::Specified,
+    },
     Coverage::full("wyckoff"),
 ];
+
+const FESTE_OSZILLATOREN: &str =
+    "oscillator_pivot_divergence fixed to WaveTrend / Stochastic RSI; the reference generator has \
+     neither oscillator (see DIVERGENCE_OSCILLATORS), the engine is fixed by the RSI and Williams %R \
+     cases";
 
 // --- liquidity_fvg ---------------------------------------------------------------------------
 
@@ -487,6 +504,15 @@ fn oscillator_pivot_divergence_williams() {
         "oscillator_pivot_divergence",
         IndicatorUnit::Unitless,
     );
+}
+
+#[test]
+fn fixed_oscillator_divergences_reject_invalid_configuration() {
+    for name in ["wavetrend_divergence", "stoch_rsi_divergence"] {
+        assert_rejected(name, &[("left", 0.0)]);
+        assert_rejected(name, &[("min_distance", 61.0), ("max_distance", 60.0)]);
+        assert_rejected(name, &[("oscillator", 1.0)]);
+    }
 }
 
 #[test]

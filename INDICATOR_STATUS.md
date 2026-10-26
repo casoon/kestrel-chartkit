@@ -159,6 +159,8 @@ is complete.
 | double_pattern | ✅ |
 | pivot_divergence | ✅ |
 | oscillator_pivot_divergence | ✅ |
+| wavetrend_divergence | ✅ |
+| stoch_rsi_divergence | ✅ |
 | bottom_formation | ✅ |
 | price_average_relation | ✅ |
 | leg_conviction | ✅ |
@@ -176,5 +178,5 @@ is complete.
 
 ---
 
-**Total: 130/130 verified** — the same 130 names `catalog()` returns: 96 indicators (the first
-five groups), 4 composite scores and 30 structure/pattern detectors.
+**Total: 132/132 verified** — the same 132 names `catalog()` returns: 96 indicators (the first
+five groups), 4 composite scores and 32 structure/pattern detectors.

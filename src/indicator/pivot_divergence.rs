@@ -275,6 +275,64 @@ pub const OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDe
     build: |p| build_from_definition(p, PivotDivergence::oscillator_pivots),
 };
 
+/// [`OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION`] fixed to WaveTrend (wt1, 10/21) under its own name, so it runs
+/// next to the RSI instance and reports apart.
+pub const WAVETREND_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "wavetrend_divergence",
+    aliases: &[],
+    description: "Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
+    params: &[
+        super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
+        super::definition::ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),
+        super::definition::ParamSpec::count("min_distance", 5, 1, 100000).meaning("fewest bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_distance", 60, 1, 100000).meaning("most bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_prior_pivots", 1, 1, 100).meaning("earlier pivots each pivot is compared with"),
+    ],
+    checks: &[super::definition::Check::Less {
+        lower: "min_distance",
+        upper: "max_distance",
+    }],
+    build: |p| {
+        Ok(Box::new(PivotDivergence::oscillator_pivots(
+            DivergenceOscillator::WaveTrend,
+            p.count("left"),
+            p.count("right"),
+            p.count("min_distance"),
+            p.count("max_distance"),
+            p.count("max_prior_pivots"),
+        )))
+    },
+};
+
+/// [`OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION`] fixed to Stoch RSI (%K, 14/14/3) under its own name, so it runs
+/// next to the RSI instance and reports apart.
+pub const STOCH_RSI_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
+    name: "stoch_rsi_divergence",
+    aliases: &[],
+    description: "Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
+    params: &[
+        super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
+        super::definition::ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),
+        super::definition::ParamSpec::count("min_distance", 5, 1, 100000).meaning("fewest bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_distance", 60, 1, 100000).meaning("most bars between the two compared pivots"),
+        super::definition::ParamSpec::count("max_prior_pivots", 1, 1, 100).meaning("earlier pivots each pivot is compared with"),
+    ],
+    checks: &[super::definition::Check::Less {
+        lower: "min_distance",
+        upper: "max_distance",
+    }],
+    build: |p| {
+        Ok(Box::new(PivotDivergence::oscillator_pivots(
+            DivergenceOscillator::StochRsi,
+            p.count("left"),
+            p.count("right"),
+            p.count("min_distance"),
+            p.count("max_distance"),
+            p.count("max_prior_pivots"),
+        )))
+    },
+};
+
 type PivotDivergenceConstructor =
     fn(DivergenceOscillator, usize, usize, usize, usize, usize) -> PivotDivergence;
 
