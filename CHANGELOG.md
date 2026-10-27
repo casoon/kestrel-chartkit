@@ -15,3 +15,5 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   of the `basic_indicator` example and the computed price chart with a layout for phones; the
   full quickstart lives in the
   [documentation](https://casoon.github.io/kestrel-chartkit/docs/getting-started/quickstart/).
+- **Website:** the footer now follows the page language instead of always showing German text,
+  and the start page carries a release teaser and an FAQ (theme 0.11.1).

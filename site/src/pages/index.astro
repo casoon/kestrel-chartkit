@@ -1,4 +1,5 @@
 ---
+import { readFile } from 'node:fs/promises';
 import {
   Badge,
   Badges,
@@ -7,14 +8,17 @@ import {
   Button,
   CodeBlock,
   Facts,
+  Faq,
   Features,
   Hero,
   Install,
   Quickstart,
+  ReleaseHighlights,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
 import config from 'virtual:casoon-pages/config';
+import { parseChangelog } from '@casoon/pages-theme/lib/changelog';
 import { indicators, inlineChart, spec } from '../chartlet';
 // Animated SVG built with castwright from site/captures/basic-indicator.terminal.yaml: the captured
 // run of examples/basic_indicator.rs (see site/captures/capture.sh), unchanged.
@@ -36,6 +40,12 @@ const contractCases = Object.values(contractFixtures)
 
 // The release the theme reads from Cargo.toml, so install line and badge follow every release.
 const version = config.version;
+// Skip "Unreleased": it has no version to show as "New in v…" yet.
+const latestRelease = config.changelog
+  ? parseChangelog(await readFile(config.changelog, 'utf8')).find(
+      (r) => r.version.toLowerCase() !== 'unreleased'
+    )
+  : undefined;
 // A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
 // chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
 const hero = inlineChart(spec('hero'), 'hero');
@@ -170,6 +180,29 @@ if let Some(output) = rsi.on_bar(&bar) {
       <Button href={url('docs/getting-started/quickstart/')} variant="secondary">Read the quickstart</Button>
     </div>
   </Quickstart>
+
+  {latestRelease && <ReleaseHighlights release={latestRelease} />}
+
+  <Faq
+    items={[
+      {
+        q: 'Is kestrel-chartkit stable enough to build on?',
+        a: 'Not yet. The crate is pre-1.0 and under active development, so indicator names, parameters and outputs can still change fundamentally between versions. Pin a release tag and expect to adapt when you upgrade.',
+      },
+      {
+        q: 'Does kestrel-chartkit draw charts itself?',
+        a: 'No. It returns plain indicator and signal data; drawing is left to a renderer such as chartlet for static charts, used throughout this site, or kestrel-loom for an interactive browser chart, still in alpha.',
+      },
+      {
+        q: 'Is the composite signal investment advice?',
+        a: "No. It's a rule-based summary of indicator readings from fixed thresholds, with a direction against the regime vetoed and every signal carrying its subscores — not a forecast, and nothing here is investment advice.",
+      },
+      {
+        q: 'Does the crate fetch market data or need API keys?',
+        a: 'No. It contains mathematics only: it fetches no market data, connects to no broker or exchange, and holds no credentials, keys, accounts or personal data — you bring the bars.',
+      },
+    ]}
+  />
 </Base>
 
 <style>
