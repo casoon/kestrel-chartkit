@@ -223,17 +223,30 @@ def pivots_structure(left, right, window, bars):
     """Structure score from `pivot_structure_scores` (the documented rule: strict pivots,
     +2/-1 per high and +1/-2 per low against the previous pivot of the kind, 100 sum /
     (2 score_window), clamped); alerts `structure_bullish_bias` at value >= 50 and
-    `structure_bearish_bias` at value <= -50, strength 0.85."""
+    `structure_bearish_bias` at value <= -50, strength 0.85. A bar that confirms a strict pivot
+    also reports it in `extra`: `pivot_high` / `pivot_low` (the pivot's high or low) and
+    `pivot_offset` (= right); the keys are absent otherwise, and the first pivot of a kind is
+    reported too."""
     scores = pivot_structure_scores([b[:4] for b in bars], left, right, window)
     first = left + right
     expected = no_alerts(first)
-    for value in scores:
+    for k, value in enumerate(scores):
+        i = first + k
+        centre = i - right
+        others = [bars[j] for j in range(centre - left, i + 1) if j != centre]
+        extra = {}
+        if all(b[1] < bars[centre][1] for b in others):
+            extra["pivot_high"] = bars[centre][1]
+        if all(b[2] > bars[centre][2] for b in others):
+            extra["pivot_low"] = bars[centre][2]
+        if extra:
+            extra["pivot_offset"] = float(right)
         alerts = {}
         if value >= 50.0:
             alerts["structure_bullish_bias"] = 0.85
         elif value <= -50.0:
             alerts["structure_bearish_bias"] = 0.85
-        expected.append(((value, {}), alerts))
+        expected.append(((value, extra), alerts))
     params = {"left_bars": float(left), "right_bars": float(right), "score_window": float(window)}
     return params, bars, expected
 
@@ -330,7 +343,9 @@ def bos_choch(pivot_len, bars):
     the latest pivot high/low is the level. A close above the pivot high is a bullish CHoCH
     (value 2, trend turns 1) unless the trend is already 1, then a bullish BOS (value 1); a close
     below the pivot low mirrors it (-2 / -1, trend -1). The broken level is reset until the next
-    pivot. `extra`: `trend` (0 before the first break) and `event_code` (= value). One alert per
+    pivot. `extra`: `trend` (0 before the first break), `event_code` (= value) and, on a bar that
+    breaks a level, `broken_level` (the pivot price that was closed beyond; on a double break the
+    later, bearish one). One alert per
     bar for the bar's event, strength 0.9: `bull_choch`, `bull_bos`, `bear_choch`, `bear_bos`.
     Convention: the high side is tested before the low side; if both break on one bar the later
     (bearish) event is the bar's event."""
@@ -346,15 +361,18 @@ def bos_choch(pivot_len, bars):
             ph = window[pivot_len][1]
         if loose_low(window, pivot_len):
             pl = window[pivot_len][2]
-        event = 0.0
+        event, broken = 0.0, None
         if ph is not None and bar[3] > ph:
-            event = 2.0 if trend <= 0 else 1.0
+            event, broken = (2.0 if trend <= 0 else 1.0), ph
             trend, ph = 1, None
         if pl is not None and bar[3] < pl:
-            event = -2.0 if trend >= 0 else -1.0
+            event, broken = (-2.0 if trend >= 0 else -1.0), pl
             trend, pl = -1, None
         alerts = {names[event]: 0.9} if event else {}
-        expected.append(((event, {"trend": float(trend), "event_code": event}), alerts))
+        extra = {"trend": float(trend), "event_code": event}
+        if broken is not None:
+            extra["broken_level"] = broken
+        expected.append(((event, extra), alerts))
     return {"pivot_len": float(pivot_len)}, bars, expected
 
 

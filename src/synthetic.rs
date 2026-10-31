@@ -675,17 +675,16 @@ mod tests {
         for direction in [SwingDirection::Bullish, SwingDirection::Bearish] {
             let pivot_len = 3;
             let plain = bos_choch_swing_bars(101, direction, pivot_len);
-            let shaped = bos_choch_swing_bars_shaped(
-                101,
-                direction,
-                pivot_len,
-                SwingCandleShape::default(),
-            );
+            let shaped =
+                bos_choch_swing_bars_shaped(101, direction, pivot_len, SwingCandleShape::default());
             assert_eq!(plain.len(), shaped.len());
 
             // Pivot and break bar keep their high and low.
             for i in [pivot_len, plain.len() - 1] {
-                assert_eq!(plain[i].bar.high, shaped[i].bar.high, "{direction:?} high {i}");
+                assert_eq!(
+                    plain[i].bar.high, shaped[i].bar.high,
+                    "{direction:?} high {i}"
+                );
                 assert_eq!(plain[i].bar.low, shaped[i].bar.low, "{direction:?} low {i}");
             }
             // Every bar around the swing has a body and a wick on each side.

@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-10-31
+
 ### Added
 
 - **Synthetic data:** `bos_choch_swing_bars_shaped` and `SwingCandleShape` build the swing and
