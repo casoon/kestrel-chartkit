@@ -9,6 +9,16 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Synthetic data:** `bos_choch_swing_bars_shaped` and `SwingCandleShape` build the swing and
+  break sequence of `bos_choch_swing_bars` with candle bodies and wicks. The pivot bar and the
+  break bar keep their highs and lows, so the pivot and the break stay where they are.
+- **Indicators:** `pivots_structure` reports a confirmed pivot in `extra` (`pivot_high`,
+  `pivot_low`, and `pivot_offset`, the bars between the pivot and the confirming bar);
+  `bos_choch` reports the level a break closed beyond as `broken_level`. The main value of both
+  is unchanged.
+
 ### Changed
 
 - **Website:** the [start page](https://casoon.github.io/kestrel-chartkit/) shows a recorded run

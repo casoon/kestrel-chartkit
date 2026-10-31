@@ -453,6 +453,67 @@ pub fn bos_choch_swing_bars(
     bars
 }
 
+/// Candle shape for [`bos_choch_swing_bars_shaped`].
+///
+/// [`bos_choch_swing_bars`] draws every bar as a flat stroke of one unit. That is enough for the
+/// detectors but reads as a row of dashes in an illustration. The shape widens the bars around the
+/// swing without touching the pivot bar's high and low, so the pivot and the break stay where
+/// they are.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SwingCandleShape {
+    /// High-to-low span of the bars on both sides of the pivot, in price units. The step between
+    /// two neighbouring bars is 3.0, so a span at or above that makes neighbours overlap.
+    pub range: f64,
+    /// Share of the span the body takes, in `0.0..=1.0`; the rest is split evenly into the two
+    /// wicks. The pivot bar keeps its span of 1.0 (high 0.5 above, low 0.5 below the pivot price)
+    /// and applies the same share.
+    pub body_ratio: f64,
+}
+
+impl Default for SwingCandleShape {
+    fn default() -> Self {
+        Self {
+            range: 2.0,
+            body_ratio: 0.6,
+        }
+    }
+}
+
+/// Like [`bos_choch_swing_bars`], but with candle bodies and wicks as given by `shape`.
+///
+/// Bars approach the pivot with the move of the swing and leave it against it, so bodies point
+/// the way the price travels. The pivot bar and the break bar keep the highs and lows of the
+/// plain generator; the pivot is confirmed and broken at the same bars.
+pub fn bos_choch_swing_bars_shaped(
+    seed: u64,
+    direction: SwingDirection,
+    pivot_len: usize,
+    shape: SwingCandleShape,
+) -> Vec<QualifiedBar> {
+    let mut bars = bos_choch_swing_bars(seed, direction, pivot_len);
+    let len = pivot_len.max(2);
+    let window_bars = 2 * len + 1;
+    let body_ratio = shape.body_ratio.clamp(0.0, 1.0);
+    // Bullish: a pivot high, so the swing rises into it and falls away from it.
+    let up = match direction {
+        SwingDirection::Bullish => 1.0,
+        SwingDirection::Bearish => -1.0,
+    };
+
+    for (i, qb) in bars.iter_mut().take(window_bars).enumerate() {
+        let price = qb.bar.close;
+        let range = if i == len { 1.0 } else { shape.range.max(0.0) };
+        let body = range * body_ratio;
+        let travel = if i <= len { up } else { -up };
+        qb.bar.open = price - travel * body / 2.0;
+        qb.bar.close = price + travel * body / 2.0;
+        qb.bar.high = price + range / 2.0;
+        qb.bar.low = price - range / 2.0;
+    }
+
+    bars
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -578,6 +639,76 @@ mod tests {
             event_codes.iter().any(|&c| c < 0.0),
             "Bearish swing bars must trigger Bearish BOS/CHoCH event (< 0)"
         );
+    }
+
+    #[test]
+    fn swing_bars_report_pivot_and_broken_level() {
+        use crate::indicator::pivots_structure::PivotStructureEngine;
+
+        let pivot_len = 3;
+        let bars = bos_choch_swing_bars(101, SwingDirection::Bullish, pivot_len);
+
+        // The pivot high (100.5) is confirmed `pivot_len` bars after it.
+        let mut engine = PivotStructureEngine::new(pivot_len, pivot_len, 10);
+        let confirmed: Vec<(usize, f64, f64)> = bars
+            .iter()
+            .enumerate()
+            .filter_map(|(i, qb)| {
+                let out = engine.on_bar(&qb.bar)?;
+                Some((i, *out.extra.get("pivot_high")?, out.extra["pivot_offset"]))
+            })
+            .collect();
+        assert_eq!(confirmed, vec![(2 * pivot_len, 100.5, pivot_len as f64)]);
+
+        // The break bar reports the level it closed beyond.
+        let mut engine = BosChochEngine::new(pivot_len);
+        let levels: Vec<(usize, f64)> = bars
+            .iter()
+            .enumerate()
+            .filter_map(|(i, qb)| Some((i, *engine.on_bar(&qb.bar)?.extra.get("broken_level")?)))
+            .collect();
+        assert_eq!(levels, vec![(2 * pivot_len + 1, 100.5)]);
+    }
+
+    #[test]
+    fn shaped_swing_bars_have_bodies_and_keep_the_pivot() {
+        for direction in [SwingDirection::Bullish, SwingDirection::Bearish] {
+            let pivot_len = 3;
+            let plain = bos_choch_swing_bars(101, direction, pivot_len);
+            let shaped = bos_choch_swing_bars_shaped(
+                101,
+                direction,
+                pivot_len,
+                SwingCandleShape::default(),
+            );
+            assert_eq!(plain.len(), shaped.len());
+
+            // Pivot and break bar keep their high and low.
+            for i in [pivot_len, plain.len() - 1] {
+                assert_eq!(plain[i].bar.high, shaped[i].bar.high, "{direction:?} high {i}");
+                assert_eq!(plain[i].bar.low, shaped[i].bar.low, "{direction:?} low {i}");
+            }
+            // Every bar around the swing has a body and a wick on each side.
+            for qb in &shaped[..2 * pivot_len + 1] {
+                let b = &qb.bar;
+                let (top, bottom) = (b.open.max(b.close), b.open.min(b.close));
+                assert!(top - bottom > 0.1, "body missing");
+                assert!(b.high - top > 0.05 && bottom - b.low > 0.05, "wick missing");
+            }
+
+            let mut engine = BosChochEngine::new(pivot_len);
+            let mut codes = Vec::new();
+            for qb in &shaped {
+                if let Some(out) = engine.on_bar(&qb.bar) {
+                    codes.push(out.value);
+                }
+            }
+            let hit = match direction {
+                SwingDirection::Bullish => codes.iter().any(|&c| c > 0.0),
+                SwingDirection::Bearish => codes.iter().any(|&c| c < 0.0),
+            };
+            assert!(hit, "{direction:?}: shaped bars must still break the pivot");
+        }
     }
 }
 

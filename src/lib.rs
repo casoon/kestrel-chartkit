@@ -193,8 +193,8 @@ pub use structure::{
     ZoneTolerance,
 };
 pub use synthetic::{
-    bos_choch_swing_bars, random_walk_bars, trending_bars, wyckoff_schematic_bars, SimpleRng,
-    SwingDirection, WyckoffGeneratorConfig,
+    bos_choch_swing_bars, bos_choch_swing_bars_shaped, random_walk_bars, trending_bars,
+    wyckoff_schematic_bars, SimpleRng, SwingCandleShape, SwingDirection, WyckoffGeneratorConfig,
 };
 pub use timeframe::{BarResampler, ConfirmedResampler, Timeframe, TimeframeError};
 pub use valuation::bootstrap::CalibrationInstrument;

@@ -14,6 +14,11 @@ use crate::model::Bar;
 /// the sum of its comparisons to a window of the last `score_window` such sums, and
 /// `value = clamp(100 · sum / (2 · score_window), -100, 100)` — 0 while nothing has scored.
 ///
+/// A bar that confirms a pivot also reports it in `extra`: `pivot_high` / `pivot_low` hold the
+/// price of the pivot (its high or low), and `pivot_offset` is the number of bars between the
+/// pivot bar and this confirming bar, i.e. `right_bars`. The keys are absent on all other bars,
+/// including the first pivot of a kind, which is reported too although it only seeds the score.
+///
 /// Alerts at `value >= 50` (bullish bias) and `value <= -50` (bearish bias). First output with bar
 /// `left_bars + right_bars + 1`.
 pub struct PivotStructureEngine {
@@ -101,8 +106,10 @@ impl Indicator for PivotStructureEngine {
 
         let mut cur_score = 0.0;
         let mut found_pivot = false;
+        let mut extra = HashMap::new();
 
         if is_pivot_high {
+            extra.insert("pivot_high".to_string(), cand_high);
             self.prev_high = self.last_high;
             self.last_high = Some(cand_high);
             if let Some(prev) = self.prev_high {
@@ -112,6 +119,7 @@ impl Indicator for PivotStructureEngine {
         }
 
         if is_pivot_low {
+            extra.insert("pivot_low".to_string(), cand_low);
             self.prev_low = self.last_low;
             self.last_low = Some(cand_low);
             if let Some(prev) = self.prev_low {
@@ -150,7 +158,11 @@ impl Indicator for PivotStructureEngine {
             ));
         }
 
-        Some(IndicatorOutput::new(score))
+        if !extra.is_empty() {
+            extra.insert("pivot_offset".to_string(), self.right_bars as f64);
+        }
+
+        Some(IndicatorOutput::with_extra(score, extra))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {

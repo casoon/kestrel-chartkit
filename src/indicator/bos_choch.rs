@@ -96,9 +96,11 @@ impl Indicator for BosChochEngine {
         }
 
         self.last_event = None;
+        let mut broken_level = None;
 
         if let Some(ph) = self.last_pivot_high {
             if bar.close > ph {
+                broken_level = Some(ph);
                 if self.current_trend <= 0 {
                     self.current_trend = 1;
                     self.last_event = Some(StructureEventKind::BullishChoch);
@@ -111,6 +113,7 @@ impl Indicator for BosChochEngine {
 
         if let Some(pl) = self.last_pivot_low {
             if bar.close < pl {
+                broken_level = Some(pl);
                 if self.current_trend >= 0 {
                     self.current_trend = -1;
                     self.last_event = Some(StructureEventKind::BearishChoch);
@@ -132,6 +135,9 @@ impl Indicator for BosChochEngine {
         let mut extra = HashMap::new();
         extra.insert("trend".to_string(), self.current_trend as f64);
         extra.insert("event_code".to_string(), event_code);
+        if let Some(level) = broken_level {
+            extra.insert("broken_level".to_string(), level);
+        }
 
         Some(IndicatorOutput::with_extra(event_code, extra))
     }
