@@ -4,6 +4,8 @@ fixture is derived — `PARTIAL = True`, `derive()` and `CONSTANTS`."""
 
 from . import (
     analytics_components,
+    applicability,
+    applicability_frozen,
     analytics_composites,
     bond_diff,
     business_days,
@@ -120,4 +122,6 @@ ALL = (
     price_location,
     leg_geometry,
     data_snooping,
+    applicability,
+    applicability_frozen,
 )

@@ -1,6 +1,7 @@
 //! Exports the applicability declarations as one JSON document — `indicators` (each registry
-//! indicator's `DataRequirements`) plus `rules` (the rule table `check_applicability` enforces,
-//! with publication-ready explanations) — for a separate docs project to render into a public
+//! indicator's `DataRequirements`), `rules` (the rule table `check_applicability` enforces,
+//! with publication-ready explanations) plus `method_rules` (the rules of the named structure
+//! methods, `Elliott` and `Wyckoff`, each with its own explanations) — for a separate docs project to render into a public
 //! applicability matrix (see `plan/indikator-anwendbarkeit-und-serien-faehigkeiten.md`, "Export
 //! für die Doku").
 //!
@@ -12,7 +13,9 @@
 //! cargo run --example export_applicability
 //! ```
 
-use kestrel_chartkit::applicability::{data_requirements, rule_catalog, DataRequirements};
+use kestrel_chartkit::applicability::{
+    data_requirements, method_rule_catalog, rule_catalog, DataRequirements,
+};
 use kestrel_chartkit::indicator::registry::CANONICAL_INDICATOR_NAMES;
 
 /// Two indicators are standalone modules, never wired into the single-bar registry/catalog (see
@@ -22,7 +25,7 @@ const NON_CATALOG_NAMES: &[&str] = &["elliott", "swing_structure"];
 
 fn indicator_json(name: &str, requirements: &DataRequirements) -> String {
     format!(
-        "{{\"name\":\"{}\",\"needs_real_volume\":{},\"needs_trade_direction\":{},\"session_sensitive\":{},\"roll_sensitive\":{},\"adjustment_sensitive\":{},\"needs_liquidity_depth\":{}}}",
+        "{{\"name\":\"{}\",\"needs_real_volume\":{},\"needs_trade_direction\":{},\"session_sensitive\":{},\"roll_sensitive\":{},\"adjustment_sensitive\":{},\"needs_liquidity_depth\":{},\"structure_method\":{}}}",
         name,
         requirements.needs_real_volume,
         requirements.needs_trade_direction,
@@ -30,6 +33,9 @@ fn indicator_json(name: &str, requirements: &DataRequirements) -> String {
         requirements.roll_sensitive,
         requirements.adjustment_sensitive,
         requirements.needs_liquidity_depth,
+        requirements
+            .structure_method
+            .map_or("null".to_string(), |method| format!("\"{method:?}\"")),
     )
 }
 
@@ -50,9 +56,20 @@ fn main() {
         })
         .collect();
 
+    let method_rules: Vec<String> = method_rule_catalog()
+        .iter()
+        .map(|rule| {
+            format!(
+                "{{\"method\":\"{:?}\",\"reason\":\"{:?}\",\"tier\":\"{:?}\",\"explanation\":\"{}\"}}",
+                rule.method, rule.reason, rule.tier, rule.explanation
+            )
+        })
+        .collect();
+
     println!(
-        "{{\"indicators\":[{}],\"rules\":[{}]}}",
+        "{{\"indicators\":[{}],\"rules\":[{}],\"method_rules\":[{}]}}",
         indicators.join(","),
-        rules.join(",")
+        rules.join(","),
+        method_rules.join(",")
     );
 }

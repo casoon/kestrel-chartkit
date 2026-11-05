@@ -109,14 +109,33 @@ impl Projection {
 ///
 /// Object coordinates are mapped through the pane's axes (x = Unix seconds, y = value). Panes
 /// without axes are drawn in pixel coordinates, as before.
+///
+/// # Accessible name
+///
+/// A scene with a title ([`Scene::with_title`]) and/or a description
+/// ([`Scene::with_description`]) gets `role="img"` and `aria-labelledby` on the root `<svg>` and a
+/// `<title id="…">` / `<desc id="…">` as its first children, e.g. for the id prefix `kurs`:
+///
+/// ```text
+/// <svg … role="img" aria-labelledby="kurs-title kurs-desc"><title id="kurs-title">…</title>
+/// <desc id="kurs-desc">…</desc><g …>
+/// ```
+///
+/// Text is XML-escaped. Without either, the output is exactly what it was before this option
+/// existed.
 pub fn render_scene_svg(scene: &Scene, width: u32, height: u32, theme: &Theme) -> String {
     let mut svg = String::new();
+    let label = accessible_label(scene);
     svg.push_str(&format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" style="background-color:{};font-family:sans-serif;">"##,
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" style="background-color:{};font-family:sans-serif;"{}>"##,
         width,
         height,
-        sanitize_color(&theme.background)
+        sanitize_color(&theme.background),
+        label.as_ref().map_or("", |l| l.root_attributes.as_str())
     ));
+    if let Some(label) = &label {
+        svg.push_str(&label.elements);
+    }
 
     let total_ratio: f64 = scene.panes().iter().map(|p| p.height_ratio).sum();
     let mut y_offset = 0.0;
@@ -142,6 +161,41 @@ pub fn render_scene_svg(scene: &Scene, width: u32, height: u32, theme: &Theme) -
 
     svg.push_str("</svg>");
     svg
+}
+
+/// The accessibility additions to the root element: its extra attributes and the `<title>` /
+/// `<desc>` elements that follow it.
+struct AccessibleLabel {
+    root_attributes: String,
+    elements: String,
+}
+
+fn accessible_label(scene: &Scene) -> Option<AccessibleLabel> {
+    let (title, description) = (scene.title(), scene.description());
+    if title.is_none() && description.is_none() {
+        return None;
+    }
+    let prefix = scene.label_id();
+    let mut ids = Vec::new();
+    let mut elements = String::new();
+    if let Some(title) = title {
+        ids.push(format!("{prefix}-title"));
+        elements.push_str(&format!(
+            r##"<title id="{prefix}-title">{}</title>"##,
+            escape_xml(title)
+        ));
+    }
+    if let Some(description) = description {
+        ids.push(format!("{prefix}-desc"));
+        elements.push_str(&format!(
+            r##"<desc id="{prefix}-desc">{}</desc>"##,
+            escape_xml(description)
+        ));
+    }
+    Some(AccessibleLabel {
+        root_attributes: format!(r##" role="img" aria-labelledby="{}""##, ids.join(" ")),
+        elements,
+    })
 }
 
 fn render_object(object: &SceneObject, theme: &Theme, p: &Projection) -> String {
@@ -264,6 +318,76 @@ fn render_object(object: &SceneObject, theme: &Theme, p: &Projection) -> String 
 mod tests {
     use super::*;
     use crate::viz::scene::Pane;
+
+    /// Without title and description the output is the unlabelled SVG, byte for byte.
+    #[test]
+    fn test_unlabelled_scene_renders_without_accessibility_markup() {
+        let svg = render_scene_svg(&Scene::new(), 800, 400, &Theme::default());
+        assert_eq!(
+            svg,
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" style="background-color:#141824;font-family:sans-serif;"></svg>"##
+        );
+        // Empty or blank texts count as unset.
+        let blank = Scene::new().with_title("  ").with_description("");
+        assert_eq!(render_scene_svg(&blank, 800, 400, &Theme::default()), svg);
+        // The prefix alone changes nothing.
+        let prefixed = Scene::new().with_label_id("kurs");
+        assert_eq!(
+            render_scene_svg(&prefixed, 800, 400, &Theme::default()),
+            svg
+        );
+    }
+
+    #[test]
+    fn test_title_and_description_are_written_and_referenced() {
+        let scene = Scene::new()
+            .with_title("Kurs & Durchschnitt")
+            .with_description("Tagesbars <synthetisch>, \"Aufwärtstrend\" ab Bar 5")
+            .with_label_id("kurs");
+        let svg = render_scene_svg(&scene, 800, 400, &Theme::default());
+        assert_eq!(
+            svg,
+            concat!(
+                r##"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" "##,
+                r##"style="background-color:#141824;font-family:sans-serif;" "##,
+                r##"role="img" aria-labelledby="kurs-title kurs-desc">"##,
+                r##"<title id="kurs-title">Kurs &amp; Durchschnitt</title>"##,
+                r##"<desc id="kurs-desc">Tagesbars &lt;synthetisch&gt;, &quot;Aufwärtstrend&quot; ab Bar 5</desc>"##,
+                "</svg>"
+            )
+        );
+    }
+
+    #[test]
+    fn test_title_only_and_description_only_reference_what_exists() {
+        let only_title = Scene::new().with_title("Abbildung");
+        let svg = render_scene_svg(&only_title, 10, 10, &Theme::default());
+        assert!(svg.contains(r##" role="img" aria-labelledby="scene-title">"##));
+        assert!(svg.contains(r##"<title id="scene-title">Abbildung</title>"##));
+        assert!(!svg.contains("<desc"));
+
+        let only_description = Scene::new().with_description("Beschreibung");
+        let svg = render_scene_svg(&only_description, 10, 10, &Theme::default());
+        assert!(svg.contains(r##" role="img" aria-labelledby="scene-desc">"##));
+        assert!(!svg.contains("<title"));
+    }
+
+    /// `<title>` is the first child, ahead of the panes, and the ids cannot break the attribute.
+    #[test]
+    fn test_label_comes_first_and_prefix_is_made_id_safe() {
+        let mut scene = Scene::new().with_title("T").with_label_id("a b\"c><d");
+        scene.upsert_pane(Pane::new("p", 1.0));
+        let svg = render_scene_svg(&scene, 100, 100, &Theme::default());
+        assert!(
+            svg.contains(r##"aria-labelledby="a-b-c--d-title""##),
+            "{svg}"
+        );
+        let title_at = svg.find("<title").unwrap();
+        assert!(title_at < svg.find("<g ").unwrap());
+        assert!(svg
+            .starts_with(r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100""##));
+        assert_eq!(Scene::new().with_label_id("  ").label_id(), "scene");
+    }
 
     #[test]
     fn test_empty_scene_renders_valid_empty_svg() {

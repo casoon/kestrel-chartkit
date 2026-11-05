@@ -1466,7 +1466,7 @@ Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/
 
 [See it in the showcase](../../../showcase/wyckoff/)
 
-**Output** unit Unitless, range not declared · **warmup** 20 bars
+**Output** unit Unitless, range not declared · **warmup** 20 bars · needs real volume
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
