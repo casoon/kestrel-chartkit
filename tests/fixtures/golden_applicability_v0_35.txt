@@ -1,0 +1,159 @@
+# golden_applicability_v0_35: the matrix as kestrel-chartkit 0.35.0 produced it
+# (17 indicators x 9 series classes, generic rules only). Checked against the output of
+# the v0.35.0 tag; the test keeps these rows from changing silently.
+#
+# Derived by reference/kestrel_reference/fixtures/applicability.py. Line:
+# indicator<TAB>class<TAB>verdict<TAB>explanations.
+rsi	index-cash	applicable	
+rsi	index-future	applicable	
+rsi	future-continuous	applicable	
+rsi	cfd-broker	applicable	
+rsi	fx-spot	applicable	
+rsi	stock-adjusted	applicable	
+rsi	stock-thin	applicable	
+rsi	commodity-chained	applicable	
+rsi	synthetic	applicable	
+macd	index-cash	applicable	
+macd	index-future	applicable	
+macd	future-continuous	applicable	
+macd	cfd-broker	applicable	
+macd	fx-spot	applicable	
+macd	stock-adjusted	applicable	
+macd	stock-thin	applicable	
+macd	commodity-chained	applicable	
+macd	synthetic	applicable	
+atr	index-cash	applicable	
+atr	index-future	applicable	
+atr	future-continuous	applicable	
+atr	cfd-broker	applicable	
+atr	fx-spot	applicable	
+atr	stock-adjusted	applicable	
+atr	stock-thin	applicable	
+atr	commodity-chained	applicable	
+atr	synthetic	applicable	
+adx	index-cash	applicable	
+adx	index-future	applicable	
+adx	future-continuous	applicable	
+adx	cfd-broker	applicable	
+adx	fx-spot	applicable	
+adx	stock-adjusted	applicable	
+adx	stock-thin	applicable	
+adx	commodity-chained	applicable	
+adx	synthetic	applicable	
+bollinger	index-cash	applicable	
+bollinger	index-future	applicable	
+bollinger	future-continuous	applicable	
+bollinger	cfd-broker	applicable	
+bollinger	fx-spot	applicable	
+bollinger	stock-adjusted	applicable	
+bollinger	stock-thin	applicable	
+bollinger	commodity-chained	applicable	
+bollinger	synthetic	applicable	
+volume_profile	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+volume_profile	index-future	applicable	
+volume_profile	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+volume_profile	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+volume_profile	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+volume_profile	stock-adjusted	applicable	
+volume_profile	stock-thin	applicable	
+volume_profile	commodity-chained	limited	Roll-Sprünge in der Reihe
+volume_profile	synthetic	applicable	
+vwap	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+vwap	index-future	applicable	
+vwap	future-continuous	applicable	
+vwap	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+vwap	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+vwap	stock-adjusted	applicable	
+vwap	stock-thin	applicable	
+vwap	commodity-chained	applicable	
+vwap	synthetic	applicable	
+anchored_vwap	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+anchored_vwap	index-future	applicable	
+anchored_vwap	future-continuous	applicable	
+anchored_vwap	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+anchored_vwap	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+anchored_vwap	stock-adjusted	applicable	
+anchored_vwap	stock-thin	applicable	
+anchored_vwap	commodity-chained	applicable	
+anchored_vwap	synthetic	applicable	
+mfi	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+mfi	index-future	applicable	
+mfi	future-continuous	applicable	
+mfi	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+mfi	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+mfi	stock-adjusted	applicable	
+mfi	stock-thin	applicable	
+mfi	commodity-chained	applicable	
+mfi	synthetic	applicable	
+cvd	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+cvd	index-future	applicable	
+cvd	future-continuous	applicable	
+cvd	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+cvd	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+cvd	stock-adjusted	applicable	
+cvd	stock-thin	applicable	
+cvd	commodity-chained	applicable	
+cvd	synthetic	applicable	
+buy_sell_pressure	index-cash	applicable	
+buy_sell_pressure	index-future	applicable	
+buy_sell_pressure	future-continuous	applicable	
+buy_sell_pressure	cfd-broker	applicable	
+buy_sell_pressure	fx-spot	applicable	
+buy_sell_pressure	stock-adjusted	applicable	
+buy_sell_pressure	stock-thin	applicable	
+buy_sell_pressure	commodity-chained	applicable	
+buy_sell_pressure	synthetic	applicable	
+klinger	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
+klinger	index-future	applicable	
+klinger	future-continuous	applicable	
+klinger	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+klinger	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz
+klinger	stock-adjusted	applicable	
+klinger	stock-thin	applicable	
+klinger	commodity-chained	applicable	
+klinger	synthetic	applicable	
+elder_ray	index-cash	applicable	
+elder_ray	index-future	applicable	
+elder_ray	future-continuous	applicable	
+elder_ray	cfd-broker	applicable	
+elder_ray	fx-spot	applicable	
+elder_ray	stock-adjusted	applicable	
+elder_ray	stock-thin	applicable	
+elder_ray	commodity-chained	applicable	
+elder_ray	synthetic	applicable	
+pivots_structure	index-cash	applicable	
+pivots_structure	index-future	applicable	
+pivots_structure	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+pivots_structure	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+pivots_structure	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+pivots_structure	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
+pivots_structure	stock-thin	applicable	
+pivots_structure	commodity-chained	limited	Roll-Sprünge in der Reihe
+pivots_structure	synthetic	applicable	
+swing_structure	index-cash	applicable	
+swing_structure	index-future	applicable	
+swing_structure	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+swing_structure	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+swing_structure	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+swing_structure	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
+swing_structure	stock-thin	applicable	
+swing_structure	commodity-chained	limited	Roll-Sprünge in der Reihe
+swing_structure	synthetic	applicable	
+zigzag	index-cash	applicable	
+zigzag	index-future	applicable	
+zigzag	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+zigzag	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+zigzag	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+zigzag	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
+zigzag	stock-thin	applicable	
+zigzag	commodity-chained	limited	Roll-Sprünge in der Reihe
+zigzag	synthetic	applicable	
+pivot_sets	index-cash	applicable	
+pivot_sets	index-future	applicable	
+pivot_sets	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+pivot_sets	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+pivot_sets	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+pivot_sets	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
+pivot_sets	stock-thin	applicable	
+pivot_sets	commodity-chained	limited	Roll-Sprünge in der Reihe
+pivot_sets	synthetic	applicable	

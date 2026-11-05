@@ -276,6 +276,11 @@ pub enum ContinuityKind {
     StitchedUnadjusted,
     /// Stitched across contract rolls, back-adjusted to remove roll gaps — historical price
     /// levels are shifted and no longer the levels that were actually traded.
+    ///
+    /// The shift is additive: every earlier price moves by the roll gap, so differences between
+    /// prices are kept while ratios to the price level are not, and levels can turn negative.
+    /// (A ratio-adjusted continuation, which scales earlier prices instead, is not modelled by
+    /// this variant.)
     StitchedBackAdjusted,
 }
 
@@ -293,9 +298,11 @@ pub enum ContinuityKind {
 pub enum PriceAdjustment {
     /// As-traded, unadjusted prices.
     Raw,
-    /// Adjusted for stock splits only.
+    /// Adjusted for stock splits only. Earlier prices are scaled by the split factor
+    /// (proportional adjustment): returns and percent ratios are kept, absolute differences
+    /// before the effective date are not.
     Split,
-    /// Adjusted for both splits and dividends.
+    /// Adjusted for both splits and dividends, proportionally like [`PriceAdjustment::Split`].
     SplitAndDividend,
 }
 

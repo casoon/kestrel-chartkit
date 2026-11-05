@@ -44,6 +44,33 @@ pub struct DataRequirements {
     pub adjustment_sensitive: bool,
     /// Needs market-depth information beyond what a thin series can provide.
     pub needs_liquidity_depth: bool,
+    /// Set for the structure-counting methods whose requirements are named individually (see
+    /// [`StructureMethod`]). Such an indicator does not use the generic `session_sensitive` /
+    /// `roll_sensitive` / `adjustment_sensitive` flags: its own rules in
+    /// [`method_rule_catalog`] state, per series property, what the method reads from the series
+    /// and why a series without that property is only partly suitable.
+    pub structure_method: Option<StructureMethod>,
+}
+
+/// A structure-counting method with requirements of its own.
+///
+/// The generic flags of [`DataRequirements`] give every extreme-based indicator (pivots, ZigZag,
+/// Elliott, ...) the same finding for the same series property. For these methods the finding
+/// depends on what the calculation does with the series, so each has its own rules in
+/// [`method_rule_catalog`], with explanations written for that calculation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum StructureMethod {
+    /// Elliott wave rule checks (`src/indicator/elliott.rs`): compare leg *lengths* (differences
+    /// of swing prices) and retracement ratios of such differences, and compare swing *levels*
+    /// (wave 2 against the start of wave 1, wave 4 against the end of wave 1). The swings come
+    /// from bar highs and lows; a percent swing threshold is relative to the price level.
+    ElliottWaves,
+    /// Wyckoff range analysis (`src/indicator/wyckoff.rs`): the range is the high-low spread of the
+    /// last `range_lookback` bars measured in ATR (true range, so gaps and jumps count); a climax is
+    /// a volume outlier against the median of those bars; Spring and UTAD are a single bar's high
+    /// or low piercing a range boundary while the close returns.
+    WyckoffRange,
 }
 
 /// Which rule in [`check_applicability`] produced a given [`ApplicabilityNote`].
@@ -77,6 +104,21 @@ pub enum ApplicabilityReason {
     /// zigzag, Elliott), so no new field is introduced for a case the two existing fields already
     /// cover.
     ProviderSpecificExtreme,
+    /// [`StructureMethod`] rule: `continuity == StitchedUnadjusted`, a contract change stands in
+    /// the series as a price jump.
+    StructureRollJumps,
+    /// [`StructureMethod`] rule: `continuity == StitchedBackAdjusted`, earlier prices are shifted
+    /// by the roll gaps (additively), volume is not.
+    StructureBackAdjustedLevels,
+    /// [`StructureMethod`] rule: `price_adjustment != Raw`, earlier prices are scaled
+    /// proportionally by the adjustment factors.
+    StructureProportionalAdjustment,
+    /// [`StructureMethod`] rule: `provenance == Broker`, the extremes the method reads are the
+    /// provider's quotes.
+    StructureProviderExtreme,
+    /// [`StructureMethod`] rule: `continuity == SingleContract`, the series ends with the
+    /// contract's expiry and holds only that contract's life.
+    StructureFiniteHistory,
 }
 
 /// A single applicability finding: which rule fired, and a publication-ready explanation.
@@ -227,6 +269,119 @@ pub fn rule_catalog() -> [RuleDescription; 8] {
     ]
 }
 
+/// Static description of one [`StructureMethod`] rule: for which method, which series property
+/// triggers it ([`ApplicabilityReason`]), its tier and its publication-ready explanation.
+/// [`method_rule_catalog`] exposes all of them; [`check_applicability`] evaluates exactly this
+/// table, so an exported table cannot drift from the rules enforced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct MethodRuleDescription {
+    pub method: StructureMethod,
+    pub reason: ApplicabilityReason,
+    pub tier: ApplicabilityTier,
+    pub explanation: &'static str,
+}
+
+const METHOD_RULES: [MethodRuleDescription; 8] = [
+    // Elliott: leg lengths are differences of swing prices, retracements are ratios of such
+    // differences, swing points are bar highs and lows.
+    MethodRuleDescription {
+        method: StructureMethod::ElliottWaves,
+        reason: ApplicabilityReason::StructureRollJumps,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Roll-Sprünge zwischen den Kontrakten stehen als Kursbewegung in der Reihe \
+            und würden als Wellenbewegung gezählt",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::ElliottWaves,
+        reason: ApplicabilityReason::StructureBackAdjustedLevels,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Rückwärtsbereinigung verschiebt frühere Kurse additiv: Längenvergleiche \
+            der Regelprüfung (Differenzen) bleiben erhalten, prozentuale Schwellen und \
+            Verhältnisse zum Kursniveau nicht; Wellenpunkte liegen auf nie gehandelten Preisen, \
+            und Niveaus können negativ werden",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::ElliottWaves,
+        reason: ApplicabilityReason::StructureProportionalAdjustment,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Bereinigung skaliert frühere Kurse proportional: prozentuale \
+            Verhältnisse bleiben erhalten, absolute Differenzen vor und nach dem Stichtag nicht — \
+            Längenvergleiche wie „Welle 3 nie die kürzeste“ vergleichen über den Stichtag \
+            hinweg verschiedene Maßstäbe",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::ElliottWaves,
+        reason: ApplicabilityReason::StructureProviderExtreme,
+        tier: ApplicabilityTier::Degraded,
+        explanation:
+            "Hoch und Tief der Wellenpunkte sind Quotes dieses Anbieters und gelten nicht \
+            am gehandelten Markt; bei einem anderen Anbieter ergeben sich andere Extreme und \
+            damit andere Überlappungen",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::ElliottWaves,
+        reason: ApplicabilityReason::StructureFiniteHistory,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Reihe umfasst nur die Laufzeit eines Kontrakts und endet mit dem \
+            Verfall; die Zahl der Swings, aus denen höhere Wellengrade gebildet werden, ist \
+            dadurch begrenzt",
+    },
+    // Wyckoff: range width in ATR (true range), climax as volume outlier against the median of the
+    // window, Spring/UTAD from a single bar's extreme.
+    MethodRuleDescription {
+        method: StructureMethod::WyckoffRange,
+        reason: ApplicabilityReason::StructureRollJumps,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Ein Roll-Sprung weitet Spannenbreite und ATR, an denen die Spanne gemessen \
+            wird, und der Umsatz wechselt mit dem Kontrakt: der Klimax-Test vergleicht Umsatz \
+            verschiedener Kontrakte",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::WyckoffRange,
+        reason: ApplicabilityReason::StructureBackAdjustedLevels,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: der \
+            Klimax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die \
+            Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::WyckoffRange,
+        reason: ApplicabilityReason::StructureProviderExtreme,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Spring und UTAD entstehen, wenn ein einzelnes Tief oder Hoch die \
+            Spannengrenze durchsticht und der Schlusskurs zurückkehrt; diese Extreme sind Quotes \
+            des Anbieters und gelten nicht am gehandelten Markt",
+    },
+];
+
+/// All [`StructureMethod`] rules in the order [`check_applicability`] evaluates them.
+pub fn method_rule_catalog() -> [MethodRuleDescription; 8] {
+    METHOD_RULES
+}
+
+/// Whether the series property a [`StructureMethod`] rule is about is present.
+fn method_rule_applies(reason: ApplicabilityReason, capabilities: &SeriesCapabilities) -> bool {
+    match reason {
+        ApplicabilityReason::StructureRollJumps => {
+            capabilities.continuity == ContinuityKind::StitchedUnadjusted
+        }
+        ApplicabilityReason::StructureBackAdjustedLevels => {
+            capabilities.continuity == ContinuityKind::StitchedBackAdjusted
+        }
+        ApplicabilityReason::StructureProportionalAdjustment => {
+            capabilities.price_adjustment != PriceAdjustment::Raw
+        }
+        ApplicabilityReason::StructureProviderExtreme => {
+            capabilities.provenance == Provenance::Broker
+        }
+        ApplicabilityReason::StructureFiniteHistory => {
+            capabilities.continuity == ContinuityKind::SingleContract
+        }
+        _ => false,
+    }
+}
+
 fn note_from(rule: RuleDescription) -> ApplicabilityNote {
     ApplicabilityNote {
         reason: rule.reason,
@@ -240,7 +395,9 @@ fn note_from(rule: RuleDescription) -> ApplicabilityNote {
 /// classifies: any note produced by an "Unsuitable" rule (1-3 above) makes the whole result
 /// [`Applicability::Unsuitable`], carrying every note (Unsuitable and Degraded) found; otherwise
 /// any note from a "Degraded" rule (4-8 above) makes it [`Applicability::Degraded`]; otherwise
-/// [`Applicability::Applicable`].
+/// [`Applicability::Applicable`]. An indicator with a [`DataRequirements::structure_method`]
+/// is additionally checked against that method's rules ([`method_rule_catalog`]), whose notes
+/// join the same two buckets by their tier.
 pub fn check_applicability(
     requirements: &DataRequirements,
     capabilities: &SeriesCapabilities,
@@ -285,6 +442,21 @@ pub fn check_applicability(
         degraded_notes.push(note_from(RULE_PROVIDER_SPECIFIC_EXTREME));
     }
 
+    if let Some(method) = requirements.structure_method {
+        for rule in METHOD_RULES.iter().filter(|rule| rule.method == method) {
+            if method_rule_applies(rule.reason, capabilities) {
+                let note = ApplicabilityNote {
+                    reason: rule.reason,
+                    explanation: rule.explanation,
+                };
+                match rule.tier {
+                    ApplicabilityTier::Unsuitable => unsuitable_notes.push(note),
+                    ApplicabilityTier::Degraded => degraded_notes.push(note),
+                }
+            }
+        }
+    }
+
     if !unsuitable_notes.is_empty() {
         unsuitable_notes.extend(degraded_notes);
         Applicability::Unsuitable {
@@ -323,6 +495,11 @@ pub fn check_applicability(
 /// volume passes zero volume to them. `tests/applicability_catalog.rs` checks this split against
 /// a run of every catalog entry.
 ///
+/// `elliott` and `wyckoff` do not use the generic session/roll/adjustment flags: they carry a
+/// [`StructureMethod`] whose rules ([`method_rule_catalog`]) name what each method reads from the
+/// series. `wyckoff` additionally sets `needs_real_volume`: its climax test is a volume outlier
+/// against the median of the range window, and it has no switch to run without volume.
+///
 /// Names not listed below (including all pure price indicators) return
 /// [`DataRequirements::default()`] — deliberately conservative: `needs_trade_direction` and
 /// `needs_liquidity_depth` are left `false` everywhere for now, since no indicator covered by the
@@ -349,13 +526,23 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             needs_real_volume: true,
             ..DataRequirements::default()
         },
-        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "elliott"
-        | "swing_structure" => DataRequirements {
-            session_sensitive: true,
-            roll_sensitive: true,
-            adjustment_sensitive: true,
+        "elliott" => DataRequirements {
+            structure_method: Some(StructureMethod::ElliottWaves),
             ..DataRequirements::default()
         },
+        "wyckoff" => DataRequirements {
+            needs_real_volume: true,
+            structure_method: Some(StructureMethod::WyckoffRange),
+            ..DataRequirements::default()
+        },
+        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure" => {
+            DataRequirements {
+                session_sensitive: true,
+                roll_sensitive: true,
+                adjustment_sensitive: true,
+                ..DataRequirements::default()
+            }
+        }
         _ => DataRequirements::default(),
     }
 }
@@ -614,12 +801,168 @@ mod tests {
         assert_eq!(
             data_requirements("elliott"),
             DataRequirements {
-                session_sensitive: true,
-                roll_sensitive: true,
-                adjustment_sensitive: true,
+                structure_method: Some(StructureMethod::ElliottWaves),
                 ..DataRequirements::default()
             }
         );
+        assert_eq!(
+            data_requirements("wyckoff"),
+            DataRequirements {
+                needs_real_volume: true,
+                structure_method: Some(StructureMethod::WyckoffRange),
+                ..DataRequirements::default()
+            }
+        );
+        // The other extreme-based indicators keep the generic flags.
+        for name in [
+            "zigzag",
+            "zigzag_advanced",
+            "pivots_structure",
+            "pivot_sets",
+            "swing_structure",
+        ] {
+            assert_eq!(
+                data_requirements(name),
+                DataRequirements {
+                    session_sensitive: true,
+                    roll_sensitive: true,
+                    adjustment_sensitive: true,
+                    ..DataRequirements::default()
+                },
+                "{name}"
+            );
+        }
+    }
+
+    fn reasons_of(applicability: &Applicability) -> Vec<ApplicabilityReason> {
+        match applicability {
+            Applicability::Applicable => Vec::new(),
+            Applicability::Degraded { reasons } | Applicability::Unsuitable { reasons } => {
+                reasons.iter().map(|n| n.reason).collect()
+            }
+        }
+    }
+
+    #[test]
+    fn structure_method_rules_follow_the_series_property() {
+        use ApplicabilityReason::*;
+        // `baseline_capabilities` is a single contract, which has a rule of its own; start from spot.
+        let spot_capabilities = || SeriesCapabilities {
+            continuity: ContinuityKind::Spot,
+            ..baseline_capabilities()
+        };
+        let elliott = data_requirements("elliott");
+        let wyckoff = data_requirements("wyckoff");
+        let cases = [
+            (ContinuityKind::StitchedUnadjusted, StructureRollJumps),
+            (
+                ContinuityKind::StitchedBackAdjusted,
+                StructureBackAdjustedLevels,
+            ),
+            (ContinuityKind::SingleContract, StructureFiniteHistory),
+        ];
+        for (continuity, reason) in cases {
+            let caps = SeriesCapabilities {
+                continuity,
+                ..spot_capabilities()
+            };
+            assert_eq!(
+                reasons_of(&check_applicability(&elliott, &caps)),
+                vec![reason]
+            );
+        }
+        let adjusted = SeriesCapabilities {
+            price_adjustment: PriceAdjustment::Split,
+            ..spot_capabilities()
+        };
+        assert_eq!(
+            reasons_of(&check_applicability(&elliott, &adjusted)),
+            vec![StructureProportionalAdjustment]
+        );
+        // Wyckoff has no rule for adjusted prices or for a finite contract life.
+        assert_eq!(
+            check_applicability(&wyckoff, &adjusted),
+            Applicability::Applicable
+        );
+        let single = SeriesCapabilities {
+            continuity: ContinuityKind::SingleContract,
+            ..spot_capabilities()
+        };
+        assert_eq!(
+            check_applicability(&wyckoff, &single),
+            Applicability::Applicable
+        );
+        let broker = SeriesCapabilities {
+            provenance: Provenance::Broker,
+            ..spot_capabilities()
+        };
+        assert_eq!(
+            reasons_of(&check_applicability(&elliott, &broker)),
+            vec![StructureProviderExtreme]
+        );
+        assert_eq!(
+            reasons_of(&check_applicability(&wyckoff, &broker)),
+            vec![StructureProviderExtreme]
+        );
+    }
+
+    #[test]
+    fn wyckoff_without_real_volume_is_unsuitable_and_keeps_its_path_notes() {
+        let caps = SeriesCapabilities {
+            volume: VolumeKind::Tick,
+            continuity: ContinuityKind::StitchedUnadjusted,
+            ..baseline_capabilities()
+        };
+        let result = check_applicability(&data_requirements("wyckoff"), &caps);
+        assert_eq!(
+            reasons_of(&result),
+            vec![
+                ApplicabilityReason::VolumeIsTickNotTurnover,
+                ApplicabilityReason::StructureRollJumps
+            ]
+        );
+        assert!(matches!(result, Applicability::Unsuitable { .. }));
+    }
+
+    #[test]
+    fn method_rule_catalog_is_unique_per_method_and_reason_and_all_reachable() {
+        let rules = method_rule_catalog();
+        for (i, a) in rules.iter().enumerate() {
+            for b in &rules[i + 1..] {
+                assert!(
+                    (a.method, a.reason) != (b.method, b.reason),
+                    "duplicate rule {:?}/{:?}",
+                    a.method,
+                    a.reason
+                );
+            }
+            assert_eq!(a.tier, ApplicabilityTier::Degraded);
+            assert!(!a.explanation.is_empty());
+            // Every rule in the table is triggered by some capability combination.
+            let hit = [
+                ContinuityKind::Spot,
+                ContinuityKind::SingleContract,
+                ContinuityKind::StitchedUnadjusted,
+                ContinuityKind::StitchedBackAdjusted,
+            ]
+            .into_iter()
+            .flat_map(|continuity| {
+                [Provenance::Exchange, Provenance::Broker]
+                    .into_iter()
+                    .flat_map(move |provenance| {
+                        [PriceAdjustment::Raw, PriceAdjustment::SplitAndDividend]
+                            .into_iter()
+                            .map(move |price_adjustment| SeriesCapabilities {
+                                continuity,
+                                provenance,
+                                price_adjustment,
+                                ..baseline_capabilities()
+                            })
+                    })
+            })
+            .any(|caps| method_rule_applies(a.reason, &caps));
+            assert!(hit, "{:?} is never triggered", a.reason);
+        }
     }
 
     /// N28: an alias carries the requirements of the indicator it builds.

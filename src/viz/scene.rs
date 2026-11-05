@@ -222,11 +222,92 @@ impl Pane {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Scene {
     panes: Vec<Pane>,
+    /// Accessible name, see [`Scene::with_title`]. Not serialized while unset.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    title: Option<String>,
+    /// Accessible description, see [`Scene::with_description`]. Not serialized while unset.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    description: Option<String>,
+    /// Prefix of the ids of the `<title>` and `<desc>` elements, see [`Scene::with_label_id`].
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    label_id: Option<String>,
 }
 
 impl Scene {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets the accessible name of the scene.
+    ///
+    /// Opt-in: [`crate::viz::render_scene_svg`] writes it as `<title>` into the root `<svg>`
+    /// (first child), adds `role="img"` and references it from `aria-labelledby`. A scene without
+    /// title and description renders exactly as before. Surrounding whitespace is trimmed and an
+    /// empty text counts as unset; the text is XML-escaped when rendered.
+    pub fn with_title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    /// Sets the accessible description of the scene: what the figure shows, in a sentence or
+    /// two. Written as `<desc>` and listed in `aria-labelledby` after the title. Works without a
+    /// title, in which case the description alone names the figure.
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    /// Sets the id prefix of the generated elements: `<prefix>-title` and `<prefix>-desc`
+    /// (default prefix `scene`). Needed when several scenes are inlined into one HTML page,
+    /// because element ids must be unique there. Characters other than ASCII letters, digits,
+    /// `-` and `_` become `-`.
+    pub fn with_label_id(mut self, prefix: impl Into<String>) -> Self {
+        self.label_id = Some(prefix.into());
+        self
+    }
+
+    /// The accessible name set with [`Scene::with_title`], trimmed; `None` if unset or empty.
+    pub fn title(&self) -> Option<&str> {
+        non_empty(self.title.as_deref())
+    }
+
+    /// The accessible description set with [`Scene::with_description`], trimmed; `None` if unset
+    /// or empty.
+    pub fn description(&self) -> Option<&str> {
+        non_empty(self.description.as_deref())
+    }
+
+    /// The id prefix set with [`Scene::with_label_id`], as the renderer writes it; `scene` if
+    /// unset or if nothing usable is left after replacing unsupported characters.
+    pub fn label_id(&self) -> String {
+        let cleaned: String = self
+            .label_id
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else {
+                    '-'
+                }
+            })
+            .collect();
+        if cleaned.is_empty() {
+            "scene".to_string()
+        } else {
+            cleaned
+        }
     }
 
     /// Inserts `pane`, or replaces the existing pane with the same `id`.
@@ -248,6 +329,10 @@ impl Scene {
     pub fn panes(&self) -> &[Pane] {
         &self.panes
     }
+}
+
+fn non_empty(text: Option<&str>) -> Option<&str> {
+    text.map(str::trim).filter(|t| !t.is_empty())
 }
 
 #[cfg(test)]

@@ -62,7 +62,10 @@ default `serde` feature.
 
 The crate still contains two small SVG renderers, `viz::render_chart_svg` (candles, lines, zones,
 markers) and `viz::render_scene_svg` (a `Scene` as SVG). They are meant for a quick look in tests
-and debugging, not as a presentation layer: no axes labels to speak of, no accessibility, no
-responsive layout. Colours pass through `sanitize_color` (`#rgb`, `#rrggbb`, `#rrggbbaa` or
+and debugging, not as a presentation layer: no axes labels to speak of, no
+responsive layout. A `Scene` can carry an accessible name for the SVG (`Scene::with_title`,
+`with_description`, `with_label_id`): `<title>`, `<desc>`, `role="img"` and `aria-labelledby`, with
+the ids `<prefix>-title` and `<prefix>-desc`; without them the SVG has no such markup. Use a
+different prefix for each scene inlined into one page. Colours pass through `sanitize_color` (`#rgb`, `#rrggbb`, `#rrggbbaa` or
 `var(--name)`; anything else becomes `#29b6f6`). For anything a reader should see, use chartlet or
 kestrel-loom.

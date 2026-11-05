@@ -9,8 +9,37 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-11-05
+
+### Breaking
+
+- **Applicability:** `DataRequirements` has a new field `structure_method` and
+  `ApplicabilityReason` has five new variants (`Structure…`), so exhaustive struct literals and
+  `match` expressions over them need an update. `Scene` stays constructible only through its
+  constructor, so it is not affected.
+
+### Added
+
+- **Applicability:** `elliott` and `wyckoff` declare requirements of their own
+  (`StructureMethod`, `method_rule_catalog`) instead of the generic session/roll/adjustment
+  flags. Every finding names what the method reads from the series: roll jumps counted as waves,
+  additive and proportional adjustment, provider-specific extremes, the bounded history of a
+  single contract, and for Wyckoff the contract change inside the range and real turnover.
+- **Applicability:** `wyckoff` declares `needs_real_volume`; its climax test is a volume outlier.
+- **Viz:** `Scene::with_title`, `with_description` and `with_label_id` give `render_scene_svg` an
+  accessible name: `<title>`, `<desc>`, `role="img"` and `aria-labelledby`. A scene without them
+  renders byte for byte as before. Details:
+  [Visualising results](https://casoon.github.io/kestrel-chartkit/docs/guides/visualising/).
+
 ### Changed
 
+- **Applicability:** a series that is a single, never-rolled contract is now `Degraded` for
+  `elliott`, because its history ends with the contract's expiry. The verdicts of all other
+  indicators are unchanged and pinned by `tests/golden_reference_applicability.rs`.
+- **Model:** the documentation of `ContinuityKind::StitchedBackAdjusted` (additive shift) and
+  `PriceAdjustment` (proportional scaling) states which kind of adjustment the applicability
+  rules assume.
+- **Examples:** `export_applicability` also lists `structure_method` and `method_rules`.
 - **Pages:** the project site uses the current shared theme (0.12.6).
 
 

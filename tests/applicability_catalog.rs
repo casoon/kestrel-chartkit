@@ -41,6 +41,29 @@ fn same(a: &Option<IndicatorOutput>, b: &Option<IndicatorOutput>) -> bool {
     }
 }
 
+/// Zwei Reihen mit denselben Kursen, die sich nur im Umsatz einer Kerze unterscheiden: der
+/// Klimax-Kerze, mit der die Wyckoff-Spanne einrastet. Auf Zufallsreihen rastet keine Spanne
+/// ein, dort würde ein Volumenverbrauch von `wyckoff` unentdeckt bleiben.
+///
+/// Die 20. Kerze schließt unter ihrer Eröffnung und über dem Vorschluss. Mit Klimax-Umsatz ist
+/// das ein Abverkauf (Akkumulation), ohne ihn entscheidet der Vorschluss (Distribution). Die
+/// folgende Kerze durchsticht das Spannentief und schließt darüber: nur bei Akkumulation ein
+/// Spring, sonst kein Ereignis.
+fn climax_pair() -> (Vec<Bar>, Vec<Bar>) {
+    let build = |climax_volume: f64| {
+        let mut bars: Vec<Bar> = (0..19)
+            .map(|i| {
+                let price = 100.0 + ((i % 4) as f64 - 1.5) * 0.6;
+                Bar::new(i as i64 * 60, price, price + 0.6, price - 0.6, price, 100.0)
+            })
+            .collect();
+        bars.push(Bar::new(19 * 60, 100.8, 101.0, 99.9, 100.5, climax_volume));
+        bars.push(Bar::new(20 * 60, 99.5, 100.0, 97.5, 99.5, 100.0));
+        bars
+    };
+    (build(400.0), build(100.0))
+}
+
 #[test]
 fn volume_requirement_matches_volume_use() {
     // Stündliche Bars über gut zwei Wochen, damit auch `rvat` (Vergleich je Tageszeit) rechnet.
@@ -80,6 +103,22 @@ fn volume_requirement_matches_volume_use() {
             if !same(&oa, &ob) || kinds_a != kinds_b {
                 uses_volume = true;
                 break;
+            }
+        }
+        // Zweiter Durchlauf mit der Klimax-Reihe, für Indikatoren, die nur auf einer
+        // eingerasteten Spanne Umsatz lesen.
+        if !uses_volume {
+            let (with_climax, without) = climax_pair();
+            let mut c = build_checked(entry.name, &entry.default_params).unwrap();
+            let mut d = build_checked(entry.name, &entry.default_params).unwrap();
+            for (x, y) in with_climax.iter().zip(&without) {
+                let (oc, od) = (c.on_bar(x), d.on_bar(y));
+                let kinds_c: Vec<String> = c.alerts().into_iter().map(|al| al.kind).collect();
+                let kinds_d: Vec<String> = d.alerts().into_iter().map(|al| al.kind).collect();
+                if !same(&oc, &od) || kinds_c != kinds_d {
+                    uses_volume = true;
+                    break;
+                }
             }
         }
         let declared = data_requirements(entry.name).needs_real_volume;

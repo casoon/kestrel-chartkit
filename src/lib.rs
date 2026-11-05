@@ -103,8 +103,9 @@ pub use adapters::{
     NotificationSeverity, NotificationSink, WebhookNotificationSink,
 };
 pub use applicability::{
-    check_applicability, data_requirements, rule_catalog, Applicability, ApplicabilityNote,
-    ApplicabilityReason, ApplicabilityTier, DataRequirements, RuleDescription,
+    check_applicability, data_requirements, method_rule_catalog, rule_catalog, Applicability,
+    ApplicabilityNote, ApplicabilityReason, ApplicabilityTier, DataRequirements,
+    MethodRuleDescription, RuleDescription, StructureMethod,
 };
 pub use artifact::{
     Artifact, PivotArtifact, ProfileArtifact, ProfileBin, ScenarioArtifact, ZoneArtifact,
