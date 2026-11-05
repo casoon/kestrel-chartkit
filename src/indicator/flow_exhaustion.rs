@@ -197,6 +197,10 @@ impl FlowExhaustion {
         let (mut pos, mut neg, mut vol) = (0.0, 0.0, 0.0);
         for k in 0..n {
             let r = self.at(k)?;
+            if !r.volume.is_finite() {
+                // A missing volume leaves this window without an MFI; later windows are unaffected.
+                return None;
+            }
             vol += r.volume;
             if let Some(p) = self.at(k + 1) {
                 if r.src > p.src {

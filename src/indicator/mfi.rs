@@ -15,6 +15,11 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// first-sample seed; `extra["signal"]` is `Ema(sig_len)` of the line. Alerts require volume.
 ///
 /// First output: with the `mfi_len`-th bar. [`Indicator::reset`] clears the window and averages.
+///
+/// A bar whose volume is not finite (missing) carries no money flow. Every window that contains it
+/// has no MFI and reports no output; the windows after it are computed from valid bars only, and
+/// the averages restart with the first valid window, so nothing computed before the gap leaks into
+/// the values after it. A series without missing volume is unaffected.
 pub struct Mfi {
     mfi_len: usize,
     mid_line: f64,
@@ -23,7 +28,9 @@ pub struct Mfi {
     require_extreme_zone: bool,
 
     prev_src: Option<f64>,
-    flow_window: VecDeque<(f64, f64, f64)>,
+    /// Per bar: positive flow, negative flow, volume, volume missing.
+    flow_window: VecDeque<(f64, f64, f64, bool)>,
+    missing_in_window: usize,
     pos_sum: f64,
     neg_sum: f64,
     vol_sum: f64,
@@ -67,6 +74,7 @@ impl Mfi {
             require_extreme_zone,
             prev_src: None,
             flow_window: VecDeque::with_capacity(mfi_len),
+            missing_in_window: 0,
             pos_sum: 0.0,
             neg_sum: 0.0,
             vol_sum: 0.0,
@@ -99,7 +107,9 @@ impl Indicator for Mfi {
         self.bars_seen += 1;
 
         let src = bar.typical_price();
-        let raw_flow = src * bar.volume;
+        let missing = !bar.volume.is_finite();
+        let volume = if missing { 0.0 } else { bar.volume };
+        let raw_flow = src * volume;
         let (pos_flow, neg_flow) = match self.prev_src {
             None => (0.0, 0.0),
             Some(prev) if src > prev => (raw_flow, 0.0),
@@ -109,17 +119,29 @@ impl Indicator for Mfi {
         self.prev_src = Some(src);
 
         if self.flow_window.len() == self.mfi_len {
-            let (old_pos, old_neg, old_vol) = self.flow_window.pop_front().unwrap();
+            let (old_pos, old_neg, old_vol, old_missing) = self.flow_window.pop_front().unwrap();
             self.pos_sum -= old_pos;
             self.neg_sum -= old_neg;
             self.vol_sum -= old_vol;
+            self.missing_in_window -= usize::from(old_missing);
         }
-        self.flow_window.push_back((pos_flow, neg_flow, bar.volume));
+        self.flow_window
+            .push_back((pos_flow, neg_flow, volume, missing));
         self.pos_sum += pos_flow;
         self.neg_sum += neg_flow;
-        self.vol_sum += bar.volume;
+        self.vol_sum += volume;
+        self.missing_in_window += usize::from(missing);
 
         if self.flow_window.len() < self.mfi_len {
+            return None;
+        }
+        if self.missing_in_window > 0 {
+            // The window has no complete volume: no MFI, and the averages start over afterwards.
+            self.mfi_avg.reset();
+            self.signal_avg.reset();
+            self.extreme_window.reset();
+            self.prev_mfi_line = None;
+            self.prev_signal = None;
             return None;
         }
 
@@ -179,6 +201,7 @@ impl Indicator for Mfi {
     fn reset(&mut self) {
         self.prev_src = None;
         self.flow_window.clear();
+        self.missing_in_window = 0;
         self.pos_sum = 0.0;
         self.neg_sum = 0.0;
         self.vol_sum = 0.0;

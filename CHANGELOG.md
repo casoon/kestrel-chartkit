@@ -9,6 +9,17 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-11-05
+
+### Fixed
+
+- **MFI:** a bar with missing volume (not finite) no longer turns every later value into NaN. The
+  money-flow sums skip such a bar; every window that contains it reports no output, and the
+  averages restart with the first complete window. Series without missing volume give bit-identical
+  values.
+- **Flow exhaustion:** the raw MFI of a window with a missing volume is skipped instead of being
+  fed into the smoothing.
+
 ## [0.36.0] - 2026-11-05
 
 ### Breaking
