@@ -6,7 +6,7 @@ context (request.security) is replaced by the same EMA slope on the chart timefr
 
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_coil_release"
@@ -145,7 +145,7 @@ def compute(bars):
         dyn = (drop + gain) / 2.0
         setup = ps.clamp(coil_score * (REL_FLOOR + (1.0 - REL_FLOOR) * dyn), 0.0, 1.0)
         base_bars = sum(1.0 for k in range(1, BREAK_LEN + 1) if base[t - k])
-        was_base = base_bars >= ps.pine_round(BREAK_LEN * BASE_SHARE)
+        was_base = base_bars >= ps.round_half_away(BREAK_LEN * BASE_SHARE)
         first_up = bu and not pbu
         first_dn = bd and not pbd
         a = atr[t]
@@ -197,7 +197,7 @@ HEADER = [
     "classifications; a first break needs the previous bar's break state. A bar reports once all",
     "of that exists.",
     "",
-    "Series: pine_series.lcg_series(1500, seed 3) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(1500, seed 3) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).",

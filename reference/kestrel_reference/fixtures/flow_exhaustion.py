@@ -5,7 +5,7 @@ higher-timeframe filter, manual divergence parameters (the timeframe presets nee
 timeframe).
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_flow_exhaustion"
@@ -142,7 +142,7 @@ def compute(bars):
             else:
                 move = piv_close - min(lo[end - REACT_BARS + 1:end + 1])
             react = ps.clamp01(move / max(atr[t] * REACT_ATR, 1e-10))
-            score = ps.pine_round(ps.clamp01(base + W_REACT * react) * 100.0)
+            score = ps.round_half_away(ps.clamp01(base + W_REACT * react) * 100.0)
             if reported[t]:
                 events["bull_divergence" if bull else "bear_divergence"].append(t)
                 div_scores.append(float(score) if bull else -float(score))
@@ -177,7 +177,7 @@ HEADER = [
     "K exist; signals and divergence alerts are emitted only on reported bars. A divergence is",
     "emitted when its reaction window has passed (pivot + 10 bars) with its final score.",
     "",
-    "Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.wave_series(900) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6); score_<j>",

@@ -235,7 +235,7 @@ pub fn golden_value(fixture_text: &str, key: &str) -> f64 {
 }
 
 /// The OHLCV series shared by several indicator golden tests, as documented in
-/// `reference/kestrel_reference/pine_series.py::wave_series`.
+/// `reference/kestrel_reference/series.py::wave_series`.
 pub fn wave_series(count: usize) -> Vec<Bar> {
     let mut bars = Vec::with_capacity(count);
     let mut prev = 100.0f64;
@@ -273,7 +273,7 @@ pub fn wave_series(count: usize) -> Vec<Bar> {
 }
 
 /// The pseudo-random OHLCV walk with regimes from
-/// `reference/kestrel_reference/pine_series.py::lcg_series`, reproducible bit for bit.
+/// `reference/kestrel_reference/series.py::lcg_series`, reproducible bit for bit.
 pub fn lcg_series(count: usize, seed: u64) -> Vec<Bar> {
     const DRIFTS: [f64; 6] = [0.3, 0.0, -0.3, 0.0, 0.15, -0.15];
     const VOLS: [f64; 6] = [0.8, 1.5, 0.8, 0.25, 1.0, 1.0];

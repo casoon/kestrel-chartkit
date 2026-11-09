@@ -97,7 +97,7 @@ def _sign(v, dead=0.0):
 
 
 def _at(s, t, k):
-    """s[t - k] with Pine's history operator: None before the series start."""
+    """s[t - k] with a lookback offset: None before the series start."""
     j = t - k
     return s[j] if j >= 0 else None
 
@@ -113,7 +113,7 @@ def _sma(s, n):
 
 
 def _stdev(s, n):
-    """Population standard deviation (Pine ta.stdev, biased)."""
+    """Population standard deviation (biased)."""
     out = [None] * len(s)
     for t in range(len(s)):
         if t >= n - 1:
@@ -125,7 +125,7 @@ def _stdev(s, n):
 
 
 def _ema(s, n):
-    """alpha = 2/(n+1), seeded with the first available value (Pine ta.ema)."""
+    """alpha = 2/(n+1), seeded with the first available value (standard EMA)."""
     a = 2.0 / (n + 1.0)
     out = [None] * len(s)
     prev = None
@@ -138,7 +138,7 @@ def _ema(s, n):
 
 
 def _rma(s, n):
-    """Wilder average seeded with the SMA of the first n values (Pine ta.rma)."""
+    """Wilder average seeded with the SMA of the first n values (Wilder RMA)."""
     out = [None] * len(s)
     prev = None
     for t in range(len(s)):
@@ -487,7 +487,7 @@ HEADER = [
     "with its defaults, EMA family, length 50. Conventions the original leaves open:",
     "EMA seeded with the first value, ATR = Wilder average of the true range (first bar high -",
     "low) seeded with an SMA, population standard deviation, mintick floor replaced by 1e-12,",
-    "ta.rising = greater than each of the previous n values, pivots strict on both sides. Every",
+    "rising = greater than each of the previous n values, pivots strict on both sides. Every",
     "step propagates 'not available'; a bar reports when relationship, signal and all six scores",
     "exist; events are evaluated only on reported bars and need every input they read, the",
     "previous bar's condition included for transitions. Cooldown 8 bars per event family,",

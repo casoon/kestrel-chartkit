@@ -55,8 +55,8 @@
 //!
 //! Conventions the original leaves open (also in the golden fixture): ATR = Wilder average of
 //! the true range (first bar high - low), SMA-seeded, 0 where an ATR is read before it exists
-//! (Pine's `nz`); a missing ATR at the pivot bar blocks a new pivot; EMA seeded with the first
-//! close; `syminfo.mintick` floors replaced by `1e-12`; pivots strict to the left, non-strict to
+//! (a missing value counts as 0); a missing ATR at the pivot bar blocks a new pivot; EMA seeded with the first
+//! close; tick-size floors replaced by `1e-12`; pivots strict to the left, non-strict to
 //! the right (the first of equal extremes counts).
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_character.py`.

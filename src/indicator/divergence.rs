@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-/// Trend wedge of the oscillator family (the "Trend↔RSI divergence wedge" of the Pine originals):
+/// Trend wedge of the oscillator family (the "Trend↔RSI divergence wedge"):
 /// over `div_len` bars the fast line moves by more than `div_min` against its slower context line
 /// (`bull`: fast falls while the context rises — a dip inside a rising trend; `bear`: fast rises
 /// while the context falls). **Not** a price/oscillator divergence (lower price low with a higher
@@ -95,8 +95,8 @@ pub enum PivotSource {
     #[default]
     Price,
     /// Strict pivots of the oscillator itself, price read at the same bar (low for a low
-    /// pivot, high for a high pivot) — how TradingView's divergence scripts find them
-    /// (`ta.pivotlow(osc, left, right)`). [`OscillatorAnchor`] has no effect: the oscillator
+    /// pivot, high for a high pivot) — the usual way of finding oscillator
+    /// divergences. [`OscillatorAnchor`] has no effect: the oscillator
     /// value is the pivot value.
     Oscillator,
 }

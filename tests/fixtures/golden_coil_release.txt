@@ -14,7 +14,7 @@
 # classifications; a first break needs the previous bar's break state. A bar reports once all
 # of that exists.
 #
-# Series: pine_series.lcg_series(1500, seed 3) (see reference/kestrel_reference/pine_series.py).
+# Series: series.lcg_series(1500, seed 3) (see reference/kestrel_reference/series.py).
 #
 # first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n
 # the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).

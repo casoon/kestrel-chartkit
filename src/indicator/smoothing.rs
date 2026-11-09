@@ -252,7 +252,7 @@ impl ExtremeWindow {
     }
 }
 
-/// Rolling percent rank as Pine's `ta.percentrank`: the share (in %) of the previous `n` values
+/// Rolling percent rank: the share (in %) of the previous `n` values
 /// that are `<=` the newest one.
 #[derive(Debug, Clone)]
 pub(crate) struct PercentRank {

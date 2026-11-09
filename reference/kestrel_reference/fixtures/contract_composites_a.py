@@ -16,7 +16,7 @@ Conventions assumed where the documentation leaves them open are stated per indi
 import contextlib
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance, render_contract
 from . import coil_release as cr_ref
 from . import compression_zones as cz_ref
@@ -153,7 +153,7 @@ def roc_context_blocks():
 
 # --- Smoothed Supertrend ---------------------------------------------------------------------
 #
-# Values and events from `smoothed_supertrend.compute`; `adx` = ADX(14, 14) (`pine_series.adx`)
+# Values and events from `smoothed_supertrend.compute`; `adx` = ADX(14, 14) (`series.adx`)
 # once it exists; `strength_rank` and `distance_rank` once their 100-value windows exist;
 # `overextension` = +1 when the distance rank exceeds 85 with the close above the baseline, -1
 # below it, 0 otherwise (also 0 before the distance rank exists).
@@ -368,7 +368,7 @@ def flow_exhaustion_blocks():
 # round(break_len * base_share) (half away from zero) of those bars are base bars (complexity
 # above complex_high and efficiency below eff_low) — the golden module's reading of "at least
 # base_share of the previous bars". The golden module keeps complexity and efficiency of the bars
-# before the first report local; a recording wrapper around `pine_series.sma` captures the two
+# before the first report local; a recording wrapper around `series.sma` captures the two
 # full series it smooths (its 3-bar means), so the base bars are classified here from them.
 # Strength (assumed convention; the type documents none): the setup score clamped to 0.05..1.
 
@@ -405,7 +405,7 @@ def coil_release_case(bars, length=34, break_len=12, ema_len=55, slope_len=5, th
                  "efficiency": out["eff"][t], "chop": out["chop"][t], "coil": out["coil"][t],
                  "coil_score": out["coil_score"][t], "release_dyn": out["release_dyn"][t],
                  "trend": out["trend"][t], "corr_high": highs[t - 1], "corr_low": lows[t - 1],
-                 "was_base": 1.0 if base_bars >= ps.pine_round(break_len * share) else 0.0}
+                 "was_base": 1.0 if base_bars >= ps.round_half_away(break_len * share) else 0.0}
         alerts = {kind: ps.clamp(setup, 0.05, 1.0) for kind in per_bar[t]}
         expected.append(((setup, extra), alerts))
     params = {"len": float(length), "break_len": float(break_len), "ema_len": float(ema_len),
@@ -593,11 +593,11 @@ def price_average_relation_blocks():
 # Values and (with confirm 1) events from `overextension_risk.compute`: value = top score,
 # secondary = bottom score, the six role scores, `vol_factor`, the thresholds and `regime`.
 # Fields the golden module keeps local:
-# - `adx` = ADX(14, 14) (`pine_series.adx`);
+# - `adx` = ADX(14, 14) (`series.adx`);
 # - `money_flow` = 1 when real volume feeds the flow part: cumulative volume above 0 and the
 #   30-bar volume SMA existing and positive;
 # - `bear_div_active`/`bull_div_active`: the golden module's WaveTrend divergence flags per bar,
-#   recorded from its `pine_series.barssince` calls (bear series first, then bull); a divergence
+#   recorded from its `series.barssince` calls (bear series first, then bull); a divergence
 #   stays active for `div_memory` (12) bars after its confirmation while the bar's high (low)
 #   stays at or below (above) the pivot price, the high (low) `pivot` (5) bars before it.
 # `confirm` 0 is not in the golden module; here a side signals on the first bar whose score is

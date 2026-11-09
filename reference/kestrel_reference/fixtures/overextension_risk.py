@@ -5,7 +5,7 @@ Written from the original definition, not from the Rust code. Preset Commodities
 Candle Reaction, signal gap 8, divergence assist off.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_overextension_risk"
@@ -233,7 +233,7 @@ HEADER = [
     "uptrend bear_do_not_chase, in a downtrend bear_trend_exhaustion, in a range bear_range_fade;",
     "bottom mirrored.",
     "",
-    "Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.wave_series(900) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).",

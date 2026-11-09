@@ -39,7 +39,7 @@
 //! Conventions the original leaves open (also in the golden fixture): EMA seeded with the
 //! first close; ATR = Wilder average of the true range (first bar high - low), SMA-seeded, floored
 //! at `1e-12` for the mintick; RSI = Wilder averages of the close changes, SMA-seeded, 50 when
-//! nothing moved; pivots strict on both sides. Pine's `na` would poison the held sensors while
+//! nothing moved; pivots strict on both sides. A missing value would poison the held sensors while
 //! ATR or RSI are not yet available; here a sensor that needs them is 0 on such a bar (and the
 //! previous distance counts as missing). The calculation runs from the first bar, output starts
 //! once ATR and RSI exist.

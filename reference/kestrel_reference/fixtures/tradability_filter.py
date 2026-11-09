@@ -6,7 +6,7 @@ Preset Balanced, volume confirmation off.
 
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_tradability_filter"
@@ -319,7 +319,7 @@ HEADER = [
     "codes: 0 no trade, 1 balance, 2 compression, 3 ready, 4 breakout, 5 trend, 6 exhaustion,",
     "7 aftermath.",
     "",
-    "Series: pine_series.lcg_series(1500, seed 11) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(1500, seed 11) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first ready bar; cp<bar>_* the outputs at that bar; ev_<kind>_n the",
     "number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).",

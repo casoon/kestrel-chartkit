@@ -281,8 +281,8 @@ pub fn black_scholes_merton(
 
     // Boundary case: zero volatility before expiry (T > 0, sigma = 0). The terminal price is the
     // deterministic forward, so the value is the discounted forward payoff
-    // `max(S e^{-qT} - K e^{-rT}, 0)` (put: `max(K e^{-rT} - S e^{-qT}, 0)`), as in QuantLib's
-    // `blackFormula` at `stdDev = 0` — not the spot intrinsic value. Greeks are the derivatives of
+    // `max(S e^{-qT} - K e^{-rT}, 0)` (put: `max(K e^{-rT} - S e^{-qT}, 0)`), the limit of the
+    // Black formula at zero standard deviation — not the spot intrinsic value. Greeks are the derivatives of
     // that deterministic value: delta `±e^{-qT}` while in the money on a forward basis (half of it
     // exactly at the money-forward), gamma and vega 0, theta and rho from the BSM formulas with
     // `N(d1) = N(d2)` replaced by that in-the-money indicator.

@@ -7,7 +7,7 @@ bars (reaction window 8 bars, validation window 20 bars, ATR move 1.6, weights 0
 
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_reaction_speed"
@@ -140,7 +140,7 @@ HEADER = [
     "event is active and on the bar it closes (the original keeps plotting 0 after a no-reaction expiry);",
     "a bar reports once the ATR base exists; events closing before that are not listed.",
     "",
-    "Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.wave_series(900) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar (reaction",
     "fields only while reported); final_n the number of closed events and final_<j>_bar / _type",

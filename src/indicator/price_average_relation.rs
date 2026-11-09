@@ -37,7 +37,7 @@
 //!
 //! Conventions the original leaves open (also in the golden fixture): EMA seeded with the first
 //! value; ATR = Wilder average of the true range, SMA-seeded; population standard deviation; the
-//! `syminfo.mintick` floor on ATR is `1e-12`; pivots strict on both sides. Every quantity
+//! tick-size floor on ATR is `1e-12`; pivots strict on both sides. Every quantity
 //! propagates "not available", a bar reports only when the oscillator, its signal and all six
 //! scores exist, and alerts are evaluated only on reported bars and need every input they read
 //! (including the previous bar's condition for transitions). The VWMA/HMA/WMA/DEMA/TEMA

@@ -736,7 +736,7 @@ HEADER = [
     "preset, Relative Volume participation; the visual field is not part of it. Conventions the",
     "original leaves open: EMAs seeded with the first available value, ATR = Wilder average of the",
     "true range (first bar high - low) seeded with an SMA and floored at 1e-12 (also for mintick),",
-    "population standard deviation, Pine's array.median, relative volume 1 while the volume average",
+    "population standard deviation, median, relative volume 1 while the volume average",
     "is missing or 0. Every series starts once its inputs exist; the state machines and output",
     "start on the first bar on which every input exists (the slow horizon's persistence), with",
     "resting previous values (phase 0, Re-Sync stage 0, counter pressure 0) and no previous",

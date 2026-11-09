@@ -5,7 +5,7 @@ Written from the original definition, not from the Rust code. Default parameters
 
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_market_state_chain"
@@ -183,7 +183,7 @@ HEADER = [
     "Edge events are typed by the state they come out of: reversal, breakout (out of Compression",
     "or Chaos), continuation; state_extended fires when the dwell ratio first reaches 1.5.",
     "",
-    "Series: pine_series.lcg_series(2000, seed 4) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(2000, seed 4) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first classified bar; cp<bar>_* the outputs at that bar (persistence",
     "and dwell_ratio only when they exist); ev_<kind>_n the number of events of that kind and",

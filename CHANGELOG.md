@@ -35,7 +35,7 @@ Values and warmup of three indicators change, hence a minor version.
 - **Connors RSI:** follows the definition, with one deliberate deviation in the rank. Price and streak RSI are raw Wilder RSIs (no longer
   the smoothed RSI line), all three parts run from the first bar, and the return is ranked among
   the `rank_len` returns before it; `rank_len` now takes effect. Equal returns count half: the
-  original counts only smaller ones, Pine's `ta.percentrank` smaller or equal ones; the half keeps
+  other conventions count only smaller ones or smaller-or-equal ones; the half keeps
   the rank symmetric. Only the rank part mirrors exactly (under `1 / close`); RSI and streak mirror
   under a price reflection. Values change,
   and the first output moves to bar `max(rsi_len + 1, streak_len + 2, rank_len + 2)` (102 with the

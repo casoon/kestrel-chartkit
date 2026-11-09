@@ -7,7 +7,7 @@ lookback-comparison layers are not part of the port.
 
 import math
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_rsi_cycle_stats"
@@ -230,7 +230,7 @@ HEADER = [
     "bar reports once the RSI exists. State codes: 0 idle, 1 low data, 2 stalled, 3 uncertain,",
     "4 late, 5 opportunity, 6 watch, 7 wait.",
     "",
-    "Series: pine_series.lcg_series(4000, seed 9) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(4000, seed 9) (see reference/kestrel_reference/series.py).",
     "",
     "cp<bar>_* the outputs at that bar (conditional and edge only when they exist); ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6); rx_ev_*",

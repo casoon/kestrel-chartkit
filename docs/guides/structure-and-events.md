@@ -197,7 +197,7 @@ Both compare pivots of price with an oscillator selected by `oscillator`: `0` RS
 
 `pivot_divergence` finds strict pivots in the bar lows and highs and reads the oscillator at the
 pivot bar. `oscillator_pivot_divergence` finds strict pivots in the oscillator and reads the bar
-low or high at the same bar, as TradingView's divergence scripts do. Each new pivot is compared
+low or high at the same bar. Each new pivot is compared
 with up to `max_prior_pivots` earlier pivots of its type, `min_distance` to `max_distance` bars
 back, and the best-scoring candidate is reported.
 

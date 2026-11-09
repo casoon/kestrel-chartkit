@@ -5,7 +5,7 @@ scaling needs the chart timeframe), volatility-adaptive band width, polarity and
 off; the SL/TP trade overlay is not part of the indicator.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_smoothed_supertrend"
@@ -116,7 +116,7 @@ HEADER = [
     "baseline and ATR exist; a strong rejection (strength rank above 70) is reported as",
     "*_rejection_strong instead of *_rejection.",
     "",
-    "Series: pine_series.wave_series(900) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.wave_series(900) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).",

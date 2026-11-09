@@ -1394,7 +1394,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 ### `oscillator_pivot_divergence`
 
-Divergence with the pivots found in the oscillator (TradingView's divergence scripts: ta.pivotlow/pivothigh of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence
+Divergence with the pivots found in the oscillator (pivots of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence
 
 [See it in the showcase](../../../showcase/oscillator_pivot_divergence/)
 
@@ -1413,7 +1413,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 ### `wavetrend_divergence`
 
-Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence
+Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (the usual way of finding oscillator divergences); price read at the same bars; alerts and extras as oscillator_pivot_divergence
 
 [See it in the showcase](../../../showcase/wavetrend_divergence/)
 
@@ -1431,7 +1431,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 ### `stoch_rsi_divergence`
 
-Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence
+Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (the usual way of finding oscillator divergences); price read at the same bars; alerts and extras as oscillator_pivot_divergence
 
 [See it in the showcase](../../../showcase/stoch_rsi_divergence/)
 

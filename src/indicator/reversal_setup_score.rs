@@ -64,7 +64,7 @@
 //! 12/26/9) seeded with the first value; ATR = Wilder average of the true range (first bar high -
 //! low), SMA-seeded; RSI = Wilder averages of the close changes, SMA-seeded; MFI over the last 14
 //! changes of hlc3 (50 without flow, 100 without negative flow); population standard deviation;
-//! `ta.falling` = below each of the previous 3 values; pivots strict on both sides; real volume =
+//! falling = below each of the previous 3 values; pivots strict on both sides; real volume =
 //! cumulative volume so far positive. Swings, BOS and the micro/major swing trends run from the
 //! first bar; scores, the climax sequence, events and output start once every input exists (bar
 //! 68 with the defaults: the 50-bar Bollinger-width average).

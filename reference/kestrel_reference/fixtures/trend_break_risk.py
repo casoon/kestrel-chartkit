@@ -69,7 +69,7 @@ def _ema(src, n):
 
 
 def _rma(src, n):
-    """Pine ta.rma over a series whose leading entries may be None (skipped until n values)."""
+    """Wilder RMA over a series whose leading entries may be None (skipped until n values)."""
     out = [None] * len(src)
     prev = None
     window = []

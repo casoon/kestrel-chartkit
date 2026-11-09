@@ -43,7 +43,7 @@ def _series(with_volume):
 
 
 def _rma(src, n):
-    """Pine ta.rma: SMA of the first n values, then (x + (n - 1) * prev) / n."""
+    """Wilder RMA: SMA of the first n values, then (x + (n - 1) * prev) / n."""
     out = [None] * len(src)
     prev = None
     for t in range(len(src)):
@@ -58,7 +58,7 @@ def _rma(src, n):
 
 
 def _pivot(vals, t, left, right, high):
-    """ta.pivothigh/pivotlow at bar t: the value `right` bars back, strictly beyond the left
+    """Pivot high/low at bar t: the value `right` bars back, strictly beyond the left
     neighbours and at least equal to the right ones (the first of equal extremes counts)."""
     c = t - right
     if c - left < 0:

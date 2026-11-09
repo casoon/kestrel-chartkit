@@ -82,8 +82,8 @@ impl Exhaustion {
 
     /// Feeds one bar: the oscillator's line value and the bar's high and low.
     pub fn update(&mut self, value: f64, high: f64, low: f64) -> ExhaustionSignal {
-        // Percentile rank of the current value among the previous `lookback` values, as Pine's
-        // `ta.percentrank`: the share of previous values less than or equal to it.
+        // Percentile rank of the current value among the previous `lookback` values:
+        // the share of previous values less than or equal to it.
         let rank = (self.values.len() == self.lookback).then(|| {
             let below = self.values.iter().filter(|v| **v <= value).count();
             100.0 * below as f64 / self.lookback as f64

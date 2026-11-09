@@ -15,7 +15,7 @@
 # Zone fields: in_zone/zone_high/zone_low/touches/read as seen on the bar before an ending zone
 # is cleared; read code 1 bull pressure, 0.5 bull continuation, -0.5 / -1 bear, 0 otherwise.
 #
-# Series: pine_series.lcg_series(1500, seed 11) (see reference/kestrel_reference/pine_series.py).
+# Series: series.lcg_series(1500, seed 11) (see reference/kestrel_reference/series.py).
 #
 # first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n
 # the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).

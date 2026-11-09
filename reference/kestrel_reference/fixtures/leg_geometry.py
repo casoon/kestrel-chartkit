@@ -6,7 +6,7 @@ written as a state machine over "the extreme so far" with explicit rescans; the 
 two scans picking the earliest lowest low and the latest highest high.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_leg_geometry"
@@ -39,7 +39,7 @@ HEADER = [
     "",
     *provenance("leg_geometry"),
     "",
-    "Series: pine_series.wave_series(400), bars (open, high, low, close).",
+    "Series: series.wave_series(400), bars (open, high, low, close).",
     "window<i>: the last `len` bars up to and including bar `end` (the slice bars[..=end]); the",
     "leg runs from the earlier to the later of (earliest lowest low, latest highest high).",
     "retr<i>: share = (to - price)/(to - from); zone 0 extension (share < 0), 1 correction",

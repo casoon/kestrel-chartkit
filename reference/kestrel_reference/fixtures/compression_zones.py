@@ -4,7 +4,7 @@ Written from the original definition, not from the Rust code. Sensitivity Balanc
 modules on, breakout quality Confirmed, contrary-read filter on.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_compression_zones"
@@ -50,7 +50,7 @@ def compute(bars):
     r_lo = ps.lowest(lo, LOOKBACK)
     vol_ma = ps.sma(v, VOL_LEN)
     vol_ma_short = ps.sma(v, max(3, VOL_LEN // 2))
-    ema_fast = ps.ema(c, int(max(2, ps.pine_round(LOOKBACK / 2))))
+    ema_fast = ps.ema(c, int(max(2, ps.round_half_away(LOOKBACK / 2))))
     ema_slow = ps.ema(c, LOOKBACK)
     cum = 0.0
 
@@ -208,7 +208,7 @@ HEADER = [
     "Zone fields: in_zone/zone_high/zone_low/touches/read as seen on the bar before an ending zone",
     "is cleared; read code 1 bull pressure, 0.5 bull continuation, -0.5 / -1 bear, 0 otherwise.",
     "",
-    "Series: pine_series.lcg_series(1500, seed 11) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(1500, seed 11) (see reference/kestrel_reference/series.py).",
     "",
     "first_reported is the first reporting bar; cp<bar>_* the outputs at that bar; ev_<kind>_n",
     "the number of events of that kind and ev_<kind>_<j> the bar of the j-th (up to 6).",

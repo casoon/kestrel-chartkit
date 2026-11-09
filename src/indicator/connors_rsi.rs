@@ -11,8 +11,8 @@ use std::collections::VecDeque;
 ///   close; it exists from the second bar on.
 /// - `rank`: the percentage of the `rank_len` one-bar returns *before* the current one that lie
 ///   below it, `(close - prev) / prev`. **Deliberate deviation:** a return equal to the current one
-///   counts half. The original counts only strictly smaller returns, Pine's `ta.percentrank`
-///   counts smaller or equal ones; the half-weight keeps the rank symmetric, so a series without
+///   counts half. Other conventions count only strictly smaller returns or
+///   smaller-or-equal ones; the half-weight keeps the rank symmetric, so a series without
 ///   movement ranks at `50`.
 ///
 /// Mirroring: the rank part is exactly mirrored (`100 - rank`) by the reciprocal price `1 / close`,

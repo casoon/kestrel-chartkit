@@ -79,7 +79,7 @@ impl DivergenceOscillator {
 /// Should one bar report several divergences, `extra` describes the last of them.
 ///
 /// [`PivotDivergence::oscillator_pivots`] finds the pivots in the oscillator instead
-/// (TradingView's divergence scripts) and reports as `oscillator_pivot_divergence`; then
+/// (the usual way of finding oscillator divergences) and reports as `oscillator_pivot_divergence`; then
 /// `pivot_price`/`previous_price` are the bar lows/highs at the two oscillator pivots.
 pub struct PivotDivergence {
     oscillator: DivergenceOscillator,
@@ -111,7 +111,7 @@ impl PivotDivergence {
     }
 
     /// Pivots of the oscillator rather than of price. With `max_prior_pivots` 1 each pivot is
-    /// compared with the immediately preceding one only — TradingView's RSI divergence
+    /// compared with the immediately preceding one only — the usual RSI divergence setting
     /// (`left`/`right` 5, range 5–60).
     pub fn oscillator_pivots(
         oscillator: DivergenceOscillator,
@@ -254,12 +254,12 @@ pub const PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = 
     build: |p| build_from_definition(p, PivotDivergence::new),
 };
 
-/// Same knobs as [`PIVOT_DIVERGENCE_DEFINITION`], pivots of the oscillator and TradingView's
+/// Same knobs as [`PIVOT_DIVERGENCE_DEFINITION`], pivots of the oscillator and the usual
 /// defaults.
 pub const OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
     name: "oscillator_pivot_divergence",
     aliases: &[],
-    description: "Divergence with the pivots found in the oscillator (TradingView's divergence scripts: ta.pivotlow/pivothigh of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence",
+    description: "Divergence with the pivots found in the oscillator (pivots of the oscillator, compared with the last pivot only); price read at the same bars; same oscillators, alerts and extras as pivot_divergence",
     params: &[
         super::definition::ParamSpec::count("oscillator", 0, 0, 4).meaning("oscillator code: 0 RSI, 1 WaveTrend, 2 Stoch RSI, 3 Williams %R, 4 CCI"),
         super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
@@ -280,7 +280,7 @@ pub const OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDe
 pub const WAVETREND_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
     name: "wavetrend_divergence",
     aliases: &[],
-    description: "Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
+    description: "Divergence on WaveTrend (wt1, 10/21) with the pivots found in the oscillator (the usual way of finding oscillator divergences); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
     params: &[
         super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
         super::definition::ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),
@@ -309,7 +309,7 @@ pub const WAVETREND_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinitio
 pub const STOCH_RSI_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
     name: "stoch_rsi_divergence",
     aliases: &[],
-    description: "Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (TradingView's divergence scripts); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
+    description: "Divergence on Stoch RSI (%K, 14/14/3) with the pivots found in the oscillator (the usual way of finding oscillator divergences); price read at the same bars; alerts and extras as oscillator_pivot_divergence",
     params: &[
         super::definition::ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a pivot"),
         super::definition::ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a pivot (confirmation delay)"),

@@ -5,7 +5,7 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Series: pine_series.wave_series(400), bars (open, high, low, close).
+# Series: series.wave_series(400), bars (open, high, low, close).
 # window<i>: the last `len` bars up to and including bar `end` (the slice bars[..=end]); the
 # leg runs from the earlier to the later of (earliest lowest low, latest highest high).
 # retr<i>: share = (to - price)/(to - from); zone 0 extension (share < 0), 1 correction

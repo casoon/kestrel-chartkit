@@ -31,8 +31,8 @@
 //! left and non-strict to the right, so the first of two equal extremes counts (strict on both
 //! sides never fires on a flat top); on a bar confirming both a high and a low the high is processed first (the low's leg
 //! then has length 0 and is not scored); ATR = Wilder average of the true range (first bar
-//! high - low), SMA-seeded — while it is not yet available, speed counts as 0 (Pine's `na > 0` is
-//! false); "real volume" = the cumulative volume so far is positive — tick volume cannot be told
+//! high - low), SMA-seeded — while it is not yet available, speed counts as 0 (a missing value is
+//! not positive); "real volume" = the cumulative volume so far is positive — tick volume cannot be told
 //! apart here, a caller without exchange volume passes 0.
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_conviction.py`.

@@ -52,7 +52,7 @@
 //! flow, 100 without negative flow); pivots strict on both sides; real volume = cumulative volume
 //! so far positive. Swings, BOS, swing trends, the volume profile and the effort-vs-result series
 //! run from the first bar; zones, gaps, order blocks and the climax sequence start with the first
-//! ATR (Pine compares against `na` before); output once RSI — with real volume also MFI and the
+//! ATR (nothing is compared before); output once RSI — with real volume also MFI and the
 //! volume average — exists. As in the original the climax sequence advances several stages in one
 //! bar when they are met, and the profile's high/low include the confirming bar.
 //!

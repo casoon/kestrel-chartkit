@@ -1,8 +1,8 @@
-"""Pine-style series helpers for the golden references of the stateful indicators.
+"""Series helpers for the golden references of the stateful indicators.
 
-Every series is a full list with one entry per bar; `None` is Pine's `na`. Unless a helper says
-otherwise, a value exists only when every input it reads exists ("strict na"), which is the
-convention the Rust indicators follow as well. Written from the Pine Script v6 reference, not from the
+Every series is a full list with one entry per bar; `None` marks a missing value. Unless a helper says
+otherwise, a value exists only when every input it reads exists ("strict missing"), which is the
+convention the Rust indicators follow as well. Written from the mathematical definitions, not from the
 Rust code.
 """
 
@@ -26,7 +26,7 @@ def safe_div(n, d, fallback=0.0):
 
 
 def at(s, t, k):
-    """s[t - k] with Pine's history operator: None before the series start."""
+    """s[t - k] (lookback by k bars): None before the series start."""
     j = t - k
     return s[j] if 0 <= j < len(s) else None
 
@@ -62,7 +62,7 @@ def rsum(s, n):
 
 
 def stdev(s, n):
-    """Population standard deviation (Pine ta.stdev, biased)."""
+    """Population standard deviation (biased)."""
     out = [None] * len(s)
     for t in range(len(s)):
         w = window(s, t, n)
@@ -172,7 +172,7 @@ def atr(h, lo, c, n):
 
 
 def rsi(src, n):
-    """Pine ta.rsi: Wilder averages of the gains and losses of `src` (first change on the second
+    """RSI: Wilder averages of the gains and losses of `src` (first change on the second
     bar); 100 without losses, 0 without gains."""
     ch = change(src)
     up = rma(smap(lambda d: max(d, 0.0), ch), n)
@@ -235,8 +235,8 @@ def pivot(src, t, left, right, low_side):
     return centre if all(centre > v for v in others) else None
 
 
-def pine_round(x):
-    """Pine math.round: half away from zero."""
+def round_half_away(x):
+    """Round half away from zero."""
     return math.floor(x + 0.5) if x >= 0 else -math.floor(-x + 0.5)
 
 
@@ -285,7 +285,7 @@ def events_block(events, names, limit=6):
 
 
 def adx(h, lo, c, di_len, adx_len):
-    """Pine ta.dmi ADX: +DM/-DM/TR from the second bar (TR without a previous close is na),
+    """Wilder ADX: +DM/-DM/TR from the second bar (TR without a previous close is missing),
     Wilder averages seeded with an SMA, DI = 100 DM/TR (0 for TR = 0), DX = 100 |DI+ - DI-| /
     (DI+ + DI-) (0 for a zero sum), ADX = Wilder average of DX."""
     n = len(c)
@@ -323,7 +323,7 @@ def barssince(cond, t):
 
 
 def percentrank(s, n):
-    """Pine ta.percentrank: share (in %) of the previous n values that are less than or equal to
+    """Percent rank: share (in %) of the previous n values that are less than or equal to
     the current one; needs the current and all n previous values."""
     out = [None] * len(s)
     for t in range(n, len(s)):
@@ -365,7 +365,7 @@ def lcg_series(n_bars, seed=12345):
 
 
 def dmi(h, lo, c, di_len, adx_len):
-    """Pine ta.dmi: (DI+, DI-, ADX) with the conventions of `adx`."""
+    """Wilder DMI: (DI+, DI-, ADX) with the conventions of `adx`."""
     n = len(c)
     up = [None] + [h[t] - h[t - 1] for t in range(1, n)]
     dn = [None] + [lo[t - 1] - lo[t] for t in range(1, n)]

@@ -52,7 +52,7 @@
 //!
 //! Conventions the original leaves open (also in the golden fixture): ATR(14) = Wilder average
 //! of the true range (first bar high - low), SMA-seeded; while it is missing no level merges,
-//! nothing is pruned or swept (Pine's `na` comparisons are false); the `2 · mintick` floor of the
+//! nothing is pruned or swept (comparisons with a missing value are false); the `2 · mintick` floor of the
 //! tolerance and the mintick floor of the bar range are dropped (range floor `1e-12`); volume
 //! ratio 1 while the 20-bar average is missing or 0; "real volume" = the cumulative volume so far
 //! is positive; pivots strict on both sides. Output starts once the ATR exists.

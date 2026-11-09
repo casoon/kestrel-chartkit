@@ -4,7 +4,7 @@ Written from the original definition, not from the Rust code. The labels use the
 pivot (the evaluation window) and are therefore research labels, not signals.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_reversal_types"
@@ -149,7 +149,7 @@ HEADER = [
     "make the corresponding flag false and a missing ATR rank scores -3. Labels are ordered by",
     "the bar at which they become known, long before short on the same bar.",
     "",
-    "Series: pine_series.lcg_series(1500, seed 6) (see reference/kestrel_reference/pine_series.py).",
+    "Series: series.lcg_series(1500, seed 6) (see reference/kestrel_reference/series.py).",
     "",
     "label_n the number of labels; lab_<j>_* the j-th label (up to 25): pivot bar, known bar,",
     "side (+1 long from a pivot low, -1 short), price, kind (1 snapback, 2 grind, 3 fake,",

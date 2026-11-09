@@ -599,7 +599,7 @@ HEADER = [
     "(also in MACD 12/26/9) seeded with the first value, ATR = Wilder average of the true range",
     "(first bar high - low) seeded with an SMA, RSI = Wilder averages of the close changes seeded",
     "with an SMA, MFI over the last 14 changes of hlc3 (50 without flow, 100 without negative",
-    "flow), population standard deviation, ta.falling = below each of the previous 3 values,",
+    "flow), population standard deviation, falling = below each of the previous 3 values,",
     "pivots strict on both sides, real volume = cumulative volume so far positive. Swings, BOS and",
     "the swing trends run from the first bar; scores, climax sequence, events and output from the",
     "first bar on which every input exists. Candidate and conflict alerts fire on entry.",

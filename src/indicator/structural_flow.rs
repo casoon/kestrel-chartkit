@@ -57,14 +57,13 @@
 //!
 //! Conventions the original leaves open (also in the golden fixture): EMAs seeded with the first
 //! available value; ATR = Wilder average of the true range (first bar high - low), SMA-seeded,
-//! floored at `1e-12` (also for the mintick floors); population standard deviation; Pine's
-//! `array.median`; relative volume 1 while the 20-bar volume average is missing or 0. Every series
+//! floored at `1e-12` (also for the mintick floors); population standard deviation; median; relative volume 1 while the 20-bar volume average is missing or 0. Every series
 //! starts once its inputs exist (the original's safe division falls back to 0 on a missing ATR
 //! during the warm-up); the state machines and output start with the first bar on which the slow
 //! horizon's persistence exists (bar 191), before which the original's flow direction stays 0 and
 //! every flow-dependent quantity is inert: previous-bar values from before that bar are the
 //! resting values (phase 0, Re-Sync stage 0, counter pressure 0), the previous structural strength
-//! is missing (Pine compares against `na`, false).
+//! is missing (a comparison with a missing value is false).
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structural_flow.py`.
 
@@ -1339,7 +1338,7 @@ impl Indicator for StructuralFlow {
             _ => clamp(1.0 - confidence, 0.0, 1.0),
         };
 
-        // Context ownership (labels in the original; kept for parity of the serial state).
+        // Context ownership (labels are not kept; the serial state is preserved).
         if ended.is_some()
             && impulse_ok
             && self

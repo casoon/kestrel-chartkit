@@ -5,7 +5,7 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Series: pine_series.wave_series(330), bars (open, high, low, close).
+# Series: series.wave_series(330), bars (open, high, low, close).
 # ATR: true range max(H-L, |H-C1|, |L-C1|), H-L on the first bar; first value = mean of the
 # first atr_len true ranges (on bar atr_len-1, zero-based), then (ATR1*(n-1)+TR)/n.
 # EMA: alpha 2/(len+1), seeded with the first close. stretch = (close-EMA)/ATR from bar

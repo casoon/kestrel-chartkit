@@ -5,7 +5,7 @@ each quantity is computed over the whole series with plain list slicing instead 
 incremental queues the crate uses.
 """
 
-from .. import pine_series as ps
+from .. import series as ps
 from ..fixture import provenance
 
 NAME = "golden_price_location"
@@ -23,7 +23,7 @@ HEADER = [
     "",
     *provenance("price_location"),
     "",
-    "Series: pine_series.wave_series(330), bars (open, high, low, close).",
+    "Series: series.wave_series(330), bars (open, high, low, close).",
     "ATR: true range max(H-L, |H-C1|, |L-C1|), H-L on the first bar; first value = mean of the",
     "first atr_len true ranges (on bar atr_len-1, zero-based), then (ATR1*(n-1)+TR)/n.",
     "EMA: alpha 2/(len+1), seeded with the first close. stretch = (close-EMA)/ATR from bar",
