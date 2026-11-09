@@ -106,6 +106,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("compression_zones", IndicatorUnit::Ratio),
     ("connors_rsi", IndicatorUnit::Ratio),
     ("coppock", IndicatorUnit::Ratio),
+    ("cusum", IndicatorUnit::Unitless),
     ("cvd", IndicatorUnit::Volume),
     ("dema", IndicatorUnit::Price),
     ("dmi", IndicatorUnit::Ratio),

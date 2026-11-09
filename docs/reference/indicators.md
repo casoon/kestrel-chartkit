@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 132 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 133 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -962,6 +962,20 @@ Kaufman-style leg efficiency ratio
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `len` | 14 | whole number 1 – 10000 | bars between the two closes compared with the path travelled |
+
+### `cusum`
+
+Two-sided CUSUM of standardized close-to-close returns
+
+[See it in the showcase](../../../showcase/cusum/)
+
+**Output** unit Unitless, range 0 and above · **warmup** 22 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `len` | 20 | whole number 2 – 10000 | returns in the fixed calibration period for mean and standard deviation |
+| `k` | 0.5 | 0 – 100 | tolerance per return, in standard deviations of the calibration period |
+| `h` | 4 | 0.01 – 1000 | alarm threshold of the accumulated sum, in standard deviations |
 
 ### `volatility_regime`
 

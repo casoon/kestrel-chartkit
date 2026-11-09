@@ -20,5 +20,6 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::adaptive_chandelier::ADAPTIVE_CHANDELIER_DEFINITION,
     &crate::indicator::vix_fix::VIX_FIX_DEFINITION,
     &crate::indicator::efficiency::EFFICIENCY_DEFINITION,
+    &crate::indicator::cusum::CUSUM_DEFINITION,
     &crate::indicator::volatility_regime::VOLATILITY_REGIME_DEFINITION,
 ];

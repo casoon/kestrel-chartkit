@@ -35,6 +35,7 @@ Conventions the type documentation leaves open, assumed here:
 """
 
 import math
+import statistics
 
 from ..exact import bollinger
 from ..fixture import provenance, render_contract
@@ -503,6 +504,50 @@ def volatility_regime_case(period, bb_mult, kc_mult, bars):
     return {"period": float(period), "bb_mult": bb_mult, "kc_mult": kc_mult}, bars, expected
 
 
+# --- CUSUM -----------------------------------------------------------------------------------
+
+def cusum_case(length, k, h, bars):
+    """Two-sided CUSUM of standardized close-to-close returns. The first `length` simple returns
+    (closes[i] / closes[i-1] - 1) give a fixed mean (math.fsum) and population deviation
+    (statistics.pstdev); later returns are standardized (0 when the deviation is 0) and
+    accumulated as S+ = largest suffix sum of (z - k), S- = largest suffix sum of (-z - k), each
+    floored at 0 - the closed form of the recursion, evaluated on every prefix. Alerts when a sum
+    passes from <= h to > h. First output with bar length + 2."""
+    closes = [b[3] for b in bars]
+    returns = [closes[i] / closes[i - 1] - 1.0 for i in range(1, len(closes))]
+    calibration = returns[:length]
+    mu = math.fsum(calibration) / length
+    sigma = statistics.pstdev(calibration)
+    first = length + 1  # 0-based bar index of the first standardized return
+    z = [(r - mu) / sigma if sigma > 0.0 else 0.0 for r in returns[length:]]
+
+    def largest_suffix(terms):
+        best = total = 0.0
+        for term in reversed(terms):
+            total += term
+            best = max(best, total)
+        return best
+
+    expected = none_until(first, len(bars))
+    prev_up = prev_down = 0.0
+    for n in range(1, len(z) + 1):
+        up = largest_suffix([v - k for v in z[:n]])
+        down = largest_suffix([-v - k for v in z[:n]])
+        alerts = {}
+        if n > 1:
+            if not gt(prev_up, h, "upper before") and gt(up, h, "upper after"):
+                alerts["cusum_upper_alarm"] = 1.0
+            if not gt(prev_down, h, "lower before") and gt(down, h, "lower after"):
+                alerts["cusum_lower_alarm"] = 1.0
+        elif gt(up, h, "upper first"):
+            alerts["cusum_upper_alarm"] = 1.0
+        elif gt(down, h, "lower first"):
+            alerts["cusum_lower_alarm"] = 1.0
+        expected.append(((up, {"lower": down}), alerts))
+        prev_up, prev_down = up, down
+    return {"len": float(length), "k": k, "h": h}, bars, expected
+
+
 # --- Rendering -------------------------------------------------------------------------------
 
 def block(name, comment, case):
@@ -569,6 +614,18 @@ REGIME_BARS = [(o, h + 1.5, l - 1.5, c, v) for o, h, l, c, v in path_bars(REGIME
 CHFR_PATH = steps(100.0, [1.0, 0.6, -0.4, 1.2, 0.8] * 7 + [-6.0, -8.0, -5.0, -2.0, -3.0, 1.0, -2.0, -1.0]
                   + [-0.5, 0.5] * 4 + [6.0, 7.0, 5.0, 2.0, 3.0, -1.0, 2.0, 1.0, 1.5, -0.5])
 CHFR_BARS = path_bars(CHFR_PATH, 0.8)
+
+
+# CUSUM: quiet returns of both signs (the calibration period), a rise, a fall, then quiet again.
+CUSUM_PATH = steps(100.0, [0.3, -0.2, 0.25, -0.3, 0.1, -0.15, 0.2, -0.25] * 3
+                   + [0.9, 1.1, 0.8, 1.0, 0.9, 1.2, 0.7, 1.0]
+                   + [-1.2, -1.0, -1.1, -0.9, -1.3, -1.0, -1.1, -1.2, -0.8, -1.0]
+                   + [0.3, -0.2, 0.25, -0.3, 0.1, -0.15, 0.2, -0.25])
+CUSUM_BARS = path_bars(CUSUM_PATH, 0.4)
+
+# CUSUM with a flat calibration period: the deviation is 0, no scale, so every standardized
+# return counts 0 - even after the price starts to move.
+CUSUM_FLAT = flat_bars(6, 100.0, 1.0) + path_bars(steps(100.0, [2.0, 3.0, -4.0, 5.0]), 0.4)[1:]
 
 
 def build():
@@ -659,5 +716,13 @@ def build():
               volatility_regime_case(20, 2.0, 1.5, REGIME_BARS)),
         block("volatility_regime_short", "Volatility regime (5, 2, 1): period below the fixed ATR window 10",
               volatility_regime_case(5, 2.0, 1.0, SWING_SHORT)),
+        block("cusum_defaults", "CUSUM (20, 0.5, 4) over a calibration period, a rise and a fall: "
+              "an upward and a downward alarm",
+              cusum_case(20, 0.5, 4.0, CUSUM_BARS)),
+        block("cusum_short", "CUSUM (5, 0.25, 2): calibration of five returns, both sums move",
+              cusum_case(5, 0.25, 2.0, CUSUM_BARS)),
+        block("cusum_flat", "CUSUM (3, 0.5, 1) after flat closes: the calibration deviation is 0, "
+              "all sums stay 0, no alert",
+              cusum_case(3, 0.5, 1.0, CUSUM_FLAT)),
     ]
     return header, blocks

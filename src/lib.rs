@@ -24,6 +24,8 @@ pub mod artifact;
 /// IANA-timezone, DST-aware exchange calendars. Requires the `calendar` feature.
 #[cfg(feature = "calendar")]
 pub mod calendar;
+/// Change-point detection primitives (CUSUM).
+pub mod changepoint;
 /// Versioned state snapshots for long-running engines.
 pub mod checkpoint;
 /// Deterministic clustering and robust adaptive-threshold primitives.
@@ -112,6 +114,7 @@ pub use artifact::{
 };
 #[cfg(feature = "calendar")]
 pub use calendar::{ExchangeCalendar, SessionSegment};
+pub use changepoint::{cusum, CusumOutput, CusumState};
 pub use checkpoint::{Checkpoint, CheckpointStore};
 pub use clustering::{kmeans_1d, KMeansResult, RobustBand, RollingRobustThreshold};
 pub use contract::{

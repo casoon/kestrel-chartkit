@@ -97,6 +97,7 @@ pub fn output_range(name: &str) -> OutputRange {
 
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
+        | "cusum"
         | "garman_klass"
         | "historical_volatility"
         | "mass_index"
@@ -509,6 +510,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "vix_fix",
     "candle_classification",
     "efficiency",
+    "cusum",
     "volume",
     "rvol",
     "obv",
@@ -630,8 +632,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 132);
-        assert_eq!(catalog().len(), 132);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 133);
+        assert_eq!(catalog().len(), 133);
     }
 
     #[test]

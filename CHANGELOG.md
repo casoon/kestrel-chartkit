@@ -9,6 +9,16 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **CUSUM:** `changepoint::cusum` (re-exported at the crate root, with `CusumOutput` and `CusumState`)
+  computes the two-sided CUSUM of Page (1954) over any `&[f64]`: `S⁺ = max(0, S⁺ + x - mu0 - k)`,
+  `S⁻ = max(0, S⁻ - x + mu0 - k)`, with the first index where a sum exceeds `h` (strict, no reset).
+  The new indicator `cusum` (`len`, `k`, `h`; defaults 20, 0.5, 4) standardizes close-to-close
+  returns by a fixed calibration period of `len` returns and streams both sums (`value` = `S⁺`,
+  `extra["lower"]` = `S⁻`) with the alerts `cusum_upper_alarm` and `cusum_lower_alarm`. The catalog
+  grows from 132 to 133 entries.
+
 ## [0.38.0] - 2026-11-09
 
 ### Changed

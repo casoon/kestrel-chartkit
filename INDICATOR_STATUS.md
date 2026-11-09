@@ -137,6 +137,7 @@ is complete.
 | trend_quality | ✅ |
 | buy_sell_pressure | ✅ |
 | volatility_regime | ✅ |
+| cusum | ❌ |
 | multi_factor | ✅ |
 
 ## Structure/Pattern Detectors
@@ -178,5 +179,5 @@ is complete.
 
 ---
 
-**Total: 132/132 verified** — the same 132 names `catalog()` returns: 96 indicators (the first
+**Total: 132/133 verified** — the same 133 names `catalog()` returns: 97 indicators (the first
 five groups), 4 composite scores and 32 structure/pattern detectors.

@@ -48,6 +48,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("vix_fix"),
     Coverage::full("efficiency"),
     Coverage::full("volatility_regime"),
+    Coverage::full("cusum"),
 ];
 
 // --- ADX -------------------------------------------------------------------------------------
@@ -585,4 +586,30 @@ fn volatility_regime_rejects_invalid_configuration() {
     assert_rejected("volatility_regime", &[("kc_mult", 0.0)]);
     assert_rejected("volatility_regime", &[("kc_mult", 101.0)]);
     assert_rejected("volatility_regime", &[("len", 20.0)]);
+}
+
+// --- CUSUM -----------------------------------------------------------------------------------
+
+#[test]
+fn cusum_defaults() {
+    assert_holds(&case("cusum_defaults", "cusum", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn cusum_short() {
+    assert_holds(&case("cusum_short", "cusum", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn cusum_flat() {
+    assert_holds(&case("cusum_flat", "cusum", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn cusum_rejects_invalid_configuration() {
+    assert_rejected("cusum", &[("len", 1.0)]);
+    assert_rejected("cusum", &[("len", 2.5)]);
+    assert_rejected("cusum", &[("k", -0.1)]);
+    assert_rejected("cusum", &[("h", 0.0)]);
+    assert_rejected("cusum", &[("period", 20.0)]);
 }

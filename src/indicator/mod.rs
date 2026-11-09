@@ -21,6 +21,7 @@ pub mod coil_release;
 pub mod compression_zones;
 pub mod connors_rsi;
 pub mod coppock;
+pub mod cusum;
 pub mod cvd_intrabar;
 pub mod definition;
 pub mod divergence;
