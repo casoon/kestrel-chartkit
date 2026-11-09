@@ -9,6 +9,20 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+- **Connors RSI:** follows the definition. Price and streak RSI are raw Wilder RSIs (no longer
+  the smoothed RSI line), all three parts run from the first bar, and the return is ranked among
+  the `rank_len` returns before it, ties counted half; `rank_len` now takes effect. Values change,
+  and the first output moves to bar `max(rsi_len + 1, streak_len + 2, rank_len + 2)` (102 with the
+  defaults instead of 6).
+- **RVI:** Ehlers' Relative Vigor Index: the summed 1-2-2-1 weighted close-open over the same sum
+  of high-low, signal the 1-2-2-1 weighting of the RVI, instead of an average of per-bar ratios
+  with an SMA(4) signal. Values change; first output with bar `period + 6` instead of `period + 3`.
+- **DPO:** the current close against the SMA displaced `period/2 + 1` bars back, instead of the
+  close `period/2` bars back against the current SMA. Values change; first output with bar
+  `period + period/2 + 1` instead of `period`.
+
 ## [0.36.1] - 2026-11-05
 
 ### Fixed

@@ -536,13 +536,13 @@ Connors RSI
 
 [See it in the showcase](../../../showcase/connors_rsi/)
 
-**Output** unit Ratio, range 0 – 100 · **warmup** 6 bars
+**Output** unit Ratio, range 0 – 100 · **warmup** 102 bars
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `rsi_len` | 3 | whole number 1 – 10000 | bars in the price RSI |
 | `streak_len` | 2 | whole number 1 – 10000 | bars in the streak RSI |
-| `rank_len` | 100 | whole number 1 – 10000 | window of the percentile rank (has no effect: the rank uses the last 100 returns) |
+| `rank_len` | 100 | whole number 1 – 10000 | earlier one-bar returns the current one is ranked against |
 
 ### `coppock`
 
@@ -558,11 +558,11 @@ Detrended Price Oscillator
 
 [See it in the showcase](../../../showcase/dpo/)
 
-**Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
+**Output** unit Unitless, range open, centred on 0 · **warmup** 32 bars
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
-| `period` | 21 | whole number 2 – 10000 | bars in the SMA; the close is taken period/2 bars back |
+| `period` | 21 | whole number 2 – 10000 | bars in the SMA; the SMA is taken period/2 + 1 bars back |
 
 ### `kst`
 
@@ -578,11 +578,11 @@ Relative Vigor Index
 
 [See it in the showcase](../../../showcase/rvi/)
 
-**Output** unit Ratio, range not declared · **warmup** 13 bars
+**Output** unit Ratio, range not declared · **warmup** 16 bars
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
-| `period` | 10 | whole number 1 – 10000 | bars in the averages of the vigor |
+| `period` | 10 | whole number 1 – 10000 | bars summed in numerator and denominator |
 
 ### `bop`
 

@@ -17,11 +17,13 @@
 # The RSI, CCI, MFI, Williams %R and Fisher values are those indicators' published lines, an EMA
 # over the raw figure (avg_len 3, Fisher 2), not the raw figure itself. rsi14_last is that line
 # exactly; it used to be stored rounded to two decimals and compared with a tolerance of 0.1.
-# Williams %R is on this crate's ascending 0..100 scale. Connors RSI is computed as the
-# implementation runs it, including the smoothed RSI lines and the rank over all returns so far.
+# Williams %R is on this crate's ascending 0..100 scale. Connors RSI uses the raw Wilder RSIs of
+# close and streak and ranks the return among the rank_len returns before it, ties counted half.
+# DPO is the close against the SMA shifted period // 2 + 1 bars back. RVI is Ehlers': summed
+# 1-2-2-1 weighted close - open over the same sum of high - low, signal the 1-2-2-1 weighting.
 #
 # On the shared series BOP, the Chaikin oscillator and RVI are identically 0 (open = close, close
-# mid-range): those keys pin that. The *_shaped keys come from ten bars with the close away from
+# mid-range): those keys pin that. The *_shaped keys (RVI with period 3) come from ten bars with the close away from
 # the open and from mid-range: (o, h, l, c, v) = (10, 10.8, 9.6, 10.6, 1200), (10.6, 11.2, 10.2,
 # 10.3, 900), (10.3, 10.9, 10, 10.8, 1500), (10.8, 11, 10.1, 10.2, 700), (10.2, 10.7, 9.9, 10.6,
 # 1100), (10.6, 11.4, 10.5, 11.3, 1600), (11.3, 11.5, 10.9, 11, 800), (11, 11.6, 10.8, 11.5, 1300),
@@ -73,9 +75,9 @@ ao3_5_last=0.02999999999999403
 bop5_last=0.0
 chaikin_osc_last=0.0
 cmo5_last=-43.83561643835639
-connors_rsi_last=26.67670097767342
+connors_rsi_last=13.893902052232159
 coppock_60bar_last=5.172738810804289
-dpo5_last=0.3499999999999943
+dpo5_last=-0.3999999999999986
 elder_bull_last=0.14390617692223628
 elder_bear_last=-0.8560938230777637
 kst60_line=46.94244835031413
@@ -93,8 +95,8 @@ osc_tolerance=1e-09
 # BOP, Chaikin and RVI where the formulas actually act
 bop5_shaped_last=0.019841269841270236
 chaikin_osc_shaped_last=29.72005506020514
-rvi_shaped_line=0.019841269841270236
-rvi_shaped_signal=0.12648809523809534
+rvi_shaped_line=0.1691176470588235
+rvi_shaped_signal=0.22633564178359522
 
 # RSI smoothing modes
 rsi5_mixed_wilder_line=53.53303130806443

@@ -1530,7 +1530,7 @@ fn test_golden_bop_chaikin_and_rvi_on_shaped_bars() {
         "Chaikin(3,5), geformt",
     );
 
-    let rvi = run_shaped("rvi", &period5);
+    let rvi = run_shaped("rvi", &HashMap::from([("period".to_string(), 3.0)]));
     common::assert_close(rvi.value, expected("rvi_shaped_line"), tol, "RVI, geformt");
     common::assert_close(
         rvi.extra["signal"],

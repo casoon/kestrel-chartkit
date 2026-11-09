@@ -48,7 +48,7 @@ from ..indicators import clamp, raw_rsi
 from ..smoothing import ema_first_sample
 from .contract_pilot import case_block, crossed_over, crossed_under, wave
 from .oscillators import (
-    _bbtrend, _cci_raw, _connors, _fisher, _mfi_raw, _percent_r, _pmo, _rci, _smi,
+    _bbtrend, _cci_raw, _connors, _dpo, _fisher, _mfi_raw, _percent_r, _pmo, _rci, _rvi, _smi,
     _sma_series, _stochastic_k, _trix, _ultimate, _wavetrend, _wma_last,
 )
 
@@ -510,12 +510,10 @@ def elder_ray_case(period, bars):
 
 
 def connors_case(rsi_len, streak_len, rank_len, bars):
-    """As documented on the type (and as `oscillators._connors` implements it): RSI lines (EMA(3)
-    over the raw RSI), the streak RSI from the price RSI's first bar, the rank over all returns so
-    far, at most 100; rank_len has no effect."""
-    closes = closes_of(bars)
-    first = rsi_len + streak_len
-    values = [_connors(closes[:t + 1], rsi_len, streak_len) for t in range(first, len(closes))]
+    """As documented on the type (and as `oscillators._connors` implements it): raw Wilder RSIs of
+    the close and of the streak, the rank of the one-bar return among the rank_len returns before
+    it (ties half); first output once the rank window is full."""
+    first, values = _connors(closes_of(bars), rsi_len, streak_len, rank_len)
     params = {"rsi_len": rsi_len, "streak_len": streak_len, "rank_len": rank_len}
     return _floats(params), bars, single(first, values)
 
@@ -543,11 +541,8 @@ def kst_case(bars):
 
 
 def dpo_case(period, bars):
-    """The close floor(period/2) bars ago minus the SMA of the last `period` closes."""
-    closes = closes_of(bars)
-    values = [closes[t - period // 2] - sum(closes[t - period + 1:t + 1]) / period
-              for t in range(period - 1, len(closes))]
-    return _floats({"period": period}), bars, single(period - 1, values)
+    """The current close minus the SMA of `period` closes, taken period // 2 + 1 bars back."""
+    return _floats({"period": period}), bars, single(period + period // 2, _dpo(closes_of(bars), period))
 
 
 def vigor(bars):
@@ -555,13 +550,12 @@ def vigor(bars):
 
 
 def rvi_case(period, bars):
-    """SMA(period) of (close - open) / range (range floored at 1e-8), signal SMA(4) of that, from
-    the period + 3-th bar; extras rvi (the value again) and signal."""
-    rvi = _sma_series(vigor(bars), period)
-    signal = _sma_series(rvi, 4)
-    rvi = rvi[3:]
+    """Ehlers' RVI (`oscillators._rvi`): summed 1-2-2-1 weighted close - open over the same sum of
+    high - low, signal the same weighting of the RVI, from the period + 6-th bar; extras rvi (the
+    value again) and signal."""
+    rvi, signal = _rvi(bars, period)
     extras = [{"rvi": r, "signal": s} for r, s in zip(rvi, signal)]
-    return _floats({"period": period}), bars, single(period + 2, rvi, extras)
+    return _floats({"period": period}), bars, single(period + 5, rvi, extras)
 
 
 def bop_case(period, bars):
@@ -715,21 +709,21 @@ def build():
         case_block("elder_ray_short", "Elder ray(4)", *elder_ray_case(4, swing15)),
 
         case_block("connors_rsi_defaults",
-                   "Connors RSI(3, 2, 100) over 115 bars: the rank window is capped at 100 returns",
+                   "Connors RSI(3, 2, 100) over 115 bars: first output once 100 earlier returns exist",
                    *connors_case(3, 2, 100, trend_bars([(15, [-0.5, 0.8, -1.1])]))),
-        case_block("connors_rsi_rank_len", "Connors RSI(5, 3) with rank_len 10: documented to have no effect",
+        case_block("connors_rsi_rank_len", "Connors RSI(5, 3, 10): the rank over the last 10 returns",
                    *connors_case(5, 3, 10, swing60)),
 
         case_block("coppock_trend", "Coppock curve over the trend series", *coppock_case(trend)),
         case_block("kst_trend", "KST over the trend series", *kst_case(trend)),
 
         case_block("dpo_defaults", "DPO(21) over the swing series", *dpo_case(21, swing60)),
-        case_block("dpo_even", "DPO(4): the close 2 bars ago against SMA(4)",
+        case_block("dpo_even", "DPO(4): the close against SMA(4) 3 bars back",
                    *dpo_case(4, swing15)),
 
         case_block("rvi_defaults", "RVI(10) over the swing series", *rvi_case(10, swing60)),
         case_block("rvi_short", "RVI(3)", *rvi_case(3, swing15)),
-        case_block("rvi_doji", "open == close: 0 throughout", *rvi_case(2, doji_bars())),
+        case_block("rvi_doji", "open == close: 0 throughout", *rvi_case(1, doji_bars())),
 
         case_block("bop_defaults", "BOP(14) over the swing series", *bop_case(14, swing60)),
         case_block("bop_short", "BOP(3)", *bop_case(3, swing15)),

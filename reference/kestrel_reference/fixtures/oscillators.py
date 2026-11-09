@@ -188,32 +188,57 @@ def _fisher(bars, length, avg_len, sig_len):
     return line, ema_first_sample(line, sig_len)
 
 
-def _connors(closes, rsi_len, streak_len):
-    """As the implementation runs it: the close RSI is the RSI indicator's smoothed line; streak and
-    one-bar return only start updating on the bar after that line first exists, the streak RSI
-    runs over the streak values from the line's first bar on, and the percentile rank is taken
-    over all returns seen so far (at most 100)."""
-    line, _, _ = _rsi_lines(closes, rsi_len, 3, 3)
-    first = len(closes) - len(line)
+def _connors(closes, rsi_len, streak_len, rank_len):
+    """Connors RSI per bar, from the definition: the mean of the raw Wilder RSI(rsi_len) of the
+    close, the raw Wilder RSI(streak_len) of the up/down streak (+n after n higher closes, -n
+    after n lower ones, 0 on an unchanged close; first on the second bar) and the percent rank of
+    the one-bar return among the rank_len returns before it, ties counted half. Returns the
+    0-based index of the first bar with all three parts and the values from there on."""
+    price = _raw_rsi(closes, rsi_len)
     streak, streaks, returns = 0.0, [], []
-    previous = None
-    for t in range(first, len(closes)):
-        c = closes[t]
-        if previous is not None:
-            if c > previous:
-                streak = streak + 1.0 if streak >= 0.0 else 1.0
-            elif c < previous:
-                streak = streak - 1.0 if streak <= 0.0 else -1.0
-            else:
-                streak = 0.0
-            returns.append((c - previous) / previous if previous > 0.0 else 0.0)
-            returns = returns[-100:]
-        previous = c
+    for previous, c in zip(closes, closes[1:]):
+        if c > previous:
+            streak = streak + 1.0 if streak >= 0.0 else 1.0
+        elif c < previous:
+            streak = streak - 1.0 if streak <= 0.0 else -1.0
+        else:
+            streak = 0.0
         streaks.append(streak)
-    streak_line, _, _ = _rsi_lines(streaks, streak_len, 3, 3)
-    last = returns[-1] if returns else 0.0
-    rank = 100.0 * sum(1 for r in returns if r <= last) / len(returns) if returns else 0.0
-    return _clamp((line[-1] + streak_line[-1] + rank) / 3.0)
+        returns.append((c - previous) / previous if previous > 0.0 else 0.0)
+    streak_rsi = _raw_rsi(streaks, streak_len)
+    first = max(rsi_len, streak_len + 1, rank_len + 1)
+    values = []
+    for t in range(first, len(closes)):
+        current, window = returns[t - 1], returns[t - 1 - rank_len:t - 1]
+        below = sum(1 for r in window if r < current) + 0.5 * sum(1 for r in window if r == current)
+        rank = 100.0 * below / rank_len
+        values.append(_clamp((price[t - rsi_len] + streak_rsi[t - 1 - streak_len] + rank) / 3.0))
+    return first, values
+
+
+def _swma(values):
+    """Symmetric 1-2-2-1 weighting over the last four values."""
+    return [(values[i - 3] + 2.0 * values[i - 2] + 2.0 * values[i - 1] + values[i]) / 6.0
+            for i in range(3, len(values))]
+
+
+def _rvi(bars, period):
+    """Ehlers' Relative Vigor Index: sum over `period` of the 1-2-2-1 weighted close - open,
+    divided by the same sum of high - low (0 when that sum is 0); signal = the same weighting of
+    the RVI. Both lists start with the first signal, the bar index period + 5."""
+    num = _swma([c - o for o, _, _, c, _ in bars])
+    den = _swma([h - l for _, h, l, _, _ in bars])
+    rvi = [sum(n) / sum(d) if sum(d) != 0.0 else 0.0
+           for n, d in zip(_windows(num, period), _windows(den, period))]
+    return rvi[3:], _swma(rvi)
+
+
+def _dpo(closes, period):
+    """The close against the SMA(period) period // 2 + 1 bars back; from bar index
+    period - 1 + period // 2 + 1."""
+    shift = period // 2 + 1
+    sma = _sma_series(closes, period)
+    return [closes[period - 1 + shift + k] - sma[k] for k in range(len(sma) - shift)]
 
 
 def _sma_series(values, length):
@@ -295,14 +320,13 @@ def derive():
     losses = sum(max(-m, 0.0) for m in moves[-5:])
     keys["cmo5_last"] = (_clamp(100.0 * (gains - losses) / (gains + losses), -100.0, 100.0)
                          if gains + losses > 1e-8 else 0.0)
-    keys["connors_rsi_last"] = _connors(closes, 3, 2)
+    keys["connors_rsi_last"] = _connors(closes, 3, 2, 5)[1][-1]
     closes60 = [b[3] for b in LINE60]
     raw_coppock = [(closes60[t] - closes60[t - 14]) / closes60[t - 14] * 100.0
                    + (closes60[t] - closes60[t - 11]) / closes60[t - 11] * 100.0
                    for t in range(14, 60)]
     keys["coppock_60bar_last"] = _wma_last(raw_coppock, 10)
-    window = closes[-5:]
-    keys["dpo5_last"] = window[5 - (5 // 2 + 1)] - sum(window) / 5.0
+    keys["dpo5_last"] = _dpo(closes, 5)[-1]
     ema5 = ema_first_sample(closes, 5)[-1]
     keys["elder_bull_last"], keys["elder_bear_last"] = OSC_BARS[-1][1] - ema5, OSC_BARS[-1][2] - ema5
     rocs = {n: [(closes60[t] - closes60[t - n]) / closes60[t - n] * 100.0 for t in range(30, 60)]
@@ -317,8 +341,8 @@ def derive():
     ppo = [(f - sl) / sl * 100.0 if sl > 0.0 else 0.0 for f, sl in zip(ppo_fast, ppo_slow)][4:]
     keys["ppo_line"], keys["ppo_signal"] = ppo[-1], ema_first_sample(ppo, 3)[-1]
     keys["roc5_last"] = (closes[-1] - closes[-6]) / closes[-6] * 100.0
-    vigor = _sma_series([(c - o) / max(h - l, 1e-8) for o, h, l, c, _ in OSC_BARS], 5)
-    keys["rvi_line"], keys["rvi_signal"] = vigor[-1], sum(vigor[-4:]) / 4.0
+    rvi, signal = _rvi(OSC_BARS, 5)
+    keys["rvi_line"], keys["rvi_signal"] = rvi[-1], signal[-1]
     keys["uo_last"] = _ultimate(OSC_BARS, 3, 5, 10)
     keys["wt1_last"], keys["wt2_last"] = _wavetrend(OSC_BARS, 3, 5)
 
@@ -329,8 +353,8 @@ def derive():
         total += (((c - l) - (h - c)) / (h - l) if h - l > 1e-8 else 0.0) * v
         ad.append(total)
     keys["chaikin_osc_shaped_last"] = ema_first_sample(ad, 3)[-1] - ema_first_sample(ad, 5)[-1]
-    vigor = _sma_series([(c - o) / max(h - l, 1e-8) for o, h, l, c, _ in SHAPED], 5)
-    keys["rvi_shaped_line"], keys["rvi_shaped_signal"] = vigor[-1], sum(vigor[-4:]) / 4.0
+    rvi, signal = _rvi(SHAPED, 3)
+    keys["rvi_shaped_line"], keys["rvi_shaped_signal"] = rvi[-1], signal[-1]
     for field, value in bollinger(OSC_PRICES[-5:], 2.0).items():
         keys[f"bollinger5_{field}"] = float(value)
     for label, sample in (("population", False), ("sample", True)):
@@ -403,11 +427,13 @@ HEADER = [
     "The RSI, CCI, MFI, Williams %R and Fisher values are those indicators' published lines, an EMA",
     "over the raw figure (avg_len 3, Fisher 2), not the raw figure itself. rsi14_last is that line",
     "exactly; it used to be stored rounded to two decimals and compared with a tolerance of 0.1.",
-    "Williams %R is on this crate's ascending 0..100 scale. Connors RSI is computed as the",
-    "implementation runs it, including the smoothed RSI lines and the rank over all returns so far.",
+    "Williams %R is on this crate's ascending 0..100 scale. Connors RSI uses the raw Wilder RSIs of",
+    "close and streak and ranks the return among the rank_len returns before it, ties counted half.",
+    "DPO is the close against the SMA shifted period // 2 + 1 bars back. RVI is Ehlers': summed",
+    "1-2-2-1 weighted close - open over the same sum of high - low, signal the 1-2-2-1 weighting.",
     "",
     "On the shared series BOP, the Chaikin oscillator and RVI are identically 0 (open = close, close",
-    "mid-range): those keys pin that. The *_shaped keys come from ten bars with the close away from",
+    "mid-range): those keys pin that. The *_shaped keys (RVI with period 3) come from ten bars with the close away from",
     "the open and from mid-range: (o, h, l, c, v) = (10, 10.8, 9.6, 10.6, 1200), (10.6, 11.2, 10.2,",
     "10.3, 900), (10.3, 10.9, 10, 10.8, 1500), (10.8, 11, 10.1, 10.2, 700), (10.2, 10.7, 9.9, 10.6,",
     "1100), (10.6, 11.4, 10.5, 11.3, 1600), (11.3, 11.5, 10.9, 11, 800), (11, 11.6, 10.8, 11.5, 1300),",

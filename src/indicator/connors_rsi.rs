@@ -1,41 +1,47 @@
 use super::rsi::Rsi;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
-use crate::stats::percent_rank;
 use std::collections::VecDeque;
 
 /// Connors RSI: the mean of a price RSI, a streak RSI and a percentile rank of the one-bar return.
 ///
-/// As implemented, and in each point different from the usual definition:
+/// - `rsi_close`: the raw Wilder RSI over `rsi_len` changes of the close.
+/// - `rsi_streak`: the raw Wilder RSI over `streak_len` changes of the up/down streak. The streak
+///   is `+n` after `n` consecutive higher closes, `-n` after `n` lower ones and `0` on an unchanged
+///   close; it exists from the second bar on.
+/// - `rank`: the percentage of the `rank_len` one-bar returns *before* the current one that lie
+///   below it, `(close - prev) / prev`. A return equal to the current one counts half, so the rank
+///   of a mirrored series is `100 - rank` and a series without movement ranks at `50`.
 ///
-/// - The price RSI and the streak RSI are the **lines** of [`super::rsi::Rsi`] (an `Ema(3)` over
-///   the raw RSI), not raw RSI values.
-/// - The streak counts consecutive higher (positive) or lower (negative) closes and is `0` on an
-///   unchanged close. Streak and one-bar return only start updating on the bar *after* the price
-///   RSI first exists; the streak RSI runs over the streak values from the price RSI's first bar.
-/// - The percentile rank is `100 * count(r <= last) / count` over all one-bar returns seen so far,
-///   at most the last 100. **`rank_len` has no effect.**
+/// `CRSI = (rsi_close + rsi_streak + rank) / 3`, in `0..=100`.
 ///
-/// `CRSI = (rsi_close + rsi_streak + rank) / 3`, clamped to `0..=100`.
-///
-/// First output: once the streak RSI exists, i.e. with the `rsi_len + streak_len + 1`-th bar. [`Indicator::reset`] clears all state.
+/// First output: once all three parts exist, i.e. with bar
+/// `max(rsi_len + 1, streak_len + 2, rank_len + 2)`. [`Indicator::reset`] clears all state.
 #[derive(Debug, Clone)]
 pub struct ConnorsRsiEngine {
     rsi_close: Rsi,
     rsi_streak: Rsi,
+    rank_len: usize,
     prev_close: Option<f64>,
     current_streak: f64,
     roc_history: VecDeque<f64>,
 }
 
+/// An RSI publishing its raw value: the line average over one sample is the identity.
+fn raw_rsi(len: usize) -> Rsi {
+    Rsi::new(len, 1, 3, 50.0, 70.0, 30.0, 5, true, len, 4, 10.0)
+}
+
 impl ConnorsRsiEngine {
     pub fn new(rsi_len: usize, streak_len: usize, rank_len: usize) -> Self {
+        let rank_len = rank_len.max(1);
         Self {
-            rsi_close: Rsi::with_period(rsi_len),
-            rsi_streak: Rsi::with_period(streak_len),
+            rsi_close: raw_rsi(rsi_len),
+            rsi_streak: raw_rsi(streak_len),
+            rank_len,
             prev_close: None,
             current_streak: 0.0,
-            roc_history: VecDeque::with_capacity(rank_len),
+            roc_history: VecDeque::with_capacity(rank_len + 1),
         }
     }
 
@@ -50,8 +56,11 @@ impl Indicator for ConnorsRsiEngine {
     }
 
     fn warmup_period(&self) -> usize {
-        // The streak RSI is fed from the price RSI's first bar on, so its warmup counts from there.
-        self.rsi_close.warmup_period() + self.rsi_streak.warmup_period() - 1
+        // The streak starts on the second bar, the rank needs `rank_len` returns before the current.
+        self.rsi_close
+            .warmup_period()
+            .max(self.rsi_streak.warmup_period() + 1)
+            .max(self.rank_len + 2)
     }
 
     fn reset(&mut self) {
@@ -63,38 +72,24 @@ impl Indicator for ConnorsRsiEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let rsi_c = self.rsi_close.on_bar(bar)?.value;
+        let rsi_c = self.rsi_close.on_bar(bar).map(|o| o.value);
 
-        if let Some(prev) = self.prev_close {
-            if bar.close > prev {
-                self.current_streak = if self.current_streak >= 0.0 {
-                    self.current_streak + 1.0
-                } else {
-                    1.0
-                };
-            } else if bar.close < prev {
-                self.current_streak = if self.current_streak <= 0.0 {
-                    self.current_streak - 1.0
-                } else {
-                    -1.0
-                };
+        let prev = self.prev_close.replace(bar.close)?;
+        if bar.close > prev {
+            self.current_streak = if self.current_streak >= 0.0 {
+                self.current_streak + 1.0
             } else {
-                self.current_streak = 0.0;
-            }
-
-            let roc = if prev > 0.0 {
-                (bar.close - prev) / prev
-            } else {
-                0.0
+                1.0
             };
-            self.roc_history.push_back(roc);
-            if self.roc_history.len() > 100 {
-                self.roc_history.pop_front();
-            }
+        } else if bar.close < prev {
+            self.current_streak = if self.current_streak <= 0.0 {
+                self.current_streak - 1.0
+            } else {
+                -1.0
+            };
+        } else {
+            self.current_streak = 0.0;
         }
-        self.prev_close = Some(bar.close);
-
-        // Dummy bar wrapping streak as price
         let streak_bar = Bar::new(
             bar.timestamp,
             self.current_streak,
@@ -103,13 +98,31 @@ impl Indicator for ConnorsRsiEngine {
             self.current_streak,
             1.0,
         );
-        let rsi_s = self.rsi_streak.on_bar(&streak_bar)?.value;
+        let rsi_s = self.rsi_streak.on_bar(&streak_bar).map(|o| o.value);
 
-        let last_roc = self.roc_history.back().copied().unwrap_or(0.0);
-        let slice: Vec<f64> = self.roc_history.iter().copied().collect();
-        let prank = percent_rank(&slice, last_roc);
+        let roc = if prev > 0.0 {
+            (bar.close - prev) / prev
+        } else {
+            0.0
+        };
+        let rank = (self.roc_history.len() == self.rank_len).then(|| {
+            let below = self.roc_history.iter().fold(0.0, |acc, &r| {
+                acc + if r < roc {
+                    1.0
+                } else if r == roc {
+                    0.5
+                } else {
+                    0.0
+                }
+            });
+            100.0 * below / self.rank_len as f64
+        });
+        self.roc_history.push_back(roc);
+        if self.roc_history.len() > self.rank_len {
+            self.roc_history.pop_front();
+        }
 
-        let crsi = (rsi_c + rsi_s + prank) / 3.0;
+        let crsi = (rsi_c? + rsi_s? + rank?) / 3.0;
         Some(IndicatorOutput::new(crsi.clamp(0.0, 100.0)))
     }
 
@@ -128,9 +141,8 @@ pub const CONNORS_RSI_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the price RSI"),
             super::definition::ParamSpec::count("streak_len", 2, 1, 10000)
                 .meaning("bars in the streak RSI"),
-            super::definition::ParamSpec::count("rank_len", 100, 1, 10000).meaning(
-                "window of the percentile rank (has no effect: the rank uses the last 100 returns)",
-            ),
+            super::definition::ParamSpec::count("rank_len", 100, 1, 10000)
+                .meaning("earlier one-bar returns the current one is ranked against"),
         ],
         checks: &[],
         build: |p| {
@@ -157,5 +169,46 @@ mod tests {
         assert!(out.is_some());
         let val = out.unwrap().value;
         assert!((0.0..=100.0).contains(&val));
+    }
+
+    fn closes(engine: &mut ConnorsRsiEngine, closes: &[f64]) -> Vec<Option<f64>> {
+        closes
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                engine
+                    .on_bar(&Bar::new(i as i64, c, c, c, c, 1.0))
+                    .map(|o| o.value)
+            })
+            .collect()
+    }
+
+    /// Asymmetric: uneven up and down steps, so the rank window decides the rank.
+    const UNEVEN: [f64; 16] = [
+        100.0, 103.0, 102.5, 106.0, 105.0, 104.8, 109.0, 108.0, 108.4, 112.0, 111.0, 110.5, 110.9,
+        116.0, 115.0, 115.2,
+    ];
+
+    #[test]
+    fn rank_len_sets_the_rank_window() {
+        let short = closes(&mut ConnorsRsiEngine::new(2, 2, 3), &UNEVEN);
+        let long = closes(&mut ConnorsRsiEngine::new(2, 2, 8), &UNEVEN);
+        assert_ne!(short.last(), long.last());
+    }
+
+    #[test]
+    fn first_output_waits_for_a_full_rank_window() {
+        let mut engine = ConnorsRsiEngine::new(2, 2, 8);
+        assert_eq!(engine.warmup_period(), 10);
+        let out = closes(&mut engine, &UNEVEN);
+        assert_eq!(out.iter().position(Option::is_some), Some(9));
+    }
+
+    /// Nothing moves: price RSI and streak RSI are 50, and every return ties with the current one,
+    /// so the rank sits in the middle as well.
+    #[test]
+    fn unchanged_closes_give_the_midpoint() {
+        let out = closes(&mut ConnorsRsiEngine::new(3, 2, 5), &[50.0; 12]);
+        assert_eq!(out.last(), Some(&Some(50.0)));
     }
 }

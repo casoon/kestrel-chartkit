@@ -100,3 +100,25 @@ fn rsi_alerts_settle_before_its_outputs() {
     let outputs = settle::settle_bars("rsi", &params, 900).unwrap();
     assert!(alerts * 2 < outputs, "alerts {alerts}, outputs {outputs}");
 }
+
+/// `warmup_period` is the bar of the first output, not the bar from which the start no longer
+/// shows. WaveTrend and TSI publish early (bar 4 resp. 2) while their EMA chains keep the imprint
+/// of the start far longer; that length is what `settle_bars` reports.
+#[test]
+fn early_first_output_is_not_settled_output() {
+    for (name, first) in [("wavetrend", 4), ("tsi", 2)] {
+        let entry = registry::catalog()
+            .into_iter()
+            .find(|e| e.name == name)
+            .expect("in the catalog");
+        let warmup = registry::build(name, &entry.default_params)
+            .expect("builds")
+            .warmup_period();
+        assert_eq!(warmup, first, "{name}: first output");
+        let settle = settle::settle_bars(name, &entry.default_params, 900).expect("settles");
+        assert!(
+            settle >= 20 * warmup,
+            "{name}: settle {settle} should lie far beyond the first output {warmup}"
+        );
+    }
+}
