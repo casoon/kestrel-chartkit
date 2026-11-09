@@ -10,8 +10,14 @@ use std::collections::VecDeque;
 ///   is `+n` after `n` consecutive higher closes, `-n` after `n` lower ones and `0` on an unchanged
 ///   close; it exists from the second bar on.
 /// - `rank`: the percentage of the `rank_len` one-bar returns *before* the current one that lie
-///   below it, `(close - prev) / prev`. A return equal to the current one counts half, so the rank
-///   of a mirrored series is `100 - rank` and a series without movement ranks at `50`.
+///   below it, `(close - prev) / prev`. **Deliberate deviation:** a return equal to the current one
+///   counts half. The original counts only strictly smaller returns, Pine's `ta.percentrank`
+///   counts smaller or equal ones; the half-weight keeps the rank symmetric, so a series without
+///   movement ranks at `50`.
+///
+/// Mirroring: the rank part is exactly mirrored (`100 - rank`) by the reciprocal price `1 / close`,
+/// which reverses the order of the simple returns. RSI and streak mirror under a price reflection
+/// (`2m - close`), not under the reciprocal, so the whole `CRSI` is not exactly mirrored by either.
 ///
 /// `CRSI = (rsi_close + rsi_streak + rank) / 3`, in `0..=100`.
 ///
@@ -141,8 +147,9 @@ pub const CONNORS_RSI_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the price RSI"),
             super::definition::ParamSpec::count("streak_len", 2, 1, 10000)
                 .meaning("bars in the streak RSI"),
-            super::definition::ParamSpec::count("rank_len", 100, 1, 10000)
-                .meaning("earlier one-bar returns the current one is ranked against"),
+            super::definition::ParamSpec::count("rank_len", 100, 1, 10000).meaning(
+                "earlier one-bar returns the current one is ranked against; ties count half",
+            ),
         ],
         checks: &[],
         build: |p| {

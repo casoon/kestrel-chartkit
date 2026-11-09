@@ -11,9 +11,14 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Changed
 
-- **Connors RSI:** follows the definition. Price and streak RSI are raw Wilder RSIs (no longer
+Values and warmup of three indicators change: the next release should be a minor version (0.37.0).
+
+- **Connors RSI:** follows the definition, with one deliberate deviation in the rank. Price and streak RSI are raw Wilder RSIs (no longer
   the smoothed RSI line), all three parts run from the first bar, and the return is ranked among
-  the `rank_len` returns before it, ties counted half; `rank_len` now takes effect. Values change,
+  the `rank_len` returns before it; `rank_len` now takes effect. Equal returns count half: the
+  original counts only smaller ones, Pine's `ta.percentrank` smaller or equal ones; the half keeps
+  the rank symmetric. Only the rank part mirrors exactly (under `1 / close`); RSI and streak mirror
+  under a price reflection. Values change,
   and the first output moves to bar `max(rsi_len + 1, streak_len + 2, rank_len + 2)` (102 with the
   defaults instead of 6).
 - **RVI:** Ehlers' Relative Vigor Index: the summed 1-2-2-1 weighted close-open over the same sum

@@ -542,7 +542,7 @@ Connors RSI
 |---|---|---|---|
 | `rsi_len` | 3 | whole number 1 – 10000 | bars in the price RSI |
 | `streak_len` | 2 | whole number 1 – 10000 | bars in the streak RSI |
-| `rank_len` | 100 | whole number 1 – 10000 | earlier one-bar returns the current one is ranked against |
+| `rank_len` | 100 | whole number 1 – 10000 | earlier one-bar returns the current one is ranked against; ties count half |
 
 ### `coppock`
 
