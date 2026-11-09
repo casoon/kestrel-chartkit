@@ -9,9 +9,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-09
+
 ### Changed
 
-Values and warmup of three indicators change: the next release should be a minor version (0.37.0).
+Values and warmup of three indicators change, hence a minor version.
 
 - **Connors RSI:** follows the definition, with one deliberate deviation in the rank. Price and streak RSI are raw Wilder RSIs (no longer
   the smoothed RSI line), all three parts run from the first bar, and the return is ranked among
