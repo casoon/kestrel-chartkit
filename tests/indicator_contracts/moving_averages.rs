@@ -368,6 +368,15 @@ fn parabolic_sar_defaults() {
 }
 
 #[test]
+fn parabolic_sar_wilder_hold() {
+    assert_holds(&case(
+        "parabolic_sar_wilder_hold",
+        "parabolic_sar",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
 fn parabolic_sar_fast() {
     assert_holds(&case(
         "parabolic_sar_fast",

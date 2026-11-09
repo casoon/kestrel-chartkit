@@ -9,6 +9,23 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+Output values of three indicators change, hence a minor version.
+
+- **Parabolic SAR:** follows Wilder's order. The SAR is first held beyond the extremes of the two
+  previous bars (long: not above their lows, short: not below their highs), and only then is the
+  reversal tested against the held value. Before, the reversal was tested against the unheld SAR
+  and the hold used the previous and the current bar. Values and reversal alerts change.
+  The start direction is long and ends with the first reversal.
+- **Chandelier Exit:** when a close satisfies both flip conditions on one bar (crossed stops: above
+  the previous short stop and below the previous long stop), the direction is kept instead of
+  always turning long. Long and short now mirror each other exactly under a price reflection; the
+  start direction (long) only matters until the first flip. `state`, `value`, `secondary` and the
+  flip alerts change on such bars; the stops themselves do not.
+- **Adaptive Chandelier:** the same tie rule for a close that is above the previous short stop and
+  below the previous long stop.
+
 ## [0.37.0] - 2026-11-09
 
 ### Changed

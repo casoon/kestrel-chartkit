@@ -314,7 +314,8 @@ def chandelier_exit_case(length, mult, bars):
     and lowest(low, length) + mult ATR. The long stop keeps max(raw, previous) while the previous
     close was above the previous long stop, the short stop min(raw, previous) while the previous
     close was below the previous short stop. Direction starts long; a close above the previous
-    short stop turns it long, else a close below the previous long stop short; a change of
+    short stop turns it long, a close below the previous long stop short, and a close that does
+    both (crossed stops) keeps the direction; a change of
     direction is a flip alert (1.0). value = stop of the direction, secondary = the other one.
     First output with bar `length`."""
     atr = rma(true_ranges(ohlc(bars)), length)
@@ -334,9 +335,11 @@ def chandelier_exit_case(length, mult, bars):
         short_stop = (min(raw_short, sp) if prev_close is not None and gt(sp, prev_close, "ce ratchet short")
                       else raw_short)
         new_direction = direction
-        if gt(close, sp, "ce flip long"):
+        above_short = gt(close, sp, "ce flip long")
+        below_long = gt(lp, close, "ce flip short")
+        if above_short and not below_long:
             new_direction = 1
-        elif gt(lp, close, "ce flip short"):
+        elif below_long and not above_short:
             new_direction = -1
         alerts = {}
         if new_direction != direction:
@@ -382,9 +385,9 @@ def adaptive_chandelier_case(length, atr_mult, body_filter, danger, warn, bars):
         above_short = gt(c, sp, "close vs short stop")
         below_long = gt(lp, c, "close vs long stop")
         old = direction
-        if above_short and body_ok:
+        if above_short and not below_long and body_ok:
             direction = 1
-        elif below_long and body_ok:
+        elif below_long and not above_short and body_ok:
             direction = -1
         alerts = {}
         if direction == 1 and old == -1:

@@ -38,7 +38,8 @@ use std::collections::HashMap;
 /// it is short the short stop only falls.
 ///
 /// Against the previous bar's stops: a close above the short stop flips long, a close below the
-/// long stop flips short — but only when `|close - open| >= body_filter_atr · atr_raw` (a filter
+/// long stop flips short (a close that satisfies both, with crossed stops, keeps the direction) —
+/// but only when `|close - open| >= body_filter_atr · atr_raw` (a filter
 /// of 0 always passes); a crossing that fails the filter is a weak flip. The distance
 /// `|close - stop| / atr_raw` to the previous stop of the current direction sets the risk state:
 /// ±1 below `danger_dist_atr`, ±2 below `max(warn_dist_atr, danger_dist_atr + 0.05)` or on a
@@ -231,8 +232,11 @@ impl Indicator for AdaptiveChandelierEngine {
 
         let body_ok = self.body_filter_atr <= 0.0
             || (bar.close - bar.open).abs() >= atr_raw * self.body_filter_atr;
-        let flip_long = bar.close > short_stop_prev && body_ok;
-        let flip_short = bar.close < long_stop_prev && body_ok;
+        let above_short = bar.close > short_stop_prev;
+        let below_long = bar.close < long_stop_prev;
+        // Both conditions true (crossed stops): the direction is kept, neither side wins.
+        let flip_long = above_short && !below_long && body_ok;
+        let flip_short = below_long && !above_short && body_ok;
 
         let old_direction = self.direction;
         self.direction = if flip_long {

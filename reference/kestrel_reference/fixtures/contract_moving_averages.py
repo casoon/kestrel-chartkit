@@ -438,9 +438,11 @@ def supertrend_expected(bars, period, mult):
 
 def psar_expected(bars, step, max_step):
     """Starts long on the first bar with SAR = low, EP = high, AF = step and publishes that SAR.
-    Then next = SAR + AF (EP - SAR). Long: a low below `next` reverses (SAR = EP, EP = low,
-    AF = step); otherwise a new high moves EP and raises AF by step up to max_step, and the SAR is
-    held at or below the previous and the current low. Short mirrors that with highs. extras
+    Then next = SAR + AF (EP - SAR), held first (Wilder): long -> at or below the lows of the two
+    previous bars (the one previous bar counts twice on bar 2), short -> at or above their highs.
+    Only then the reversal is tested against the held value. Long: a low below it reverses
+    (SAR = EP, EP = low, AF = step); otherwise a new high moves EP and raises AF by step up to
+    max_step. Short mirrors that with highs. extras
     is_long (1/0) and af on every output, the first included (the type lists them for `value`
     without exception).
     Alerts (assumed from their kinds), strength 0.85: `psar_reversal_bearish` /
@@ -449,10 +451,12 @@ def psar_expected(bars, step, max_step):
     first = bars[0]
     sar, ep, af, is_long = first[2], first[1], step, True
     out.append(((sar, {"is_long": 1.0, "af": af}), {}))
-    for prev, bar in zip(bars, bars[1:]):
+    for i in range(1, len(bars)):
+        prev, prev2, bar = bars[i - 1], bars[max(i - 2, 0)], bars[i]
         _, high, low, _, _ = bar
         nxt = sar + af * (ep - sar)
         alerts = {}
+        nxt = min(nxt, prev[2], prev2[2]) if is_long else max(nxt, prev[1], prev2[1])
         if is_long:
             if lt(low, nxt):
                 is_long, nxt, ep, af = False, ep, low, step
@@ -460,7 +464,6 @@ def psar_expected(bars, step, max_step):
             else:
                 if gt(high, ep):
                     ep, af = high, min(af + step, max_step)
-                nxt = min(nxt, prev[2], low)
         else:
             if gt(high, nxt):
                 is_long, nxt, ep, af = True, ep, high, step
@@ -468,7 +471,6 @@ def psar_expected(bars, step, max_step):
             else:
                 if lt(low, ep):
                     ep, af = low, min(af + step, max_step)
-                nxt = max(nxt, prev[1], high)
         sar = nxt
         out.append(((sar, {"is_long": 1.0 if is_long else 0.0, "af": af}), alerts))
     return out
@@ -730,6 +732,13 @@ def build_blocks():
                    params(step=0.02, max_step=0.2), udu, psar_expected(udu, 0.02, 0.2)))
     add(case_block("parabolic_sar_fast", "PSAR(0.05, 0.1): AF reaches its cap",
                    params(step=0.05, max_step=0.1), udu, psar_expected(udu, 0.05, 0.1)))
+
+    # A low above the held SAR (97.0) but below the unheld one (97.16) does not reverse: Wilder
+    # holds the SAR first and tests the reversal afterwards.
+    hold = [(100.0, 100.5, 97.0, 98.0, 10.0), (98.0, 101.0, 98.0, 99.0, 10.0),
+            (99.0, 100.0, 97.1, 100.0, 10.0)]
+    add(case_block("parabolic_sar_wilder_hold", "PSAR(0.02, 0.2): hold before the reversal test",
+                   params(step=0.02, max_step=0.2), hold, psar_expected(hold, 0.02, 0.2)))
 
     # Donchian
     add(case_block("donchian_defaults", "Donchian(20) over up, down, up", params(period=20), udu,

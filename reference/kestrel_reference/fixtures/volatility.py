@@ -173,26 +173,27 @@ def _mass_index(bars, period):
 def _parabolic_sar(bars, step, max_step):
     """Starts long with SAR = first low and EP = first high. Each bar: next = SAR + AF (EP - SAR);
     a low below it (long) or a high above it (short) reverses, SAR = EP, EP = that low/high,
-    AF = step; otherwise a new extreme moves EP and raises AF by step up to max_step, and the SAR
-    is held at or below the previous and current low (long) or at or above the previous and
-    current high (short)."""
+    AF = step; otherwise a new extreme moves EP and raises AF by step up to max_step. Wilder's
+    order: the SAR is held first, at or below the lows (long) or at or above the highs (short) of
+    the two previous bars (the one previous bar counts twice on bar 2); the reversal is tested
+    against the held value."""
     long, sar, ep, af = True, bars[0][2], bars[0][1], step
-    for prev, bar in zip(bars, bars[1:]):
+    for i in range(1, len(bars)):
+        prev, prev2, bar = bars[i - 1], bars[max(i - 2, 0)], bars[i]
         nxt = sar + af * (ep - sar)
+        nxt = min(nxt, prev[2], prev2[2]) if long else max(nxt, prev[1], prev2[1])
         if long:
             if bar[2] < nxt:
                 long, nxt, ep, af = False, ep, bar[2], step
             else:
                 if bar[1] > ep:
                     ep, af = bar[1], min(af + step, max_step)
-                nxt = min(nxt, prev[2], bar[2])
         else:
             if bar[1] > nxt:
                 long, nxt, ep, af = True, ep, bar[1], step
             else:
                 if bar[2] < ep:
                     ep, af = bar[2], min(af + step, max_step)
-                nxt = max(nxt, prev[1], bar[1])
         sar = nxt
     return sar
 
@@ -241,8 +242,8 @@ def _chandelier(bars, length, mult):
     """Wilder ATR over `length` (first true range high - low); raw stops highest(high, length) -
     mult ATR (long) and lowest(low, length) + mult ATR (short). A stop only tightens while the
     previous close was on its side of the previous stop; the direction turns long on a close above
-    the previous short stop and short on a close below the previous long stop. Returns the last
-    long and short stop."""
+    the previous short stop and short on a close below the previous long stop (neither when both
+    hold: crossed stops keep the direction). Returns the last long and short stop."""
     atr = rma(_true_ranges(bars), length)
     long_prev = short_prev = prev_close = None
     long = short = None

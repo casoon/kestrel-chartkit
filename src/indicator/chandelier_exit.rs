@@ -8,7 +8,8 @@
 //! // stops only ever tighten (never loosen) while the position direction is unchanged
 //! long_stop  := close[1] > long_stop[1]  ? max(long_stop,  long_stop[1])  : long_stop
 //! short_stop := close[1] < short_stop[1] ? min(short_stop, short_stop[1]) : short_stop
-//! direction flips to long when close > short_stop[1], to short when close < long_stop[1]
+//! direction flips to long when close > short_stop[1], to short when close < long_stop[1];
+//! when both hold (crossed stops) the direction is kept
 //! ```
 
 use std::collections::HashMap;
@@ -24,7 +25,9 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 ///
 /// The ATR is Wilder's ([`Rma`], first true range `high - low`). A stop only tightens while the
 /// previous close was on its side of the previous stop. The direction starts long, turns long on a
-/// close above the previous short stop and short on a close below the previous long stop.
+/// close above the previous short stop and short on a close below the previous long stop; if
+/// both hold on the same bar (crossed stops) the direction is kept, so long and short are treated
+/// alike.
 /// `value` is the stop of the current direction, `secondary` the other one; `extra["long_stop"]`
 /// and `extra["short_stop"]` carry both, `state` is `long` or `short`. First output: with the
 /// `length`-th bar. [`Indicator::reset`] clears all state.
@@ -125,10 +128,14 @@ impl Indicator for ChandelierExitEngine {
             _ => raw_short_stop,
         };
 
+        // Both conditions can hold on one bar when the stops have crossed; then neither side
+        // wins and the direction stays, so a series and its reflection give mirrored output.
+        let above_short = bar.close > short_stop_prev;
+        let below_long = bar.close < long_stop_prev;
         let mut direction = self.direction;
-        if bar.close > short_stop_prev {
+        if above_short && !below_long {
             direction = 1;
-        } else if bar.close < long_stop_prev {
+        } else if below_long && !above_short {
             direction = -1;
         }
 

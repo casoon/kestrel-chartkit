@@ -222,16 +222,18 @@ impl Indicator for AroonEngine {
 /// Parabolic SAR.
 ///
 /// Starts long on the first bar with `SAR = low`, `EP = high`, `AF = step`, and publishes that
-/// first SAR. On every following bar the next SAR is `SAR + AF * (EP - SAR)`:
+/// first SAR. On every following bar the next SAR is `SAR + AF * (EP - SAR)`, and Wilder's order
+/// applies:
 ///
-/// - Long: a low below it reverses to short — the SAR becomes the EP, the EP this bar's low, and
-///   `AF = step`. Otherwise a new high moves the EP and raises `AF` by `step` up to `max_step`,
-///   and the SAR is held at or below the previous and the current low.
-/// - Short: symmetric, with highs.
+/// 1. **Hold first.** Long: the SAR may not rise into the price range of the two previous bars, so
+///    it is capped at the lower of their lows. Short: floored at the higher of their highs. On the
+///    second bar only one previous bar exists and it counts for both.
+/// 2. **Then test the reversal against the held SAR.** Long: a low below it reverses to short — the
+///    SAR becomes the EP, the EP this bar's low, and `AF = step`. Otherwise a new high moves the
+///    EP and raises `AF` by `step` up to `max_step`. Short: symmetric, with highs and lows swapped.
 ///
-/// The hold uses the **previous** bar's extreme only (the current one is already excluded by the
-/// reversal check before it). The original rule holds the SAR beyond the extremes of the two
-/// previous bars, so after a sharp two-bar move this SAR can sit closer to price.
+/// The start direction is long, so the first bars are not mirror images of a short start; the
+/// difference ends with the first reversal, which resets all state.
 ///
 /// `value`: the SAR; `extra["is_long"]` (`1`/`0`) and `extra["af"]`. First output: with the first
 /// bar. [`Indicator::reset`] returns to the long start.
@@ -243,6 +245,7 @@ pub struct ParabolicSarEngine {
     ep: f64,
     af: f64,
     prev_bar: Option<Bar>,
+    prev2_bar: Option<Bar>,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -256,6 +259,7 @@ impl ParabolicSarEngine {
             ep: 0.0,
             af: step,
             prev_bar: None,
+            prev2_bar: None,
             alerts: Vec::new(),
         }
     }
@@ -286,20 +290,23 @@ impl Indicator for ParabolicSarEngine {
         self.ep = 0.0;
         self.af = self.step;
         self.prev_bar = None;
+        self.prev2_bar = None;
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
-        let Some(prev) = self.prev_bar.as_ref() else {
+        let Some(prev) = self.prev_bar.clone() else {
             self.prev_bar = Some(bar.clone());
             self.sar = bar.low;
             self.ep = bar.high;
             return Some(self.output());
         };
+        let prev2 = self.prev2_bar.as_ref().unwrap_or(&prev);
         let mut next_sar = self.sar + self.af * (self.ep - self.sar);
 
         if self.is_long {
+            next_sar = next_sar.min(prev.low).min(prev2.low);
             if bar.low < next_sar {
                 self.is_long = false;
                 next_sar = self.ep;
@@ -315,9 +322,9 @@ impl Indicator for ParabolicSarEngine {
                     self.ep = bar.high;
                     self.af = (self.af + self.step).min(self.max_step);
                 }
-                next_sar = next_sar.min(prev.low).min(bar.low);
             }
         } else {
+            next_sar = next_sar.max(prev.high).max(prev2.high);
             if bar.high > next_sar {
                 self.is_long = true;
                 next_sar = self.ep;
@@ -333,11 +340,11 @@ impl Indicator for ParabolicSarEngine {
                     self.ep = bar.low;
                     self.af = (self.af + self.step).min(self.max_step);
                 }
-                next_sar = next_sar.max(prev.high).max(bar.high);
             }
         }
 
         self.sar = next_sar;
+        self.prev2_bar = Some(prev);
         self.prev_bar = Some(bar.clone());
         Some(self.output())
     }
