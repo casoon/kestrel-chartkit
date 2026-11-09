@@ -232,6 +232,11 @@ impl Indicator for AroonEngine {
 ///    SAR becomes the EP, the EP this bar's low, and `AF = step`. Otherwise a new high moves the
 ///    EP and raises `AF` by `step` up to `max_step`. Short: symmetric, with highs and lows swapped.
 ///
+/// Comparisons are strict: a low equal to the held SAR (long) or a high equal to it (short) does not
+/// reverse. The hold applies on every bar, with or without a reversal, so it also changes values
+/// on bars that do not reverse. After a reversal the SAR is the previous EP; it is not capped by the
+/// current bar's extreme, so it can lie inside the current bar's range.
+///
 /// The start direction is long, so the first bars are not mirror images of a short start; the
 /// difference ends with the first reversal, which resets all state.
 ///

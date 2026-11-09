@@ -1,6 +1,6 @@
 """golden_flow_exhaustion: Flow Exhaustion (MFI + StochRSI).
 
-Written from the original definition, not from the Rust code. MFI oscillator mode only, no
+Written from the published definition, not from the Rust code. MFI oscillator mode only, no
 higher-timeframe filter, manual divergence parameters (the timeframe presets need the chart
 timeframe).
 """
@@ -167,7 +167,7 @@ HEADER = [
     "",
     *provenance("flow_exhaustion"),
     "",
-    "Formula: the original definition, MFI mode,",
+    "Formula: the published definition, MFI mode,",
     "dynamic zones, JMA on MFI and StochRSI K, no HTF filter, manual divergence parameters",
     "(pivots 7/7, min delta 15, buffer 0.10, swing 0.75 ATR, eps 0.001 / 1.0). Conventions the",
     "original leaves open: MFI flow counts from the second bar and is na while its window has no",

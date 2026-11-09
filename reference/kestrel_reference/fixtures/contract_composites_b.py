@@ -218,7 +218,7 @@ def multi_factor_case(period, bars):
 def leg_conviction_case(bars, pivot_left=5, pivot_right=5, max_leg=100, atr_len=14,
                         speed_ref=1.0, w_speed=0.4, w_clean=0.4, w_volume=0.2):
     """Legs, step lines and divergences from the golden module (`leg_conviction.compute`, written
-    from the original definition), mapped per bar onto the documented output:
+    from the published definition), mapped per bar onto the documented output:
     - first output on the bar after the first full pivot window (0-based bar L + R + 1);
     - until a scored up-leg and a scored down-leg both exist: value 0, secondary 0, no extra;
     - then value = last up-leg conviction, secondary = minus the last down-leg conviction, extra
@@ -591,7 +591,7 @@ def structure_zones_case(bars):
 
 def structural_flow_case(bars):
     """Flow, wave, Re-Sync, phases and events from the golden module (`structural_flow.compute`,
-    the original's Balanced preset with relative-volume participation), mapped per bar onto the
+    the reference definition's Balanced preset with relative-volume participation), mapped per bar onto the
     documented output: value = structural drive, secondary = aligned wave, extra = the twenty
     documented fields. Alert strength is not documented on the type. Assumed: the flow strength
     of the bar, clamped to 0.05..1, for every kind."""
@@ -624,7 +624,7 @@ def build():
         "",
         "Format: see contract_pilot (one table per case, `-` = absent).",
         "Buy/sell pressure, trend quality and multi-factor follow the formulas documented on their",
-        "types. The other indicators reuse the golden modules (written from the original",
+        "types. The other indicators reuse the golden modules (written from the reference definition",
         "definitions) and map their per-bar state onto the documented output; alert strengths",
         "their types do not document are assumed conventions, stated per indicator in the module.",
     ]

@@ -28,7 +28,7 @@
 //! `bull_accumulation_mature`, `bull_breakout_ready`, `bear_distribution_developing`,
 //! `bear_distribution_mature`, `bear_breakdown_ready`.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with the first
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with the first
 //! close; ATR = Wilder average of the true range (first bar high - low), SMA-seeded; RSI = Wilder
 //! averages of the close changes, SMA-seeded; population standard deviation; pivots strict on both
 //! sides. The original evaluates the scores with `na` fallbacks during the warm-up; here the
@@ -45,7 +45,7 @@ use crate::model::Bar;
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct AccumulationPhaseConfig {
     pub atr_len: usize,

@@ -23,7 +23,7 @@
 //! pivot of the same side, WaveTrend beyond ±45, trend against the reversal (close vs. EMA with
 //! ADX ≥ `adx_trend`), chop (ADX ≤ `chop_adx`) — and the quality score (0..100).
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with their
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with their
 //! first value; ATR and DMI Wilder averages seeded with an SMA (DMI from the second bar); pivots
 //! strict on both sides; a pivot without an ATR at the pivot bar is not labelled; a missing
 //! WaveTrend/EMA/ADX value makes its flag false and a missing ATR rank scores −3. Labels are
@@ -37,7 +37,7 @@ use crate::indicator::wavetrend::WaveTrendEngine;
 use crate::indicator::Indicator;
 use crate::model::Bar;
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct ReversalTypeConfig {
     pub pivot_len: usize,

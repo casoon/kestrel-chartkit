@@ -1,6 +1,6 @@
 """golden_reversal_setup_score: Reversal Setup Score (momentum mix A).
 
-Written from the original definition, not from the Rust code, with the
+Written from the published definition, not from the Rust code, with the
 inputs at their defaults. Series are full arrays (`x[k]` read as `series[t - k]`); the `var` state
 (swing trends, climax sequence, events) is followed bar by bar.
 """
@@ -594,8 +594,8 @@ HEADER = [
     "",
     *provenance("reversal_setup_score"),
     "",
-    "Formula: the original definition with its",
-    "defaults and momentum mix 'A: RSI+MFI+MACD'. Conventions the original leaves open: EMAs",
+    "Formula: the published definition with its",
+    "defaults and momentum mix 'A: RSI+MFI+MACD'. Conventions the reference definition leaves open: EMAs",
     "(also in MACD 12/26/9) seeded with the first value, ATR = Wilder average of the true range",
     "(first bar high - low) seeded with an SMA, RSI = Wilder averages of the close changes seeded",
     "with an SMA, MFI over the last 14 changes of hlc3 (50 without flow, 100 without negative",

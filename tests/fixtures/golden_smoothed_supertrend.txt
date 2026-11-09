@@ -5,7 +5,7 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Formula: the original definition with its manual
+# Formula: the published definition with its manual
 # parameters (factor 12, ATR 90, WMA 40, EMA 14, slope 3 bars / 0.05 ATR, ADX 25, strength
 # 100/70, touches 2, rejection slope 5, overextension 100/85), filters off. Conventions the
 # original leaves open: ATR and ADX Wilder averages seeded with an SMA; the supertrend bands

@@ -1,6 +1,6 @@
 """golden_accumulation_phase: Accumulation Phase.
 
-Written from the original definition, not from the Rust code: series as full
+Written from the published definition, not from the Rust code: series as full
 arrays, `x[k]` read as `series[t - k]`, the `var` counters and phases followed bar by bar.
 """
 
@@ -299,9 +299,9 @@ HEADER = [
     "",
     *provenance("accumulation_phase"),
     "",
-    "Formula: the original definition with its",
+    "Formula: the published definition with its",
     "defaults (ATR 14, lookback 20, minimum phase 10 bars, pivots 3/3, ER 0.3, BBW 0.7, ATR 0.8;",
-    "EMA 20/50, Bollinger 20 x 2, RSI 14 fixed). Conventions the original leaves open: EMAs",
+    "EMA 20/50, Bollinger 20 x 2, RSI 14 fixed). Conventions the reference definition leaves open: EMAs",
     "seeded with the first close, ATR = Wilder average of the true range (first bar high - low)",
     "seeded with an SMA, RSI = Wilder averages of the close changes seeded with an SMA, population",
     "standard deviation, pivots strict on both sides; the sweep/spring counters run from the first",

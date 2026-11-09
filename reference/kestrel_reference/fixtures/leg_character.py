@@ -1,6 +1,6 @@
 """golden_leg_character: Leg Character, live leg.
 
-Written from the original definition, not from the Rust code: the pivot
+Written from the published definition, not from the Rust code: the pivot
 engine and `f_calculateLeg` are followed literally, `x[k]` read as `series[t - k]`. Only the live
 leg and its class state are checked; the completed-leg drawings do not feed them.
 """
@@ -322,11 +322,11 @@ HEADER = [
     "",
     *provenance("leg_character"),
     "",
-    "Formula: the original definition with its",
+    "Formula: the published definition with its",
     "defaults (pivots 5/5, 350 bars per leg, minimum leg 0.5 ATR, ATR 14, maturity 8 bars,",
     "retracement ceiling 0.8, momentum 0.6..1.4, true range 0.7..1.3, EMA 34, sub-pivots 2,",
     "weights 20/15/12.5/10/7.5/10/5/7.5/7.5/5, thresholds 62/62, separation 18, buffer 5).",
-    "Conventions the original leaves open: ATR = Wilder average of the true range (first bar",
+    "Conventions the reference definition leaves open: ATR = Wilder average of the true range (first bar",
     "high - low) seeded with an SMA, read as 0 where missing (nz) and blocking a new pivot when",
     "missing at the pivot bar; EMA seeded with the first close; mintick = 1e-12; pivots strict to",
     "the left and non-strict to the right (the first of equal extremes counts).",

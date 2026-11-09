@@ -5,11 +5,11 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Formula: the original definition with its defaults
+# Formula: the published definition with its defaults
 # (pivots 8, tolerance 0.12 ATR, 2 touches, 30 levels per side, age 400, distance 8 ATR,
 # sweep 0.05 ATR, reclaim window 3, close-back 0.10 ATR, volume ratio 1.2, 6 remembered events,
 # hunt volume 1.5 / wick 0.45 / close position 0.45, alert distance 1 ATR, memory 30, premium
-# 65). Conventions the original leaves open: ATR(14) = Wilder average of the true range
+# 65). Conventions the reference definition leaves open: ATR(14) = Wilder average of the true range
 # (first bar high - low) seeded with an SMA, no merge/prune/sweep while it is missing, the
 # 2 x mintick tolerance floor dropped and the bar range floored at 1e-12, volume ratio 1 while
 # the 20-bar average is missing or 0, real volume = cumulative volume so far positive, pivots

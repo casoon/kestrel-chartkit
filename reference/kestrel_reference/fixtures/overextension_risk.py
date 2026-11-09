@@ -1,6 +1,6 @@
 """golden_overextension_risk: Overextension Risk.
 
-Written from the original definition, not from the Rust code. Preset Commodities (weights
+Written from the published definition, not from the Rust code. Preset Commodities (weights
 40/35/25, money flow on where real volume exists), signal mode Normal (threshold 40), confirmation
 Candle Reaction, signal gap 8, divergence assist off.
 """
@@ -223,9 +223,9 @@ HEADER = [
     "",
     *provenance("overextension_risk"),
     "",
-    "Formula: the original definition, preset",
+    "Formula: the published definition, preset",
     "Commodities (40/35/25, money flow where real volume exists), signal mode Normal, Candle",
-    "Reaction confirmation, gap 8, divergence assist off. Conventions the original leaves open:",
+    "Reaction confirmation, gap 8, divergence assist off. Conventions the reference definition leaves open:",
     "EMAs seeded with the first value; RSI, ATR and ADX Wilder averages seeded with an SMA (ADX",
     "from the second bar); population standard deviation; StochRSI na when the RSI range is zero;",
     "MFI flow from the second bar, na (then 50) while its window has no volume; pivots strict on",

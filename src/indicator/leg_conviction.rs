@@ -27,7 +27,7 @@
 //! | `bear_conviction_divergence` | pivot high above the previous scored pivot high, up-leg conviction below the previous one |
 //! | `bull_conviction_divergence` | pivot low below the previous scored pivot low, down-leg conviction below the previous one |
 //!
-//! Conventions the original leaves open (also in the golden fixture): pivots strict to the
+//! Conventions the reference definition leaves open (also in the golden fixture): pivots strict to the
 //! left and non-strict to the right, so the first of two equal extremes counts (strict on both
 //! sides never fires on a flat top); on a bar confirming both a high and a low the high is processed first (the low's leg
 //! then has length 0 and is not scored); ATR = Wilder average of the true range (first bar
@@ -44,7 +44,7 @@ use crate::model::Bar;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct LegConvictionConfig {
     pub pivot_left: usize,

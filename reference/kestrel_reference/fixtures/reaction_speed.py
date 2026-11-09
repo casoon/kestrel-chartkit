@@ -1,6 +1,6 @@
 """golden_reaction_speed: Reaction Speed.
 
-Written from the original definition, not from the Rust code. The 1h preset tier converted to
+Written from the published definition, not from the Rust code. The 1h preset tier converted to
 bars (reaction window 8 bars, validation window 20 bars, ATR move 1.6, weights 0.7/0.3 and
 0.40/0.60), priority BOS > SWEEP > OB.
 """
@@ -132,12 +132,12 @@ HEADER = [
     "",
     *provenance("reaction_speed"),
     "",
-    "Formula: the original definition, the",
+    "Formula: the published definition, the",
     "1h preset tier in bars (reaction 8, validation 20, ATR move 1.6, weights 0.7/0.3 and",
     "0.40/0.60), swing lookback 10, OB displacement 1.0 ATR / search 12, priority BOS > SWEEP >",
-    "OB. Conventions the original leaves open: ATR Wilder average seeded with an SMA, first",
+    "OB. Conventions the reference definition leaves open: ATR Wilder average seeded with an SMA, first",
     "true range = high - low; an event needs an ATR; the reaction fields are reported while an",
-    "event is active and on the bar it closes (the original keeps plotting 0 after a no-reaction expiry);",
+    "event is active and on the bar it closes (the reference definition keeps plotting 0 after a no-reaction expiry);",
     "a bar reports once the ATR base exists; events closing before that are not listed.",
     "",
     "Series: series.wave_series(900) (see reference/kestrel_reference/series.py).",

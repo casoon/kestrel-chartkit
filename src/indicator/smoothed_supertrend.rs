@@ -26,7 +26,7 @@
 //! volatility-adaptive band width, polarity and volume filters (off by default) and the SL/TP trade
 //! overlay, which is execution logic rather than an indicator.
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR and ADX Wilder
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR and ADX Wilder
 //! averages seeded with an SMA (ADX via [`Adx`]); the supertrend bands start raw on the first bar
 //! with an ATR; the EMA seeded with its first value; percentrank = share of the previous `n`
 //! values less than or equal to the current one, needing all of them. A bar reports once the
@@ -42,7 +42,7 @@ use super::adx::Adx;
 use super::smoothing::{Ema, PercentRank, Rma, Wma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original (manual values).
+/// Parameters, defaults of the reference definition (manual values).
 #[derive(Debug, Clone)]
 pub struct SmoothedSupertrendConfig {
     pub factor: f64,

@@ -27,7 +27,7 @@
 //! layer. `ma_kind`: 0 EMA (default), 1 SMA, 2 RMA; the WMA/SuperSmoother/T3/KAMA/JMA
 //! choices are not offered.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with the
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with the
 //! first ROC value; ATR Wilder average seeded with an SMA. A bar reports once line, signal,
 //! context, ATR and every lookback it reads exist.
 //!
@@ -40,7 +40,7 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Rma, Smoother, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct RocContextConfig {
     pub ma_kind: SmootherKind,

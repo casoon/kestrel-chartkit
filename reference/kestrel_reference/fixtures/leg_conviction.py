@@ -1,6 +1,6 @@
 """golden_leg_conviction: Leg Conviction.
 
-Written from the original definition, not from the Rust code: every
+Written from the published definition, not from the Rust code: every
 series is a full array indexed by bar, `x[k]` is read as `series[t - k]`.
 """
 
@@ -174,9 +174,9 @@ HEADER = [
     "",
     *provenance("leg_conviction"),
     "",
-    "Formula: the original definition with",
+    "Formula: the published definition with",
     "its defaults (pivots 5/5, max leg 100, weights 0.4/0.4/0.2, ATR 14, speed reference 1).",
-    "Conventions the original leaves open: pivots strict to the left, non-strict to the right (the first of equal extremes counts), the pivot high of a bar",
+    "Conventions the reference definition leaves open: pivots strict to the left, non-strict to the right (the first of equal extremes counts), the pivot high of a bar",
     "processed before its pivot low, ATR = Wilder average of the true range (first bar high - low)",
     "seeded with an SMA, speed 0 while the ATR is not available, real volume = cumulative volume",
     "so far positive.",

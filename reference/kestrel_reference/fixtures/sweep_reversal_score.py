@@ -1,6 +1,6 @@
 """golden_sweep_reversal_score: Sweep Reversal Score, chart-timeframe configuration.
 
-Written from the original definition, not from the Rust code, with the inputs
+Written from the published definition, not from the Rust code, with the inputs
 only15m = false and gate F off (the other gates at their defaults: A and D on; B, C, E, G,
 H, I off), and the short mirrored to the long (RSI < 50, minimum quality 2) instead of the
 original's one-sided RSI > 50 and minimum 1. Series are full arrays indexed by bar.
@@ -151,14 +151,14 @@ HEADER = [
     "",
     *provenance("sweep_reversal_score"),
     "",
-    "Formula: the original definition with only15m",
+    "Formula: the published definition with only15m",
     "off and gate F off, everything else at its defaults (gate A sweep lookback 10, gate D ATR 14",
     "above 0.6 x SMA 50 of the ATR, RSI 14, pivots 5, minimum quality 2 on both sides, cooldown 5,",
-    "stop buffer 0.3 ATR, target 1.5 R). Conventions the original leaves open: ATR = Wilder",
+    "stop buffer 0.3 ATR, target 1.5 R). Conventions the reference definition leaves open: ATR = Wilder",
     "average of the true range (first bar high - low) seeded with an SMA, RSI = Wilder averages of",
     "the close changes seeded with an SMA, pivots strict on both sides; output from the first bar",
     "with ATR base, RSI and a full sweep window. The short mirrors the long: +1 for RSI < 50 and",
-    "+1 for no higher high (the original scores RSI > 50 on both sides and needs 1 point short).",
+    "+1 for no higher high (the reference definition scores RSI > 50 on both sides and needs 1 point short).",
     "",
     "Series: 900 bars, prev = previous close (100 before the first bar), drift 0.08 up to bar 299,",
     "-0.10 to 599, 0.03 after; close = prev + drift + 0.9 sin(i/5) + 0.4 cos(i/2.2); open = prev +",

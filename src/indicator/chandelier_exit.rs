@@ -27,7 +27,9 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// previous close was on its side of the previous stop. The direction starts long, turns long on a
 /// close above the previous short stop and short on a close below the previous long stop; if
 /// both hold on the same bar (crossed stops) the direction is kept, so long and short are treated
-/// alike.
+/// alike. The tie rule (keep the direction when both conditions hold) is this crate's own
+/// convention; the stop ratchet is gated by the previous close against the previous stop, not by
+/// the direction.
 /// `value` is the stop of the current direction, `secondary` the other one; `extra["long_stop"]`
 /// and `extra["short_stop"]` carry both, `state` is `long` or `short`. First output: with the
 /// `length`-th bar. [`Indicator::reset`] clears all state.

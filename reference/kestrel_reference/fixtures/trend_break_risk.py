@@ -1,6 +1,6 @@
 """golden_trend_break_risk: Trend Break Risk.
 
-Written from the original definition, not from the Rust code. The
+Written from the published definition, not from the Rust code. The
 script is followed bar by bar with its `var` state; `x[k]` reads the stored history.
 """
 
@@ -275,9 +275,9 @@ HEADER = [
     "",
     *provenance("trend_break_risk"),
     "",
-    "Formula: the original definition with its",
+    "Formula: the published definition with its",
     "defaults (EMA 50, pivots 5, near 1.5 ATR, RSI 14, ATR 14, memory 10, smoothing 3, weights",
-    "25/20/15/10, levels 35/60/80, context flip required). Conventions the original leaves",
+    "25/20/15/10, levels 35/60/80, context flip required). Conventions the reference definition leaves",
     "open: EMA seeded with the first close, ATR = Wilder average of the true range (first bar",
     "high - low) seeded with an SMA and floored at 1e-12, RSI = Wilder averages of the close",
     "changes seeded with an SMA (50 when nothing moved), pivots strict on both sides; a sensor",

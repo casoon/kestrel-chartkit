@@ -1,6 +1,6 @@
 """golden_market_state_chain: Market State Chain.
 
-Written from the original definition, not from the Rust code. Default parameters.
+Written from the published definition, not from the Rust code. Default parameters.
 """
 
 import math
@@ -173,10 +173,10 @@ HEADER = [
     "",
     *provenance("market_state_chain"),
     "",
-    "Formula: the original definition with its defaults",
+    "Formula: the published definition with its defaults",
     "(EMA 55, ATR 14, efficiency 34, ADX 14, rank 100, BB 20, thresholds 22/38/70/35/0.05,",
     "lookback 500, Laplace 1, min samples 20, dwell 2, confidence 55, reliability 40, margin 8).",
-    "Conventions the original leaves open: EMA seeded with its first value; ATR and DMI Wilder",
+    "Conventions the reference definition leaves open: EMA seeded with its first value; ATR and DMI Wilder",
     "averages seeded with an SMA (DMI from the second bar); population standard deviation; a bar",
     "is classified once every input exists, earlier bars carry no state and never match; the",
     "debounced state starts at Compression (2); bars-in-state is 0 until the first state change.",

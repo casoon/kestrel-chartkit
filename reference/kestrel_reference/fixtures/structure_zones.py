@@ -1,6 +1,6 @@
 """golden_structure_zones: Structure Zones, zones and assessment.
 
-Written from the original definition, not from the Rust code, with the
+Written from the published definition, not from the Rust code, with the
 inputs at their defaults. Series are full arrays (`x[k]` read as `series[t - k]`); the arrays of
 gaps, order blocks and zones are followed bar by bar as in the script.
 """
@@ -611,8 +611,8 @@ HEADER = [
     "",
     *provenance("structure_zones"),
     "",
-    "Formula: the original definition with",
-    "its defaults. Conventions the original leaves open: EMAs seeded with the first close, ATR",
+    "Formula: the published definition with",
+    "its defaults. Conventions the reference definition leaves open: EMAs seeded with the first close, ATR",
     "= Wilder average of the true range (first bar high - low) seeded with an SMA, RSI = Wilder",
     "averages of the close changes seeded with an SMA, MFI over the last 14 changes of hlc3 (50",
     "without flow, 100 without negative flow), pivots strict on both sides, real volume =",

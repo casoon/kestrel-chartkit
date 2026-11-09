@@ -1,6 +1,6 @@
 """golden_coil_release: Coil Release.
 
-Written from the original definition, not from the Rust code. The higher-timeframe trend
+Written from the published definition, not from the Rust code. The higher-timeframe trend
 context (request.security) is replaced by the same EMA slope on the chart timeframe.
 """
 
@@ -188,10 +188,10 @@ HEADER = [
     "",
     *provenance("coil_release"),
     "",
-    "Formula: the original definition with its",
+    "Formula: the published definition with its",
     "defaults (length 34, break length 12, symbol step 0.15 ATR, EMA 55 / slope 5 / 0.10 ATR,",
     "thresholds 0.45 / 0.55, cooldown 8, chop 14 / 61.8). The higher-timeframe EMA slope is taken",
-    "on the chart timeframe. Conventions the original leaves open: ATR Wilder average seeded",
+    "on the chart timeframe. Conventions the reference definition leaves open: ATR Wilder average seeded",
     "with an SMA, first true range = high - low; EMA seeded with its first value; every quantity",
     "needs all of its inputs (the complexity every ATR it reads); base bars need all 12 earlier",
     "classifications; a first break needs the previous bar's break state. A bar reports once all",

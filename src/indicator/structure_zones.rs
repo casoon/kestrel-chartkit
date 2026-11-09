@@ -46,14 +46,14 @@
 //! `bear_resistance_hold` (hold ≥ 60, break < 45), `bear_support_break` / `bull_resistance_break`
 //! (break ≥ 60, hold < 45). The original re-fires them on every bar the condition holds.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with the first
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with the first
 //! close; ATR = Wilder average of the true range (first bar high - low), SMA-seeded; RSI = Wilder
 //! averages of the close changes, SMA-seeded; MFI over the last 14 changes of hlc3 (50 without
 //! flow, 100 without negative flow); pivots strict on both sides; real volume = cumulative volume
 //! so far positive. Swings, BOS, swing trends, the volume profile and the effort-vs-result series
 //! run from the first bar; zones, gaps, order blocks and the climax sequence start with the first
 //! ATR (nothing is compared before); output once RSI — with real volume also MFI and the
-//! volume average — exists. As in the original the climax sequence advances several stages in one
+//! volume average — exists. As in the reference definition the climax sequence advances several stages in one
 //! bar when they are met, and the profile's high/low include the confirming bar.
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structure_zones.py`.

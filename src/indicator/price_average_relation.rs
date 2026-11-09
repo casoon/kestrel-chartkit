@@ -32,10 +32,10 @@
 //! | `bull_divergence` / `bear_divergence` | regular divergence between strict price pivots and the oscillator at the pivot bar |
 //! | `bull_turn` / `bear_turn` | the oscillator touched ±`turn_level` within `turn_lookback` bars and now exceeds each of its previous `turn_confirm` values (transition only) |
 //!
-//! Unlike the original, whose `bullish exhaustion` fires in an uptrend, the names here follow the
+//! Unlike the reference definition, whose `bullish exhaustion` fires in an uptrend, the names here follow the
 //! expected move: `bear_exhaustion` fires when an uptrend tires.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMA seeded with the first
+//! Conventions the reference definition leaves open (also in the golden fixture): EMA seeded with the first
 //! value; ATR = Wilder average of the true range, SMA-seeded; population standard deviation; the
 //! tick-size floor on ATR is `1e-12`; pivots strict on both sides. Every quantity
 //! propagates "not available", a bar reports only when the oscillator, its signal and all six
@@ -52,7 +52,7 @@ use crate::model::Bar;
 use super::smoothing::{Rma, Smoother, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct PriceAverageRelationConfig {
     pub ma_kind: SmootherKind,

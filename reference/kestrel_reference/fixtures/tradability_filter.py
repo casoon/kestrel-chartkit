@@ -1,6 +1,6 @@
 """golden_tradability_filter: Tradability Filter.
 
-Written from the original definition, not from the Rust code.
+Written from the published definition, not from the Rust code.
 Preset Balanced, volume confirmation off.
 """
 
@@ -304,13 +304,13 @@ HEADER = [
     "",
     *provenance("tradability_filter"),
     "",
-    "Formula: the original definition,",
+    "Formula: the published definition,",
     "preset Balanced (quality 20, range 30, baseline 34, ATR 14, ADX 14, rank 150), volume",
-    "confirmation off. Conventions the original leaves open: EMAs seeded with their first",
+    "confirmation off. Conventions the reference definition leaves open: EMAs seeded with their first",
     "value; ATR and DMI Wilder averages seeded with an SMA (DMI from the second bar);",
     "population standard deviation; percentrank = share of the previous 150 values <= the",
     "current one, needing all of them; the bar range floor (mintick) is 1e-12; the direction",
-    "step and baseline cross of the first bar are 0. A bar is ready once the original's data-ready",
+    "step and baseline cross of the first bar are 0. A bar is ready once the reference definition's data-ready",
     "bar has passed and every score, the last 10 scores and every lookback the states read",
     "exist; before that the candidate is NO TRADE and no breakout is raw, while the state",
     "machine counters run on every bar. Events fire on entering a state: no_trade, compression,",

@@ -5,7 +5,7 @@
 #
 # Format: see contract_pilot (one table per case, `-` = absent).
 # Buy/sell pressure, trend quality and multi-factor follow the formulas documented on their
-# types. The other indicators reuse the golden modules (written from the original
+# types. The other indicators reuse the golden modules (written from the reference definition
 # definitions) and map their per-bar state onto the documented output; alert strengths
 # their types do not document are assumed conventions, stated per indicator in the module.
 

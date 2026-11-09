@@ -1,6 +1,6 @@
 """golden_compression_zones: Compression Zones.
 
-Written from the original definition, not from the Rust code. Sensitivity Balanced, all
+Written from the published definition, not from the Rust code. Sensitivity Balanced, all
 modules on, breakout quality Confirmed, contrary-read filter on.
 """
 
@@ -198,12 +198,12 @@ HEADER = [
     "",
     *provenance("compression_zones"),
     "",
-    "Formula: the original definition, sensitivity",
+    "Formula: the published definition, sensitivity",
     "Balanced (range 4.2 ATR, ADX 27, score 35, touches 2), all modules on, breakout quality",
-    "Confirmed, contrary-read filter on. Conventions the original leaves open: ATR and ADX",
+    "Confirmed, contrary-read filter on. Conventions the reference definition leaves open: ATR and ADX",
     "Wilder averages seeded with an SMA (ADX from the second bar); EMAs seeded with their first",
     "value; on ties the range extreme is the most recent bar; pivots strict on both sides; the",
-    "historical level list expires from its front only, as in the original. A bar reports once ATR, ADX,",
+    "historical level list expires from its front only, as in the reference definition. A bar reports once ATR, ADX,",
     "the range window and close[12] exist; volume counts as unavailable until its MA exists.",
     "Zone fields: in_zone/zone_high/zone_low/touches/read as seen on the bar before an ending zone",
     "is cleared; read code 1 bull pressure, 0.5 bull continuation, -0.5 / -1 bear, 0 otherwise.",

@@ -1,6 +1,6 @@
 """golden_structural_flow: Structural Flow, computation without the visual field.
 
-Written from the original definition, not from the Rust code, with the
+Written from the published definition, not from the Rust code, with the
 Balanced preset and Relative Volume participation. Series are full arrays (`x[k]` read as
 `series[t - k]`, None where not available); the `var` state is followed bar by bar from the first
 bar on which the slow horizon's persistence exists.
@@ -732,7 +732,7 @@ HEADER = [
     "",
     *provenance("structural_flow"),
     "",
-    "Formula: the original definition, Balanced",
+    "Formula: the published definition, Balanced",
     "preset, Relative Volume participation; the visual field is not part of it. Conventions the",
     "original leaves open: EMAs seeded with the first available value, ATR = Wilder average of the",
     "true range (first bar high - low) seeded with an SMA and floored at 1e-12 (also for mintick),",

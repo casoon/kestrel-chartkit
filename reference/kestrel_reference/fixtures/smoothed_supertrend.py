@@ -1,6 +1,6 @@
 """golden_smoothed_supertrend: Smoothed Supertrend.
 
-Written from the original definition, not from the Rust code. Manual parameters (auto timeframe
+Written from the published definition, not from the Rust code. Manual parameters (auto timeframe
 scaling needs the chart timeframe), volatility-adaptive band width, polarity and volume filters
 off; the SL/TP trade overlay is not part of the indicator.
 """
@@ -107,7 +107,7 @@ HEADER = [
     "",
     *provenance("smoothed_supertrend"),
     "",
-    "Formula: the original definition with its manual",
+    "Formula: the published definition with its manual",
     "parameters (factor 12, ATR 90, WMA 40, EMA 14, slope 3 bars / 0.05 ATR, ADX 25, strength",
     "100/70, touches 2, rejection slope 5, overextension 100/85), filters off. Conventions the",
     "original leaves open: ATR and ADX Wilder averages seeded with an SMA; the supertrend bands",

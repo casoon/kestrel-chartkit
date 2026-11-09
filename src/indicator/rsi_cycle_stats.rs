@@ -34,9 +34,9 @@
 //! recent/long lookback comparison, MFE/MAE distributions, the walk-forward reliability table
 //! and all drawings.
 //!
-//! Conventions the original leaves open (also in the golden fixture): RSI Wilder averages seeded
+//! Conventions the reference definition leaves open (also in the golden fixture): RSI Wilder averages seeded
 //! with an SMA; the first RSI bar counts as entering a zone it is in; the live state word uses the
-//! progress of the cycle active after the bar (the original reuses the pre-transition value on a
+//! progress of the cycle active after the bar (the reference definition reuses the pre-transition value on a
 //! bar where the cycle changes). A bar reports once the RSI exists.
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/rsi_cycle_stats.py`.
@@ -50,7 +50,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 const BUCKETS: usize = 10;
 
-/// Parameters, defaults of the original (RSI mode).
+/// Parameters, defaults of the reference definition (RSI mode).
 #[derive(Debug, Clone)]
 pub struct RsiCycleStatsConfig {
     pub rsi_len: usize,

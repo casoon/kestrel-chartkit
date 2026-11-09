@@ -1,6 +1,6 @@
 """golden_price_average_relation: Price-Average Relation.
 
-Written from the original definition, not from the Rust code: every
+Written from the published definition, not from the Rust code: every
 series is a full array, every step propagates "not available" (None) strictly, and a bar reports
 only when everything it reads is available.
 """
@@ -483,8 +483,8 @@ HEADER = [
     "",
     *provenance("price_average_relation"),
     "",
-    "Formula: the original definition",
-    "with its defaults, EMA family, length 50. Conventions the original leaves open:",
+    "Formula: the published definition",
+    "with its defaults, EMA family, length 50. Conventions the reference definition leaves open:",
     "EMA seeded with the first value, ATR = Wilder average of the true range (first bar high -",
     "low) seeded with an SMA, population standard deviation, mintick floor replaced by 1e-12,",
     "rising = greater than each of the previous n values, pivots strict on both sides. Every",

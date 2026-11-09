@@ -1,7 +1,7 @@
 //! Compression Zones: compression zones from a weighted multi-module score, with a breakout watch
 //! after a valid zone ends.
 //!
-//! Defaults follow the original's Balanced sensitivity.
+//! Defaults follow the reference definition's Balanced sensitivity.
 //!
 //! Per bar a score `0..=80` over the last `lookback` bars:
 //!
@@ -31,7 +31,7 @@
 //! bar, volume above its MA where real volume exists, and the zone read not pointing the other
 //! way. A breakout or the end of the watch disarms.
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR and ADX Wilder
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR and ADX Wilder
 //! averages seeded with an SMA (ADX via [`Adx`]); EMAs seeded with their first value; on ties the
 //! range extreme is the most recent bar; pivots strict on both sides; the historical level list
 //! expires from its front only. A bar reports once ATR, ADX, the range window and the
@@ -49,7 +49,7 @@ use super::adx::Adx;
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original (Balanced, breakout quality Confirmed).
+/// Parameters, defaults of the reference definition (Balanced, breakout quality Confirmed).
 #[derive(Debug, Clone)]
 pub struct CompressionZonesConfig {
     pub lookback: usize,

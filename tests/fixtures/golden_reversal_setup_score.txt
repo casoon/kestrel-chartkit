@@ -5,8 +5,8 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Formula: the original definition with its
-# defaults and momentum mix 'A: RSI+MFI+MACD'. Conventions the original leaves open: EMAs
+# Formula: the published definition with its
+# defaults and momentum mix 'A: RSI+MFI+MACD'. Conventions the reference definition leaves open: EMAs
 # (also in MACD 12/26/9) seeded with the first value, ATR = Wilder average of the true range
 # (first bar high - low) seeded with an SMA, RSI = Wilder averages of the close changes seeded
 # with an SMA, MFI over the last 14 changes of hlc3 (50 without flow, 100 without negative

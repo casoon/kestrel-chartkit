@@ -9,22 +9,34 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-09
+
 ### Changed
 
 Output values of three indicators change, hence a minor version.
 
 - **Parabolic SAR:** follows Wilder's order. The SAR is first held beyond the extremes of the two
   previous bars (long: not above their lows, short: not below their highs), and only then is the
-  reversal tested against the held value. Before, the reversal was tested against the unheld SAR
-  and the hold used the previous and the current bar. Values and reversal alerts change.
-  The start direction is long and ends with the first reversal.
+  reversal tested against the held value (strict comparison: an equal low or high does not
+  reverse). Before, the reversal was tested against the unheld SAR and the hold used the previous
+  and the current bar. The hold applies on every bar, with or without a reversal, so many values
+  change from the third bar on, not only around reversals; reversal alerts change with them. After
+  a reversal the SAR is the previous extreme point and is not capped by the current bar, so it can
+  lie inside the current bar's range. The start direction is long and ends with the first reversal.
 - **Chandelier Exit:** when a close satisfies both flip conditions on one bar (crossed stops: above
   the previous short stop and below the previous long stop), the direction is kept instead of
-  always turning long. Long and short now mirror each other exactly under a price reflection; the
-  start direction (long) only matters until the first flip. `state`, `value`, `secondary` and the
-  flip alerts change on such bars; the stops themselves do not.
+  always turning long. This tie rule is this crate's own convention. Long and short now mirror
+  each other exactly under a price reflection; the start direction (long) only matters until the
+  first flip. `state`, `value`, `secondary` and the flip alerts change on such bars; the stops
+  themselves do not. The stop ratchet is gated by the previous close against the previous stop.
 - **Adaptive Chandelier:** the same tie rule for a close that is above the previous short stop and
-  below the previous long stop.
+  below the previous long stop. On such a bar the weak-flip alerts (`bull_weak_flip`,
+  `bear_weak_flip`) still fire when the body filter is not met.
+
+### Fixed
+
+- **Docs and reference:** wording describing the reference definitions is neutral throughout the
+  source comments, the reference generator and the fixture comments. No value changes.
 
 ## [0.37.0] - 2026-11-09
 

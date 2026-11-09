@@ -31,7 +31,7 @@
 //! weak state); `regime_change` on every committed state change and `state_extended` when the
 //! dwell ratio first reaches 1.5 (both without direction). Every count uses past bars only.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMA seeded with its
+//! Conventions the reference definition leaves open (also in the golden fixture): EMA seeded with its
 //! first value; ATR and DMI Wilder averages seeded with an SMA (DMI via [`Adx`], from the second
 //! bar); population standard deviation; a bar is classified once every input exists, earlier
 //! bars carry no state and never match; the debounced state starts at compression; bars in state
@@ -47,7 +47,7 @@ use super::adx::Adx;
 use super::smoothing::{Ema, ExtremeWindow, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct MarketStateChainConfig {
     pub ema_len: usize,

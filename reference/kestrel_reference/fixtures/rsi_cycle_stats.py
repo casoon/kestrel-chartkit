@@ -1,6 +1,6 @@
 """golden_rsi_cycle_stats: RSI Cycle Statistics.
 
-Written from the original definition, not from the Rust code. RSI 14 with its 70/30 zones,
+Written from the published definition, not from the Rust code. RSI 14 with its 70/30 zones,
 maximum cycle 150 bars, medium lookback 1000, 1500 stored samples; the regime, reliability and
 lookback-comparison layers are not part of the port.
 """
@@ -221,12 +221,12 @@ HEADER = [
     "",
     *provenance("rsi_cycle_stats"),
     "",
-    "Formula: the original definition,",
+    "Formula: the published definition,",
     "RSI 14 with zones 70/30, maximum cycle 150 bars, medium lookback 1000, 1500 stored samples,",
     "minimum 20 conditional samples, edge 15 pp, opportunity zone 30-65 %, Wilson width 40 pp.",
-    "Conventions the original leaves open: RSI and ATR Wilder averages seeded with an SMA; the",
+    "Conventions the reference definition leaves open: RSI and ATR Wilder averages seeded with an SMA; the",
     "first RSI bar counts as entering a zone it is in; the live state word uses the progress of",
-    "the cycle active after the bar (the original reuses the pre-transition value on a changing bar). A",
+    "the cycle active after the bar (the reference definition reuses the pre-transition value on a changing bar). A",
     "bar reports once the RSI exists. State codes: 0 idle, 1 low data, 2 stalled, 3 uncertain,",
     "4 late, 5 opportunity, 6 watch, 7 wait.",
     "",

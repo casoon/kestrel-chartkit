@@ -53,7 +53,7 @@
 //! Not ported: the completed-leg envelopes, segment colouring and merged waves — drawings over
 //! past spans, redrawn when a later pivot replaces an earlier one.
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR = Wilder average of
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR = Wilder average of
 //! the true range (first bar high - low), SMA-seeded, 0 where an ATR is read before it exists
 //! (a missing value counts as 0); a missing ATR at the pivot bar blocks a new pivot; EMA seeded with the first
 //! close; tick-size floors replaced by `1e-12`; pivots strict to the left, non-strict to
@@ -68,7 +68,7 @@ use crate::model::Bar;
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original (EMA support MA).
+/// Parameters, defaults of the reference definition (EMA support MA).
 #[derive(Debug, Clone)]
 pub struct LegCharacterConfig {
     pub pivot_left: usize,

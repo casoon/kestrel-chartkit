@@ -1,7 +1,7 @@
 //! Equal-Level Liquidity: ranked equal-high/equal-low liquidity levels with scored sweep,
 //! breakout, stop-hunt and reclaim events.
 //!
-//! Not included are the parts chartkit already has or the original keeps off by default: fair
+//! Not included are the parts chartkit already has or the reference definition keeps off by default: fair
 //! value gaps (see `liquidity_fvg`), the regime/premium-discount bonus, the level flip, the
 //! session filter (off means every bar is "in session", so the session boost of 10 is always
 //! added) and the WaveTrend/MFI exhaustion layer. Unlike `liquidity_pools` (percent tolerance, no
@@ -31,7 +31,7 @@
 //! `max(0, 20·min(touches,5) + 18 - 18·min(age/max_age,1) - 7·min(distance ATR, max_distance))`;
 //! the highest score (strictly above 0) is primary, the next secondary.
 //!
-//! `value`: the bias (the original's dashboard summary): ±2 for a reclaim this bar, else ±1 when a recent
+//! `value`: the bias (the reference definition's dashboard summary): ±2 for a reclaim this bar, else ±1 when a recent
 //! reclaim (within `event_memory` bars, among the last `max_events`) scored ≥ `premium_score`; ±1
 //! when the stronger primary level is within `alert_distance_atr` (SSL +, BSL −). `extra`:
 //! `primary_bsl`, `primary_bsl_score`, `primary_bsl_touches`, `secondary_bsl`,
@@ -50,7 +50,7 @@
 //! | `bear_premium_reclaim` / `bull_premium_reclaim` | a reclaim scoring ≥ `premium_score` |
 //! | `primary_bsl_near` / `primary_ssl_near` | the close comes within `alert_distance_atr` of the primary level |
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR(14) = Wilder average
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR(14) = Wilder average
 //! of the true range (first bar high - low), SMA-seeded; while it is missing no level merges,
 //! nothing is pruned or swept (comparisons with a missing value are false); the `2 · mintick` floor of the
 //! tolerance and the mintick floor of the bar range are dropped (range floor `1e-12`); volume
@@ -66,7 +66,7 @@ use crate::model::Bar;
 use super::smoothing::{Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct EqualLevelLiquidityConfig {
     pub pivot_len: usize,

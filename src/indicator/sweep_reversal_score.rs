@@ -4,7 +4,7 @@
 //! Configured as the chart timeframe alone can carry: the 15-minute lockout off and the
 //! higher-timeframe gates F (EMA 50/200 via `request.security`), G and H (WaveTrend on 1H/4H) off,
 //! as are the optional gates B (close position), C (body size), E (spike filter) and I (session) —
-//! all of them off by default in the original except F. A long signal needs, on a closed bar:
+//! all of them off by default in the reference definition except F. A long signal needs, on a closed bar:
 //!
 //! - **sweep**: low below the lowest low of the previous `swing_len` bars, close back above it;
 //! - **ATR gate**: `ATR(atr_len) > SMA(ATR, atr_base_len) · atr_low_factor`;
@@ -25,7 +25,7 @@
 //!
 //! Alerts (prefix = expected move): `bull_sweep_reversal`, `bear_sweep_reversal`.
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR = Wilder average of
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR = Wilder average of
 //! the true range (first bar high - low), SMA-seeded; RSI = Wilder averages of the close changes,
 //! SMA-seeded, 50 when nothing moved; pivots strict on both sides. Output starts once the ATR
 //! base, the RSI and the sweep window exist.
@@ -39,7 +39,7 @@ use crate::model::Bar;
 use super::smoothing::{Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original — except `min_quality_short`, which follows the long.
+/// Parameters, defaults of the reference definition — except `min_quality_short`, which follows the long.
 #[derive(Debug, Clone)]
 pub struct SweepReversalScoreConfig {
     pub swing_len: usize,

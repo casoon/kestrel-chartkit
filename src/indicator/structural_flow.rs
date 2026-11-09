@@ -1,7 +1,7 @@
 //! Structural Flow: multi-horizon structural flow, the internal wave inside it, wave
 //! segmentation, maturity, re-synchronization, exhaustion and a nine-phase read.
 //!
-//! Defaults follow the original's "Balanced" preset and "Relative Volume"
+//! Defaults follow the reference definition's "Balanced" preset and "Relative Volume"
 //! participation; the gradient field, labels and dashboard (drawing) are not ported.
 //!
 //! **Structural flow.** Three horizons (24, 48, 96 bars) each score `0.35 · displacement` (net
@@ -55,12 +55,12 @@
 //! segment ending above 120 % of the previous peak), `weakening_waves` (latest aligned peak below
 //! 80 % of the previous in a mature leg).
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with the first
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with the first
 //! available value; ATR = Wilder average of the true range (first bar high - low), SMA-seeded,
 //! floored at `1e-12` (also for the mintick floors); population standard deviation; median; relative volume 1 while the 20-bar volume average is missing or 0. Every series
-//! starts once its inputs exist (the original's safe division falls back to 0 on a missing ATR
+//! starts once its inputs exist (the reference definition's safe division falls back to 0 on a missing ATR
 //! during the warm-up); the state machines and output start with the first bar on which the slow
-//! horizon's persistence exists (bar 191), before which the original's flow direction stays 0 and
+//! horizon's persistence exists (bar 191), before which the reference definition's flow direction stays 0 and
 //! every flow-dependent quantity is inert: previous-bar values from before that bar are the
 //! resting values (phase 0, Re-Sync stage 0, counter pressure 0), the previous structural strength
 //! is missing (a comparison with a missing value is false).

@@ -31,7 +31,7 @@
 //! | `bull_release` / `bear_release` | first close above (below) the `break_len` band of the previous bars, trend +1 (−1), setup ≥ `thr_cont`, chop < `chop_veto`, break impulse ≥ `break_atr_min` ATR |
 //! | `bull_base_break` / `bear_base_break` | the same break against the trend out of a base (≥ `base_share` of the previous `break_len` bars with complexity > `complex_high` and efficiency < `eff_low`), setup ≥ `thr_base` |
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR Wilder average seeded
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR Wilder average seeded
 //! with an SMA, first true range `high − low`; EMA seeded with its first value; every quantity
 //! needs all of its inputs (the complexity every ATR it reads); the base share needs all
 //! `break_len` earlier classifications; a first break needs the previous bar's break state. A bar
@@ -46,7 +46,7 @@ use crate::model::Bar;
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original.
+/// Parameters, defaults of the reference definition.
 #[derive(Debug, Clone)]
 pub struct CoilReleaseConfig {
     pub len: usize,

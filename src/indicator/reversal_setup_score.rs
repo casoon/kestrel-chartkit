@@ -60,7 +60,7 @@
 //! (two or more conflicts, on entry). Candidate and conflict fire on entry rather
 //! than on every bar.
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs (also inside MACD
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs (also inside MACD
 //! 12/26/9) seeded with the first value; ATR = Wilder average of the true range (first bar high -
 //! low), SMA-seeded; RSI = Wilder averages of the close changes, SMA-seeded; MFI over the last 14
 //! changes of hlc3 (50 without flow, 100 without negative flow); population standard deviation;

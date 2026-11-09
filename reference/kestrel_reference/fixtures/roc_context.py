@@ -1,6 +1,6 @@
 """golden_roc_context: ROC Context.
 
-Written from the original definition, not from the Rust code. EMA smoothing, default levels.
+Written from the published definition, not from the Rust code. EMA smoothing, default levels.
 """
 
 from .. import series as ps
@@ -108,9 +108,9 @@ HEADER = [
     "",
     *provenance("roc_context"),
     "",
-    "Formula: the original definition, EMA smoothing, ROC 12,",
+    "Formula: the published definition, EMA smoothing, ROC 12,",
     "average 3, signal 9, levels 0 / +5 / -5, stall 5 bars / 0.5 ATR / 3, context ROC 50,",
-    "stretch lookback 5, divergence 4 / 2. Conventions the original leaves open: EMAs seeded",
+    "stretch lookback 5, divergence 4 / 2. Conventions the reference definition leaves open: EMAs seeded",
     "with the first ROC value; ATR Wilder average seeded with an SMA. A bar reports once line,",
     "signal, context, ATR and every lookback it reads exist. A stretch cross is *_cross_weak when",
     "a stall against it or a context on the other side of zero is present, *_cross otherwise;",

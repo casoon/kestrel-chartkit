@@ -40,7 +40,10 @@ use std::collections::HashMap;
 /// Against the previous bar's stops: a close above the short stop flips long, a close below the
 /// long stop flips short (a close that satisfies both, with crossed stops, keeps the direction) —
 /// but only when `|close - open| >= body_filter_atr · atr_raw` (a filter
-/// of 0 always passes); a crossing that fails the filter is a weak flip. The distance
+/// of 0 always passes); a crossing that fails the filter is a weak flip.
+/// With crossed stops (both conditions true) the direction is kept as in the base engine, but the
+/// weak-flip alerts still fire on a bar that fails the body filter. The tie rule is this crate's
+/// own convention. The distance
 /// `|close - stop| / atr_raw` to the previous stop of the current direction sets the risk state:
 /// ±1 below `danger_dist_atr`, ±2 below `max(warn_dist_atr, danger_dist_atr + 0.05)` or on a
 /// pullback through the first-sample EMA(5) of the close, ±3 otherwise — positive when long. A

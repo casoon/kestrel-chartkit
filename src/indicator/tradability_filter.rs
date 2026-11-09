@@ -1,7 +1,7 @@
 //! Tradability Filter: a market-quality and no-trade filter with an eight-state
 //! machine.
 //!
-//! Defaults follow the original's Balanced preset. It produces no entries of its own; it says
+//! Defaults follow the reference definition's Balanced preset. It produces no entries of its own; it says
 //! whether the market is worth trading right now.
 //!
 //! Four scores, most components ranked against their own last `rank_len` values
@@ -33,11 +33,11 @@
 //! `bull_breakout`/`bear_breakout`, `bull_trend`/`bear_trend` (direction sign),
 //! `bear_exhaustion`/`bull_exhaustion` (`bear_` = an up-move tiring, by the active direction).
 //!
-//! Conventions the original leaves open (also in the golden fixture): EMAs seeded with their first
+//! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with their first
 //! value; ATR and DMI Wilder averages seeded with an SMA (DMI via [`Adx`], from the second bar);
 //! population standard deviation; percentrank needs the current and all `rank_len` previous
 //! values; the bar-range floor (tick-size) is `1e-12`; the direction step and baseline
-//! cross of the first bar are 0. A bar is ready once the original's data-ready bar has passed and
+//! cross of the first bar are 0. A bar is ready once the reference definition's data-ready bar has passed and
 //! every score, the last `impulse_lookback` scores and every lookback the states read exist;
 //! before that the candidate is `no_trade` and no breakout counts, while the state-machine
 //! counters run on every bar. Only ready bars report. Not ported: the other presets (the lengths
@@ -53,7 +53,7 @@ use super::adx::Adx;
 use super::smoothing::{Ema, PercentRank, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original (preset Balanced).
+/// Parameters, defaults of the reference definition (preset Balanced).
 #[derive(Debug, Clone)]
 pub struct TradabilityFilterConfig {
     pub quality_len: usize,

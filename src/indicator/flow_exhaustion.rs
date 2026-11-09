@@ -29,7 +29,7 @@
 //! higher-timeframe MFI filter and the timeframe presets of the divergence parameters (the
 //! defaults are the manual values).
 //!
-//! Conventions the original leaves open (also in the golden fixture): MFI flow counts from the
+//! Conventions the reference definition leaves open (also in the golden fixture): MFI flow counts from the
 //! second bar; JMA seeded with its first value instead of a zero state; RSI and ATR Wilder
 //! averages seeded with an SMA, first true range `high - low`; pivots strict on both sides; the
 //! rolling zone window needs every value. A bar reports once MFI and K exist; until the zones
@@ -44,7 +44,7 @@ use crate::model::Bar;
 use super::smoothing::{crossed_over, crossed_under, Jma, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// Parameters, defaults of the original (manual divergence values).
+/// Parameters, defaults of the reference definition (manual divergence values).
 #[derive(Debug, Clone)]
 pub struct FlowExhaustionConfig {
     pub mfi_len: usize,

@@ -22,7 +22,7 @@
 //! `event_dir` (±1), `event_type` (1 BOS, 2 sweep, 3 OB); on the closing bar also
 //! `final_score`. `state`: `tracking_bos` / `tracking_sweep` / `tracking_ob` or `idle`.
 //!
-//! No alerts: the original has none, and a finished score describes a reaction that has already
+//! No alerts: the reference definition has none, and a finished score describes a reaction that has already
 //! happened rather than an expected move. Break-of-structure, sweep and order-block events with
 //! alerts of their own are in [`super::bos_choch`], [`super::liquidity_sweeps`] and
 //! [`super::order_block`].
@@ -31,7 +31,7 @@
 //! timeframe, so the defaults are the 1h preset tier in bars (reaction 8, validation 20, ATR move
 //! 1.6, weights 0.7/0.3 and 0.40/0.60).
 //!
-//! Conventions the original leaves open (also in the golden fixture): ATR Wilder average seeded
+//! Conventions the reference definition leaves open (also in the golden fixture): ATR Wilder average seeded
 //! with an SMA, first true range `high − low`; an event needs an ATR; a bar reports once the ATR
 //! base exists; after a no-reaction expiry the zero score is reported on the closing bar only (the
 //! original keeps plotting 0 until the next event).

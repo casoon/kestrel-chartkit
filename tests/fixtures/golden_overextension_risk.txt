@@ -5,9 +5,9 @@
 # Python standard library only. `python3 reference/generate.py` regenerates this file;
 # `python3 reference/generate.py --check` verifies it byte for byte.
 #
-# Formula: the original definition, preset
+# Formula: the published definition, preset
 # Commodities (40/35/25, money flow where real volume exists), signal mode Normal, Candle
-# Reaction confirmation, gap 8, divergence assist off. Conventions the original leaves open:
+# Reaction confirmation, gap 8, divergence assist off. Conventions the reference definition leaves open:
 # EMAs seeded with the first value; RSI, ATR and ADX Wilder averages seeded with an SMA (ADX
 # from the second bar); population standard deviation; StochRSI na when the RSI range is zero;
 # MFI flow from the second bar, na (then 50) while its window has no volume; pivots strict on
