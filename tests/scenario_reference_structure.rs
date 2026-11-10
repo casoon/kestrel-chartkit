@@ -1574,6 +1574,29 @@ fn test_scenario_wyckoff_is_causal() {
     }
 }
 
+/// One of the random walks of [`test_scenario_wyckoff_random_walks`]: 1000 bars from `seed`.
+fn wyckoff_random_walk(seed: u64) -> Vec<Bar> {
+    let mut state = seed;
+    let mut uniform = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        (state >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let round = |x: f64, digits: f64| (x * digits).round() / digits;
+    let mut close = 100.0;
+    (0..1000)
+        .map(|i| {
+            let open = close;
+            close = round(open + (uniform() + uniform() + uniform() - 1.5) * 1.6, 1e4);
+            let high = round(open.max(close) + uniform() * 0.6, 1e4);
+            let low = round(open.min(close) - uniform() * 0.6, 1e4);
+            let volume = round(1000.0 * (0.5 + uniform()) * (0.6 + 0.5 * (high - low)), 1e2);
+            Bar::new(i * 60, open, high, low, close, volume)
+        })
+        .collect()
+}
+
 /// What the default thresholds report on series with no structure built in: 20 random walks of
 /// 1000 bars each. A 64-bit linear congruential generator supplies uniform numbers; the close
 /// moves by the sum of three of them minus 1.5, times 1.6, the wicks are up to 0.6, and the
@@ -1590,24 +1613,10 @@ fn test_scenario_wyckoff_random_walks() {
     let mut alerts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
     let (mut climax_bars, mut by_climax, mut by_width) = (0, 0, 0);
     for seed in 1..=20u64 {
-        let mut state = seed;
-        let mut uniform = move || {
-            state = state
-                .wrapping_mul(6364136223846793005)
-                .wrapping_add(1442695040888963407);
-            (state >> 11) as f64 / (1u64 << 53) as f64
-        };
-        let round = |x: f64, digits: f64| (x * digits).round() / digits;
         let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
-        let mut close = 100.0;
         let mut boundaries = None;
-        for i in 0..1000 {
-            let open = close;
-            close = round(open + (uniform() + uniform() + uniform() - 1.5) * 1.6, 1e4);
-            let high = round(open.max(close) + uniform() * 0.6, 1e4);
-            let low = round(open.min(close) - uniform() * 0.6, 1e4);
-            let volume = round(1000.0 * (0.5 + uniform()) * (0.6 + 0.5 * (high - low)), 1e2);
-            let Some(out) = ind.on_bar(&Bar::new(i * 60, open, high, low, close, volume)) else {
+        for bar in wyckoff_random_walk(seed) {
+            let Some(out) = ind.on_bar(&bar) else {
                 continue;
             };
             state_counts[out.value as usize] += 1;
@@ -1646,6 +1655,395 @@ fn test_scenario_wyckoff_random_walks() {
         count("wyckoff_lastpointofsupport") + count("wyckoff_lastpointofsupply"),
         4
     );
+}
+
+// ----------------------------------------------------------------------------
+// The transition table (`wyckoff::transitions`) against the behaviour
+// ----------------------------------------------------------------------------
+
+/// The names of all Wyckoff cases of the contract fixture.
+fn wyckoff_case_names() -> Vec<&'static str> {
+    let names: Vec<&str> = WYCKOFF_CASES
+        .lines()
+        .filter_map(|line| line.strip_prefix('@'))
+        .filter_map(|head| head.split(' ').next())
+        .filter(|name| name.starts_with("wyckoff_"))
+        .collect();
+    assert!(names.len() >= 17, "only {} Wyckoff cases", names.len());
+    names
+}
+
+/// The registry parameters of a case as the typed parameter set.
+fn wyckoff_params(
+    params: &HashMap<String, f64>,
+) -> kestrel_chartkit::indicator::wyckoff::WyckoffParams {
+    let mut typed = kestrel_chartkit::indicator::wyckoff::WyckoffParams::default();
+    for (key, &value) in params {
+        match key.as_str() {
+            "range_lookback" => typed.range_lookback = value as usize,
+            "range_atr_max" => typed.range_atr_max = value,
+            "min_range_bars" => typed.min_range_bars = value as usize,
+            "atr_len" => typed.atr_len = value as usize,
+            "volume_k" => typed.volume_k = value,
+            "climax_range_atr" => typed.climax_range_atr = value,
+            "st_atr" => typed.st_atr = value,
+            "breakout_volume" => typed.breakout_volume = value != 0.0,
+            "lps_atr" => typed.lps_atr = value,
+            "abandon_atr" => typed.abandon_atr = value,
+            other => panic!("unknown wyckoff parameter {other}"),
+        }
+    }
+    typed
+}
+
+/// What the output of a bar says about the state: phase, bias and the range in play.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct WyckoffShown {
+    phase: f64,
+    bias: f64,
+    source: f64,
+    boundaries: Option<(u64, u64)>,
+}
+
+impl WyckoffShown {
+    const NOTHING: WyckoffShown = WyckoffShown {
+        phase: 0.0,
+        bias: 0.0,
+        source: 0.0,
+        boundaries: None,
+    };
+
+    fn of(out: &kestrel_chartkit::indicator::IndicatorOutput) -> Self {
+        WyckoffShown {
+            phase: out.value,
+            bias: out.extra["bias"],
+            source: out.extra["range_source"],
+            boundaries: out
+                .extra
+                .get("range_high")
+                .map(|high| (high.to_bits(), out.extra["range_low"].to_bits())),
+        }
+    }
+
+    /// The bias as the transition table names it: `None` without a range.
+    fn range_bias(&self) -> Option<kestrel_chartkit::indicator::wyckoff::WyckoffRangeBias> {
+        use kestrel_chartkit::indicator::wyckoff::WyckoffRangeBias as Bias;
+        self.boundaries.map(|_| {
+            [Bias::Accumulation, Bias::Distribution, Bias::Open]
+                .into_iter()
+                .find(|bias| bias.code() == self.bias)
+                .expect("a bias code")
+        })
+    }
+}
+
+/// Runs the typed state machine over `bars` and checks every bar against the transition table:
+/// what the output shows (phase, bias, boundaries, events, alerts) is what the transition
+/// reported by `last_transition` declares, and a bar without a transition shows no change. The
+/// registry indicator runs alongside and must give the same output, so the bars checked here
+/// are the ones the contract fixture fixes. Adds each transition taken, with the bias it was
+/// taken from, to `taken`.
+fn audit_wyckoff_transitions(
+    name: &str,
+    params: &HashMap<String, f64>,
+    bars: &[Bar],
+    taken: &mut std::collections::BTreeSet<(&'static str, &'static str)>,
+) {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffCondition, WyckoffPhase, WyckoffStateMachine,
+    };
+
+    let mut machine = WyckoffStateMachine::with_params(wyckoff_params(params));
+    let mut registry = build_checked("wyckoff", params).unwrap();
+    let mut before = WyckoffShown::NOTHING;
+    for (i, bar) in bars.iter().enumerate() {
+        let at = format!("{name} bar {i}");
+        let out = machine.on_bar(bar);
+        assert_eq!(out, registry.on_bar(bar), "{at}: typed and registry output");
+        let transition = machine.last_transition();
+        let Some(out) = out else {
+            assert!(transition.is_none(), "{at}: a transition without output");
+            continue;
+        };
+        let after = WyckoffShown::of(&out);
+        let mut reported: Vec<&str> = out
+            .extra
+            .keys()
+            .filter_map(|key| key.strip_prefix("event_"))
+            .collect();
+        reported.sort_unstable();
+        let alerts: Vec<String> = machine.alerts().into_iter().map(|a| a.kind).collect();
+
+        let Some(t) = transition else {
+            assert_eq!(
+                after, before,
+                "{at}: a change without a declared transition"
+            );
+            assert!(reported.is_empty(), "{at}: events without a transition");
+            assert!(alerts.is_empty(), "{at}: alerts without a transition");
+            continue;
+        };
+
+        assert_eq!(t.from.code(), before.phase, "{at}: {} starts in", t.id);
+        assert_eq!(t.to.code(), after.phase, "{at}: {} leads to", t.id);
+        match before.range_bias() {
+            Some(bias) => assert!(t.bias_from.contains(&bias), "{at}: {} from {bias:?}", t.id),
+            None => assert!(t.bias_from.is_empty(), "{at}: {} without a range", t.id),
+        }
+        assert_eq!(t.bias_to, after.range_bias(), "{at}: {} bias after", t.id);
+
+        // The events: all declared ones except the optional, nothing else, in declared order.
+        let slug = |kind| format!("{kind:?}").to_lowercase();
+        let declared: Vec<String> = t.events.iter().map(|&kind| slug(kind)).collect();
+        for kind in &reported {
+            assert!(
+                declared.iter().any(|d| d == kind),
+                "{at}: {} reports {kind}",
+                t.id
+            );
+        }
+        for &kind in t.events {
+            assert!(
+                t.optional_events.contains(&kind) || reported.contains(&slug(kind).as_str()),
+                "{at}: {} lacks {kind:?}",
+                t.id
+            );
+        }
+        let in_order: Vec<String> = declared
+            .iter()
+            .filter(|d| reported.contains(&d.as_str()))
+            .map(|d| format!("wyckoff_{d}"))
+            .collect();
+        assert_eq!(alerts, in_order, "{at}: {} alerts", t.id);
+
+        // The range: set anew by the transitions into Phase A, gone after an abandonment,
+        // untouched by every other one.
+        match t.to {
+            WyckoffPhase::A => {
+                let source = match t.condition {
+                    WyckoffCondition::CounterMoveConfirmed => 1.0,
+                    WyckoffCondition::WidthFallback => 2.0,
+                    other => panic!("{at}: {} sets a range by {other:?}", t.id),
+                };
+                assert_eq!(after.source, source, "{at}: {} range source", t.id);
+                assert_eq!(out.extra["cause_score"], 0.0, "{at}: {} a new range", t.id);
+            }
+            WyckoffPhase::Undefined => {
+                assert_eq!(
+                    after,
+                    WyckoffShown::NOTHING,
+                    "{at}: {} leaves no range",
+                    t.id
+                )
+            }
+            _ => assert_eq!(
+                (after.boundaries, after.source),
+                (before.boundaries, before.source),
+                "{at}: {} keeps the range",
+                t.id
+            ),
+        }
+
+        let bias_from = before.range_bias().map_or("-", |bias| bias.id());
+        taken.insert((t.id, bias_from));
+        before = after;
+    }
+}
+
+/// A series reflected at 200: accumulation becomes distribution.
+fn wyckoff_reflected(bars: &[Bar]) -> Vec<Bar> {
+    bars.iter()
+        .map(|bar| {
+            Bar::new(
+                bar.timestamp,
+                200.0 - bar.open,
+                200.0 - bar.low,
+                200.0 - bar.high,
+                200.0 - bar.close,
+                bar.volume,
+            )
+        })
+        .collect()
+}
+
+/// A re-accumulation, the one path no contract case and no random walk takes: a Selling Climax
+/// and its Automatic Rally while Phase E of an accumulation runs. The textbook series (Phase E
+/// from bar 57, range 94 to 100) continues with a markup of half a point per bar up to 114.9
+/// (bar 83), three falling bars, and on bar 87 the widest bar on the highest volume, with the
+/// lowest low of its window at 104.4. Bars 88 to 90 rally to 110.8, above the climax bar's high
+/// of 109.8; bar 91 closes at 109.6, bar 92 at 108.4, the first close below the low of the
+/// rally-high bar (108.8). No bar closes below 100, so Phase E lasts until bar 92 sets the new
+/// range 104.4 to 110.8. Rows are (close, wick above the body, wick below it, volume); the open
+/// is the previous close.
+fn wyckoff_reaccumulation_bars() -> Vec<Bar> {
+    let mut bars = wyckoff_case("wyckoff_textbook_accumulation").bars;
+    let mut rows = Vec::new();
+    let markup_volumes = [120.0, 100.0, 110.0, 95.0, 105.0, 115.0, 90.0, 100.0];
+    for k in 0..22 {
+        let close = 103.9 + 0.5 * (k + 1) as f64;
+        rows.push((close, 0.2, 0.2, markup_volumes[k % markup_volumes.len()]));
+    }
+    rows.extend([
+        (113.4, 0.2, 0.3, 150.0),
+        (111.6, 0.2, 0.4, 190.0),
+        (109.6, 0.2, 0.4, 230.0),
+        (105.4, 0.2, 1.0, 520.0), // 87 Selling Climax
+        (107.2, 0.3, 0.2, 280.0),
+        (109.0, 0.3, 0.2, 220.0),
+        (110.4, 0.4, 0.2, 180.0), // 90 Automatic Rally
+        (109.6, 0.3, 0.3, 130.0),
+        (108.4, 0.2, 0.4, 120.0), // 92 confirms it
+        (107.5, 0.2, 0.3, 110.0),
+        (106.4, 0.2, 0.3, 100.0),
+        (105.2, 0.2, 0.6, 95.0),
+    ]);
+    let round = |x: f64| (x * 1e6).round() / 1e6;
+    let last = bars.last().expect("the textbook series").clone();
+    let (mut open, mut timestamp) = (last.close, last.timestamp);
+    for (close, above, below, volume) in rows {
+        let close = round(close);
+        timestamp += 900;
+        bars.push(Bar::new(
+            timestamp,
+            open,
+            round(open.max(close) + above),
+            round(open.min(close) - below),
+            close,
+            volume,
+        ));
+        open = close;
+    }
+    bars
+}
+
+/// The re-accumulation takes `e_a_selling_climax` on bar 92, and nothing between the Last Point
+/// of Support and that bar. The Selling Climax has no Preliminary Support: the event is optional.
+#[test]
+fn test_scenario_wyckoff_reaccumulation_in_phase_e() {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffBias, WyckoffEventKind as Kind, WyckoffPhase, WyckoffStateMachine,
+    };
+
+    let bars = wyckoff_reaccumulation_bars();
+    assert_eq!(bars.len(), 96);
+    let mut machine = WyckoffStateMachine::with_defaults();
+    let mut taken = Vec::new();
+    for (i, bar) in bars.iter().enumerate() {
+        machine.on_bar(bar);
+        if let Some(t) = machine.last_transition() {
+            taken.push((i, t.id));
+        }
+        if i == 87 {
+            assert_eq!(
+                machine.phase(),
+                WyckoffPhase::E,
+                "the climax bar sets no range"
+            );
+        }
+        if i == 92 {
+            let range = machine.range().expect("the new range");
+            common::assert_close(range.low, 104.4, 1e-9, "range low: the climax low");
+            common::assert_close(range.high, 110.8, 1e-9, "range high: the rally high");
+            assert_eq!(machine.bias(), Some(WyckoffBias::Accumulation));
+            let events: Vec<_> = machine
+                .events()
+                .iter()
+                .map(|e| (e.kind, bar_of(&bars, e.timestamp), e.price))
+                .collect();
+            assert_wyckoff_events(
+                &events,
+                &[
+                    (Kind::SellingClimax, 87, 104.4),
+                    (Kind::AutomaticRally, 90, 110.8),
+                ],
+            );
+        }
+    }
+    assert_eq!(
+        taken,
+        [
+            (26, "none_a_selling_climax"),
+            (29, "a_b_secondary_test_accumulation"),
+            (38, "b_b_secondary_test_accumulation"),
+            (48, "b_c_spring"),
+            (53, "c_d_sign_of_strength"),
+            (57, "d_e_last_point_of_support"),
+            (92, "e_a_selling_climax"),
+            (95, "a_b_secondary_test_accumulation"),
+        ]
+    );
+}
+
+/// The transition table describes what the state machine does, and nothing else.
+///
+/// (a) On the textbook series, its mirror image, every contract case (each also reflected), the
+/// re-accumulation of [`wyckoff_reaccumulation_bars`] and the random walks of the count test,
+/// every bar is checked by [`audit_wyckoff_transitions`]:
+/// each change of phase, bias or boundaries and each reported event belongs to one declared
+/// transition whose start, end, bias and events are what the output shows, and a bar that takes
+/// none shows no change. One transition per bar is also what keeps a bar that reports an event,
+/// changes the phase or abandons a range from setting a range.
+///
+/// (b) Every declared transition is taken by at least one of these series, from every bias it
+/// declares. A transition no series reaches would be a claim without evidence.
+#[test]
+fn test_scenario_wyckoff_transitions_describe_the_behaviour() {
+    use kestrel_chartkit::indicator::wyckoff::transitions;
+
+    let mut taken = std::collections::BTreeSet::new();
+    let names = wyckoff_case_names();
+    for required in [
+        "wyckoff_textbook_accumulation",
+        "wyckoff_textbook_distribution",
+    ] {
+        assert!(names.contains(&required), "{required} is a contract case");
+    }
+    for name in names {
+        let case = wyckoff_case(name);
+        audit_wyckoff_transitions(name, &case.params, &case.bars, &mut taken);
+        audit_wyckoff_transitions(
+            &format!("{name} reflected"),
+            &case.params,
+            &wyckoff_reflected(&case.bars),
+            &mut taken,
+        );
+    }
+    let reaccumulation = wyckoff_reaccumulation_bars();
+    for (name, bars) in [
+        ("re-accumulation", reaccumulation.clone()),
+        (
+            "re-accumulation reflected",
+            wyckoff_reflected(&reaccumulation),
+        ),
+    ] {
+        audit_wyckoff_transitions(name, &HashMap::new(), &bars, &mut taken);
+    }
+    for seed in 1..=20u64 {
+        let bars = wyckoff_random_walk(seed);
+        audit_wyckoff_transitions(&format!("walk {seed}"), &HashMap::new(), &bars, &mut taken);
+    }
+
+    let mut missing = Vec::new();
+    for t in transitions() {
+        let from: Vec<&str> = if t.bias_from.is_empty() {
+            vec!["-"]
+        } else {
+            t.bias_from.iter().map(|bias| bias.id()).collect()
+        };
+        for bias in from {
+            if !taken.contains(&(t.id, bias)) {
+                missing.push(format!("{} from {bias}", t.id));
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "transitions no series takes: {missing:#?}"
+    );
+    let declared: std::collections::BTreeSet<&str> = transitions().iter().map(|t| t.id).collect();
+    for (id, _) in &taken {
+        assert!(declared.contains(id), "{id} is not in the table");
+    }
 }
 
 /// The schematic generator of the crate, read with the registry defaults.

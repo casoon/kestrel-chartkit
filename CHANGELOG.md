@@ -9,6 +9,17 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Elliott:** the validators describe what they check as data. `elliott::rule_catalog()` lists
+  the conditions of the pivot sequence in the order they are tested, per structure the variants,
+  rules and guidelines with their identifiers, sentences and origin, and the threshold constants,
+  among them the new `EXTENDED_WAVE_MIN_RATIO` of `identify_extended_wave`. Details: [Elliott rules](https://casoon.github.io/kestrel-chartkit/docs/reference/elliott-rules/).
+- **Wyckoff:** the state machine describes itself as data. `wyckoff::transitions()` lists every
+  move between the phases (`WyckoffTransition`: phases, bias, condition, events, parameters), and
+  `WyckoffStateMachine::last_transition()` names the one the last bar took. Details:
+  [Wyckoff transitions](https://casoon.github.io/kestrel-chartkit/docs/reference/wyckoff-transitions/).
+
 ## [0.40.0] - 2026-11-10
 
 ### Breaking
