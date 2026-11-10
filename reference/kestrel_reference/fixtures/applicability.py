@@ -99,11 +99,11 @@ METHOD_TEXT = {
         "der Swings, aus denen höhere Wellengrade gebildet werden, ist dadurch begrenzt"),
     ("wyckoff", "roll_jumps"): (
         "Ein Roll-Sprung weitet Spannenbreite und ATR, an denen die Spanne gemessen wird, und "
-        "der Umsatz wechselt mit dem Kontrakt: der Klimax-Test vergleicht Umsatz verschiedener "
+        "der Umsatz wechselt mit dem Kontrakt: der Climax-Test vergleicht Umsatz verschiedener "
         "Kontrakte"),
     ("wyckoff", "back_adjusted"): (
         "Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: der "
-        "Klimax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die "
+        "Climax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die "
         "Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen"),
     ("wyckoff", "broker"): (
         "Spring und UTAD entstehen, wenn ein einzelnes Tief oder Hoch die Spannengrenze "

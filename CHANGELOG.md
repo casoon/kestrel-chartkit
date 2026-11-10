@@ -9,6 +9,20 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.39.1] - 2026-11-10
+
+### Changed
+
+- **Applicability:** the two Wyckoff explanations for rolled and back-adjusted futures series say
+  "Climax-Test" instead of "Klimax-Test". Tiers and reasons are unchanged.
+
+### Fixed
+
+- **Docs:** the comments on `WyckoffPhase::A`, `TriangleVariant` and `validate_triangle` describe
+  what the code computes: the range is set from the extremes of the lookback window, and
+  `RunningOrBarrier` is the collective case for boundaries that neither converge nor diverge. No
+  value changes.
+
 ## [0.39.0] - 2026-11-10
 
 ### Added

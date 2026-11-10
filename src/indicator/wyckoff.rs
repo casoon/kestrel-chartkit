@@ -27,7 +27,11 @@ pub enum WyckoffBias {
 pub enum WyckoffPhase {
     /// No range locked yet.
     Undefined,
-    /// Range just locked (Preliminary Support/Supply + Climax context).
+    /// Range just set: its boundaries are the highest high and lowest low of the lookback window,
+    /// taken once that window is at most `range_atr_max` ATR wide. No Preliminary Support/Supply,
+    /// climax or Automatic Rally/Reaction is detected as an event; a volume outlier on the setting
+    /// bar only picks the bias. The phase holds on the setting bar alone, which outputs 0; the
+    /// next bar moves on to [`WyckoffPhase::B`].
     A,
     /// Range building: repeated tests of the boundaries (Secondary Tests).
     B,
@@ -511,7 +515,7 @@ mod tests {
 
     #[test]
     fn test_falling_series_without_climax_locks_accumulation_bias() {
-        // Gleichmäßig fallende Reihe mit konstantem Volumen: kein Klimax, also entscheidet die
+        // Gleichmäßig fallende Reihe mit konstantem Volumen: kein Climax, also entscheidet die
         // Rückfallregel (Schluss unter Vorgänger-Schluss → Accumulation).
         let mut machine = WyckoffStateMachine::new(10, 5.0, 4);
         for i in 0..15 {

@@ -334,7 +334,7 @@ const METHOD_RULES: [MethodRuleDescription; 8] = [
         reason: ApplicabilityReason::StructureRollJumps,
         tier: ApplicabilityTier::Degraded,
         explanation: "Ein Roll-Sprung weitet Spannenbreite und ATR, an denen die Spanne gemessen \
-            wird, und der Umsatz wechselt mit dem Kontrakt: der Klimax-Test vergleicht Umsatz \
+            wird, und der Umsatz wechselt mit dem Kontrakt: der Climax-Test vergleicht Umsatz \
             verschiedener Kontrakte",
     },
     MethodRuleDescription {
@@ -342,7 +342,7 @@ const METHOD_RULES: [MethodRuleDescription; 8] = [
         reason: ApplicabilityReason::StructureBackAdjustedLevels,
         tier: ApplicabilityTier::Degraded,
         explanation: "Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: der \
-            Klimax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die \
+            Climax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die \
             Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen",
     },
     MethodRuleDescription {

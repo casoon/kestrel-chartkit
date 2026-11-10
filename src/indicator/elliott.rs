@@ -358,10 +358,11 @@ pub fn validate_diagonal(nodes: &[ZigZagNode], kind: DiagonalKind) -> Option<Dia
 }
 
 /// How the two boundary lines of a 5-leg (`a-b-c-d-e`) triangle relate. Contracting and expanding
-/// mirror [`DiagonalVariant`]; `RunningOrBarrier` covers the case where leg `d` runs past the end
-/// of leg `b` instead of staying inside it — the two variants share a geometry check and are kept
-/// as one classification rather than split, since distinguishing them further needs the trend
-/// context the six pivots alone don't carry.
+/// mirror [`DiagonalVariant`]; `RunningOrBarrier` is the collective case for every sequence whose
+/// boundaries neither converge nor diverge, for instance both running the same way or one being
+/// flat. It is kept as one classification rather than split, since telling running and barrier
+/// triangles apart needs the starting pivot and the trend context, which the boundary comparison
+/// does not use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriangleVariant {
     Contracting,
@@ -386,8 +387,9 @@ impl TriangleValidation {
 }
 
 /// Classifies a 6-node, 5-leg sequence labeled `[0, a, b, c, d, e]` as a contracting, expanding, or
-/// running/barrier triangle. Triangles carry no hard rules of their own in Elliott's own writing —
-/// only the classification varies — so unlike [`validate_diagonal`] this returns no violations.
+/// running/barrier triangle. Only the classification is computed: properties the literature
+/// requires of a triangle, such as the 3-3-3-3-3 subdivision of its legs, are not checked, so
+/// unlike [`validate_diagonal`] this returns no violations.
 /// Returns `None` if `nodes` does not have exactly 6 alternating entries.
 pub fn validate_triangle(nodes: &[ZigZagNode]) -> Option<TriangleValidation> {
     let [node0, node1, node2, node3, node4, node5] = nodes else {
@@ -401,9 +403,10 @@ pub fn validate_triangle(nodes: &[ZigZagNode]) -> Option<TriangleValidation> {
     }
 
     // Classified from the two boundary lines, not from leg lengths. The boundaries are what the
-    // names describe: a contracting triangle's converge, an expanding triangle's diverge. Leg
-    // lengths follow from that but do not determine it — a sequence can shrink leg over leg and
-    // still have both boundaries running the same way, which is the barrier/running case.
+    // names describe: a contracting triangle's converge, an expanding triangle's diverge. Every
+    // other sequence is `RunningOrBarrier`, for instance 100, 120, 110, 122, 116, 123: both
+    // boundaries rise, although each leg is shorter than the previous leg in its direction. When
+    // every leg from `c` on is shorter than the leg before it, the boundaries converge.
     //
     // `node0` is the point the triangle starts from and belongs to neither boundary; the five legs
     // it opens are `a`-`e`. For a sequence starting at a low, `node1`/`node3`/`node5` are the
