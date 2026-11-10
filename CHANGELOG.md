@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-10
+
 ### Added
 
 - **CUSUM:** `changepoint::cusum` (re-exported at the crate root, with `CusumOutput` and `CusumState`)

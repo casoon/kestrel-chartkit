@@ -1,6 +1,6 @@
 # Indicator Status
 
-As of: 2026-09-14
+As of: 2026-11-10
 
 Overview of all indicators/detectors from `src/indicator/registry.rs`: name and whether it has
 been verified (✅) or is still open (❌). Only the verification status — not what it was
@@ -137,7 +137,7 @@ is complete.
 | trend_quality | ✅ |
 | buy_sell_pressure | ✅ |
 | volatility_regime | ✅ |
-| cusum | ❌ |
+| cusum | ✅ |
 | multi_factor | ✅ |
 
 ## Structure/Pattern Detectors
