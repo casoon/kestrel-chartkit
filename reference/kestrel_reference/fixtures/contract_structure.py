@@ -255,12 +255,13 @@ def pivots_structure(left, right, window, bars):
 
 def zigzag(depth, deviation_pct, bars):
     """ZigZag swing legs. Over the last 2 depth + 1 bars the middle bar is a pivot high (low) when
-    no other high is above (low below) its own. A pivot high while the leg is down or not yet set
-    starts an up leg at its high if it lies at least `deviation_pct` percent above the last pivot
-    price (always for the first pivot); while the leg is up, a higher pivot high moves the leg's
-    extreme there. Pivot lows mirror this. `value` = `last_pivot_price` = the current leg's
-    extreme (0 before any pivot), `direction` 1 up, -1 down, 0 before any pivot. No alerts.
-    Convention: the high side is applied before the low side on the same bar."""
+    no other high is above (low below) its own. The first pivot starts the first leg. A pivot of
+    the kind of the newest node moves that node there if it is more extreme. A pivot of the other
+    kind adds a node if it lies beyond the newest node on its own side by at least `deviation_pct`
+    percent of that node's price. On a bar that is both, the pivot of the newest node's kind comes
+    first; before the first node such a bar starts none. `value` = `last_pivot_price` = the price
+    of the newest node (0 before any pivot), `direction` 1 while it is a high, -1 while it is a
+    low, 0 before any pivot. No alerts."""
     expected, direction, last = [], 0, 0.0
     threshold = deviation_pct / 100.0
     size = 2 * depth + 1
@@ -270,20 +271,19 @@ def zigzag(depth, deviation_pct, bars):
             continue
         window = bars[i + 1 - size:i + 1]
         mid = window[depth]
-        if loose_high(window, depth):
-            if direction <= 0:
-                change = (mid[1] - last) / last if last > 0.0 else 1.0
-                if change >= threshold or direction == 0:
-                    direction, last = 1, mid[1]
-            elif mid[1] > last:
-                last = mid[1]
-        if loose_low(window, depth):
-            if direction >= 0:
-                change = (last - mid[2]) / last if last > 0.0 else 1.0
-                if change >= threshold or direction == 0:
-                    direction, last = -1, mid[2]
-            elif mid[2] < last:
-                last = mid[2]
+        kinds = [side for side, found in ((1, loose_high(window, depth)),
+                                          (-1, loose_low(window, depth))) if found]
+        if len(kinds) == 2:
+            kinds = [] if direction == 0 else [direction, -direction]
+        for side in kinds:
+            price = mid[1] if side == 1 else mid[2]
+            if direction == side:
+                if (price - last) * side > 0.0:
+                    last = price
+                continue
+            move = (price - last) * side
+            if direction == 0 or (move > 0.0 and (last == 0.0 or move / abs(last) >= threshold)):
+                direction, last = side, price
         expected.append(((last, {"direction": float(direction), "last_pivot_price": last}), {}))
     return {"depth": float(depth), "deviation_pct": deviation_pct}, bars, expected
 

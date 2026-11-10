@@ -14,7 +14,27 @@ pub struct ZigZagNode {
     pub is_high: bool,
 }
 
-/// Advanced ZigZag Engine tracking multi-pivot swing legs and trend reversals.
+/// ZigZag over fixed-depth pivots with a percent deviation.
+///
+/// Over the last `2 · depth + 1` bars the middle bar is a pivot high when no other high is above
+/// its own and a pivot low when no other low is below its own; ties count, and one bar can be
+/// both. The first pivot starts the first leg. After that a pivot of the kind of the newest node
+/// moves that node to itself if it is more extreme. A pivot of the other kind adds a node, and
+/// turns the leg, if it lies beyond the newest node on its own side by at least `deviation_pct`
+/// percent of that node's price: `(high - last) / |last|` for a pivot high after a low,
+/// `(last - low) / |last|` for a pivot low after a high. A pivot high at or below the newest low
+/// (or a pivot low at or above the newest high) adds nothing.
+///
+/// On a bar that is both a pivot high and a pivot low, the pivot of the newest node's kind is
+/// applied first, then the other; before the first node such a bar starts none.
+///
+/// [`Self::nodes`] therefore is a pivot sequence in the sense of [`super::elliott`] after every
+/// bar: highs and lows alternate, timestamps do not decrease, every high lies above and every low
+/// below the node before it.
+///
+/// `value` and `extra["last_pivot_price"]`: the price of the newest node (0 before any);
+/// `extra["direction"]`: 1 while the newest node is a high, -1 while it is a low, 0 before any.
+/// First output with bar `2 · depth + 1`. No alerts.
 #[derive(Debug, Clone)]
 pub struct ZigZagEngine {
     depth: usize,
@@ -45,6 +65,51 @@ impl ZigZagEngine {
 
     pub fn nodes(&self) -> &[ZigZagNode] {
         &self.nodes
+    }
+
+    /// Applies one pivot of the middle bar: starts the first leg, moves the newest node, or adds
+    /// a node of the other kind once it lies the deviation beyond the newest one.
+    fn apply_pivot(&mut self, is_high: bool, price: f64, timestamp: i64) {
+        let same = if is_high { 1 } else { -1 };
+        if self.current_direction == same {
+            let more_extreme = if is_high {
+                price > self.last_pivot_price
+            } else {
+                price < self.last_pivot_price
+            };
+            if more_extreme {
+                self.last_pivot_price = price;
+                self.last_pivot_ts = timestamp;
+                if let Some(last_node) = self.nodes.last_mut() {
+                    last_node.timestamp = timestamp;
+                    last_node.price = price;
+                }
+            }
+            return;
+        }
+
+        if self.current_direction != 0 {
+            let last = self.last_pivot_price;
+            let distance = if is_high { price - last } else { last - price };
+            // The move as a fraction of the newest node's price; at a price of zero any move to
+            // the pivot's own side counts.
+            let reached = if last != 0.0 {
+                distance / last.abs() >= self.deviation_pct / 100.0
+            } else {
+                true
+            };
+            if !(distance > 0.0 && reached) {
+                return;
+            }
+        }
+        self.current_direction = same;
+        self.last_pivot_price = price;
+        self.last_pivot_ts = timestamp;
+        self.nodes.push(ZigZagNode {
+            timestamp,
+            price,
+            is_high,
+        });
     }
 }
 
@@ -88,67 +153,19 @@ impl Indicator for ZigZagEngine {
             .iter()
             .enumerate()
             .all(|(i, b)| i == mid_idx || b.low >= mid_bar.low);
+        let (timestamp, high, low) = (mid_bar.timestamp, mid_bar.high, mid_bar.low);
 
-        let dev_thresh = self.deviation_pct / 100.0;
-
-        if is_pivot_high {
-            if self.current_direction <= 0 {
-                let change = if self.last_pivot_price > 0.0 {
-                    (mid_bar.high - self.last_pivot_price) / self.last_pivot_price
-                } else {
-                    1.0
-                };
-                if change >= dev_thresh || self.current_direction == 0 {
-                    self.current_direction = 1;
-                    self.last_pivot_price = mid_bar.high;
-                    self.last_pivot_ts = mid_bar.timestamp;
-                    self.nodes.push(ZigZagNode {
-                        timestamp: mid_bar.timestamp,
-                        price: mid_bar.high,
-                        is_high: true,
-                    });
-                }
-            } else if mid_bar.high > self.last_pivot_price {
-                // Update higher high node
-                self.last_pivot_price = mid_bar.high;
-                self.last_pivot_ts = mid_bar.timestamp;
-                if let Some(last_node) = self.nodes.last_mut() {
-                    if last_node.is_high {
-                        last_node.timestamp = mid_bar.timestamp;
-                        last_node.price = mid_bar.high;
-                    }
-                }
-            }
-        }
-
-        if is_pivot_low {
-            if self.current_direction >= 0 {
-                let change = if self.last_pivot_price > 0.0 {
-                    (self.last_pivot_price - mid_bar.low) / self.last_pivot_price
-                } else {
-                    1.0
-                };
-                if change >= dev_thresh || self.current_direction == 0 {
-                    self.current_direction = -1;
-                    self.last_pivot_price = mid_bar.low;
-                    self.last_pivot_ts = mid_bar.timestamp;
-                    self.nodes.push(ZigZagNode {
-                        timestamp: mid_bar.timestamp,
-                        price: mid_bar.low,
-                        is_high: false,
-                    });
-                }
-            } else if mid_bar.low < self.last_pivot_price {
-                // Update lower low node
-                self.last_pivot_price = mid_bar.low;
-                self.last_pivot_ts = mid_bar.timestamp;
-                if let Some(last_node) = self.nodes.last_mut() {
-                    if !last_node.is_high {
-                        last_node.timestamp = mid_bar.timestamp;
-                        last_node.price = mid_bar.low;
-                    }
-                }
-            }
+        // A bar that is both: the pivot of the newest node's kind first, and none before the
+        // first node.
+        let order: &[bool] = match (is_pivot_high, is_pivot_low, self.current_direction) {
+            (true, true, 0) | (false, false, _) => &[],
+            (true, true, 1) => &[true, false],
+            (true, true, _) => &[false, true],
+            (true, false, _) => &[true],
+            (false, true, _) => &[false],
+        };
+        for &is_high in order {
+            self.apply_pivot(is_high, if is_high { high } else { low }, timestamp);
         }
 
         let mut extra = HashMap::new();

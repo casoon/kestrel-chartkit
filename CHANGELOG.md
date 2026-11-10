@@ -9,6 +9,25 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+Output values of `zigzag_advanced` and `zigzag` change on the series named below, hence a minor
+version.
+
+- **ZigZag:** `zigzag_advanced` measures the move from the running node to a pivot of the other
+  kind with its sign, so a pivot high at or below the running low (after a gap down, say) no
+  longer confirms that low or becomes a node, and likewise mirrored. The nodes of both ZigZags
+  are a pivot sequence after every bar.
+- **ZigZag:** on a bar that is both a pivot high and a pivot low, `zigzag_advanced` and `zigzag`
+  apply the pivot of the newest node's kind first, and before the first node such a bar starts
+  none. A series and its mirror image now give mirrored nodes.
+- **ZigZag:** `zigzag` measures the deviation against the amount of the newest node's price, so
+  zero and negative prices follow the same rule as positive ones.
+- **ZigZag:** `AdvancedZigZagEngine::project_to_timeframe` and `reduce` return pivot sequences:
+  the projection merges neighbouring nodes of one kind, and both drop a node on the wrong side
+  of its predecessor. Details:
+  [ZigZag nodes](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#zigzag-nodes).
+
 ## [0.40.0] - 2026-11-10
 
 ### Breaking

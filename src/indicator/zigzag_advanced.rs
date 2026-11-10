@@ -39,16 +39,29 @@ pub struct ZigZagNode {
 /// both. A pivot of the same kind as the running (unconfirmed) node — or the very first pivot —
 /// extends the leg: the running node moves to it if it is more extreme, and a first pivot starts
 /// one. A pivot of the other kind confirms the running node and starts a new running node at its
-/// own price, once its change from the running node reaches the deviation threshold and the pivot
+/// own price, once it lies beyond the running node on its own side by at least the deviation
+/// threshold — a pivot high above a running low, a pivot low below a running high — and the pivot
 /// bar lies at least `backstep` bars after the pivot bar of the last confirmation (checked once
 /// per bar, before either pivot is applied). Each confirmation raises an alert with the direction
 /// of the turn: `bull_swing_confirmed` for a confirmed swing low, `bear_swing_confirmed` for a
 /// confirmed swing high.
 ///
-/// In [`ZigZagDeviationMode::Percent`] the relative change `|price - running| / |running|` must
-/// reach `pct / 100`. In [`ZigZagDeviationMode::AtrMultiple`] the price distance
-/// `|price - running|` must reach `mult · ATR`, a Wilder ATR of the true range over `atr_len` as
-/// of the current bar; nothing confirms before the ATR exists.
+/// The move is signed. In [`ZigZagDeviationMode::Percent`] `(price - running) / |running|` for a
+/// pivot high and `(running - price) / |running|` for a pivot low must reach `pct / 100`. In
+/// [`ZigZagDeviationMode::AtrMultiple`] `price - running` (pivot high) or `running - price`
+/// (pivot low) must reach `mult · ATR`, a Wilder ATR of the true range over `atr_len` as of the
+/// current bar; nothing confirms before the ATR exists. A pivot on the wrong side — a pivot high
+/// at or below the running low, as after a gap down behind which the lows keep falling —
+/// confirms nothing at any threshold: the running low stays until a lower pivot low replaces it.
+///
+/// On a bar that is both a pivot high and a pivot low, the pivot of the running node's kind is
+/// applied first (it may move the running node to this bar), then the other (it may confirm it).
+/// Before the first node such a bar starts none, since nothing says which extreme came first.
+///
+/// With these rules [`Self::nodes`] is a pivot sequence in the sense of [`super::elliott`] after
+/// every bar: highs and lows alternate, timestamps do not decrease, every high lies above and
+/// every low below the node before it. A series and its mirror image (highs for lows, every
+/// price negated) give mirrored nodes.
 ///
 /// `value`: the price of the newest node, or the middle bar's close before any; `state`:
 /// `"running"` while the newest node is unconfirmed, `"confirmed"` otherwise. First output with
@@ -109,7 +122,7 @@ impl AdvancedZigZagEngine {
         match self.deviation {
             ZigZagDeviationMode::Percent(pct) => pct / 100.0,
             ZigZagDeviationMode::AtrMultiple(mult) => {
-                // An absolute price distance: `try_extend` compares it with the absolute change.
+                // A price distance: `try_extend` compares it with the signed price move.
                 match atr {
                     Some(a) if a > 0.0 => mult * a,
                     _ => f64::INFINITY, // ATR not warmed up yet: no pivot can confirm
@@ -121,6 +134,12 @@ impl AdvancedZigZagEngine {
     /// Recursively re-simplifies an already-reduced node sequence at a coarser deviation
     /// threshold, the "dual-/recursive levels" swing-degree technique: apply the same
     /// alternating-extreme simplification to the higher-degree input instead of raw bars.
+    ///
+    /// The first node is kept. After that a node of the kind of the last kept node replaces it if
+    /// it is more extreme; a node of the other kind is kept if it lies beyond the last kept node
+    /// on its own side (a high above it, a low below it) by at least `deviation_pct` percent of
+    /// that node's price, and is dropped otherwise. The result is a pivot sequence for any input
+    /// in time order, and at `deviation_pct = 0` it is the input itself if that already is one.
     pub fn reduce(nodes: &[ZigZagNode], deviation_pct: f64) -> Vec<ZigZagNode> {
         if nodes.is_empty() {
             return Vec::new();
@@ -140,12 +159,9 @@ impl AdvancedZigZagEngine {
                 continue;
             }
 
-            let change = if last.price != 0.0 {
-                (node.price - last.price).abs() / last.price.abs()
-            } else {
-                f64::INFINITY
-            };
-            if change >= threshold {
+            if signed_move(node.is_high, node.price, last.price, true) >= threshold
+                && beyond(node.is_high, node.price, last.price)
+            {
                 reduced.push(node);
             }
         }
@@ -153,9 +169,12 @@ impl AdvancedZigZagEngine {
         reduced
     }
 
-    /// Projects a node sequence onto a higher timeframe's bucket grid, keeping only the most
-    /// extreme high/low node per bucket per side — the confirmed HTF-equivalent swing points an
-    /// LTF zigzag implies.
+    /// Projects a node sequence onto a higher timeframe's bucket grid: per bucket the most
+    /// extreme high node and the most extreme low node (the first one on a tie), put in time
+    /// order and then passed through [`Self::reduce`] at 0 %, so that the result is a pivot
+    /// sequence again. That last step merges neighbouring nodes of one kind into the more extreme
+    /// one and drops a node that does not lie beyond its predecessor on its own side — both occur
+    /// when a bucket's extremes are taken out of their sequence.
     pub fn project_to_timeframe(
         nodes: &[ZigZagNode],
         target_tf: Timeframe,
@@ -163,25 +182,57 @@ impl AdvancedZigZagEngine {
     ) -> Vec<ZigZagNode> {
         use std::collections::BTreeMap;
 
-        let mut buckets: BTreeMap<(i64, bool), ZigZagNode> = BTreeMap::new();
-        for &node in nodes {
+        // Keyed by bucket and kind; the position keeps the input order among equal timestamps.
+        let mut buckets: BTreeMap<(i64, bool), (usize, ZigZagNode)> = BTreeMap::new();
+        for (position, &node) in nodes.iter().enumerate() {
             let bucket = target_tf.bucket_start(node.timestamp, utc_offset_seconds);
             let key = (bucket, node.is_high);
             buckets
                 .entry(key)
                 .and_modify(|existing| {
-                    let more_extreme = (node.is_high && node.price > existing.price)
-                        || (!node.is_high && node.price < existing.price);
+                    let more_extreme = (node.is_high && node.price > existing.1.price)
+                        || (!node.is_high && node.price < existing.1.price);
                     if more_extreme {
-                        *existing = node;
+                        *existing = (position, node);
                     }
                 })
-                .or_insert(node);
+                .or_insert((position, node));
         }
 
-        let mut projected: Vec<ZigZagNode> = buckets.into_values().collect();
-        projected.sort_by_key(|n| n.timestamp);
-        projected
+        let mut projected: Vec<(usize, ZigZagNode)> = buckets.into_values().collect();
+        projected.sort_by_key(|(position, n)| (n.timestamp, *position));
+        let projected: Vec<ZigZagNode> = projected.into_iter().map(|(_, n)| n).collect();
+        Self::reduce(&projected, 0.0)
+    }
+}
+
+/// Whether `price` lies beyond `reference` on its own side: a high above it, a low below it.
+fn beyond(is_high: bool, price: f64, reference: f64) -> bool {
+    if is_high {
+        price > reference
+    } else {
+        price < reference
+    }
+}
+
+/// The move from `reference` to a pivot at `price`, positive when the pivot lies on its own side
+/// (a high above, a low below): the price distance, or with `relative` that distance as a
+/// fraction of `|reference|`. With a reference of zero the fraction is infinite on the pivot's
+/// side and negative infinite otherwise.
+fn signed_move(is_high: bool, price: f64, reference: f64, relative: bool) -> f64 {
+    let distance = if is_high {
+        price - reference
+    } else {
+        reference - price
+    };
+    if !relative {
+        distance
+    } else if reference != 0.0 {
+        distance / reference.abs()
+    } else if distance > 0.0 {
+        f64::INFINITY
+    } else {
+        f64::NEG_INFINITY
     }
 }
 
@@ -250,20 +301,20 @@ impl Indicator for AdvancedZigZagEngine {
             .map(|last| mid_bar_index >= last + self.backstep)
             .unwrap_or(true);
 
-        if is_pivot_high {
+        // A bar that is both: the pivot of the running node's kind first, and none before the
+        // first node.
+        let running_is_high = self.nodes.last().map(|n| n.is_high);
+        let order: &[bool] = match (is_pivot_high, is_pivot_low, running_is_high) {
+            (true, true, Some(true)) => &[true, false],
+            (true, true, Some(false)) => &[false, true],
+            (true, true, None) | (false, false, _) => &[],
+            (true, false, _) => &[true],
+            (false, true, _) => &[false],
+        };
+        for &is_high in order {
             self.try_extend(
-                true,
-                mid_bar.high,
-                mid_bar.timestamp,
-                mid_bar_index,
-                threshold,
-                backstep_ok,
-            );
-        }
-        if is_pivot_low {
-            self.try_extend(
-                false,
-                mid_bar.low,
+                is_high,
+                if is_high { mid_bar.high } else { mid_bar.low },
                 mid_bar.timestamp,
                 mid_bar_index,
                 threshold,
@@ -333,19 +384,16 @@ impl AdvancedZigZagEngine {
         }
 
         // Opposite-direction pivot: only confirms the running leg (and starts a new one) once it
-        // clears both the deviation threshold and the backstep spacing from the last confirmation.
-        // Percent mode compares the relative change, ATR mode the price distance, each with the
-        // threshold of its own unit.
-        let last_price = self.nodes.last().map(|n| n.price);
-        let change = match (self.deviation, last_price) {
-            (ZigZagDeviationMode::AtrMultiple(_), Some(lp)) => (price - lp).abs(),
-            (ZigZagDeviationMode::Percent(_), Some(lp)) if lp != 0.0 => {
-                (price - lp).abs() / lp.abs()
-            }
-            _ => f64::INFINITY,
+        // lies beyond the running node on its own side by the deviation threshold and clears the
+        // backstep spacing from the last confirmation. Percent mode compares the relative move,
+        // ATR mode the price distance, each signed and with the threshold of its own unit.
+        let Some(running) = self.nodes.last().map(|n| n.price) else {
+            return;
         };
+        let relative = matches!(self.deviation, ZigZagDeviationMode::Percent(_));
+        let change = signed_move(is_high, price, running, relative);
 
-        if change >= threshold && backstep_ok {
+        if change >= threshold && beyond(is_high, price, running) && backstep_ok {
             if let Some(last) = self.nodes.last_mut() {
                 last.confirmed = true;
             }
@@ -514,6 +562,120 @@ mod tests {
         assert!(coarse.len() < base.len());
         assert_eq!(coarse.first().unwrap().price, 100.0);
         assert_eq!(coarse.last().unwrap().price, 95.0);
+    }
+
+    fn node(timestamp: i64, price: f64, is_high: bool) -> ZigZagNode {
+        ZigZagNode {
+            timestamp,
+            price,
+            is_high,
+            confirmed: true,
+        }
+    }
+
+    #[test]
+    fn test_a_pivot_on_the_wrong_side_confirms_nothing_at_any_threshold() {
+        // A rise to 110, a low of 100, two inside bars, then a gap down to bars whose highs peak
+        // at 90 while the lows keep falling: the pivot high of 90 lies below the running low.
+        let spans = [
+            (106.0, 104.0),
+            (108.0, 106.0),
+            (110.0, 108.0),
+            (106.0, 103.0),
+            (102.0, 100.0),
+            (101.5, 100.5),
+            (101.0, 100.6),
+            (88.0, 86.0),
+            (90.0, 85.5),
+            (89.0, 85.0),
+            (88.0, 84.5),
+        ];
+        for deviation in [
+            ZigZagDeviationMode::Percent(0.0),
+            ZigZagDeviationMode::Percent(5.0),
+            ZigZagDeviationMode::AtrMultiple(0.1),
+        ] {
+            let mut engine = AdvancedZigZagEngine::new(1, 0, deviation, 2);
+            for (i, (high, low)) in spans.iter().enumerate() {
+                engine.on_bar(&Bar::new(i as i64 * 60, *low, *high, *low, *high, 1.0));
+            }
+            let nodes: Vec<(f64, bool, bool)> = engine
+                .nodes()
+                .iter()
+                .map(|n| (n.price, n.is_high, n.confirmed))
+                .collect();
+            assert_eq!(
+                nodes,
+                [(110.0, true, true), (100.0, false, false)],
+                "{deviation:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_a_bar_that_is_both_pivots_extends_the_running_node_first() {
+        // Running low 100; an outside bar with a lower low (96) and a high (108) above it. The
+        // low moves to the bar, then its high confirms it.
+        let spans = [
+            (104.0, 102.0),
+            (103.0, 100.0),
+            (104.0, 101.0),
+            (108.0, 96.0),
+            (105.0, 99.0),
+        ];
+        let mut engine = AdvancedZigZagEngine::new(1, 0, ZigZagDeviationMode::Percent(1.0), 2);
+        for (i, (high, low)) in spans.iter().enumerate() {
+            engine.on_bar(&Bar::new(i as i64 * 60, *low, *high, *low, *high, 1.0));
+        }
+        let nodes: Vec<(i64, f64, bool, bool)> = engine
+            .nodes()
+            .iter()
+            .map(|n| (n.timestamp, n.price, n.is_high, n.confirmed))
+            .collect();
+        assert_eq!(
+            nodes,
+            [(180, 96.0, false, true), (180, 108.0, true, false)],
+            "one confirmation on the outside bar, low before high"
+        );
+
+        // Before the first node such a bar starts none: flat bars are pivot high and low at once.
+        let mut flat = AdvancedZigZagEngine::new(1, 0, ZigZagDeviationMode::Percent(1.0), 2);
+        for i in 0..6 {
+            flat.on_bar(&Bar::new(i * 60, 100.0, 100.0, 100.0, 100.0, 1.0));
+        }
+        assert!(flat.nodes().is_empty());
+    }
+
+    #[test]
+    fn test_reduce_drops_a_node_on_the_wrong_side() {
+        // Not a pivot sequence: the high of 90 lies below the low of 100 before it.
+        let nodes = [
+            node(0, 120.0, true),
+            node(1, 100.0, false),
+            node(2, 90.0, true),
+            node(3, 80.0, false),
+            node(4, 95.0, true),
+        ];
+        let reduced = AdvancedZigZagEngine::reduce(&nodes, 0.0);
+        let prices: Vec<f64> = reduced.iter().map(|n| n.price).collect();
+        assert_eq!(prices, [120.0, 80.0, 95.0]);
+    }
+
+    #[test]
+    fn test_project_to_timeframe_returns_a_pivot_sequence() {
+        // Two 5-minute buckets of a pivot sequence. Per bucket the extremes are 200/100 and
+        // 35/20; taken out of their sequence, the high of 35 follows the low of 100 it lies below.
+        let nodes = [
+            node(0, 200.0, true),
+            node(60, 100.0, false),
+            node(120, 150.0, true),
+            node(300, 30.0, false),
+            node(360, 35.0, true),
+            node(420, 20.0, false),
+        ];
+        let projected = AdvancedZigZagEngine::project_to_timeframe(&nodes, Timeframe::Minute(5), 0);
+        let prices: Vec<(i64, f64)> = projected.iter().map(|n| (n.timestamp, n.price)).collect();
+        assert_eq!(prices, [(0, 200.0), (420, 20.0)]);
     }
 
     #[test]

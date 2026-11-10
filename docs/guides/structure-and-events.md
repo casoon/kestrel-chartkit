@@ -22,6 +22,27 @@ pivot's high must be at least as high as every bar `pivot_len` bars to either si
 mirrored). A bar can be a pivot high and a pivot low at once; the pair `(id, is_high)` stays
 unique.
 
+## ZigZag nodes
+
+`zigzag` and `zigzag_advanced` turn pivots into swing nodes. A pivot of the kind of the newest
+node moves that node if it is more extreme. A pivot of the other kind adds a node once it lies
+beyond the newest node on its own side by the deviation: a pivot high above the low, a pivot low
+below the high. The move is signed, so a pivot high that forms below the running low, as after a
+gap down behind which the lows keep falling, adds nothing; the low stays until a lower pivot low
+replaces it. On a bar that is both a pivot high and a pivot low, the pivot of the newest node's
+kind is applied first, and before the first node such a bar starts none.
+
+`ZigZagEngine::nodes()` and `AdvancedZigZagEngine::nodes()` therefore are a pivot sequence after
+every bar: highs and lows alternate, timestamps do not decrease, every high lies above and every
+low below the node before it. That is the input the Elliott validators, `ChartPatternDetector`
+and `HarmonicDetector` expect. `AdvancedZigZagEngine::reduce` and `project_to_timeframe` return
+pivot sequences as well; the projection keeps the most extreme high and low node per bucket and
+then drops what no longer alternates or lies on the wrong side of its predecessor. A series and
+its mirror image (every price negated, highs and lows exchanged) give mirrored nodes.
+
+In `zigzag_advanced` every node but the newest is confirmed and no longer moves; the newest is
+the running node (`current_leg()`).
+
 ## Zones
 
 `find_sr_zones(bars, pivot_len)` uses the same pivot test and returns up to two supports below and
