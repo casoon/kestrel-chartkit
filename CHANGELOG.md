@@ -63,6 +63,9 @@ Results of the Elliott validators change, hence a minor version.
   before them instead of by two boundary comparisons. A triangle whose waves b and d end within
   5 % of wave b of each other is a `Barrier`; a sequence that fits neither kind is assigned to the
   kind it breaks fewer comparisons of and is invalid, where it was `RunningOrBarrier` before.
+- **Contributors:** scenario fixture `scenario_elliott` with a second implementation of the
+  documented rules under `reference/` (`kestrel_reference/elliott.py`), covering both directions,
+  every rule alone and every threshold.
 
 ## [0.39.1] - 2026-11-10
 
