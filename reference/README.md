@@ -29,6 +29,7 @@ Python 3.10 or newer; nothing else.
 | Fixture | Module |
 |---|---|
 | `golden_option_diff` | `kestrel_reference/fixtures/option_diff.py` |
+| `golden_option_expiry` | `kestrel_reference/fixtures/option_expiry.py` |
 | `golden_bond_diff` | `kestrel_reference/fixtures/bond_diff.py` |
 | `golden_curve_diff` | `kestrel_reference/fixtures/curve_diff.py` |
 | `golden_business_days` | `kestrel_reference/fixtures/business_days.py` |

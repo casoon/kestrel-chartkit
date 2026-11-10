@@ -155,8 +155,9 @@ pub use model::{
 };
 pub use option::{
     black_76, black_scholes_merton, implied_volatility, normal_cdf, normal_pdf,
-    verify_put_call_parity, BlackScholesInputs, OptionError, OptionGreeks, OptionPricingResult,
-    OptionStyle, OptionType,
+    option_expiry_profile, option_expiry_result, option_expiry_series, verify_put_call_parity,
+    BlackScholesInputs, OptionError, OptionExpiryPoint, OptionExpiryPosition, OptionExpiryProfile,
+    OptionGreeks, OptionPricingResult, OptionStyle, OptionType, PayoffBound,
 };
 pub use parity::{
     ParityFixture, ParityFixtureError, ParityFixtureRow, ParityOutcome, ParityReport,

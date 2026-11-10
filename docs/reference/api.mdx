@@ -154,6 +154,62 @@ kestrel-chartkit draws nothing for presentation; see
   Quick-look SVG for tests and debugging, not a presentation layer.
 </ApiEntry>
 
+## Options at expiry
+
+<ApiEntry
+  kind="struct"
+  name="OptionExpiryPosition"
+  signature={`pub struct OptionExpiryPosition {
+    pub option_type: OptionType,   // Call | Put
+    pub side: PositionSide,        // Long = bought, Short = sold
+    pub strike: f64,
+    pub premium: f64,              // per unit of the underlying, the positive amount
+    pub contract_size: f64,        // 1.0 = every amount per unit
+}`}
+>
+  One option position held to expiry. The result at expiry needs no pricing model.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_result"
+  signature={`pub fn option_expiry_result(
+    position: &OptionExpiryPosition,
+    underlying: f64,
+) -> Result<f64, OptionError>`}
+>
+  `(intrinsic - premium) * contract_size` for the bought option and its negative for the sold
+  one, with `intrinsic = max(S - K, 0)` for a call and `max(K - S, 0)` for a put. Positive is a
+  profit of the position's holder.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_profile"
+  signature={`pub fn option_expiry_profile(
+    position: &OptionExpiryPosition,
+) -> Result<OptionExpiryProfile, OptionError>`}
+>
+  `break_even` (`K + P` for a call, `K - P` for a put), `max_profit` and `max_loss` over every
+  price from 0 up. Both are a `PayoffBound`: `Limited(amount)` or `Unlimited`, so no infinite
+  number reaches an axis or a JSON document. `max_loss` is a positive amount.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_series"
+  signature={`pub fn option_expiry_series(
+    position: &OptionExpiryPosition,
+    from: f64,
+    to: f64,
+    points: usize,
+) -> Result<Vec<OptionExpiryPoint>, OptionError>`}
+>
+  The result over `points` equally spaced prices from `from` to `to`, both included, for a payoff
+  diagram. The line through the points shows the bend at the strike exactly when the strike is
+  one of them.
+</ApiEntry>
+
 ## Beyond these docs
 
 The crate also exports trade statistics (`stats`, `evaluation`), option and bond valuation
