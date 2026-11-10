@@ -241,3 +241,53 @@ without an event. Alerts: `gap_up`, `gap_down`, `gap_closed`.
 as common, breakaway, runaway or exhaustion gaps: those names are given in hindsight.
 `data_requirements("gap")` carries the series properties that limit the result: a series without
 a session boundary, contract rolls, adjusted prices and broker quotes.
+
+## Point and figure
+
+A point-and-figure chart has no time axis: a column of X records a rise, a column of O a fall, and
+a new column begins only after the price has turned by `reversal` boxes of `box_size` price units.
+`point_and_figure(prices, box_size, reversal)` returns the chart of a price sequence as `PnfChart`;
+`PnfChart::push` and `push_high_low` build one step by step.
+
+```rust
+use kestrel_chartkit::point_and_figure;
+
+let prices = [120.0, 100.0, 111.0, 104.0, 108.0, 101.0, 109.0];
+let chart = point_and_figure(&prices, 1.0, 3);
+for column in chart.columns() {
+    println!("{} {} to {}", column.direction.symbol(), column.bottom, column.top);
+}
+```
+
+A box is named by its grid line, a whole multiple of the box size, and is filled once the price
+has reached that line: a rising price fills up to the line at or below it, a falling price down to
+the line at or above it. An X column whose highest box is `h` is extended by a price that reaches
+`h + 1`; otherwise a price that reaches `h - reversal` opens an O column from `h - 1` down. O
+columns mirror this. Every reversal opens a new column, and the first column starts at the box of
+the first price. `PnfColumn` carries `direction`, `top` and `bottom` (grid lines in price units),
+`top_box` and `bottom_box` (their numbers) and `first_index`/`last_index`, the positions in the
+input that opened and last extended it.
+
+`PnfChart::horizontal_count(first, last)` is the count of the Wyckoff method between two columns
+of the same kind, both included: `columns` and `columns_on_line` (those with a box on the count
+line), `count_line` (the lowest box of the later column, the highest for X columns), `extreme`,
+`effect = columns * reversal * box_size`, `effect_on_line` and the targets `extreme + effect` and
+`count_line + effect` (minus for a count over X columns). Which columns end a range is the
+reader's choice, and the result changes with the box size and the reversal.
+
+The indicator `point_and_figure` feeds the chart from bars and reports the current column on
+every bar.
+
+| Parameter  | Default |
+| ---------- | ------- |
+| `box_size` | 1       |
+| `reversal` | 3       |
+| `method`   | `close` |
+
+`method` `close` reads the close, `high_low` the high and the low: the bar is read in the
+direction of the column first, so one bar never extends a column and reverses it. `value` is `1`
+in an X column, `-1` in an O column and `0` before the first; `extra` carries `column` (its
+number, from 1), `top`, `bottom` and `boxes`. Since a column only grows in its own direction, the
+last bar of each column number holds its final extent. Alerts: `pnf_new_x_column`,
+`pnf_new_o_column`. The default box size of 1 has to be set to the price level of the series.
+`PointAndFigureEngine::chart()` returns the `PnfChart`.

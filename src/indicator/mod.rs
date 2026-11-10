@@ -63,6 +63,7 @@ pub mod pivot_divergence;
 pub mod pivot_sets;
 pub mod pivots_structure;
 pub mod pmo;
+pub mod point_and_figure;
 pub mod price_average_relation;
 pub mod price_levels;
 pub mod pvt;

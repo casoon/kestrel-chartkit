@@ -154,6 +154,7 @@ is complete.
 | order_block | ✅ |
 | pivot_sets | ✅ |
 | pivots_structure | ✅ |
+| point_and_figure | ❌ |
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
@@ -180,5 +181,5 @@ is complete.
 
 ---
 
-**Total: 133/134 verified** — the same 134 names `catalog()` returns: 97 indicators (the first
-five groups), 4 composite scores and 33 structure/pattern detectors.
+**Total: 133/135 verified** — the same 135 names `catalog()` returns: 97 indicators (the first
+five groups), 4 composite scores and 34 structure/pattern detectors.

@@ -19,9 +19,11 @@ Common conventions:
 
 import math
 import statistics
+from fractions import Fraction
 
 from ..fixture import provenance, render_contract
 from ..gap import expected_outputs as gap_outputs
+from ..point_and_figure import chart as pnf_chart
 from ..indicators import rsi_lines
 from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
@@ -265,6 +267,50 @@ def gap_summary(expected):
     return (f"{up} gaps up, {down} down; {closed} closed ({same_bar} on their own bar), "
             f"{up + down - closed - left} dropped unclosed, {left} open at the end; "
             f"at most {most} open at once")
+
+
+# --- point_and_figure ------------------------------------------------------------------------
+
+def point_and_figure(bars, box="1", reversal=3, method="close"):
+    """The point-and-figure chart as the indicator reports it per bar, per the module
+    documentation of `src/indicator/point_and_figure.rs`. The model is
+    `kestrel_reference/point_and_figure.py`, run afresh over the bars up to each bar: `value` is
+    the direction of the last column (1 X, -1 O, 0 while there is none), `column` the number of
+    columns, `top`/`bottom` the grid lines of its highest and lowest box, `boxes` their number.
+    A bar after which there is one column more raises `pnf_new_x_column` or `pnf_new_o_column`
+    (strength 1). `method` close reads the close, high_low the high and the low; in the case
+    parameters it is its position (0 close, 1 high_low). Prices enter by their decimal text."""
+    grid = Fraction(box)
+    expected, before = [], 0
+    for n in range(1, len(bars) + 1):
+        if method == "close":
+            pairs = [(repr(bar[3]), repr(bar[3])) for bar in bars[:n]]
+        else:
+            pairs = [(repr(bar[1]), repr(bar[2])) for bar in bars[:n]]
+        columns = pnf_chart(pairs, box, reversal)
+        extra, alerts, value = {"column": float(len(columns))}, {}, 0.0
+        if columns:
+            last = columns[-1]
+            value = 1.0 if last["direction"] == "X" else -1.0
+            extra.update({"top": float(last["top"]), "bottom": float(last["bottom"]),
+                          "boxes": float((last["top"] - last["bottom"]) / grid + 1)})
+            if len(columns) > before:
+                assert len(columns) == before + 1
+                alerts["pnf_new_x_column" if value > 0 else "pnf_new_o_column"] = 1.0
+        before = len(columns)
+        expected.append(((value, extra), alerts))
+    params = {"box_size": float(grid), "reversal": float(reversal),
+              "method": float(["close", "high_low"].index(method))}
+    return params, bars, expected
+
+
+def pnf_range_bars():
+    """Bars whose closes are the turning points of a decline, a trading range and a breakout (the
+    series of `golden_point_and_figure`): with box 1 and reversal 3 every close after the first
+    opens a column until the breakout, which extends the last one."""
+    return candles([120.0, 100.0, 111.0, 104.0, 108.0, 101.0, 109.0, 105.0, 110.0, 103.0, 108.0,
+                    104.0, 107.0, 102.0, 110.0, 106.0, 111.0, 104.0, 109.0, 105.0, 108.0, 113.0,
+                    117.0, 120.0])
 
 
 # --- market_structure_breaks -----------------------------------------------------------------
@@ -1650,6 +1696,15 @@ def build():
         case_block("gap_flat", "gap, minimum 2 ATR after bars without a range: no size in ATR "
                    "while the ATR is 0",
                    *gap(gap_flat_bars(), atr_len=3, min_atr=2.0)),
+        case_block("point_and_figure_defaults", "point_and_figure, defaults (box 1, reversal 3, "
+                   "closes): 20 columns, the last one extended by three bars",
+                   *point_and_figure(pnf_range_bars())),
+        case_block("point_and_figure_high_low", "point_and_figure, box 2, reversal 2, highs and "
+                   "lows: the bar is read in the direction of the column first",
+                   *point_and_figure(pnf_range_bars(), box="2", reversal=2, method="high_low")),
+        case_block("point_and_figure_fine_grid", "point_and_figure, box 0.25, reversal 4, closes "
+                   "between the grid lines: quiet bars change nothing",
+                   *point_and_figure(fvg_bars(), box="0.25", reversal=4)),
         case_block("gap_walk", "gap on a random walk with jumping opens, minimum 0.25 ATR, "
                    f"max_bars 20: {gap_summary(gap_walk[2])}", *gap_walk),
         case_block("market_structure_breaks_equal_highs",

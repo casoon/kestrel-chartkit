@@ -346,6 +346,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "stoch_rsi_divergence",
     "liquidity_fvg",
     "gap",
+    "point_and_figure",
     "order_block",
     "bos_choch",
     "market_structure_breaks",
@@ -502,6 +503,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "order_block",
     "liquidity_fvg",
     "gap",
+    "point_and_figure",
     "market_structure_breaks",
     "pivots_structure",
     "volume_profile",
@@ -634,8 +636,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 134);
-        assert_eq!(catalog().len(), 134);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 135);
+        assert_eq!(catalog().len(), 135);
     }
 
     #[test]

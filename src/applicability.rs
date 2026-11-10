@@ -78,6 +78,10 @@ pub enum StructureMethod {
     /// close) of the bar before it, the distance measured in the ATR of that bar; a gap is closed
     /// by a later low or high that reaches its far edge.
     PriceGaps,
+    /// Point-and-figure charts (`src/point_and_figure.rs`): prices are sorted into boxes on a
+    /// fixed grid of absolute price levels, and a column turns after a move of a set number of
+    /// boxes; the horizontal count multiplies a number of columns by box size and reversal.
+    PointAndFigure,
 }
 
 /// Which rule in [`check_applicability`] produced a given [`ApplicabilityNote`].
@@ -292,7 +296,7 @@ pub struct MethodRuleDescription {
     pub explanation: &'static str,
 }
 
-const METHOD_RULES: [MethodRuleDescription; 13] = [
+const METHOD_RULES: [MethodRuleDescription; 17] = [
     // Elliott: leg lengths are differences of swing prices, retracements are ratios of such
     // differences, swing points are bar highs and lows.
     MethodRuleDescription {
@@ -408,10 +412,44 @@ const METHOD_RULES: [MethodRuleDescription; 13] = [
             Eröffnung liegt keine Handelspause, und eine Lücke steht nur dort, wo die Reihe \
             unterbrochen ist (Wochenende, Ausfall der Kursstellung)",
     },
+    // Point and figure: boxes on a fixed grid of absolute prices, a new column after a move of
+    // `reversal` boxes.
+    MethodRuleDescription {
+        method: StructureMethod::PointAndFigure,
+        reason: ApplicabilityReason::StructureRollJumps,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Ein Roll-Sprung wird wie eine Kursbewegung in Kästchen gezählt: er \
+            verlängert die laufende Spalte oder löst eine Umkehr aus, ohne dass sich der Markt \
+            bewegt hat",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PointAndFigure,
+        reason: ApplicabilityReason::StructureBackAdjustedLevels,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Das Kästchenraster hängt an absoluten Preisen: die Rückwärtsbereinigung \
+            verschiebt frühere Kurse additiv gegen das Raster, mit jedem Kontraktwechsel erneut, \
+            sodass sich frühere Spalten ändern können und auf nie gehandelten Preisen liegen",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PointAndFigure,
+        reason: ApplicabilityReason::StructureProportionalAdjustment,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Bereinigung skaliert frühere Kurse proportional: eine feste \
+            Kästchengröße entspricht vor dem Stichtag einem anderen gehandelten Betrag als \
+            danach, und die Spalten liegen auf nie gehandelten Preisen",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PointAndFigure,
+        reason: ApplicabilityReason::StructureProviderExtreme,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Kurse, aus denen die Spalten entstehen, sind Quotes des Anbieters: bei \
+            einem anderen Anbieter liegen sie anders zum Kästchenraster und können andere \
+            Spalten und eine andere Zählung ergeben",
+    },
 ];
 
 /// All [`StructureMethod`] rules in the order [`check_applicability`] evaluates them.
-pub fn method_rule_catalog() -> [MethodRuleDescription; 13] {
+pub fn method_rule_catalog() -> [MethodRuleDescription; 17] {
     METHOD_RULES
 }
 
@@ -561,7 +599,8 @@ pub fn check_applicability(
 ///
 /// `gap` carries a [`StructureMethod`] as well: whether a series shows gaps at all depends on its
 /// session cut, and a contract change or a price adjustment puts gaps into the series or takes
-/// them out of it.
+/// them out of it. `point_and_figure` carries one because its boxes sit on a grid of absolute
+/// price levels, which a roll jump crosses and an adjustment shifts.
 ///
 /// Names not listed below (including all pure price indicators) return
 /// [`DataRequirements::default()`] — deliberately conservative: `needs_trade_direction` and
@@ -600,6 +639,10 @@ pub fn data_requirements(name: &str) -> DataRequirements {
         },
         "gap" => DataRequirements {
             structure_method: Some(StructureMethod::PriceGaps),
+            ..DataRequirements::default()
+        },
+        "point_and_figure" => DataRequirements {
+            structure_method: Some(StructureMethod::PointAndFigure),
             ..DataRequirements::default()
         },
         "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure" => {
@@ -1091,6 +1134,55 @@ mod tests {
         };
         assert_eq!(
             check_applicability(&gap, &extended),
+            Applicability::Applicable
+        );
+    }
+
+    #[test]
+    fn point_and_figure_rules_follow_roll_adjustment_and_provenance() {
+        use ApplicabilityReason::*;
+        let pnf = data_requirements("point_and_figure");
+        assert_eq!(pnf, data_requirements("pnf"));
+        let cases = [
+            (
+                SeriesCapabilities {
+                    continuity: ContinuityKind::StitchedUnadjusted,
+                    ..baseline_capabilities()
+                },
+                StructureRollJumps,
+            ),
+            (
+                SeriesCapabilities {
+                    continuity: ContinuityKind::StitchedBackAdjusted,
+                    ..baseline_capabilities()
+                },
+                StructureBackAdjustedLevels,
+            ),
+            (
+                SeriesCapabilities {
+                    price_adjustment: PriceAdjustment::SplitAndDividend,
+                    ..baseline_capabilities()
+                },
+                StructureProportionalAdjustment,
+            ),
+            (
+                SeriesCapabilities {
+                    provenance: Provenance::Broker,
+                    ..baseline_capabilities()
+                },
+                StructureProviderExtreme,
+            ),
+        ];
+        for (caps, reason) in cases {
+            assert_eq!(reasons_of(&check_applicability(&pnf, &caps)), vec![reason]);
+        }
+        // The chart has no time axis: where the session is cut makes no rule of its own.
+        let continuous = SeriesCapabilities {
+            session: SessionKind::Continuous,
+            ..baseline_capabilities()
+        };
+        assert_eq!(
+            check_applicability(&pnf, &continuous),
             Applicability::Applicable
         );
     }

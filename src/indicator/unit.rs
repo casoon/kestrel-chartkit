@@ -159,6 +159,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("pivot_sets", IndicatorUnit::Price),
     ("pivots_structure", IndicatorUnit::Unitless),
     ("pmo", IndicatorUnit::Ratio),
+    ("point_and_figure", IndicatorUnit::Unitless),
     ("ppo", IndicatorUnit::Ratio),
     ("price_average_relation", IndicatorUnit::Unitless),
     ("pvi", IndicatorUnit::Unitless),

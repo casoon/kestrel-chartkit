@@ -6,7 +6,7 @@ requirements, and a verdict follows from which rule conditions hold.
 
 Two files come out of this module:
 
-- `golden_applicability.txt`: the complete matrix (20 indicators x 10 series classes).
+- `golden_applicability.txt`: the complete matrix (21 indicators x 10 series classes).
 - `golden_applicability_v0_35.txt`: the part of the matrix that existed in 0.35.0 (17 indicators x
   9 series classes, every indicator except those with a named structure method), computed with
   the eight generic rules only. It was checked against the output of the 0.35.0 tag once; the Rust test
@@ -61,6 +61,7 @@ INDICATORS = {
     "elliott": {"method": "elliott"},
     "wyckoff": {"volume": True, "method": "wyckoff"},
     "gap": {"method": "gap"},
+    "point_and_figure": {"method": "point_and_figure"},
     "pivot_sets": EXTREMES,
 }
 FROZEN_INDICATORS = [i for i in INDICATORS if "method" not in INDICATORS[i]]
@@ -131,6 +132,21 @@ METHOD_TEXT = {
         "Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster Eröffnung liegt keine "
         "Handelspause, und eine Lücke steht nur dort, wo die Reihe unterbrochen ist (Wochenende, "
         "Ausfall der Kursstellung)"),
+    ("point_and_figure", "roll_jumps"): (
+        "Ein Roll-Sprung wird wie eine Kursbewegung in Kästchen gezählt: er verlängert die "
+        "laufende Spalte oder löst eine Umkehr aus, ohne dass sich der Markt bewegt hat"),
+    ("point_and_figure", "back_adjusted"): (
+        "Das Kästchenraster hängt an absoluten Preisen: die Rückwärtsbereinigung verschiebt "
+        "frühere Kurse additiv gegen das Raster, mit jedem Kontraktwechsel erneut, sodass sich "
+        "frühere Spalten ändern können und auf nie gehandelten Preisen liegen"),
+    ("point_and_figure", "adjusted"): (
+        "Die Bereinigung skaliert frühere Kurse proportional: eine feste Kästchengröße "
+        "entspricht vor dem Stichtag einem anderen gehandelten Betrag als danach, und die "
+        "Spalten liegen auf nie gehandelten Preisen"),
+    ("point_and_figure", "broker"): (
+        "Die Kurse, aus denen die Spalten entstehen, sind Quotes des Anbieters: bei einem "
+        "anderen Anbieter liegen sie anders zum Kästchenraster und können andere Spalten und "
+        "eine andere Zählung ergeben"),
 }
 # Which properties each method reads (Wyckoff has no rule for adjusted prices or finite life;
 # only the gaps read the session).
@@ -138,6 +154,7 @@ METHOD_PROPERTIES = {
     "elliott": ["roll_jumps", "back_adjusted", "adjusted", "broker", "finite"],
     "wyckoff": ["roll_jumps", "back_adjusted", "broker"],
     "gap": ["roll_jumps", "back_adjusted", "adjusted", "broker", "continuous"],
+    "point_and_figure": ["roll_jumps", "back_adjusted", "adjusted", "broker"],
 }
 
 
@@ -197,7 +214,7 @@ def render(header, rows):
 
 def build():
     header = [
-        "golden_applicability: verdict of every (indicator, series class) pair, all 20 x 10.",
+        "golden_applicability: verdict of every (indicator, series class) pair, all 21 x 10.",
         "",
         "Derived by reference/kestrel_reference/fixtures/applicability.py from the documented",
         "rules, not from the Rust code. Line: indicator<TAB>class<TAB>verdict<TAB>explanations.",

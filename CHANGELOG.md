@@ -12,8 +12,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 ### Breaking
 
 - **Applicability:** `ApplicabilityReason` gains `StructureContinuousSession` and
-  `StructureMethod` gains `PriceGaps`, so exhaustive `match` expressions over them need the new
-  arms. `method_rule_catalog` returns 13 rules instead of 8.
+  `StructureMethod` gains `PriceGaps` and `PointAndFigure`, so exhaustive `match` expressions
+  over them need the new arms. `method_rule_catalog` returns 17 rules instead of 8.
 
 ### Added
 
@@ -22,6 +22,15 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   previous bar, the filled fraction of every open gap and the closing with the bars it took.
   `data_requirements("gap")` names the series properties that limit the result. The catalog
   grows from 133 to 134 entries.
+- **Point and figure:** `point_and_figure` (re-exported at the crate root, with `PnfChart`,
+  `PnfColumn`, `PnfDirection`, `PnfChange` and `HorizontalCount`) builds the columns of X and O
+  from a price sequence, a box size and a reversal in boxes; `PnfChart::horizontal_count` returns
+  the count between two columns with its count line, effect and targets. A box is filled when
+  the price reaches its grid line, so a reversal needs the full number of boxes.
+- **Point and figure:** the new indicator `point_and_figure` (alias `pnf`; `box_size`,
+  `reversal`, `method`; defaults 1, 3, `close`) feeds the chart from closes or from highs and
+  lows and reports the current column on every bar (`column`, `top`, `bottom`, `boxes`), with the
+  alerts `pnf_new_x_column` and `pnf_new_o_column`. The catalog grows from 134 to 135 entries.
 
 ## [0.40.0] - 2026-11-10
 

@@ -36,6 +36,7 @@ Python 3.10 or newer; nothing else.
 | `golden_revaluation_diff` | `kestrel_reference/fixtures/revaluation_diff.py` |
 | `golden_sample_stats` | `kestrel_reference/fixtures/sample_stats.py` |
 | `golden_changepoint` | `kestrel_reference/fixtures/changepoint.py` |
+| `golden_point_and_figure` | `kestrel_reference/fixtures/point_and_figure.py` |
 | `golden_cross_asset_alignment` | `kestrel_reference/fixtures/cross_asset_alignment.py` |
 | `golden_forward` | `kestrel_reference/fixtures/forward.py` |
 | `golden_deflated_sharpe` | `kestrel_reference/fixtures/deflated_sharpe.py` |

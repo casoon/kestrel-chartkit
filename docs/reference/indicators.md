@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 134 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 135 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1253,6 +1253,20 @@ Price gap between consecutive bars: the open beyond the previous bar's range or 
 | `atr_len` | 14 | whole number 1 – 10000 | bars of the Wilder ATR the gap size is measured in |
 | `min_atr` | 0 | 0 – 1000 | smallest gap that counts, in ATR of the previous bar; 0 counts every gap |
 | `max_bars` | 100 | whole number 1 – 10000 | bars after its own on which a gap is followed; a gap still open then is dropped |
+
+### `point_and_figure` · alias `pnf`
+
+Point-and-figure chart: columns of X and O from a box size and a reversal in boxes; the current column with its number, direction and boxes on every bar
+
+[See it in the showcase](../../../showcase/point_and_figure/)
+
+**Output** unit Unitless, range not declared · **warmup** 1 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `box_size` | 1 | 0.000000001 – 1000000000 | price distance of one box; to be set to the price level of the series |
+| `reversal` | 3 | whole number 1 – 1000 | boxes the price must turn by to open a new column |
+| `method` | `close` | `close`, `high_low` (f64 map: 0 – 1) | prices that build the chart: the close, or high and low read in the direction of the column first |
 
 ### `market_structure_breaks` · alias `bos`, `choch`
 

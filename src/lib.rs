@@ -59,6 +59,8 @@ pub mod option;
 /// Reference-parity fixture harness: standardized reference-value comparison with timestamp
 /// alignment, warmup handling, tolerances, MTF boundaries, and explicit missing values.
 pub mod parity;
+/// Point-and-figure charts: columns of X and O from a price sequence, and the horizontal count.
+pub mod point_and_figure;
 /// Provider-neutral portfolio exposure, cashflow-adjusted equity returns, and risk analytics.
 pub mod portfolio;
 /// Market-regime classification.
@@ -156,6 +158,9 @@ pub use option::{
 };
 pub use parity::{
     ParityFixture, ParityFixtureError, ParityFixtureRow, ParityOutcome, ParityReport,
+};
+pub use point_and_figure::{
+    point_and_figure, HorizontalCount, PnfChange, PnfChart, PnfColumn, PnfDirection,
 };
 pub use portfolio::{
     calculate_return_metrics, cashflow_adjusted_return, compute_drawdown, evaluate_portfolio,
