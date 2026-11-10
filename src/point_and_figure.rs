@@ -46,6 +46,10 @@
 //!
 //! Decisions of this crate where the method is practised in more than one way:
 //!
+//! - **A box is filled once the price has reached its line** (`floor` for rising, `ceil` for
+//!   falling prices). This reading makes a reversal cover the full reversal distance and makes
+//!   rising and falling charts mirror images; it is this crate's convention and has not been
+//!   checked against a source.
 //! - **Box size and reversal** are free parameters; the literature gives scales by price level
 //!   and by purpose, not one value. The count below is proportional to both.
 //! - **One price or high and low.** Both are in use. A sequence of single prices (closes) needs
