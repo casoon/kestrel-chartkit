@@ -1,4 +1,4 @@
-# golden_applicability: verdict of every (indicator, series class) pair, all 19 x 10.
+# golden_applicability: verdict of every (indicator, series class) pair, all 21 x 10.
 #
 # Derived by reference/kestrel_reference/fixtures/applicability.py from the documented
 # rules, not from the Rust code. Line: indicator<TAB>class<TAB>verdict<TAB>explanations.
@@ -182,6 +182,26 @@ wyckoff	stock-adjusted	applicable
 wyckoff	stock-thin	applicable	
 wyckoff	commodity-chained	limited	Ein Roll-Sprung verschiebt die Kurse gegen die bereits gesetzten Spannengrenzen und weitet die ATR, in der jede Distanz gemessen wird, und der Umsatz wechselt mit dem Kontrakt: Climax-Test und Sign of Strength messen an einer Umsatzschwelle aus Bars verschiedener Kontrakte
 wyckoff	synthetic	applicable	
+gap	index-cash	applicable	
+gap	index-future	applicable	
+gap	future-single	applicable	
+gap	future-continuous	limited	Die Rückwärtsbereinigung verschiebt frühere Kurse additiv: Abstände und damit die Größe früherer Lücken bleiben erhalten, ihre Ränder liegen auf nie gehandelten Preisen; ob an der Roll-Grenze eine Lücke steht, hängt daran, welche Kurse der beiden Kontrakte die Bereinigung angleicht
+gap	cfd-broker	limited	Eröffnung, Hoch und Tief sind Quotes des Anbieters: ob zwischen zwei Bars eine Lücke steht und wie groß sie ist, hängt an dessen Kursstellung und Handelszeiten und gilt nicht am gehandelten Markt || Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster Eröffnung liegt keine Handelspause, und eine Lücke steht nur dort, wo die Reihe unterbrochen ist (Wochenende, Ausfall der Kursstellung)
+gap	fx-spot	limited	Eröffnung, Hoch und Tief sind Quotes des Anbieters: ob zwischen zwei Bars eine Lücke steht und wie groß sie ist, hängt an dessen Kursstellung und Handelszeiten und gilt nicht am gehandelten Markt || Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster Eröffnung liegt keine Handelspause, und eine Lücke steht nur dort, wo die Reihe unterbrochen ist (Wochenende, Ausfall der Kursstellung)
+gap	stock-adjusted	limited	Die Bereinigung skaliert frühere Kurse proportional: Ränder und absolute Größe früherer Lücken stehen an anderen Zahlen als gehandelt, und der Kurssprung am Stichtag, den die Bereinigung herausnimmt, steht nicht als Lücke in der Reihe
+gap	stock-thin	applicable	
+gap	commodity-chained	limited	Ein Kontraktwechsel steht als Kurssprung zwischen zwei Bars in der Reihe und wird als Kurslücke gemeldet, ohne dass sich der Markt bewegt hat
+gap	synthetic	limited	Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster Eröffnung liegt keine Handelspause, und eine Lücke steht nur dort, wo die Reihe unterbrochen ist (Wochenende, Ausfall der Kursstellung)
+point_and_figure	index-cash	applicable	
+point_and_figure	index-future	applicable	
+point_and_figure	future-single	applicable	
+point_and_figure	future-continuous	limited	Das Kästchenraster hängt an absoluten Preisen: die Rückwärtsbereinigung verschiebt frühere Kurse additiv gegen das Raster, mit jedem Kontraktwechsel erneut, sodass sich frühere Spalten ändern können und auf nie gehandelten Preisen liegen
+point_and_figure	cfd-broker	limited	Die Kurse, aus denen die Spalten entstehen, sind Quotes des Anbieters: bei einem anderen Anbieter liegen sie anders zum Kästchenraster und können andere Spalten und eine andere Zählung ergeben
+point_and_figure	fx-spot	limited	Die Kurse, aus denen die Spalten entstehen, sind Quotes des Anbieters: bei einem anderen Anbieter liegen sie anders zum Kästchenraster und können andere Spalten und eine andere Zählung ergeben
+point_and_figure	stock-adjusted	limited	Die Bereinigung skaliert frühere Kurse proportional: eine feste Kästchengröße entspricht vor dem Stichtag einem anderen gehandelten Betrag als danach, und die Spalten liegen auf nie gehandelten Preisen
+point_and_figure	stock-thin	applicable	
+point_and_figure	commodity-chained	limited	Ein Roll-Sprung wird wie eine Kursbewegung in Kästchen gezählt: er verlängert die laufende Spalte oder löst eine Umkehr aus, ohne dass sich der Markt bewegt hat
+point_and_figure	synthetic	applicable	
 pivot_sets	index-cash	applicable	
 pivot_sets	index-future	applicable	
 pivot_sets	future-single	applicable	

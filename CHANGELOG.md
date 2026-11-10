@@ -13,6 +13,9 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 - **Applicability:** `ApplicabilityReason` has two new variants (`PairPriceAdjustmentDiffers`,
   `PairSessionDiffers`), so exhaustive `match` expressions over it need an update.
+- **Applicability:** `ApplicabilityReason` gains `StructureContinuousSession` and
+  `StructureMethod` gains `PriceGaps` and `PointAndFigure`, so exhaustive `match` expressions
+  over them need the new arms. `method_rule_catalog` returns 17 rules instead of 8.
 
 ### Added
 
@@ -22,11 +25,25 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   the conditions of the pivot sequence in the order they are tested, per structure the variants,
   rules and guidelines with their identifiers, sentences and origin, and the threshold constants,
   among them the new `EXTENDED_WAVE_MIN_RATIO` of `identify_extended_wave`. Details: [Elliott rules](https://casoon.github.io/kestrel-chartkit/docs/reference/elliott-rules/).
+- **Gap:** the new detector `gap` (`reference`, `atr_len`, `min_atr`, `max_bars`; defaults
+  `range`, 14, 0, 100) reports price gaps between consecutive bars: edges, size in ATR of the
+  previous bar, the filled fraction of every open gap and the closing with the bars it took.
+  `data_requirements("gap")` names the series properties that limit the result. The catalog
+  grows from 133 to 134 entries.
 - **Options:** `option_expiry_result` gives the result of a call or put at expiry for the bought
   or sold side with premium and contract size (`OptionExpiryPosition`), `option_expiry_profile`
   its break-even, largest profit and largest loss (`PayoffBound`: `Limited` or `Unlimited`), and
   `option_expiry_series` the result over a price grid. Details:
   [Options at expiry](https://casoon.github.io/kestrel-chartkit/docs/reference/api/#options-at-expiry).
+- **Point and figure:** `point_and_figure` (re-exported at the crate root, with `PnfChart`,
+  `PnfColumn`, `PnfDirection`, `PnfChange` and `HorizontalCount`) builds the columns of X and O
+  from a price sequence, a box size and a reversal in boxes; `PnfChart::horizontal_count` returns
+  the count between two columns with its count line, effect and targets. A box is filled when
+  the price reaches its grid line, so a reversal needs the full number of boxes.
+- **Point and figure:** the new indicator `point_and_figure` (alias `pnf`; `box_size`,
+  `reversal`, `method`; defaults 1, 3, `close`) feeds the chart from closes or from highs and
+  lows and reports the current column on every bar (`column`, `top`, `bottom`, `boxes`), with the
+  alerts `pnf_new_x_column` and `pnf_new_o_column`. The catalog grows from 134 to 135 entries.
 - **Two-series indicators:** `relative_strength` and the new `correlation` are built by name with
   `build_pair_checked`, listed by `pair_catalog()` and run with `run_pair_batch`, which pairs two
   bar series by timestamp. `catalog()` and `build_checked` are unchanged. Details:

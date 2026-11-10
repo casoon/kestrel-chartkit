@@ -3,8 +3,9 @@
 //! The reference derives each verdict from the documented rules and the declared properties of
 //! ten series classes (the classes a learning site publishes a matrix for). Two fixtures:
 //!
-//! - `golden_applicability.txt` is the complete matrix, 19 indicators x 10 classes, including the
-//!   named requirements of `elliott` and `wyckoff` and the single-contract class.
+//! - `golden_applicability.txt` is the complete matrix, 21 indicators x 10 classes, including the
+//!   named requirements of `elliott`, `wyckoff`, `gap` and `point_and_figure` and the
+//!   single-contract class.
 //! - `golden_applicability_v0_35.txt` is what 0.35.0 produced for the 17 other indicators on the 9
 //!   classes that existed then. Those rows must not change when rules for other indicators or
 //!   classes are added.
@@ -24,7 +25,7 @@ const FULL: &str = include_str!("fixtures/golden_applicability.txt");
 const FROZEN: &str = include_str!("fixtures/golden_applicability_v0_35.txt");
 const PAIRS: &str = include_str!("fixtures/golden_applicability_pairs.txt");
 
-const INDICATORS: [&str; 19] = [
+const INDICATORS: [&str; 21] = [
     "rsi",
     "macd",
     "atr",
@@ -43,6 +44,8 @@ const INDICATORS: [&str; 19] = [
     "zigzag",
     "elliott",
     "wyckoff",
+    "gap",
+    "point_and_figure",
     "pivot_sets",
 ];
 
@@ -176,7 +179,7 @@ fn class_ids() -> Vec<&'static str> {
 fn matrix_matches_reference_for_all_indicators_and_classes() {
     let actual = lines(&INDICATORS, &class_ids());
     let expected = fixture_lines(FULL);
-    assert_eq!(actual.len(), 190);
+    assert_eq!(actual.len(), 210);
     assert_eq!(actual.len(), expected.len());
     for (a, e) in actual.iter().zip(&expected) {
         assert_eq!(a, e);
@@ -188,7 +191,7 @@ fn unchanged_indicators_keep_their_v0_35_rows() {
     let indicators: Vec<&str> = INDICATORS
         .iter()
         .copied()
-        .filter(|name| !matches!(*name, "elliott" | "wyckoff"))
+        .filter(|name| !matches!(*name, "elliott" | "wyckoff" | "gap" | "point_and_figure"))
         .collect();
     let class_ids: Vec<&str> = class_ids()
         .into_iter()
@@ -210,7 +213,7 @@ fn new_single_contract_class_leaves_the_generic_indicators_as_for_index_future()
     let generic: Vec<&str> = INDICATORS
         .iter()
         .copied()
-        .filter(|name| !matches!(*name, "elliott" | "wyckoff"))
+        .filter(|name| !matches!(*name, "elliott" | "wyckoff" | "gap" | "point_and_figure"))
         .collect();
     let single = lines(&generic, &["future-single"]);
     let index = lines(&generic, &["index-future"]);

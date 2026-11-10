@@ -35,6 +35,8 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage::full("liquidity_fvg"),
+    Coverage::full("gap"),
+    Coverage::full("point_and_figure"),
     Coverage::full("market_structure_breaks"),
     Coverage::full("pivots_structure"),
     Coverage::full("zigzag"),
@@ -121,6 +123,83 @@ fn liquidity_fvg_rejects_invalid_configuration() {
     assert_rejected("liquidity_fvg", &[("lookback", 2.5)]);
     assert_rejected("liquidity_fvg", &[("lookback", f64::NAN)]);
     assert_rejected("liquidity_fvg", &[("look_back", 20.0)]);
+}
+
+// --- gap -------------------------------------------------------------------------------------
+
+#[test]
+fn gap_defaults() {
+    holds("gap_defaults", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_close_reference() {
+    holds("gap_close_reference", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_horizon() {
+    holds("gap_horizon", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_flat() {
+    holds("gap_flat", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_walk() {
+    holds("gap_walk", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_rejects_invalid_configuration() {
+    assert_rejected("gap", &[("reference", 2.0)]);
+    assert_rejected("gap", &[("reference", 0.5)]);
+    assert_rejected("gap", &[("atr_len", 0.0)]);
+    assert_rejected("gap", &[("min_atr", -0.1)]);
+    assert_rejected("gap", &[("max_bars", 0.0)]);
+    assert_rejected("gap", &[("lookback", 20.0)]);
+}
+
+// --- point_and_figure ------------------------------------------------------------------------
+
+#[test]
+fn point_and_figure_defaults() {
+    holds(
+        "point_and_figure_defaults",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_high_low() {
+    holds(
+        "point_and_figure_high_low",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_fine_grid() {
+    holds(
+        "point_and_figure_fine_grid",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_rejects_invalid_configuration() {
+    assert_rejected("point_and_figure", &[("box_size", 0.0)]);
+    assert_rejected("point_and_figure", &[("box_size", -1.0)]);
+    assert_rejected("point_and_figure", &[("box_size", f64::NAN)]);
+    assert_rejected("point_and_figure", &[("reversal", 0.0)]);
+    assert_rejected("point_and_figure", &[("reversal", 2.5)]);
+    assert_rejected("point_and_figure", &[("method", 2.0)]);
+    assert_rejected("point_and_figure", &[("box", 1.0)]);
 }
 
 // --- market_structure_breaks -----------------------------------------------------------------

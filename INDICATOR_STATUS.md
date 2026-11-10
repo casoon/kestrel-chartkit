@@ -146,6 +146,7 @@ is complete.
 |---|---|
 | bos_choch | ✅ |
 | candle_classification | ✅ |
+| gap | ❌ |
 | liquidity_fvg | ✅ |
 | liquidity_pools | ✅ |
 | liquidity_sweeps | ✅ |
@@ -153,6 +154,7 @@ is complete.
 | order_block | ✅ |
 | pivot_sets | ✅ |
 | pivots_structure | ✅ |
+| point_and_figure | ❌ |
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
@@ -189,5 +191,5 @@ part of the total below.
 
 ---
 
-**Total: 132/133 verified** — the same 133 names `catalog()` returns: 97 indicators (the first
-five groups), 4 composite scores and 32 structure/pattern detectors.
+**Total: 133/135 verified** — the same 135 names `catalog()` returns: 97 indicators (the first
+five groups), 4 composite scores and 34 structure/pattern detectors.
