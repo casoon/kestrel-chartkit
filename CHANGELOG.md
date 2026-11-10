@@ -29,8 +29,9 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   of the window; the range is set once the counter-move after it is confirmed.
 - **Wyckoff:** the output carries the calculation in `extra`: `range_high`, `range_low`, `bias`,
   `range_source`, `atr`, `volume_threshold`, `climax`, `cause_score`, and `event_<kind>` with the
-  number of bars the event lies back. `extra["atr"]` equals `extra["raw"]` of the `atr`
-  indicator; the `value` of `atr` is that number in percent of the close.
+  number of bars the event lies back. `volume_threshold` is absent while there is no threshold.
+  `extra["atr"]` equals `extra["raw"]` of the `atr` indicator; the `value` of `atr` is that
+  number in percent of the close.
 - **Wyckoff:** every threshold is a parameter: `atr_len`, `volume_k`, `climax_range_atr`,
   `st_atr`, `breakout_volume`, `lps_atr` and `abandon_atr` join the three existing ones.
   `WyckoffParams`, `WyckoffStateMachine::with_params`, `params()` and `range()` expose them on
@@ -52,9 +53,12 @@ Output values of `wyckoff` change on every series, hence a minor version.
   pullback that turns.
 - **Wyckoff:** Phase E ends when price closes back inside the range or a new range is set, no
   longer by the width of the window. A range in Phases A to C is abandoned by a close more than
-  `abandon_atr` ATR outside it.
-- **Wyckoff:** a series without volume finds no climax and, with the defaults, no Sign of
-  Strength: it reaches Phase C at most.
+  `abandon_atr` ATR outside it. A bar that reports an event, changes the phase or abandons a
+  range never sets a range; the search for the next one starts with the bar after it.
+- **Wyckoff:** without dispersion there is no volume outlier: while the MAD of the window is
+  zero (more than half of its volumes are the same value) no bar is a climax bar or a Sign of
+  Strength/Weakness, however high its volume. A series without volume, or with a constant one,
+  therefore finds no climax and, with the defaults, reaches Phase C at most.
 - **Contributors:** the `wyckoff` contract cases are replaced by the textbook accumulation, its
   mirror image, a failed breakout, a full cycle, a range without a climax, a series without
   volume and a random walk (`reference/kestrel_reference/fixtures/contract_structure.py`).

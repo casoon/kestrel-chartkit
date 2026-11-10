@@ -20,6 +20,7 @@
 //! atr       = Wilder average of the true range over atr_len bars
 //! window    = the last range_lookback bars, the current one included
 //! threshold = median(volume in window) + volume_k * 1.4826 * MAD(volume in window)
+//!             none while MAD = 0: without dispersion no volume is an outlier
 //! spread    = high - low
 //!
 //! selling climax bar:  spread >= climax_range_atr * atr     (a wide bar)
@@ -28,7 +29,10 @@
 //!                      and low <= lowest low of the window  (it ends a decline)
 //! ```
 //!
-//! **Setting the range.** Searched while no range is in play (no range yet, or Phase E):
+//! **Setting the range.** Searched only on a bar that began without a range or in Phase E and
+//! that the rules of that phase left there. A bar that reports an event, changes the phase or
+//! abandons a range therefore never sets a range or marks a climax as pending; the search starts
+//! with the bar after it.
 //!
 //! ```text
 //! a selling climax bar s becomes the pending climax (it replaces an earlier one)
@@ -90,7 +94,7 @@
 //! | key | present | meaning |
 //! |---|---|---|
 //! | `atr` | always | the ATR of the calculation, in price units (the registry `atr` reports the same number as `extra["raw"]`; its `value` is that ATR in percent of the close) |
-//! | `volume_threshold` | always | the volume a bar must exceed to count as an outlier |
+//! | `volume_threshold` | while the volumes of the window vary (MAD > 0) | the volume a bar must exceed to count as an outlier. Absent while there is no threshold: no bar is an outlier then |
 //! | `climax` | always | the climax bar test on this bar alone: -1 selling climax bar, 1 buying climax bar, 0 neither. Whether such a bar becomes the climax of a range depends on what follows |
 //! | `bias` | always | 1 accumulation, -1 distribution, 0 open or no range |
 //! | `range_source` | always | 0 no range, 1 set by climax and counter-move, 2 set by the width fallback |
@@ -103,12 +107,17 @@
 //! bars they lie on. Every other event lies on the bar that reports it. Each reported event also
 //! raises the alert `wyckoff_<kind>`.
 //!
-//! # Series without volume
+//! # Series without volume, or without dispersion in it
 //!
-//! When every volume of the window is the same (zero included), no bar exceeds the threshold: no
-//! climax is found, so a range can only be set by the width fallback with an open bias, and a Sign
-//! of Strength or Weakness needs `breakout_volume = off`. With the defaults such a series runs to
-//! Phase C at most.
+//! Without dispersion there is no outlier. The MAD of the window is zero when more than half of
+//! its volumes are one and the same value: a series without volume (all zero), a constant volume,
+//! but also mostly identical values with a few different ones. On such a bar there is no
+//! threshold, however high the bar's own volume is: it is no climax bar, no Preliminary
+//! Support/Supply is found from it, and it is no Sign of Strength or Weakness unless
+//! `breakout_volume = off`. `volume_threshold` is absent from `extra` on these bars.
+//!
+//! A series that never has dispersion finds no climax, so a range can only be set by the width
+//! fallback with an open bias; with the defaults it runs to Phase C at most.
 
 use std::collections::{HashMap, VecDeque};
 
@@ -378,7 +387,8 @@ pub struct WyckoffParams {
     /// Bars of the Wilder ATR every distance is measured in. Default 14, Wilder's own length.
     pub atr_len: usize,
     /// Volume outlier: scaled MADs above the window median. Default 2, two robust standard
-    /// deviations.
+    /// deviations. While the MAD is zero (more than half of the window's volumes are the same
+    /// value) no volume is an outlier.
     pub volume_k: f64,
     /// Climax bar: the smallest high-low spread, in ATR. Default 1.5.
     pub climax_range_atr: f64,
@@ -915,7 +925,11 @@ impl Indicator for WyckoffStateMachine {
             return None;
         }
         let atr = atr.filter(|a| *a > 0.0)?;
-        let threshold = volume_band?.upper;
+        // Without dispersion there is no threshold: nothing exceeds infinity.
+        let threshold = match volume_band? {
+            band if band.mad > 0.0 => band.upper,
+            _ => f64::INFINITY,
+        };
         let prev_close = prev_close.unwrap_or(bar.close);
 
         let window_high = self.bars.iter().map(|b| b.high).fold(f64::MIN, f64::max);
@@ -925,6 +939,7 @@ impl Indicator for WyckoffStateMachine {
         if !matches!(self.phase, WyckoffPhase::Undefined | WyckoffPhase::E) {
             self.bars_in_range += 1;
         }
+        let started_in = self.phase;
         match self.phase {
             WyckoffPhase::A | WyckoffPhase::B => self.step_building(bar, atr),
             WyckoffPhase::C => self.step_tested(bar, atr, threshold),
@@ -932,7 +947,10 @@ impl Indicator for WyckoffStateMachine {
             WyckoffPhase::E => self.step_trend(bar),
             WyckoffPhase::Undefined => {}
         }
-        if matches!(self.phase, WyckoffPhase::Undefined | WyckoffPhase::E) {
+        // The search runs only on a bar that began with no range in play and stayed so: a bar
+        // that reported an event, changed the phase or abandoned a range sets no range.
+        let free = matches!(started_in, WyckoffPhase::Undefined | WyckoffPhase::E);
+        if free && self.phase == started_in {
             self.search(bar, atr, threshold, climax, window_high, window_low);
         } else {
             self.pending = None;
@@ -940,7 +958,9 @@ impl Indicator for WyckoffStateMachine {
 
         let mut extra = HashMap::new();
         extra.insert("atr".to_string(), atr);
-        extra.insert("volume_threshold".to_string(), threshold);
+        if threshold.is_finite() {
+            extra.insert("volume_threshold".to_string(), threshold);
+        }
         extra.insert(
             "climax".to_string(),
             // A selling climax bar (the accumulation side) is the falling one.
@@ -983,7 +1003,7 @@ pub const WYCKOFF_DEFINITION: super::definition::IndicatorDefinition = super::de
         super::definition::ParamSpec::number("range_atr_max", 3.0, 0.1, 1000.0).meaning("width fallback: widest window, in ATR, that is set as a range while no climax is pending"),
         super::definition::ParamSpec::count("min_range_bars", 6, 2, 10000).meaning("bars a range must exist before a Spring or UTAD counts"),
         super::definition::ParamSpec::count("atr_len", 14, 1, 10000).meaning("bars of the Wilder ATR every distance is measured in"),
-        super::definition::ParamSpec::number("volume_k", 2.0, 0.0, 100.0).meaning("volume outlier: scaled MADs above the window median"),
+        super::definition::ParamSpec::number("volume_k", 2.0, 0.0, 100.0).meaning("volume outlier: scaled MADs above the window median; no outlier while the MAD is zero"),
         super::definition::ParamSpec::number("climax_range_atr", 1.5, 0.1, 100.0).meaning("climax bar: smallest high-low spread, in ATR"),
         super::definition::ParamSpec::number("st_atr", 0.25, 0.0, 100.0).meaning("Secondary Test: largest distance of the bar's extreme from the boundary, in ATR"),
         super::definition::ParamSpec::choice("breakout_volume", "on", &["off", "on"], true).meaning("whether a Sign of Strength/Weakness needs a volume outlier"),
@@ -1089,8 +1109,8 @@ mod tests {
         assert_eq!(out.extra["cause_score"], 0.0);
         assert!((out.extra["range_low"] - 98.5).abs() < 1e-9);
         assert!((out.extra["range_high"] - 101.5).abs() < 1e-9);
-        // Constant volume: the threshold is the volume itself, and no bar exceeds it.
-        assert_eq!(out.extra["volume_threshold"], 100.0);
+        // Constant volume: no dispersion, so there is no threshold.
+        assert!(!out.extra.contains_key("volume_threshold"));
     }
 
     #[test]
@@ -1209,19 +1229,84 @@ mod tests {
         assert!((out.extra["cause_score"] - 30.0).abs() < 1e-9);
     }
 
-    /// With the default the same close above the range is no Sign of Strength: the volume is
-    /// the constant 100, not an outlier.
+    /// With the default the same close above the range needs a volume outlier, and without
+    /// dispersion there is none: against a constant 100 neither 101 nor 300 is one, and
+    /// `volume_threshold` is absent.
+    #[test]
+    fn test_no_volume_outlier_without_dispersion() {
+        for breakout_volume in [100.0, 101.0, 300.0] {
+            let mut machine = machine_in_quiet_range(WyckoffParams::default());
+            machine.on_bar(&bar(26, 99.5, 100.0, 97.5, 99.6));
+            let out = machine
+                .on_bar(&Bar::new(
+                    27 * 60,
+                    99.6,
+                    102.6,
+                    99.5,
+                    102.4,
+                    breakout_volume,
+                ))
+                .unwrap();
+            assert_eq!(machine.phase(), WyckoffPhase::C, "{breakout_volume}");
+            assert!(!out.extra.contains_key("volume_threshold"));
+            assert_eq!(out.extra["climax"], 0.0);
+        }
+    }
+
+    /// On volumes that vary (90, 100, 110, 100 in turn: median 100, scaled MAD 7.4, threshold
+    /// about 114.8) a close above the range on 300 is the Sign of Strength, one on 110 is not.
     #[test]
     fn test_sign_of_strength_needs_a_volume_outlier_by_default() {
-        let mut machine = machine_in_quiet_range(WyckoffParams::default());
-        machine.on_bar(&bar(26, 99.5, 100.0, 97.5, 99.6));
-        machine.on_bar(&bar(27, 99.6, 102.6, 99.5, 102.4));
-        assert_eq!(machine.phase(), WyckoffPhase::C);
+        let run = |breakout_volume: f64| {
+            let mut machine = WyckoffStateMachine::with_defaults();
+            for (i, mut bar) in range_bars(26, 100.0, 2.0, 100.0).into_iter().enumerate() {
+                bar.volume = [90.0, 100.0, 110.0, 100.0][i % 4];
+                machine.on_bar(&bar);
+            }
+            machine.on_bar(&bar(26, 99.5, 100.0, 97.5, 99.6));
+            let out = machine
+                .on_bar(&Bar::new(
+                    27 * 60,
+                    99.6,
+                    102.6,
+                    99.5,
+                    102.4,
+                    breakout_volume,
+                ))
+                .unwrap();
+            (machine.phase(), out.extra["volume_threshold"])
+        };
+        let (phase, threshold) = run(300.0);
+        assert_eq!(phase, WyckoffPhase::D);
+        assert!((threshold - 114.826).abs() < 1e-3, "{threshold}");
+        assert_eq!(run(110.0).0, WyckoffPhase::C);
+    }
 
-        let mut machine = machine_in_quiet_range(WyckoffParams::default());
-        machine.on_bar(&bar(26, 99.5, 100.0, 97.5, 99.6));
-        machine.on_bar(&Bar::new(27 * 60, 99.6, 102.6, 99.5, 102.4, 300.0));
-        assert_eq!(machine.phase(), WyckoffPhase::D);
+    /// A bar that abandons a range sets none: the width fallback would apply on the very bar
+    /// (a narrow range, `abandon_atr` small enough for a close just outside), but the search
+    /// starts with the next bar.
+    #[test]
+    fn test_abandoning_bar_sets_no_range() {
+        let params = WyckoffParams {
+            abandon_atr: 0.1,
+            ..WyckoffParams::default()
+        };
+        let mut machine = machine_in_quiet_range(params);
+        // Closes 0.3 above the range high of 101.5; the window is still under 3 ATR wide.
+        let out = machine
+            .on_bar(&bar(26, 100.9, 101.9, 100.8, 101.8))
+            .unwrap();
+        assert_eq!(out.value, 0.0);
+        assert_eq!(out.extra["range_source"], 0.0);
+        assert!(machine.range().is_none());
+        // The next bar, back inside: the fallback sets the new range from the window.
+        let out = machine
+            .on_bar(&bar(27, 101.0, 101.4, 100.6, 101.0))
+            .unwrap();
+        assert_eq!(out.value, 1.0);
+        assert_eq!(out.extra["range_source"], 2.0);
+        assert!((out.extra["range_high"] - 101.9).abs() < 1e-9);
+        assert_eq!(out.extra["cause_score"], 0.0);
     }
 
     #[test]
@@ -1272,6 +1357,7 @@ mod tests {
             assert!([-1.0, 0.0, 1.0].contains(&out.extra["bias"]));
             assert!([-1.0, 0.0, 1.0].contains(&out.extra["climax"]));
             assert!(out.extra["atr"] > 0.0);
+            assert!(out.extra["volume_threshold"].is_finite());
             if in_range {
                 assert!(out.extra["range_high"] > out.extra["range_low"]);
                 assert_eq!(machine.range().unwrap().high, out.extra["range_high"]);

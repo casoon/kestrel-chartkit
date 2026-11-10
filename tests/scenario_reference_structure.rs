@@ -1165,6 +1165,9 @@ fn test_scenario_wyckoff_mirror_symmetry() {
         "wyckoff_cycle",
         "wyckoff_fallback_spring",
         "wyckoff_no_volume",
+        "wyckoff_no_dispersion",
+        "wyckoff_fallback_carried",
+        "wyckoff_lps_then_new_range",
         "wyckoff_random_walk",
         "wyckoff_pullback_too_deep",
         "wyckoff_tuned_cycle",
@@ -1332,7 +1335,10 @@ fn test_scenario_wyckoff_without_volume() {
                 out.extra["climax"], 0.0,
                 "bar {i}: no climax without volume"
             );
-            assert_eq!(out.extra["volume_threshold"], 0.0);
+            assert!(
+                !out.extra.contains_key("volume_threshold"),
+                "bar {i}: no dispersion, no threshold"
+            );
         }
         if i == 19 {
             let range = machine.range().expect("set on the first full window");
@@ -1381,6 +1387,138 @@ fn test_scenario_wyckoff_without_volume() {
             "wyckoff_lastpointofsupport"
         ]
     );
+}
+
+/// Without dispersion there is no volume outlier. From bar 24 on every bar of this series trades
+/// 100, so on bar 35 (the close above the range, on 101) the window holds 15 bars of 100 among
+/// its 20: the MAD is zero. A threshold on the median would call 101 an outlier; here the bar is
+/// no Sign of Strength, `volume_threshold` is absent, and the output stays at Phase C until the
+/// range is abandoned. On volumes that keep varying, the same prices with 300 on that bar run on
+/// to Phase E.
+#[test]
+fn test_scenario_wyckoff_without_dispersion_no_volume_is_an_outlier() {
+    let case = wyckoff_case("wyckoff_no_dispersion");
+    assert!(case.bars[24..]
+        .iter()
+        .enumerate()
+        .all(|(k, b)| b.volume == if k == 11 { 101.0 } else { 100.0 }));
+    let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
+    let mut kinds = Vec::new();
+    let mut with_threshold = Vec::new();
+    let mut values = Vec::new();
+    for (i, bar) in case.bars.iter().enumerate() {
+        let out = ind.on_bar(bar);
+        if out
+            .as_ref()
+            .is_some_and(|o| o.extra.contains_key("volume_threshold"))
+        {
+            with_threshold.push(i);
+        }
+        values.push(out.map(|o| o.value));
+        kinds.extend(ind.alerts().into_iter().map(|a| a.kind));
+    }
+    // Bars 19 to 23: at least 10 of the 20 volumes still differ from 100.
+    assert_eq!(with_threshold, [19, 20, 21, 22, 23]);
+    assert_eq!(values[33], Some(3.0), "the Spring");
+    assert_eq!(values[35], Some(3.0), "the close above the range on 101");
+    assert_eq!(values.last(), Some(&Some(0.0)), "abandoned");
+    assert!(!kinds.iter().any(|k| k == "wyckoff_signofstrength"));
+
+    let carried = wyckoff_case("wyckoff_fallback_carried");
+    assert_eq!(carried.bars[35].volume, 300.0);
+    let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
+    let mut last = None;
+    for (i, bar) in carried.bars.iter().enumerate() {
+        let out = ind.on_bar(bar);
+        if let Some(out) = &out {
+            assert!(out.extra.contains_key("volume_threshold"), "bar {i}");
+        }
+        if i == 35 {
+            assert_eq!(out.as_ref().map(|o| o.value), Some(4.0), "Sign of Strength");
+        }
+        last = out.map(|o| o.value).or(last);
+    }
+    assert_eq!(last, Some(5.0));
+}
+
+/// A bar that reports an event or changes the phase sets no range in the same step. On the
+/// textbook series with `range_atr_max = 5.9` the window of bar 57 is 9.0 wide (Spring low 93.4
+/// to the high of 102.4 after the Sign of Strength), 5.81 ATR, so the width fallback applies on
+/// the very bar that turns the pullback. That bar reports the Last Point of Support and Phase E
+/// with the boundaries and the cause of the range it belongs to; the fallback sets the next
+/// range on bar 58, from the same window extremes.
+#[test]
+fn test_scenario_wyckoff_reporting_bar_sets_no_range() {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffEventKind as Kind, WyckoffParams, WyckoffPhase, WyckoffRangeSource,
+        WyckoffStateMachine,
+    };
+
+    for (name, hold, alert, old, new) in [
+        (
+            "wyckoff_lps_then_new_range",
+            Kind::LastPointOfSupport,
+            "wyckoff_lastpointofsupport",
+            (94.0, 100.0),
+            (93.4, 102.4),
+        ),
+        (
+            "wyckoff_lpsy_then_new_range",
+            Kind::LastPointOfSupply,
+            "wyckoff_lastpointofsupply",
+            (100.0, 106.0),
+            (97.6, 106.6),
+        ),
+    ] {
+        let case = wyckoff_case(name);
+        assert_eq!(
+            case.params,
+            HashMap::from([("range_atr_max".to_string(), 5.9)])
+        );
+        let mut machine = WyckoffStateMachine::with_params(WyckoffParams {
+            range_atr_max: 5.9,
+            ..WyckoffParams::default()
+        });
+        let mut outputs = Vec::new();
+        for (i, bar) in case.bars.iter().enumerate() {
+            outputs.push(machine.on_bar(bar));
+            if i == 57 {
+                assert_eq!(machine.phase(), WyckoffPhase::E, "{name}");
+                assert_eq!(machine.events().last().map(|e| e.kind), Some(hold));
+                assert_eq!(
+                    machine.events().len(),
+                    8,
+                    "the events of the range are kept"
+                );
+                assert_eq!(machine.alerts().len(), 1);
+                assert_eq!(machine.alerts()[0].kind, alert);
+                let range = machine.range().unwrap();
+                assert_eq!(range.source, WyckoffRangeSource::Climax);
+            }
+            if i == 58 {
+                assert_eq!(machine.phase(), WyckoffPhase::A, "{name}");
+                assert!(machine.events().is_empty() && machine.alerts().is_empty());
+                assert_eq!(machine.bias(), None);
+                assert_eq!(machine.range().unwrap().source, WyckoffRangeSource::Width);
+            }
+        }
+        let reporting = outputs[57].as_ref().unwrap();
+        assert_eq!(reporting.value, 5.0, "{name}: Phase E on the reporting bar");
+        assert_eq!(reporting.extra["range_source"], 1.0);
+        common::assert_close(reporting.extra["range_low"], old.0, 1e-9, "old range low");
+        common::assert_close(reporting.extra["range_high"], old.1, 1e-9, "old range high");
+        common::assert_close(reporting.extra["cause_score"], 186.0, 1e-9, "its cause");
+        assert_eq!(reporting.extra[&alert.replace("wyckoff_", "event_")], 0.0);
+
+        let next = outputs[58].as_ref().unwrap();
+        assert_eq!(next.value, 1.0, "{name}: the next range, one bar later");
+        assert_eq!(next.extra["range_source"], 2.0);
+        assert_eq!(next.extra["bias"], 0.0);
+        common::assert_close(next.extra["range_low"], new.0, 1e-9, "new range low");
+        common::assert_close(next.extra["range_high"], new.1, 1e-9, "new range high");
+        assert_eq!(next.extra["cause_score"], 0.0);
+        assert!(next.extra.keys().all(|key| !key.starts_with("event_")));
+    }
 }
 
 /// `extra["atr"]` is the ATR the registry `atr` reports as `extra["raw"]`: Wilder's average of
@@ -1492,13 +1630,13 @@ fn test_scenario_wyckoff_random_walks() {
     }
     let count = |kind: &str| alerts.get(kind).copied().unwrap_or(0);
     assert_eq!(state_counts.iter().sum::<usize>(), 20 * 981);
-    assert_eq!(state_counts, [14744, 1418, 927, 2364, 37, 130]);
+    assert_eq!(state_counts, [14747, 1422, 920, 2364, 37, 130]);
     assert_eq!((climax_bars, by_climax, by_width), (228, 21, 235));
     assert_eq!(
         count("wyckoff_sellingclimax") + count("wyckoff_buyingclimax"),
         by_climax
     );
-    assert_eq!(count("wyckoff_secondarytest"), 238);
+    assert_eq!(count("wyckoff_secondarytest"), 235);
     assert_eq!(count("wyckoff_spring") + count("wyckoff_utad"), 149);
     assert_eq!(
         count("wyckoff_signofstrength") + count("wyckoff_signofweakness"),
