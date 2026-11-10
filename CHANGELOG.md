@@ -9,6 +9,56 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Synthetic:** `wyckoff_schematic_bars` returns the full schematic (62 bars at the default
+  lookback: decline, PS, SC, AR, ST, Spring, SOS, LPS) instead of a quiet range with four event
+  bars. The seed only varies the volume of the bars without an event.
+- **Wyckoff:** `WyckoffEventKind` has six new variants (`PreliminarySupport`, `PreliminarySupply`,
+  `SellingClimax`, `BuyingClimax`, `AutomaticRally`, `AutomaticReaction`), so exhaustive `match`
+  expressions over it need an update.
+- **Wyckoff:** `WyckoffStateMachine::bias()` is `None` for a range set by the width fallback until
+  a Spring or UTAD decides it; before, a set range always had a bias.
+- **Wyckoff:** `min_range_bars` now is the number of bars a range must exist before a Spring or
+  UTAD counts. Before, it only delayed the rule that discarded a range; that rule is gone.
+
+### Added
+
+- **Wyckoff:** Preliminary Support/Supply, Selling/Buying Climax and Automatic Rally/Reaction are
+  events, and Phase A is an output value. A climax is a wide bar on outlier volume at the extreme
+  of the window; the range is set once the counter-move after it is confirmed.
+- **Wyckoff:** the output carries the calculation in `extra`: `range_high`, `range_low`, `bias`,
+  `range_source`, `atr`, `volume_threshold`, `climax`, `cause_score`, and `event_<kind>` with the
+  number of bars the event lies back. `extra["atr"]` equals `extra["raw"]` of the `atr`
+  indicator; the `value` of `atr` is that number in percent of the close.
+- **Wyckoff:** every threshold is a parameter: `atr_len`, `volume_k`, `climax_range_atr`,
+  `st_atr`, `breakout_volume`, `lps_atr` and `abandon_atr` join the three existing ones.
+  `WyckoffParams`, `WyckoffStateMachine::with_params`, `params()` and `range()` expose them on
+  the typed API. Details:
+  [indicator reference](https://casoon.github.io/kestrel-chartkit/docs/reference/indicators/#wyckoff).
+
+### Changed
+
+Output values of `wyckoff` change on every series, hence a minor version.
+
+- **Wyckoff:** the range boundaries are the climax extreme and the extreme of the counter-move,
+  and the bias follows from the climax, wherever in the window it lies. The window-width
+  condition (`range_atr_max`) remains as a fallback for ranges without a climax, marked by
+  `range_source` = 2 and an open bias. With the default parameters the textbook schematic runs
+  through Phases A to E.
+- **Wyckoff:** a Secondary Test tests the climax side of the range and needs less volume and a
+  narrower bar than the climax; a Sign of Strength/Weakness needs a volume outlier
+  (`breakout_volume = off` restores the price-only rule); a Last Point of Support/Supply needs a
+  pullback that turns.
+- **Wyckoff:** Phase E ends when price closes back inside the range or a new range is set, no
+  longer by the width of the window. A range in Phases A to C is abandoned by a close more than
+  `abandon_atr` ATR outside it.
+- **Wyckoff:** a series without volume finds no climax and, with the defaults, no Sign of
+  Strength: it reaches Phase C at most.
+- **Contributors:** the `wyckoff` contract cases are replaced by the textbook accumulation, its
+  mirror image, a failed breakout, a full cycle, a range without a climax, a series without
+  volume and a random walk (`reference/kestrel_reference/fixtures/contract_structure.py`).
+
 ## [0.39.1] - 2026-11-10
 
 ### Changed

@@ -66,10 +66,12 @@ pub enum StructureMethod {
     /// (wave 2 against the start of wave 1, wave 4 against the end of wave 1). The swings come
     /// from bar highs and lows; a percent swing threshold is relative to the price level.
     ElliottWaves,
-    /// Wyckoff range analysis (`src/indicator/wyckoff.rs`): the range is the high-low spread of the
-    /// last `range_lookback` bars measured in ATR (true range, so gaps and jumps count); a climax is
-    /// a volume outlier against the median of those bars; Spring and UTAD are a single bar's high
-    /// or low piercing a range boundary while the close returns.
+    /// Wyckoff range analysis (`src/indicator/wyckoff.rs`): every distance is measured in ATR
+    /// (true range, so gaps and jumps count); a climax is a wide bar whose volume is an outlier
+    /// against the median of the last `range_lookback` bars, and the range runs from its extreme
+    /// to the extreme of the counter-move (without a climax: the high-low spread of those bars);
+    /// Spring and UTAD are a single bar's high or low piercing a range boundary while the close
+    /// returns.
     WyckoffRange,
 }
 
@@ -327,8 +329,9 @@ const METHOD_RULES: [MethodRuleDescription; 8] = [
             Verfall; die Zahl der Swings, aus denen höhere Wellengrade gebildet werden, ist \
             dadurch begrenzt",
     },
-    // Wyckoff: range width in ATR (true range), climax as volume outlier against the median of the
-    // window, Spring/UTAD from a single bar's extreme.
+    // Wyckoff: distances in ATR (true range), climax as a wide bar with a volume outlier against
+    // the median of the window, range boundaries from single bars' extremes, Spring/UTAD from a
+    // single bar's extreme.
     MethodRuleDescription {
         method: StructureMethod::WyckoffRange,
         reason: ApplicabilityReason::StructureRollJumps,
@@ -497,8 +500,9 @@ pub fn check_applicability(
 ///
 /// `elliott` and `wyckoff` do not use the generic session/roll/adjustment flags: they carry a
 /// [`StructureMethod`] whose rules ([`method_rule_catalog`]) name what each method reads from the
-/// series. `wyckoff` additionally sets `needs_real_volume`: its climax test is a volume outlier
-/// against the median of the range window, and it has no switch to run without volume.
+/// series. `wyckoff` additionally sets `needs_real_volume`: its climax test, its Secondary Test
+/// and (unless `breakout_volume` is off) its Sign of Strength/Weakness read the volume. Without
+/// volume it finds no climax; only its width fallback then sets a range.
 ///
 /// Names not listed below (including all pure price indicators) return
 /// [`DataRequirements::default()`] — deliberately conservative: `needs_trade_direction` and

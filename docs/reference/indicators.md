@@ -1476,7 +1476,7 @@ BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification 
 
 ### `wyckoff`
 
-Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/UTAD, SOS/SOW/LPS/LPSY, sequence validation and Cause/Quality scoring
+Wyckoff accumulation/distribution state machine: range from climax and counter-move (PS, SC/BC, AR) or from a width fallback, Phases A-E, ST, Spring/UTAD, SOS/SOW, LPS/LPSY; boundaries, bias, ATR, climax test and events in extra
 
 [See it in the showcase](../../../showcase/wyckoff/)
 
@@ -1484,9 +1484,16 @@ Wyckoff accumulation/distribution state machine: range-lock, Phases A-E, Spring/
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
-| `range_lookback` | 20 | whole number 3 – 10000 | bars the trading range is read from |
-| `range_atr_max` | 3 | 0.1 – 1000 | widest range, in ATR, that still locks as a trading range |
-| `min_range_bars` | 6 | whole number 2 – 10000 | bars inside the range before it locks |
+| `range_lookback` | 20 | whole number 3 – 10000 | bars of the window: volume statistics, window extremes of the climax test, life of a pending climax, width fallback |
+| `range_atr_max` | 3 | 0.1 – 1000 | width fallback: widest window, in ATR, that is set as a range while no climax is pending |
+| `min_range_bars` | 6 | whole number 2 – 10000 | bars a range must exist before a Spring or UTAD counts |
+| `atr_len` | 14 | whole number 1 – 10000 | bars of the Wilder ATR every distance is measured in |
+| `volume_k` | 2 | 0 – 100 | volume outlier: scaled MADs above the window median |
+| `climax_range_atr` | 1.5 | 0.1 – 100 | climax bar: smallest high-low spread, in ATR |
+| `st_atr` | 0.25 | 0 – 100 | Secondary Test: largest distance of the bar's extreme from the boundary, in ATR |
+| `breakout_volume` | `on` | `off`, `on` (f64 map: 0 – 1) | whether a Sign of Strength/Weakness needs a volume outlier |
+| `lps_atr` | 0.5 | 0 – 100 | Last Point of Support/Supply: how far the pullback may reach back beyond the broken boundary, in ATR |
+| `abandon_atr` | 1 | 0 – 1000 | a close this far outside the range, in ATR, abandons it in Phases A to C |
 
 ### `zigzag_advanced`
 

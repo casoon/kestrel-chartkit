@@ -532,19 +532,22 @@ fn oscillator_pivot_divergence_rejects_invalid_configuration() {
 
 // --- wyckoff ---------------------------------------------------------------------------------
 
+const WYCKOFF_TEXTBOOK: &str = "wyckoff_textbook_accumulation";
+const WYCKOFF_TEXTBOOK_MIRRORED: &str = "wyckoff_textbook_distribution";
+
+/// The textbook accumulation with the defaults: every event of the schematic and Phases A to E.
 #[test]
-fn wyckoff_accumulation() {
-    holds("wyckoff_accumulation", "wyckoff", IndicatorUnit::Unitless);
+fn wyckoff_textbook_accumulation() {
+    holds(WYCKOFF_TEXTBOOK, "wyckoff", IndicatorUnit::Unitless);
 }
 
 #[test]
-fn wyckoff_distribution() {
-    holds("wyckoff_distribution", "wyckoff", IndicatorUnit::Unitless);
-}
-
-#[test]
-fn wyckoff_climax() {
-    holds("wyckoff_climax", "wyckoff", IndicatorUnit::Unitless);
+fn wyckoff_textbook_distribution() {
+    holds(
+        WYCKOFF_TEXTBOOK_MIRRORED,
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
 }
 
 #[test]
@@ -556,14 +559,68 @@ fn wyckoff_failed_breakout() {
     );
 }
 
+/// Phase E of the accumulation ends when the distribution's range is set, not by a width rule.
 #[test]
-fn wyckoff_wide() {
-    holds("wyckoff_wide", "wyckoff", IndicatorUnit::Unitless);
+fn wyckoff_cycle() {
+    holds("wyckoff_cycle", "wyckoff", IndicatorUnit::Unitless);
+}
+
+/// No climax: the width fallback sets the range, the bias stays open until the Spring.
+#[test]
+fn wyckoff_fallback_spring() {
+    holds(
+        "wyckoff_fallback_spring",
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn wyckoff_fallback_utad() {
+    holds("wyckoff_fallback_utad", "wyckoff", IndicatorUnit::Unitless);
+}
+
+/// A series without volume, with the defaults: Phase C at most, then the range is abandoned.
+#[test]
+fn wyckoff_no_volume() {
+    holds("wyckoff_no_volume", "wyckoff", IndicatorUnit::Unitless);
+}
+
+/// What a random walk reports is fixed bar by bar; the case comment in the fixture counts it.
+#[test]
+fn wyckoff_random_walk() {
+    holds("wyckoff_random_walk", "wyckoff", IndicatorUnit::Unitless);
+}
+
+/// The pullback after the SOS reaches back below the former range high: within `lps_atr` it is
+/// still the Last Point of Support, beyond it there is none.
+#[test]
+fn wyckoff_pullback_held() {
+    holds("wyckoff_pullback_held", "wyckoff", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn wyckoff_pullback_too_deep() {
+    holds(
+        "wyckoff_pullback_too_deep",
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
+}
+
+/// Every threshold off its default: no parameter is read from a constant.
+#[test]
+fn wyckoff_tuned_cycle() {
+    holds("wyckoff_tuned_cycle", "wyckoff", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn wyckoff_tuned_walk() {
+    holds("wyckoff_tuned_walk", "wyckoff", IndicatorUnit::Unitless);
 }
 
 /// With `range_lookback` below 14 the window is full before the ATR(14) exists: the first output
-/// comes with bar 14, `warmup_period()` says `range_lookback` (10). Plan 62: warmup = first
-/// output.
+/// comes with bar 14, `warmup_period()` says so. Plan 62: warmup = first output.
 #[test]
 fn wyckoff_short_lookback() {
     holds("wyckoff_short_lookback", "wyckoff", IndicatorUnit::Unitless);
@@ -574,6 +631,13 @@ fn wyckoff_rejects_invalid_configuration() {
     assert_rejected("wyckoff", &[("range_lookback", 2.0)]);
     assert_rejected("wyckoff", &[("range_atr_max", 0.05)]);
     assert_rejected("wyckoff", &[("min_range_bars", 1.0)]);
+    assert_rejected("wyckoff", &[("atr_len", 0.0)]);
+    assert_rejected("wyckoff", &[("volume_k", -0.5)]);
+    assert_rejected("wyckoff", &[("climax_range_atr", 0.0)]);
+    assert_rejected("wyckoff", &[("st_atr", -0.1)]);
+    assert_rejected("wyckoff", &[("breakout_volume", 2.0)]);
+    assert_rejected("wyckoff", &[("lps_atr", f64::NAN)]);
+    assert_rejected("wyckoff", &[("abandon_atr", -1.0)]);
     assert_rejected("wyckoff", &[("lookback", 20.0)]);
 }
 
