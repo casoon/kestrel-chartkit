@@ -9,6 +9,20 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Applicability:** `ApplicabilityReason` has two new variants (`PairPriceAdjustmentDiffers`,
+  `PairSessionDiffers`), so exhaustive `match` expressions over it need an update.
+
+### Added
+
+- **Applicability:** `check_pair_applicability`, with `pair_requirements` and `pair_rule_catalog`,
+  reports when the two series of a two-series indicator differ in price adjustment or session.
+- **Two-series indicators:** `relative_strength` and the new `correlation` are built by name with
+  `build_pair_checked`, listed by `pair_catalog()` and run with `run_pair_batch`, which pairs two
+  bar series by timestamp. `catalog()` and `build_checked` are unchanged. Details:
+  [Two series](https://casoon.github.io/kestrel-chartkit/docs/guides/indicators/#two-series).
+
 ## [0.40.0] - 2026-11-10
 
 ### Breaking

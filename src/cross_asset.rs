@@ -258,7 +258,9 @@ fn pair_correlation(
     pearson(&ra, &rb)
 }
 
-fn pearson(x: &[f64], y: &[f64]) -> Option<f64> {
+/// Pearson correlation of two equally long samples, clamped to `-1..=1`; `None` when one of them
+/// does not vary.
+pub(crate) fn pearson(x: &[f64], y: &[f64]) -> Option<f64> {
     let n = x.len() as f64;
     let mean_x = x.iter().sum::<f64>() / n;
     let mean_y = y.iter().sum::<f64>() / n;

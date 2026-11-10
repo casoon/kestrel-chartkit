@@ -1,9 +1,36 @@
 use std::collections::HashMap;
 
+use super::definition::{ParamSpec, ResolvedParams};
+use super::pair::{PairIndicator, PairIndicatorDefinition};
+use super::registry::{OutputRange, RegistryError};
+use super::unit::IndicatorUnit;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
-/// Relative Strength Ratio & Momentum vs. Benchmark (e.g., Asset / BTC or Stock / SPY).
+/// Relative strength of a series against a reference series (a benchmark, a sector, another
+/// instrument): the price ratio and the difference of the two returns over `lookback` bars.
+///
+/// With the closes `a` of the series and `b` of the reference at paired bar `t` and
+/// `n = lookback`:
+///
+/// - `own_perf_pct = (a_t - a_{t-n}) / a_{t-n} * 100`, `bench_perf_pct` likewise from `b`;
+/// - `alpha_pct = own_perf_pct - bench_perf_pct`, in percentage points — the value;
+/// - `ratio = a_t / b_t`.
+///
+/// `extra` carries `ratio`, `own_perf_pct`, `bench_perf_pct` and `alpha_pct`. The alerts
+/// `outperforming_benchmark` and `underperforming_benchmark` fire while `alpha_pct` is above `5`
+/// or below `-5`.
+///
+/// Conventions:
+///
+/// - First output with the `n + 1`-th paired bar.
+/// - A return whose base close is not positive counts as `0`.
+/// - `ratio` is `1` when the reference close is not positive.
+///
+/// The two series come in through [`RelativeStrengthEngine::update`] or, built by name
+/// (`relative_strength`, parameter `len`), through [`PairIndicator::on_bars`]; see
+/// [`super::pair`] for how two series are paired. The [`Indicator`] implementation compares the
+/// series with itself and is kept for compatibility only: its `alpha_pct` is always `0`.
 pub struct RelativeStrengthEngine {
     lookback: usize,
     own_closes: Vec<f64>,
@@ -105,4 +132,43 @@ impl Indicator for RelativeStrengthEngine {
     fn alerts(&self) -> Vec<IndicatorAlert> {
         self.alerts.clone()
     }
+}
+
+impl PairIndicator for RelativeStrengthEngine {
+    fn name(&self) -> &str {
+        "relative_strength"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.lookback + 1
+    }
+
+    fn reset(&mut self) {
+        Indicator::reset(self);
+    }
+
+    fn on_bars(&mut self, bar: &Bar, reference: &Bar) -> Option<IndicatorOutput> {
+        self.update(bar, reference)
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        self.alerts.clone()
+    }
+}
+
+pub const RELATIVE_STRENGTH_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinition {
+    name: "relative_strength",
+    aliases: &[],
+    description: "Return difference and price ratio of a series against a reference series",
+    params: &[
+        ParamSpec::count("len", 20, 1, 10000).meaning("bars between the two closes of each return")
+    ],
+    checks: &[],
+    unit: IndicatorUnit::Ratio,
+    output_range: OutputRange::Centered { center: 0.0 },
+    build: build_relative_strength,
+};
+
+fn build_relative_strength(p: &ResolvedParams) -> Result<Box<dyn PairIndicator>, RegistryError> {
+    Ok(Box::new(RelativeStrengthEngine::new(p.count("len"))))
 }

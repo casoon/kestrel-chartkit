@@ -8,8 +8,13 @@
 //! - `golden_applicability_v0_35.txt` is what 0.35.0 produced for the 17 other indicators on the 9
 //!   classes that existed then. Those rows must not change when rules for other indicators or
 //!   classes are added.
+//! - `golden_applicability_pairs.txt` (`applicability_pairs.py`) is the matrix of the two-series
+//!   indicators: 2 indicators x 10 classes x 10 reference classes, from the pair rules.
 
-use kestrel_chartkit::applicability::{check_applicability, data_requirements, Applicability};
+use kestrel_chartkit::applicability::{
+    check_applicability, check_pair_applicability, data_requirements, pair_requirements,
+    pair_rule_catalog, Applicability, ApplicabilityReason, ApplicabilityTier,
+};
 use kestrel_chartkit::model::{
     ContinuityKind, LiquidityTier, PriceAdjustment, Provenance, SeriesCapabilities, SessionKind,
     VolumeKind,
@@ -17,6 +22,7 @@ use kestrel_chartkit::model::{
 
 const FULL: &str = include_str!("fixtures/golden_applicability.txt");
 const FROZEN: &str = include_str!("fixtures/golden_applicability_v0_35.txt");
+const PAIRS: &str = include_str!("fixtures/golden_applicability_pairs.txt");
 
 const INDICATORS: [&str; 19] = [
     "rsi",
@@ -263,4 +269,85 @@ fn elliott_and_wyckoff_give_each_class_its_own_reason() {
     ] {
         assert!(find("wyckoff", class).contains("\tapplicable\t"), "{class}");
     }
+}
+
+#[test]
+fn pair_matrix_matches_reference_for_both_two_series_indicators() {
+    let all = classes();
+    let mut actual = Vec::new();
+    for indicator in ["correlation", "relative_strength"] {
+        let requirements = pair_requirements(indicator);
+        for (id, capabilities) in &all {
+            for (reference_id, reference) in &all {
+                let (verdict, reasons) =
+                    match check_pair_applicability(&requirements, capabilities, reference) {
+                        Applicability::Applicable => ("applicable", Vec::new()),
+                        Applicability::Degraded { reasons } => ("limited", reasons),
+                        Applicability::Unsuitable { reasons } => ("misleading", reasons),
+                    };
+                let explanations: Vec<&str> = reasons.iter().map(|n| n.explanation).collect();
+                actual.push(format!(
+                    "{indicator}\t{id}\t{reference_id}\t{verdict}\t{}",
+                    explanations.join(" || ")
+                ));
+            }
+        }
+    }
+    let expected = fixture_lines(PAIRS);
+    assert_eq!(actual.len(), 200);
+    assert_eq!(actual.len(), expected.len());
+    for (a, e) in actual.iter().zip(&expected) {
+        // The fixture's trailing tab of a row without explanation survives `lines()`.
+        assert_eq!(a, e);
+    }
+}
+
+#[test]
+fn pair_rules_compare_the_two_series_and_nothing_else() {
+    let all = classes();
+    let requirements = pair_requirements("relative_strength");
+    assert_eq!(requirements, pair_requirements("CORRELATION"));
+    assert!(requirements.same_price_adjustment && requirements.same_session);
+
+    // A series paired with itself always fits, whatever it is.
+    for (id, capabilities) in &all {
+        assert_eq!(
+            check_pair_applicability(&requirements, capabilities, capabilities),
+            Applicability::Applicable,
+            "{id}"
+        );
+    }
+    // The verdict does not depend on which of the two is the reference.
+    for (_, a) in &all {
+        for (_, b) in &all {
+            assert_eq!(
+                check_pair_applicability(&requirements, a, b),
+                check_pair_applicability(&requirements, b, a)
+            );
+        }
+    }
+    // A one-series indicator and an unknown name require nothing of a pair.
+    for name in ["rsi", "no_such_indicator"] {
+        let none = pair_requirements(name);
+        assert!(!none.same_price_adjustment && !none.same_session);
+        assert_eq!(
+            check_pair_applicability(&none, &all[0].1, &all[6].1),
+            Applicability::Applicable
+        );
+    }
+
+    let catalog = pair_rule_catalog();
+    assert_eq!(
+        catalog.map(|rule| (rule.reason, rule.tier)),
+        [
+            (
+                ApplicabilityReason::PairPriceAdjustmentDiffers,
+                ApplicabilityTier::Degraded
+            ),
+            (
+                ApplicabilityReason::PairSessionDiffers,
+                ApplicabilityTier::Degraded
+            ),
+        ]
+    );
 }

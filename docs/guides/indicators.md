@@ -113,6 +113,53 @@ description names them.
 Print the full list with `catalog()`. The [indicator reference](../../reference/indicators/) lists
 every entry with its parameters, the [showcase](../../../showcase/) draws each one.
 
+## Two series
+
+A relative strength or a return correlation compares the series with a second one, the
+*reference*: a benchmark, a sector, another instrument. `Indicator::on_bar` sees one bar, so these
+indicators have a path of their own that mirrors the one above step by step. They are listed by
+`pair_catalog()` and not by `catalog()`, and `input_series(name)` says for any name whether it
+reads one series or two.
+
+| One series       | Two series             |
+| ---------------- | ---------------------- |
+| `catalog()`      | `pair_catalog()`       |
+| `build_checked`  | `build_pair_checked`   |
+| `on_bar(&bar)`   | `on_bars(&bar, &reference_bar)` |
+| `run_batch`      | `run_pair_batch`       |
+
+```rust
+use kestrel_chartkit::{build_pair_checked, run_pair_batch};
+use std::collections::HashMap;
+
+let params = HashMap::from([("len".to_string(), 10.0)]);
+let mut relative_strength = build_pair_checked("relative_strength", &params)?;
+// One entry per bar of `bars`, as `run_batch` gives.
+let series = run_pair_batch(relative_strength.as_mut(), &bars, &benchmark_bars);
+```
+
+Parameters are validated as in `build_checked`, and the result is the same `IndicatorOutput`.
+`WithReference::new(pair, &reference_bars)` binds a reference to a pair indicator and is an
+`Indicator` again, for code that keeps a `Box<dyn Indicator>` and feeds it bar by bar.
+
+The two series are paired on their timestamps, by the rule `align_closes` uses:
+
+- A bar whose timestamp the reference lacks is skipped. The indicator does not see it, and the
+  output for that bar is `None`. Nothing is carried forward into the gap.
+- A bar of the reference whose timestamp the first series lacks is ignored.
+- Where the reference holds a timestamp twice, the later bar counts.
+- Windows and warmup count paired bars.
+
+| Name                | Value                                                         | `extra`                                               |
+| ------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| `relative_strength` | `alpha_pct`: return of the series minus return of the reference over `len` bars, in percentage points | `ratio` (close / reference close), `own_perf_pct`, `bench_perf_pct`, `alpha_pct` |
+| `correlation`       | Pearson correlation of the last `len` pairs of simple returns, −1 to 1 | —                                                     |
+
+Equal timestamps do not make two series comparable. `check_pair_applicability` names the two
+cases the declared series properties show: different price adjustment (a dividend or split stands
+in one series only) and a different session. Two series with the same session kind can still
+trade at different hours; that is not declared in `SeriesCapabilities` and stays with the caller.
+
 ## Input contract
 
 - `Bar::try_new` and `Bar::validate` require finite, positive prices, a finite, non-negative

@@ -109,7 +109,8 @@ pub fn output_range(name: &str) -> OutputRange {
         | "volume"
         | "vortex" => OutputRange::NonNegative,
 
-        _ => OutputRange::Unbounded,
+        // A two-series indicator declares its range in its definition.
+        _ => super::pair::pair_definition(name).map_or(OutputRange::Unbounded, |d| d.output_range),
     }
 }
 
@@ -457,8 +458,9 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 // Note: `indicator::swing_structure::SwingStructureEngine` and
 // `indicator::relative_strength::RelativeStrengthEngine` are intentionally not registered in the
 // single-bar `build(name, params)` registry. `SwingStructureEngine` requires raw ATR injected per
-// bar (`update(bar, atr)`), while `RelativeStrengthEngine` requires dual-series input (`update(own_bar, bench_bar)`).
-// Both are exported directly from `kestrel_chartkit::indicator` for explicit use.
+// bar (`update(bar, atr)`) and is exported from `kestrel_chartkit::indicator` for explicit use.
+// `RelativeStrengthEngine` requires dual-series input (`update(own_bar, bench_bar)`) and is built
+// by name through the two-series registry, `super::pair::build_pair_checked`.
 
 /// Finding 04: every canonical indicator name `build_checked` can construct, kept as an explicit
 /// list (rather than derived from the match arms at runtime) so `catalog()` is checked against a

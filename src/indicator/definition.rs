@@ -210,11 +210,7 @@ impl IndicatorDefinition {
         IndicatorCatalogEntry {
             name: self.name,
             description: self.description,
-            default_params: self
-                .params
-                .iter()
-                .filter_map(|p| p.f64_default().map(|d| (p.name.to_string(), d)))
-                .collect(),
+            default_params: f64_defaults(self.params),
         }
     }
 
@@ -239,20 +235,7 @@ impl IndicatorDefinition {
         keys: impl IntoIterator<Item = &'a String>,
         typed: bool,
     ) -> Result<(), RegistryError> {
-        let accepted = |key: &str| {
-            self.params.iter().any(|p| {
-                (p.name == key || p.legacy_alias == Some(key)) && (typed || p.in_f64_map())
-            })
-        };
-        let mut keys: Vec<&String> = keys.into_iter().collect();
-        keys.sort();
-        match keys.into_iter().find(|k| !accepted(k)) {
-            Some(key) => Err(RegistryError::UnknownParameter {
-                parameter: key.clone(),
-                indicator: requested.to_string(),
-            }),
-            None => Ok(()),
-        }
+        reject_unknown_keys(self.params, requested, keys, typed)
     }
 
     /// Whether the indicator reads `source` itself (see [`ParamKind::Source`]).
@@ -267,11 +250,12 @@ impl IndicatorDefinition {
         requested: &str,
         params: &HashMap<String, f64>,
     ) -> Result<Box<dyn Indicator>, RegistryError> {
-        let input: TypedParams = params
-            .iter()
-            .map(|(k, v)| (k.clone(), ParamValue::Float(*v)))
-            .collect();
-        (self.build)(&resolve(self, requested, &input, Input::F64Map, None)?)
+        (self.build)(&resolve_f64_map(
+            self.params,
+            self.checks,
+            requested,
+            params,
+        )?)
     }
 
     /// `source` is the price requested through `build_typed`'s generic source handling, for an
@@ -283,8 +267,63 @@ impl IndicatorDefinition {
         params: &TypedParams,
         source: Option<Source>,
     ) -> Result<Box<dyn Indicator>, RegistryError> {
-        (self.build)(&resolve(self, requested, params, Input::Typed, source)?)
+        (self.build)(&resolve(
+            self.params,
+            self.checks,
+            requested,
+            params,
+            Input::Typed,
+            source,
+        )?)
     }
+}
+
+/// The defaults of every parameter in `specs` the `f64` map can carry, as a catalog entry lists
+/// them.
+pub(crate) fn f64_defaults(specs: &[ParamSpec]) -> HashMap<String, f64> {
+    specs
+        .iter()
+        .filter_map(|p| p.f64_default().map(|d| (p.name.to_string(), d)))
+        .collect()
+}
+
+/// See [`IndicatorDefinition::reject_unknown`].
+fn reject_unknown_keys<'a>(
+    specs: &[ParamSpec],
+    requested: &str,
+    keys: impl IntoIterator<Item = &'a String>,
+    typed: bool,
+) -> Result<(), RegistryError> {
+    let accepted = |key: &str| {
+        specs
+            .iter()
+            .any(|p| (p.name == key || p.legacy_alias == Some(key)) && (typed || p.in_f64_map()))
+    };
+    let mut keys: Vec<&String> = keys.into_iter().collect();
+    keys.sort();
+    match keys.into_iter().find(|k| !accepted(k)) {
+        Some(key) => Err(RegistryError::UnknownParameter {
+            parameter: key.clone(),
+            indicator: requested.to_string(),
+        }),
+        None => Ok(()),
+    }
+}
+
+/// Resolves an `f64` parameter map against `specs` and `checks` the way
+/// [`IndicatorDefinition::build_from_f64`] does, for a definition with another build signature
+/// (see [`super::pair::PairIndicatorDefinition`]).
+pub(crate) fn resolve_f64_map(
+    specs: &[ParamSpec],
+    checks: &[Check],
+    requested: &str,
+    params: &HashMap<String, f64>,
+) -> Result<ResolvedParams, RegistryError> {
+    let input: TypedParams = params
+        .iter()
+        .map(|(k, v)| (k.clone(), ParamValue::Float(*v)))
+        .collect();
+    resolve(specs, checks, requested, &input, Input::F64Map, None)
 }
 
 /// A resolved parameter value.
@@ -366,20 +405,22 @@ enum Input {
     Typed,
 }
 
-/// Resolves `params` against `definition`: unknown keys, then types and choices, then ranges.
+/// Resolves `params` against `specs` and `checks`: unknown keys, then types and choices, then
+/// ranges, then relations.
 fn resolve(
-    definition: &IndicatorDefinition,
+    specs: &[ParamSpec],
+    checks: &[Check],
     requested: &str,
     params: &TypedParams,
     input: Input,
     requested_source: Option<Source>,
 ) -> Result<ResolvedParams, RegistryError> {
-    definition.reject_unknown(requested, params.keys(), input == Input::Typed)?;
+    reject_unknown_keys(specs, requested, params.keys(), input == Input::Typed)?;
 
     // Pass 1: types and choices.
     let mut values = HashMap::new();
     let mut numbers: Vec<Queued> = Vec::new();
-    for spec in definition.params {
+    for spec in specs {
         let given = params.get(spec.name);
         let alias = spec
             .legacy_alias
@@ -518,7 +559,7 @@ fn resolve(
         values,
         requested_source,
     };
-    for check in definition.checks {
+    for check in checks {
         match *check {
             Check::Less { lower, upper } => {
                 let (low, high) = (resolved.scalar(lower), resolved.scalar(upper));

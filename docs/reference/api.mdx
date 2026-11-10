@@ -62,6 +62,41 @@ order: 1
   See [Indicators](../../guides/indicators/) for the output fields.
 </ApiEntry>
 
+<ApiEntry
+  kind="fn"
+  name="pair_catalog"
+  signature={`pub fn pair_catalog() -> Vec<IndicatorCatalogEntry>`}
+>
+  The indicators that read two bar series (`relative_strength`, `correlation`). None of them is in
+  `catalog()`; `input_series(name)` returns `Some(2)` for these names and `Some(1)` for the others.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="build_pair_checked"
+  signature={`pub fn build_pair_checked(
+    name: &str,
+    params: &HashMap<String, f64>,
+) -> Result<Box<dyn PairIndicator>, RegistryError>`}
+  params={[
+    { name: 'name', type: '&str', desc: 'A name from pair_catalog(), e.g. "relative_strength".' },
+    { name: 'params', type: '&HashMap<String, f64>', desc: 'Parameter overrides. Missing keys take the defaults.' },
+  ]}
+/>
+
+<ApiEntry
+  kind="fn"
+  name="run_pair_batch"
+  signature={`pub fn run_pair_batch<P: PairIndicator + ?Sized>(
+    indicator: &mut P,
+    bars: &[Bar],
+    reference: &[Bar],
+) -> Vec<TimestampedOutput>`}
+>
+  Pairs the bars of the two series by timestamp and returns one entry per bar of `bars`. See
+  [Two series](../../guides/indicators/#two-series) for the pairing rules.
+</ApiEntry>
+
 ## Market regime
 
 <ApiEntry

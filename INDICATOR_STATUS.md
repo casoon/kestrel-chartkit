@@ -177,6 +177,16 @@ is complete.
 | tradability_filter | ✅ |
 | market_state_chain | ✅ |
 
+## Two-Series Indicators
+
+Built with `build_pair_checked` and listed by `pair_catalog()`, not by `catalog()`; they are not
+part of the total below.
+
+| Indicator | Verified |
+|---|---|
+| correlation | ❌ |
+| relative_strength | ❌ |
+
 ---
 
 **Total: 132/133 verified** — the same 133 names `catalog()` returns: 97 indicators (the first

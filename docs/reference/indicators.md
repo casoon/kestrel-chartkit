@@ -1894,3 +1894,27 @@ Multi-Factor Composite Market Score
 |---|---|---|---|
 | `period` | 14 | whole number 2 – 10000 | bars of every input (trend quality, RSI, pressure, volatility regime) |
 
+## Two-series indicators
+
+These compare the series with a second one, the reference, and are not part of `catalog()`: they are listed by `pair_catalog()`, built with `build_pair_checked` and run with `run_pair_batch`, which pairs the bars of the two series by timestamp. A bar whose timestamp the reference lacks is skipped and has no output. **Warmup** counts paired bars. See [Indicators](../../guides/indicators/#two-series) for the rules.
+
+### `correlation`
+
+Rolling Pearson correlation of the simple returns of two close series
+
+**Output** unit Ratio, range -1 – 1 · **warmup** 21 paired bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `len` | 20 | whole number 3 – 10000 | return pairs in the rolling window |
+
+### `relative_strength`
+
+Return difference and price ratio of a series against a reference series
+
+**Output** unit Ratio, range open, centred on 0 · **warmup** 21 paired bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `len` | 20 | whole number 1 – 10000 | bars between the two closes of each return |
+

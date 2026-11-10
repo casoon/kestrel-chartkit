@@ -31,6 +31,11 @@ active development: names, parameters and outputs can still change fundamentally
 caller-defined timestamp convention. `aggregate_agreement` combines directional statements;
 its confidence is agreement, not a calibrated success probability.
 
+Indicators over two bar series (`relative_strength`, `correlation`) are listed by
+`pair_catalog()`, built by name with `build_pair_checked(name, params)` and run with
+`run_pair_batch(indicator, bars, reference_bars)`, which pairs the two series by timestamp: a bar
+without a partner is skipped, nothing is carried forward. They are not part of `catalog()`.
+
 `PriceDirection`, `ForwardPriceOutcome`, `PriceStats` and `PriceOutcomeStats` provide
 price-unit paper/outcome calculations. They do not imply contract sizing, account-currency
 P&L or intrabar fills. Consumers retain strategy decisions, persistence and scheduling.

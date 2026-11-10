@@ -105,9 +105,10 @@ pub use adapters::{
     NotificationSeverity, NotificationSink, WebhookNotificationSink,
 };
 pub use applicability::{
-    check_applicability, data_requirements, method_rule_catalog, rule_catalog, Applicability,
-    ApplicabilityNote, ApplicabilityReason, ApplicabilityTier, DataRequirements,
-    MethodRuleDescription, RuleDescription, StructureMethod,
+    check_applicability, check_pair_applicability, data_requirements, method_rule_catalog,
+    pair_requirements, pair_rule_catalog, rule_catalog, Applicability, ApplicabilityNote,
+    ApplicabilityReason, ApplicabilityTier, DataRequirements, MethodRuleDescription,
+    PairRequirements, RuleDescription, StructureMethod,
 };
 pub use artifact::{
     Artifact, PivotArtifact, ProfileArtifact, ProfileBin, ScenarioArtifact, ZoneArtifact,
@@ -135,6 +136,9 @@ pub use finance::{
 pub use graph::{ComposedNode, CompositionGraph, GraphError, GraphIndicator, Leaf};
 pub use indicator::cvd_intrabar::{
     DeltaAnchor, DeltaProvenance, IntrabarCvd, IntrabarDelta, UnchangedIntrabarPolicy,
+};
+pub use indicator::pair::{
+    build_pair_checked, input_series, pair_catalog, run_pair_batch, PairIndicator, WithReference,
 };
 pub use indicator::registry::{
     build, build_checked, build_typed, catalog, ParamValue, RegistryError, TypedParams,
