@@ -339,7 +339,17 @@ fn equal_level_liquidity_tuned() {
 }
 
 #[test]
+fn equal_level_liquidity_listed() {
+    assert_holds(&case(
+        "equal_level_liquidity_listed",
+        "equal_level_liquidity",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
 fn equal_level_liquidity_rejects_invalid_configuration() {
+    assert_rejected("equal_level_liquidity", &[("list_min_touches", 0.0)]);
     assert_rejected("equal_level_liquidity", &[("pivot_len", 0.0)]);
     assert_rejected("equal_level_liquidity", &[("min_touches", 21.0)]);
     assert_rejected("equal_level_liquidity", &[("max_distance_atr", 0.05)]);
@@ -482,6 +492,24 @@ fn structure_zones_holds() {
 fn structure_zones_novolume() {
     assert_holds(&case(
         "structure_zones_novolume",
+        "structure_zones",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn structure_zones_lifecycle() {
+    assert_holds(&case(
+        "structure_zones_lifecycle",
+        "structure_zones",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn structure_zones_mirrored_lifecycle() {
+    assert_holds(&case(
+        "structure_zones_mirrored_lifecycle",
         "structure_zones",
         IndicatorUnit::Unitless,
     ));

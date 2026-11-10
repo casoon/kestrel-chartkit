@@ -4,6 +4,12 @@ Written from the published definition, not from the Rust code, with the inputs
 at their defaults (fair value gaps, regime context, level flip, session filter and the exhaustion
 layer do not reach the outputs checked here; the session filter being off adds the session boost
 of 10 to every reclaim score). The script is followed bar by bar with its arrays of levels.
+
+The list of levels in the output is this crate's addition and follows the crate's documentation:
+every level with at least `LIST_MIN_TOUCHES` pivots, oldest first, with its price, pivots, tests,
+status, the bars back of its first and latest pivot and of its sweep, and the events of the bar.
+A test is a bar whose range reaches price +/- tolerance when the previous bar's range did not,
+counted from the bar after the level was created.
 """
 
 import math
@@ -16,6 +22,7 @@ PIVOT_LEN = 8
 ATR_LEN = 14
 EQ_TOL_ATR = 0.12
 MIN_TOUCHES = 2
+LIST_MIN_TOUCHES = 2
 MAX_TRACKED = 30
 MAX_AGE = 400
 MAX_DIST_ATR = 8.0
@@ -30,6 +37,9 @@ HUNT_CLOSE_POS_MAX = 0.45
 ALERT_DIST_ATR = 1.0
 EVENT_MEMORY = 30
 PREMIUM = 65.0
+
+# Bits of a level's `event` on one bar.
+EVENT_PIVOT, EVENT_TEST, EVENT_SWEEP, EVENT_BREAKOUT, EVENT_HUNT, EVENT_RECLAIM = 1, 2, 4, 8, 16, 32
 
 N_BARS = 800
 CHECKPOINTS = [60, 250, 270, 345, 440, 635, 730, 799]
@@ -115,7 +125,8 @@ def compute(bars):
     cum = 0.0
     near_prev = (False, False)
     out = {"reported": [False] * n, "bias": [None] * n, "levels": [None] * n,
-           "counts": [None] * n, "recent": [None] * n, "volume_ratio": [None] * n}
+           "counts": [None] * n, "recent": [None] * n, "volume_ratio": [None] * n,
+           "list": [None] * n}
     events = {k: [] for k in EVENTS}
     scores = []
 
@@ -126,6 +137,8 @@ def compute(bars):
         vol_ratio = v[t] / avg_vol if avg_vol is not None and avg_vol > 0 else 1.0
         a = atr[t]
         tol = a * EQ_TOL_ATR if a is not None else None
+        for lvl in bsl + ssl:
+            lvl["event"] = 0
 
         for levels, high in ((bsl, True), (ssl, False)):
             piv = _pivot(h if high else lo, t, PIVOT_LEN, high)
@@ -138,11 +151,14 @@ def compute(bars):
                     lvl["touches"] += 1
                     lvl["last"] = piv_bar
                     lvl["price"] = (lvl["price"] * (lvl["touches"] - 1) + piv) / lvl["touches"]
+                    lvl["event"] |= EVENT_PIVOT
                     found = True
                     break
             if not found:
                 levels.append({"price": piv, "pivot": piv_bar, "last": piv_bar, "touches": 1,
-                               "swept": False, "sweep_bar": None, "reclaimed": False})
+                               "swept": False, "sweep_bar": None, "reclaimed": False,
+                               "broken": False, "created": t, "tests": 0, "visited": False,
+                               "event": EVENT_PIVOT})
             if len(levels) > MAX_TRACKED:
                 levels.pop(0)
 
@@ -150,6 +166,14 @@ def compute(bars):
             for levels in (bsl, ssl):
                 levels[:] = [l for l in levels
                              if not (t - l["last"] > MAX_AGE or abs(c[t] - l["price"]) / a > MAX_DIST_ATR)]
+
+        # Tests: the bar's range reaches the band around the level, the previous bar's did not.
+        for lvl in bsl + ssl:
+            visit = tol is not None and h[t] >= lvl["price"] - tol and lo[t] <= lvl["price"] + tol
+            if visit and not lvl["visited"] and lvl["created"] < t:
+                lvl["tests"] += 1
+                lvl["event"] |= EVENT_TEST
+            lvl["visited"] = visit
 
         rng = max(h[t] - lo[t], 1e-12)
         upper_wick = (h[t] - max(o[t], c[t])) / rng
@@ -177,15 +201,20 @@ def compute(bars):
                         lvl["swept"], lvl["sweep_bar"] = True, t
                         if c[t] >= lvl["price"] + sweep_abs:
                             fired.add("bull_bsl_breakout")
+                            lvl["broken"] = True
+                            lvl["event"] |= EVENT_BREAKOUT
                         else:
                             fired.add("bear_bsl_sweep")
+                            lvl["event"] |= EVENT_SWEEP
                             if upper_wick >= HUNT_WICK_MIN and close_pos <= HUNT_CLOSE_POS_MAX and \
                                     (not volume_real or vol_ratio >= HUNT_VOL_MULT):
                                 fired.add("bear_bsl_stop_hunt")
+                                lvl["event"] |= EVENT_HUNT
                     can = lvl["swept"] and not lvl["reclaimed"] and t <= lvl["sweep_bar"] + RECLAIM_BARS
                     if can and c[t] <= lvl["price"] - back_abs and \
                             (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and h[t] >= lvl["price"]:
                         lvl["reclaimed"] = True
+                        lvl["event"] |= EVENT_RECLAIM
                         bonus = 10.0 if t >= 1 and c[t] < lo[t - 1] else 0.0
                         s = event_score(lvl["touches"], wick_atr, back_atr, bonus)
                         reclaim["bear"] = s if reclaim["bear"] is None else max(reclaim["bear"], s)
@@ -200,15 +229,20 @@ def compute(bars):
                         lvl["swept"], lvl["sweep_bar"] = True, t
                         if c[t] <= lvl["price"] - sweep_abs:
                             fired.add("bear_ssl_breakout")
+                            lvl["broken"] = True
+                            lvl["event"] |= EVENT_BREAKOUT
                         else:
                             fired.add("bull_ssl_sweep")
+                            lvl["event"] |= EVENT_SWEEP
                             if lower_wick >= HUNT_WICK_MIN and (1.0 - close_pos) <= HUNT_CLOSE_POS_MAX and \
                                     (not volume_real or vol_ratio >= HUNT_VOL_MULT):
                                 fired.add("bull_ssl_stop_hunt")
+                                lvl["event"] |= EVENT_HUNT
                     can = lvl["swept"] and not lvl["reclaimed"] and t <= lvl["sweep_bar"] + RECLAIM_BARS
                     if can and c[t] >= lvl["price"] + back_abs and \
                             (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and lo[t] <= lvl["price"]:
                         lvl["reclaimed"] = True
+                        lvl["event"] |= EVENT_RECLAIM
                         bonus = 10.0 if t >= 1 and c[t] > h[t - 1] else 0.0
                         s = event_score(lvl["touches"], wick_atr, back_atr, bonus)
                         reclaim["bull"] = s if reclaim["bull"] is None else max(reclaim["bull"], s)
@@ -269,6 +303,24 @@ def compute(bars):
         out["counts"][t] = (float(n_bsl), float(n_ssl))
         out["recent"][t] = (r_bull, r_bear)
         out["volume_ratio"][t] = vol_ratio
+        listed = {"atr": a, "tolerance": tol}
+        for name, levels in (("bsl", bsl), ("ssl", ssl)):
+            shown = [lvl for lvl in levels if lvl["touches"] >= LIST_MIN_TOUCHES]
+            listed[f"{name}_levels"] = float(len(shown))
+            for i, lvl in enumerate(shown, 1):
+                status = 3 if lvl["reclaimed"] else 2 if lvl["broken"] else 1 if lvl["swept"] else 0
+                listed.update({
+                    f"{name}_{i}_price": lvl["price"],
+                    f"{name}_{i}_touches": float(lvl["touches"]),
+                    f"{name}_{i}_tests": float(lvl["tests"]),
+                    f"{name}_{i}_status": float(status),
+                    f"{name}_{i}_first_bars_back": float(t - lvl["pivot"]),
+                    f"{name}_{i}_last_bars_back": float(t - lvl["last"]),
+                    f"{name}_{i}_event": float(lvl["event"]),
+                })
+                if lvl["swept"]:
+                    listed[f"{name}_{i}_swept_bars_back"] = float(t - lvl["sweep_bar"])
+        out["list"][t] = listed
     out["events"] = events
     out["scores"] = scores
     return out
@@ -301,6 +353,14 @@ HEADER = [
     "<v|nv>_first is the first reporting bar; _cp<bar>_* the outputs at that bar (level keys only",
     "where the level exists); _ev_<kind>_n the number of alerts of that kind and _ev_<kind>_<j>",
     "the bar of the j-th (up to 10); _score<j>_bar/_value the first 10 reclaim scores.",
+    "",
+    "_cp<bar>_list_*: the list of levels as the crate documents it (its own addition): atr,",
+    "tolerance = 0.12 atr, bsl_levels / ssl_levels = the levels with at least 2 pivots, and per",
+    "level, oldest first, price, touches (pivots), tests (bars whose range reaches price +/-",
+    "tolerance when the previous bar's did not, from the bar after the level was created), status",
+    "(0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back / last_bars_back (first and",
+    "latest pivot), swept_bars_back (once swept) and event (bits of this bar: 1 pivot, 2 test,",
+    "4 sweep, 8 breakout, 16 stop hunt, 32 reclaim).",
 ]
 
 
@@ -317,6 +377,8 @@ def _block(prefix, out):
         case[f"{p}_bsl_count"], case[f"{p}_ssl_count"] = out["counts"][cp]
         case[f"{p}_recent_bull_score"], case[f"{p}_recent_bear_score"] = out["recent"][cp]
         case[f"{p}_volume_ratio"] = out["volume_ratio"][cp]
+        for key, value in out["list"][cp].items():
+            case[f"{p}_list_{key}"] = value
     for k in EVENTS:
         bars = out["events"][k]
         case[f"ev_{k}_n"] = float(len(bars))

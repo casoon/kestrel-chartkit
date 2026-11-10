@@ -137,7 +137,7 @@ pub enum ApplicabilityReason {
     /// [`PriceAdjustment`]: a split or dividend stands in one series only.
     PairPriceAdjustmentDiffers,
     /// [`PairRequirements::same_session`] against two series with different
-    /// [`SessionKind`](crate::model::SessionKind): bars with the same timestamp cover different
+    /// [`SessionKind`]: bars with the same timestamp cover different
     /// trading hours.
     PairSessionDiffers,
 }
@@ -652,14 +652,13 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             structure_method: Some(StructureMethod::PointAndFigure),
             ..DataRequirements::default()
         },
-        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure" => {
-            DataRequirements {
-                session_sensitive: true,
-                roll_sensitive: true,
-                adjustment_sensitive: true,
-                ..DataRequirements::default()
-            }
-        }
+        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure"
+        | "trendlines" => DataRequirements {
+            session_sensitive: true,
+            roll_sensitive: true,
+            adjustment_sensitive: true,
+            ..DataRequirements::default()
+        },
         _ => DataRequirements::default(),
     }
 }
@@ -675,7 +674,7 @@ pub struct PairRequirements {
     /// Compares price changes of the two series: both need the same [`PriceAdjustment`].
     pub same_price_adjustment: bool,
     /// Pairs the bars of the two series by timestamp: both need the same
-    /// [`SessionKind`](crate::model::SessionKind).
+    /// [`SessionKind`].
     pub same_session: bool,
 }
 
@@ -726,7 +725,7 @@ pub fn pair_requirements(name: &str) -> PairRequirements {
 /// [`ApplicabilityTier::Degraded`]: the calculation runs, its meaning shifts.
 ///
 /// The check sees declared properties only. Two series with the same
-/// [`SessionKind`](crate::model::SessionKind) can still trade at different hours (two regular
+/// [`SessionKind`] can still trade at different hours (two regular
 /// sessions in different time zones); that difference is not in
 /// [`SeriesCapabilities`] and is not found here.
 pub fn check_pair_applicability(

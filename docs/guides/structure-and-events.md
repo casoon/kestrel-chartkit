@@ -22,6 +22,67 @@ pivot's high must be at least as high as every bar `pivot_len` bars to either si
 mirrored). A bar can be a pivot high and a pivot low at once; the pair `(id, is_high)` stays
 unique.
 
+## ZigZag nodes
+
+`zigzag` and `zigzag_advanced` turn pivots into swing nodes. A pivot of the kind of the newest
+node moves that node if it is more extreme. A pivot of the other kind adds a node once it lies
+beyond the newest node on its own side by the deviation: a pivot high above the low, a pivot low
+below the high. The move is signed, so a pivot high that forms below the running low, as after a
+gap down behind which the lows keep falling, adds nothing; the low stays until a lower pivot low
+replaces it. On a bar that is both a pivot high and a pivot low, the pivot of the newest node's
+kind is applied first, and before the first node such a bar starts none.
+
+`ZigZagEngine::nodes()` and `AdvancedZigZagEngine::nodes()` therefore are a pivot sequence after
+every bar: highs and lows alternate, timestamps do not decrease, every high lies above and every
+low below the node before it. That is the input the Elliott validators, `ChartPatternDetector`
+and `HarmonicDetector` expect. `AdvancedZigZagEngine::reduce` and `project_to_timeframe` return
+pivot sequences as well; the projection keeps the most extreme high and low node per bucket and
+then drops what no longer alternates or lies on the wrong side of its predecessor. A series and
+its mirror image (every price negated, highs and lows exchanged) give mirrored nodes.
+
+In `zigzag_advanced` every node but the newest is confirmed and no longer moves; the newest is
+the running node (`current_leg()`).
+
+## Trendlines
+
+`trendlines` draws a support line through the confirmed ZigZag lows and a resistance line through
+the confirmed highs, bar by bar. Its first five parameters are those of `zigzag_advanced` and name
+the same nodes; `tolerance_atr` (default 0.25, this crate's convention) times the ATR of the bar is
+the one tolerance of the calculation. For the support line, the resistance line mirrored:
+
+```text
+segment = the confirmed nodes since the last break of this line, beginning with a low
+
+on the bar that confirms a low c, with a low before it in the segment:
+    a = the oldest low for which no low between a and c lies more than the tolerance
+        below the line through a and c; older nodes leave the segment
+    line(time)   = a.price + (c.price - a.price) / (c.time - a.time) · (time - a.time)
+    node_touches = the lows from a to c within the tolerance of the line
+    channel      = line + the largest distance of a high after a above the line
+
+on every bar from the one that fixed the line:
+    touch:  |low - line| <= tolerance
+    break:  close < line        -> the line ends, the segment is emptied
+```
+
+A node only counts once it is confirmed, so a line is known later than its newest anchor lies:
+nothing repaints. Every newly confirmed low is the newest anchor and fixes the line anew. The line
+is straight in time, like `TrendLine`.
+
+`value` counts the lines in the output. `extra` carries `atr` and `tolerance`, and per line
+(`support_`, `resistance_`) what a chart draws: `value` (the line at this bar), `start_price` /
+`start_bars_back` and `end_price` / `end_bars_back` (the anchors), `nodes`, `node_touches`,
+`touches` (bars within the tolerance since the line was fixed), the flags `touch`, `formed` and
+`break` for this bar, and `channel_value` / `channel_width` while a node of the other kind lies
+beyond the line. A broken line is in the output of its break bar, with the line value the close
+crossed, and gone from the next. Alerts: `bear_support_line_break`, `bull_resistance_line_break`.
+`TrendlineEngine::support()` and `resistance()` return the same lines as `Trendline`.
+
+`ChartPatternDetector::scan` fits the same two-point lines over a finished node list and returns
+the line through the highs and the line through the lows side by side. It gives no line where a
+node in between pierces it by more than `tolerance_pct`; `trendlines` moves the anchor forward
+instead.
+
 ## Zones
 
 `find_sr_zones(bars, pivot_len)` uses the same pivot test and returns up to two supports below and
@@ -48,6 +109,53 @@ Two detectors hold their own zones and expose them directly:
   bearish one once a later high reaches its top. At most 20 are held.
 
 `created_bar` counts bars since the engine started, not a timestamp.
+
+## Levels and zones in the output
+
+Two detectors list what they track in `extra`, so a chart can draw it without recomputing
+anything. Lists are numbered from 1, oldest first; an entry keeps its place until it is dropped,
+after which the later ones move up.
+
+**`equal_level_liquidity`** groups confirmed pivots into levels: a pivot high joins the first
+buy-side level within `eq_tolerance_atr · ATR` of it (the level's price becomes the mean of its
+pivots) or founds a new one; pivot lows form the sell-side levels. `extra["atr"]` is the ATR of
+the bar and `extra["tolerance"]` the absolute tolerance, the half-width of every level's band.
+`bsl_levels` and `ssl_levels` count the levels with at least `list_min_touches` pivots (default
+2, the levels that take part in ranking and events; 1 lists single pivots too), and level `i` has
+`bsl_<i>_price`, `_touches` (its pivots), `_tests`, `_status` (0 unswept, 1 swept, 2 broken out,
+3 reclaimed), `_first_bars_back` and `_last_bars_back` (its first and latest pivot),
+`_swept_bars_back` once swept, and `_event`, the bit mask of what happened to it on this bar:
+1 a pivot joined or founded it, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim.
+
+```text
+tolerance = eq_tolerance_atr · ATR
+test:     high >= price - tolerance  and  low <= price + tolerance,
+          and the previous bar's range did not reach the band      (from the bar after the level was created)
+sweep:    high >= price + min_sweep_atr · ATR, for the first time   (levels with at least min_touches pivots)
+          close below that mark -> swept, close at or above it -> broken out
+reclaim:  within reclaim_bars bars of the sweep, close <= price - min_close_back_atr · ATR with high >= price
+```
+
+A swept level leaves the ranking (`primary_bsl`, `secondary_bsl`) but stays in the list with its
+status. Sell-side levels mirror every line.
+
+**`structure_zones`** lists every tracked zone, the broken ones included, until it expires after
+200 bars: `value` is their number, `extra["atr"]` the ATR, and zone `i` has `zone_<i>_lower`,
+`_upper`, `_type`, `_role` (1 support, -1 resistance), `_status` (0 fresh, 1 tested, 2 confirmed,
+3 broken, 4 flipped), `_tests`, `_age` and `_event` (1 created, 2 test, 4 bounce, 8 break, 16 role
+reversal). Once a zone has broken, `_break_bars_back` and `_break_close` name the bar and the
+close of its latest break; once it has flipped, `_flip_bars_back` names that bar. For a
+resistance zone, support mirrored:
+
+```text
+visit:          high >= lower  and  low <= upper
+test:           a visit when the previous bar was none                   -> tests + 1
+break:          close > upper  and  previous close <= upper              -> status broken
+role reversal:  a broken zone, a later visit with close > midpoint       -> status flipped, role support
+```
+
+The assessment keys (`support_*`, `resistance_*`) keep describing the nearest unbroken zone on
+either side of the close.
 
 ## Artifacts
 

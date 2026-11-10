@@ -325,6 +325,7 @@ const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "pivot_sets",
     "zigzag",
     "zigzag_advanced",
+    "trendlines",
     "liquidity_pools",
     "liquidity_sweeps",
     "double_pattern",
@@ -553,6 +554,7 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "klinger",
     "zigzag",
     "zigzag_advanced",
+    "trendlines",
     "pivot_sets",
     "tema",
     "lsma",
@@ -638,8 +640,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 135);
-        assert_eq!(catalog().len(), 135);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 136);
+        assert_eq!(catalog().len(), 136);
     }
 
     #[test]

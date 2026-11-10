@@ -321,6 +321,10 @@ impl ChartPatternDetector {
 
     /// Detects all supported pattern kinds over `nodes`, then evicts overlapping candidates
     /// (sharing any swing node), keeping the highest-confidence one per overlapping cluster.
+    ///
+    /// The two auto-trendlines are returned side by side: the line through the highs
+    /// (`upper_line` set) and the line through the lows (`lower_line` set) describe different
+    /// boundaries and never evict each other.
     pub fn scan(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
         let mut candidates = Vec::new();
         candidates.extend(self.scan_triangles_and_wedges(nodes));
@@ -342,7 +346,9 @@ impl ChartPatternDetector {
     /// detection naturally produces redundant near-duplicates of one kind over the same swing
     /// points). Different kinds describe different information and are allowed to coexist over
     /// the same nodes — e.g. a 1-2-3 reversal and an unrelated 2-point auto-trendline spanning the
-    /// same three nodes are not "competing" for the same signal.
+    /// same three nodes are not "competing" for the same signal. The same holds for the two
+    /// auto-trendlines, which share a kind but not a side: one runs through the highs, the other
+    /// through the lows.
     fn evict_overlaps(&self, candidates: Vec<ChartPatternCandidate>) -> Vec<ChartPatternCandidate> {
         let mut by_kind: Vec<(ChartPatternKind, Vec<ChartPatternCandidate>)> = Vec::new();
         for candidate in candidates {
@@ -359,6 +365,11 @@ impl ChartPatternDetector {
                 let (c_start, c_end) = candidate.node_range();
                 for existing in &kept {
                     if existing.kind != candidate.kind {
+                        continue;
+                    }
+                    if candidate.kind == ChartPatternKind::AutoTrendline
+                        && existing.upper_line.is_some() != candidate.upper_line.is_some()
+                    {
                         continue;
                     }
                     let (e_start, e_end) = existing.node_range();
@@ -925,6 +936,30 @@ mod tests {
         assert!(!candidates.iter().any(
             |c| c.kind == ChartPatternKind::AutoTrendline && c.nodes.iter().all(|n| !n.is_high)
         ));
+    }
+
+    #[test]
+    fn test_scan_returns_the_line_through_the_highs_and_the_line_through_the_lows() {
+        // Three lows and three highs over the same span: both lines have the same rank.
+        let nodes = vec![
+            node(0, 100.0, false),
+            node(5, 108.0, true),
+            node(10, 104.0, false),
+            node(15, 112.0, true),
+            node(20, 108.0, false),
+            node(25, 116.0, true),
+        ];
+        let lines: Vec<ChartPatternCandidate> = ChartPatternDetector::new(2.0)
+            .scan(&nodes)
+            .into_iter()
+            .filter(|c| c.kind == ChartPatternKind::AutoTrendline)
+            .collect();
+        assert_eq!(lines.len(), 2);
+        let lower = lines.iter().find(|c| c.lower_line.is_some()).unwrap();
+        let upper = lines.iter().find(|c| c.upper_line.is_some()).unwrap();
+        assert!((lower.lower_line.unwrap().value_at(30) - 112.0).abs() < 1e-9);
+        assert!((upper.upper_line.unwrap().value_at(30) - 118.0).abs() < 1e-9);
+        assert!(lower.upper_line.is_none() && upper.lower_line.is_none());
     }
 
     #[test]

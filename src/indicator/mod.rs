@@ -99,6 +99,7 @@ pub mod trend_break_risk;
 pub mod trend_quality;
 pub mod trend_relationship;
 pub mod trend_structural;
+pub mod trendlines;
 pub mod trix;
 pub mod tsi;
 pub mod twap;

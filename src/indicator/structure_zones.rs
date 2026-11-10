@@ -41,6 +41,28 @@
 //! 1024 climax, 2048 test, 4096/8192 rejection, 16384/32768 EQH/EQL, 65536/131072 CHoCH); `poc`,
 //! `va_high`, `va_low` once a profile exists.
 //!
+//! **The zones in the output** (this crate's addition; it changes no other value). `extra["atr"]`
+//! is the ATR of the bar. Every tracked zone is listed, oldest first, the broken ones included,
+//! until it expires; `value` is their number, and zone `i` (from 1) has
+//!
+//! | key | meaning |
+//! |---|---|
+//! | `zone_<i>_lower`, `zone_<i>_upper` | its edges (the midpoint is their mean) |
+//! | `zone_<i>_type` | as `support_type` above: 1/2 swing low/high, 3 spring, 4 upthrust, 5/6 BOS flip, 7/8 climax |
+//! | `zone_<i>_role` | 1 support, -1 resistance; a role reversal changes it |
+//! | `zone_<i>_status` | 0 fresh, 1 tested, 2 confirmed, 3 broken, 4 flipped |
+//! | `zone_<i>_tests` | the number of visits (`touches` above) |
+//! | `zone_<i>_age` | bars since the zone was created (0 on the bar that created it) |
+//! | `zone_<i>_event` | what happened to the zone on this bar, as a bit mask: 1 created, 2 test (a new visit), 4 bounce, 8 break, 16 role reversal |
+//! | `zone_<i>_break_bars_back`, `zone_<i>_break_close` | once broken: how many bars back its latest break lies (0: this bar) and the close of that bar |
+//! | `zone_<i>_flip_bars_back` | once flipped: how many bars back its latest role reversal lies |
+//!
+//! A break is a close beyond the far edge when the previous close was not beyond it; a zone that
+//! price crosses again breaks again, and `break_*` then name the latest one. A zone keeps its
+//! place in the list until it expires, after which the later ones move up; `age` together with
+//! the edges identifies a zone across bars. Events of bars before the first output are not
+//! reported; `tests`, `status` and `break_*` carry what they left.
+//!
 //! Alerts on entry (prefix = expected move, warnings without one): `support_relevant` /
 //! `resistance_relevant` (zone within 1 ATR, reach ≥ 60), `bull_support_hold` /
 //! `bear_resistance_hold` (hold ≥ 60, break < 45), `bear_support_break` / `bull_resistance_break`
@@ -100,7 +122,19 @@ struct Zone {
     last_bounce: f64,
     deep: u32,
     visit_bounced: bool,
+    /// Bit mask of this bar's events, see the `EVENT_` constants.
+    event: u32,
+    /// Bar and close of the latest break.
+    broke_at: Option<(usize, f64)>,
+    /// Bar of the latest role reversal.
+    flipped_at: Option<usize>,
 }
+
+const EVENT_CREATED: u32 = 1;
+const EVENT_TEST: u32 = 2;
+const EVENT_BOUNCE: u32 = 4;
+const EVENT_BREAK: u32 = 8;
+const EVENT_FLIP: u32 = 16;
 
 #[derive(Debug, Clone, Copy)]
 struct Gap {
@@ -321,6 +355,9 @@ impl StructureZones {
             last_bounce: 0.0,
             deep: 0,
             visit_bounced: false,
+            event: EVENT_CREATED,
+            broke_at: None,
+            flipped_at: None,
         });
     }
 }
@@ -345,6 +382,9 @@ impl Indicator for StructureZones {
         self.alerts.clear();
         let t = self.bars;
         self.bars += 1;
+        for z in &mut self.zones {
+            z.event = 0;
+        }
         let prev = self.rows.back().copied();
         let prev_close = prev.map(|p| p.close);
         let (o, h, l, c, v) = (bar.open, bar.high, bar.low, bar.close, bar.volume);
@@ -812,6 +852,7 @@ impl Indicator for StructureZones {
                 let prev_in = h_in(ph1, pl1, z.lower, z.upper);
                 if in_zone && !prev_in {
                     z.touches += 1;
+                    z.event |= EVENT_TEST;
                     z.visit_bounced = false;
                     if z.status == 0 {
                         z.status = 1;
@@ -820,6 +861,7 @@ impl Indicator for StructureZones {
                 let can_bounce = (z.status == 1 || z.status == 2) && in_zone && !z.visit_bounced;
                 if can_bounce && z.dir == 1 && c > z.mid && c > o {
                     z.status = 2;
+                    z.event |= EVENT_BOUNCE;
                     z.visit_bounced = true;
                     let bounce = if a > 0.0 { (c - z.lower) / a } else { 0.0 };
                     z.last_bounce = bounce;
@@ -832,6 +874,7 @@ impl Indicator for StructureZones {
                 }
                 if can_bounce && z.dir == -1 && c < z.mid && c < o {
                     z.status = 2;
+                    z.event |= EVENT_BOUNCE;
                     z.visit_bounced = true;
                     let bounce = if a > 0.0 { (z.upper - c) / a } else { 0.0 };
                     z.last_bounce = bounce;
@@ -855,12 +898,20 @@ impl Indicator for StructureZones {
                     z.status = 3;
                     broke = true;
                 }
+                if broke {
+                    z.event |= EVENT_BREAK;
+                    z.broke_at = Some((t, c));
+                }
                 if z.status == 3 && !broke && z.dir == 1 && in_zone && c < z.mid {
                     z.status = 4;
                     z.dir = -1;
+                    z.event |= EVENT_FLIP;
+                    z.flipped_at = Some(t);
                 } else if z.status == 3 && !broke && z.dir == -1 && in_zone && c > z.mid {
                     z.status = 4;
                     z.dir = 1;
+                    z.event |= EVENT_FLIP;
+                    z.flipped_at = Some(t);
                 }
             }
         }
@@ -1168,6 +1219,29 @@ impl Indicator for StructureZones {
             extra.insert("va_high".to_string(), va_hi);
             extra.insert("va_low".to_string(), va_lo);
         }
+        extra.insert("atr".to_string(), a);
+        for (i, z) in self.zones.iter().enumerate() {
+            let n = i + 1;
+            for (key, value) in [
+                ("lower", z.lower),
+                ("upper", z.upper),
+                ("type", z.kind as f64),
+                ("role", z.dir as f64),
+                ("status", z.status as f64),
+                ("tests", z.touches as f64),
+                ("age", (t - z.created) as f64),
+                ("event", z.event as f64),
+            ] {
+                extra.insert(format!("zone_{n}_{key}"), value);
+            }
+            if let Some((bar, close)) = z.broke_at {
+                extra.insert(format!("zone_{n}_break_bars_back"), (t - bar) as f64);
+                extra.insert(format!("zone_{n}_break_close"), close);
+            }
+            if let Some(bar) = z.flipped_at {
+                extra.insert(format!("zone_{n}_flip_bars_back"), (t - bar) as f64);
+            }
+        }
         Some(IndicatorOutput::with_extra(self.zones.len() as f64, extra))
     }
 
@@ -1185,7 +1259,7 @@ pub const STRUCTURE_ZONES_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "structure_zones",
         aliases: &[],
-        description: "Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
+        description: "Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
         params: &[
 
         ],

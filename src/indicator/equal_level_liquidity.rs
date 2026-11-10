@@ -31,6 +31,12 @@
 //! `max(0, 20·min(touches,5) + 18 - 18·min(age/max_age,1) - 7·min(distance ATR, max_distance))`;
 //! the highest score (strictly above 0) is primary, the next secondary.
 //!
+//! **Tests** (this crate's addition; they change no other value). The band of a level is
+//! `price ± eq_tolerance_atr · ATR` of the current bar. A bar whose range reaches the band
+//! (`high ≥ price - tolerance` and `low ≤ price + tolerance`) when the previous bar's range did
+//! not is a *test*, counted from the bar after the level was created; several bars in a row
+//! inside the band are one test. Tests are counted for every level, whatever its touches.
+//!
 //! `value`: the bias (the reference definition's dashboard summary): ±2 for a reclaim this bar, else ±1 when a recent
 //! reclaim (within `event_memory` bars, among the last `max_events`) scored ≥ `premium_score`; ±1
 //! when the stronger primary level is within `alert_distance_atr` (SSL +, BSL −). `extra`:
@@ -38,6 +44,27 @@
 //! `secondary_bsl_score` and the same for SSL (each while it exists), `bsl_count`, `ssl_count`
 //! (ranked levels), `recent_bull_score`, `recent_bear_score`, `volume_ratio`, and
 //! `bear_reclaim_score` / `bull_reclaim_score` on a reclaim bar.
+//!
+//! **The levels in the output.** `extra["atr"]` is the ATR of the bar and `extra["tolerance"]`
+//! the absolute tolerance `eq_tolerance_atr · atr`, the half-width of every band. Every tracked
+//! level with at least `list_min_touches` pivots is listed, oldest first, whether it is ranked,
+//! swept or on the far side of the close: `bsl_levels` and `ssl_levels` give their number, and
+//! level `i` (from 1) of a side has
+//!
+//! | key | meaning |
+//! |---|---|
+//! | `bsl_<i>_price` | the level: the running mean of its pivots |
+//! | `bsl_<i>_touches` | the number of its pivots |
+//! | `bsl_<i>_tests` | the number of its tests |
+//! | `bsl_<i>_status` | 0 unswept, 1 swept (reached, closed back), 2 broken out (reached and closed beyond), 3 reclaimed |
+//! | `bsl_<i>_first_bars_back`, `bsl_<i>_last_bars_back` | how many bars back its first and its latest pivot lie |
+//! | `bsl_<i>_swept_bars_back` | once swept or broken out: how many bars back that bar lies (0: this bar) |
+//! | `bsl_<i>_event` | what happened to the level on this bar, as a bit mask: 1 a pivot joined or founded it, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim |
+//!
+//! and the same with `ssl_`. A level keeps its place in the list until it is dropped (age,
+//! distance, `max_tracked`), after which the later ones move up; `first_bars_back` together with
+//! the side identifies a level across bars. With `list_min_touches = 1` single pivots are listed
+//! too. A swept level stays in the list with its status; only the ranking leaves it out.
 //!
 //! Alerts (closed bars; prefix = expected move, warnings without one):
 //!
@@ -87,6 +114,9 @@ pub struct EqualLevelLiquidityConfig {
     pub alert_distance_atr: f64,
     pub event_memory: usize,
     pub premium_score: f64,
+    /// Pivots a level needs to be listed in the output (`bsl_<i>_*`, `ssl_<i>_*`). The default
+    /// of 2 is that of `min_touches`: the levels that take part in ranking and events.
+    pub list_min_touches: u32,
 }
 
 impl Default for EqualLevelLiquidityConfig {
@@ -110,6 +140,7 @@ impl Default for EqualLevelLiquidityConfig {
             alert_distance_atr: 1.0,
             event_memory: 30,
             premium_score: 65.0,
+            list_min_touches: 2,
         }
     }
 }
@@ -123,7 +154,23 @@ struct Level {
     swept: bool,
     sweep_bar: usize,
     reclaimed: bool,
+    /// The sweep closed beyond the level: a breakout.
+    broken: bool,
+    /// Bar that confirmed the first pivot.
+    created: usize,
+    tests: u32,
+    /// Whether the previous bar's range reached the band.
+    visited: bool,
+    /// Bit mask of this bar's events, see the `EVENT_` constants.
+    event: u32,
 }
+
+const EVENT_PIVOT: u32 = 1;
+const EVENT_TEST: u32 = 2;
+const EVENT_SWEEP: u32 = 4;
+const EVENT_BREAKOUT: u32 = 8;
+const EVENT_HUNT: u32 = 16;
+const EVENT_RECLAIM: u32 = 32;
 
 /// The two best-ranked levels of one side: (price, score, touches).
 type Ranked = (Option<(f64, f64, u32)>, Option<(f64, f64, u32)>, usize);
@@ -200,6 +247,7 @@ impl EqualLevelLiquidity {
                 l.touches += 1;
                 l.last_touch = pivot_bar;
                 l.price = (l.price * (l.touches - 1) as f64 + price) / l.touches as f64;
+                l.event |= EVENT_PIVOT;
             }
             None => levels.push(Level {
                 price,
@@ -209,6 +257,11 @@ impl EqualLevelLiquidity {
                 swept: false,
                 sweep_bar: 0,
                 reclaimed: false,
+                broken: false,
+                created: pivot_bar + self.cfg.pivot_len,
+                tests: 0,
+                visited: false,
+                event: EVENT_PIVOT,
             }),
         }
         if levels.len() > max {
@@ -296,6 +349,9 @@ impl Indicator for EqualLevelLiquidity {
         }
 
         // Levels.
+        for l in self.bsl.iter_mut().chain(self.ssl.iter_mut()) {
+            l.event = 0;
+        }
         let tol = atr.map(|a| a * c.eq_tolerance_atr);
         let p = c.pivot_len;
         if let Some(ph) = self.pivot(false) {
@@ -311,6 +367,16 @@ impl Indicator for EqualLevelLiquidity {
             };
             self.bsl.retain(keep);
             self.ssl.retain(keep);
+        }
+        // Tests: the range reaches the band of a level, the previous bar's did not.
+        for l in self.bsl.iter_mut().chain(self.ssl.iter_mut()) {
+            let visit =
+                tol.is_some_and(|tol| bar.high >= l.price - tol && bar.low <= l.price + tol);
+            if visit && !l.visited && l.created < t {
+                l.tests += 1;
+                l.event |= EVENT_TEST;
+            }
+            l.visited = visit;
         }
 
         // Events.
@@ -373,8 +439,11 @@ impl Indicator for EqualLevelLiquidity {
                         };
                         if breakout {
                             flags[side * 3 + 1] = true;
+                            l.broken = true;
+                            l.event |= EVENT_BREAKOUT;
                         } else {
                             flags[side * 3] = true;
+                            l.event |= EVENT_SWEEP;
                             let (wick, pos) = if buy {
                                 (upper_wick, close_pos)
                             } else {
@@ -385,6 +454,7 @@ impl Indicator for EqualLevelLiquidity {
                                 && volume_ok(c.hunt_volume_mult)
                             {
                                 flags[side * 3 + 2] = true;
+                                l.event |= EVENT_HUNT;
                             }
                         }
                     }
@@ -396,6 +466,7 @@ impl Indicator for EqualLevelLiquidity {
                     };
                     if can_reclaim && reclaimed && volume_ok(c.min_volume_ratio) {
                         l.reclaimed = true;
+                        l.event |= EVENT_RECLAIM;
                         let beyond = if buy {
                             matches!(prev_low, Some(pl) if bar.close < pl)
                         } else {
@@ -527,6 +598,42 @@ impl Indicator for EqualLevelLiquidity {
         if let Some(s) = reclaim_score[1] {
             extra.insert("bull_reclaim_score".to_string(), s);
         }
+        extra.insert("atr".to_string(), a);
+        extra.insert("tolerance".to_string(), a * c.eq_tolerance_atr);
+        for (name, levels) in [("bsl", &self.bsl), ("ssl", &self.ssl)] {
+            let listed = levels.iter().filter(|l| l.touches >= c.list_min_touches);
+            let mut count = 0;
+            for (i, l) in listed.enumerate() {
+                count = i + 1;
+                let status = if l.reclaimed {
+                    3.0
+                } else if l.broken {
+                    2.0
+                } else if l.swept {
+                    1.0
+                } else {
+                    0.0
+                };
+                for (key, value) in [
+                    ("price", l.price),
+                    ("touches", l.touches as f64),
+                    ("tests", l.tests as f64),
+                    ("status", status),
+                    ("first_bars_back", (t - l.pivot_bar) as f64),
+                    ("last_bars_back", (t - l.last_touch) as f64),
+                    ("event", l.event as f64),
+                ] {
+                    extra.insert(format!("{name}_{count}_{key}"), value);
+                }
+                if l.swept {
+                    extra.insert(
+                        format!("{name}_{count}_swept_bars_back"),
+                        (t - l.sweep_bar) as f64,
+                    );
+                }
+            }
+            extra.insert(format!("{name}_levels"), count as f64);
+        }
         Some(IndicatorOutput::with_extra(bias as f64, extra))
     }
 
@@ -539,7 +646,7 @@ pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefiniti
     super::definition::IndicatorDefinition {
         name: "equal_level_liquidity",
         aliases: &[],
-        description: "Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
+        description: "Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
         params: &[
             super::definition::ParamSpec::count("pivot_len", 8, 1, 50).meaning("bars on each side of a level pivot"),
             super::definition::ParamSpec::number("eq_tolerance_atr", 0.12, 0.0, 10.0).meaning("pivots within this many ATR join one level"),
@@ -549,6 +656,7 @@ pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefiniti
             super::definition::ParamSpec::count("reclaim_bars", 3, 0, 100).meaning("bars after a sweep within which a reclaim counts"),
             super::definition::ParamSpec::number("min_volume_ratio", 1.2, 0.0, 100.0).meaning("volume against its average a reclaim needs"),
             super::definition::ParamSpec::number("alert_distance_atr", 1.0, 0.0, 100.0).meaning("distance to the primary level, in ATR, that counts as near"),
+            super::definition::ParamSpec::count("list_min_touches", 2, 1, 20).meaning("pivots a level needs to be listed in the output"),
         ],
         checks: &[],
         build: |p| {
@@ -561,6 +669,7 @@ pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefiniti
                 reclaim_bars: p.count("reclaim_bars"),
                 min_volume_ratio: p.number("min_volume_ratio"),
                 alert_distance_atr: p.number("alert_distance_atr"),
+                list_min_touches: p.count("list_min_touches") as u32,
                 ..EqualLevelLiquidityConfig::default()
             };
             Ok(Box::new(EqualLevelLiquidity::new(cfg)))

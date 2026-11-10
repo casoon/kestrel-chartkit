@@ -158,6 +158,7 @@ is complete.
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
+| trendlines | ❌ |
 | zone_rejection | ✅ |
 | double_pattern | ✅ |
 | pivot_divergence | ✅ |
@@ -191,5 +192,5 @@ part of the total below.
 
 ---
 
-**Total: 133/135 verified** — the same 135 names `catalog()` returns: 97 indicators (the first
-five groups), 4 composite scores and 34 structure/pattern detectors.
+**Total: 133/136 verified** — the same 136 names `catalog()` returns: 97 indicators (the first
+five groups), 4 composite scores and 35 structure/pattern detectors.

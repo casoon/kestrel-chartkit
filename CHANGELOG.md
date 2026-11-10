@@ -16,6 +16,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Applicability:** `ApplicabilityReason` gains `StructureContinuousSession` and
   `StructureMethod` gains `PriceGaps` and `PointAndFigure`, so exhaustive `match` expressions
   over them need the new arms. `method_rule_catalog` returns 17 rules instead of 8.
+- **Equal-level liquidity:** `EqualLevelLiquidityConfig` gains the public field
+  `list_min_touches`, so a struct literal must set it or end in `..Default::default()`.
 
 ### Added
 
@@ -25,6 +27,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   the conditions of the pivot sequence in the order they are tested, per structure the variants,
   rules and guidelines with their identifiers, sentences and origin, and the threshold constants,
   among them the new `EXTENDED_WAVE_MIN_RATIO` of `identify_extended_wave`. Details: [Elliott rules](https://casoon.github.io/kestrel-chartkit/docs/reference/elliott-rules/).
+- **Equal-level liquidity:** the output carries the calculation: `atr`, `tolerance` (absolute),
+  and every level with at least `list_min_touches` pivots as `bsl_<i>_*` / `ssl_<i>_*` with
+  price, pivots, tests, status and the events of the bar (pivot, test, sweep, breakout, stop
+  hunt, reclaim). Swept levels stay listed. Details:
+  [Levels and zones in the output](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#levels-and-zones-in-the-output).
 - **Gap:** the new detector `gap` (`reference`, `atr_len`, `min_atr`, `max_bars`; defaults
   `range`, 14, 0, 100) reports price gaps between consecutive bars: edges, size in ATR of the
   previous bar, the filled fraction of every open gap and the closing with the bars it took.
@@ -44,6 +51,14 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   `reversal`, `method`; defaults 1, 3, `close`) feeds the chart from closes or from highs and
   lows and reports the current column on every bar (`column`, `top`, `bottom`, `boxes`), with the
   alerts `pnf_new_x_column` and `pnf_new_o_column`. The catalog grows from 134 to 135 entries.
+- **Structure zones:** `structure_zones` lists every tracked zone as `zone_<i>_*`, the broken
+  ones included, with edges, role, status, tests and the events of the bar (created, test,
+  bounce, break, role reversal), plus bar and close of the latest break and `atr`.
+- **Trendlines:** the `trendlines` indicator draws a support line through confirmed ZigZag lows
+  and a resistance line through confirmed highs, each with its channel parallel, its touches and
+  its break as an event (`TrendlineEngine`, alerts `bear_support_line_break` and
+  `bull_resistance_line_break`). Details:
+  [Trendlines](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#trendlines).
 - **Two-series indicators:** `relative_strength` and the new `correlation` are built by name with
   `build_pair_checked`, listed by `pair_catalog()` and run with `run_pair_batch`, which pairs two
   bar series by timestamp. `catalog()` and `build_checked` are unchanged. Details:
@@ -52,6 +67,28 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
   move between the phases (`WyckoffTransition`: phases, bias, condition, events, parameters), and
   `WyckoffStateMachine::last_transition()` names the one the last bar took. Details:
   [Wyckoff transitions](https://casoon.github.io/kestrel-chartkit/docs/reference/wyckoff-transitions/).
+
+### Changed
+
+Output values of `zigzag_advanced` and `zigzag` change on the series named below, hence a minor
+version.
+
+- **Chart patterns:** `ChartPatternDetector::scan` returns the auto-trendline through the highs
+  and the one through the lows side by side; before, the two evicted each other and only one was
+  left.
+- **ZigZag:** `zigzag_advanced` measures the move from the running node to a pivot of the other
+  kind with its sign, so a pivot high at or below the running low (after a gap down, say) no
+  longer confirms that low or becomes a node, and likewise mirrored. The nodes of both ZigZags
+  are a pivot sequence after every bar.
+- **ZigZag:** on a bar that is both a pivot high and a pivot low, `zigzag_advanced` and `zigzag`
+  apply the pivot of the newest node's kind first, and before the first node such a bar starts
+  none. A series and its mirror image now give mirrored nodes.
+- **ZigZag:** `zigzag` measures the deviation against the amount of the newest node's price, so
+  zero and negative prices follow the same rule as positive ones.
+- **ZigZag:** `AdvancedZigZagEngine::project_to_timeframe` and `reduce` return pivot sequences:
+  the projection merges neighbouring nodes of one kind, and both drop a node on the wrong side
+  of its predecessor. Details:
+  [ZigZag nodes](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#zigzag-nodes).
 
 ## [0.40.0] - 2026-11-10
 

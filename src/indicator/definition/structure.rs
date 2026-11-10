@@ -24,4 +24,5 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::smart_money_structure::LIQUIDITY_POOLS_DEFINITION,
     &crate::indicator::wyckoff::WYCKOFF_DEFINITION,
     &crate::indicator::zigzag_advanced::ZIGZAG_ADVANCED_DEFINITION,
+    &crate::indicator::trendlines::TRENDLINES_DEFINITION,
 ];

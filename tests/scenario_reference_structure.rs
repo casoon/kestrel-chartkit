@@ -2285,6 +2285,473 @@ fn test_scenario_zigzag_advanced_atr_mode() {
     }
 }
 
+/// The gap scenario of the fixture: 34 bars given by high and low, open and close their middle.
+/// Mirrored, every price is negated and highs and lows change places.
+fn zigzag_gap_bars(mirrored: bool) -> Vec<Bar> {
+    let mut spans: Vec<(f64, f64)> = Vec::new();
+    spans.extend((0..8).map(|k| (106.0 + 2.0 * k as f64, 104.0 + 2.0 * k as f64)));
+    spans.extend((1..=5).map(|k| (120.0 - 4.0 * k as f64, 118.0 - 3.6 * k as f64)));
+    spans.extend((1..=4).map(|k| (102.0 - 0.2 * k as f64, 100.0 + 0.2 * k as f64)));
+    spans.extend([
+        (81.0, 79.5),
+        (81.5, 79.3),
+        (82.0, 79.2),
+        (83.0, 79.0),
+        (82.5, 78.9),
+        (82.0, 78.8),
+        (81.5, 78.7),
+        (81.0, 78.6),
+        (80.5, 78.5),
+        (80.0, 78.4),
+    ]);
+    spans.extend([
+        (80.6, 78.9),
+        (81.2, 79.4),
+        (81.8, 80.0),
+        (82.4, 80.6),
+        (81.9, 80.2),
+        (81.4, 79.8),
+        (80.9, 79.4),
+    ]);
+    spans
+        .into_iter()
+        .enumerate()
+        .map(|(i, (high, low))| {
+            let (high, low) = if mirrored { (-low, -high) } else { (high, low) };
+            let middle = (high + low) / 2.0;
+            Bar::new(i as i64 * 60, middle, high, low, middle, 1000.0)
+        })
+        .collect()
+}
+
+/// Nach einer Kurslücke abwärts, hinter der die Tiefs weiter fallen und die Hochs ein lokales
+/// Hoch bilden, bestätigt das Pivot-Hoch unter dem laufenden Tief nichts: Das Tief 100 bleibt der
+/// laufende Knoten, bis das tiefere Pivot-Tief es ersetzt. Dasselbe im Spiegelbild, im ATR-Modus
+/// und im einfachen `zigzag`. Sollwerte aus `reference/kestrel_reference/structure.py`, im Kopf
+/// der Fixture von Hand hergeleitet.
+#[test]
+fn test_scenario_zigzag_gap_keeps_the_pivot_sequence() {
+    use kestrel_chartkit::indicator::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
+
+    let tol = expected("scenario_structure_tolerance");
+    for (mirrored, side) in [(false, "zigzag_gap"), (true, "zigzag_gap_mirror")] {
+        let bars = zigzag_gap_bars(mirrored);
+        for (mode, deviation) in [
+            ("pct", ZigZagDeviationMode::Percent(2.0)),
+            ("atr", ZigZagDeviationMode::AtrMultiple(1.0)),
+        ] {
+            let mut engine = AdvancedZigZagEngine::new(3, 1, deviation, 14);
+            for (i, bar) in bars.iter().enumerate() {
+                engine.on_bar(bar);
+                let moment = match i + 1 {
+                    27 => "cut",
+                    34 => "end",
+                    _ => continue,
+                };
+                let prefix = format!("{side}_{mode}_{moment}");
+                let nodes = engine.nodes();
+                assert_eq!(
+                    nodes.len(),
+                    expected(&format!("{prefix}_nodes")) as usize,
+                    "{prefix}: {nodes:?}"
+                );
+                for (k, node) in nodes.iter().enumerate() {
+                    let key = format!("{prefix}_{}", k + 1);
+                    common::assert_close(node.price, expected(&format!("{key}_price")), tol, &key);
+                    assert_eq!(
+                        node.is_high,
+                        expected(&format!("{key}_is_high")) == 1.0,
+                        "{key}"
+                    );
+                    assert_eq!(
+                        node.confirmed,
+                        expected(&format!("{key}_confirmed")) == 1.0,
+                        "{key}"
+                    );
+                    assert_eq!(
+                        node.timestamp,
+                        expected(&format!("{key}_bar")) as i64 * 60,
+                        "{key}"
+                    );
+                }
+            }
+        }
+
+        let mut simple = build_checked(
+            "zigzag",
+            &HashMap::from([
+                ("depth".to_string(), 3.0),
+                ("deviation_pct".to_string(), 2.0),
+            ]),
+        )
+        .unwrap();
+        for (i, bar) in bars.iter().enumerate() {
+            let out = simple.on_bar(bar);
+            let moment = match i + 1 {
+                27 => "cut",
+                34 => "end",
+                _ => continue,
+            };
+            let out = out.expect("output from bar 7 on");
+            let prefix = format!("{side}_simple_{moment}");
+            common::assert_close(
+                out.value,
+                expected(&format!("{prefix}_price")),
+                tol,
+                &prefix,
+            );
+            assert_eq!(
+                out.extra["direction"],
+                expected(&format!("{prefix}_direction")),
+                "{prefix}"
+            );
+        }
+    }
+}
+
+/// The first position at which `(timestamp, price, is_high)` nodes stop being a pivot sequence:
+/// highs and lows alternate, timestamps do not decrease, every high lies above and every low
+/// below the node before it.
+fn pivot_sequence_break(nodes: &[(i64, f64, bool)]) -> Option<usize> {
+    (1..nodes.len()).find(|&i| {
+        let ((t0, p0, h0), (t1, p1, h1)) = (nodes[i - 1], nodes[i]);
+        h0 == h1 || t1 < t0 || !(if h1 { p1 > p0 } else { p1 < p0 })
+    })
+}
+
+/// A random walk with gaps: a 64-bit linear congruential generator supplies uniform numbers; the
+/// close moves by the sum of three of them minus 1.5, times 1.6, the wicks are up to 1.2 and now
+/// and then far wider, and about every twelfth bar opens 3 to 15 away from the previous close.
+/// Prices are rounded to one decimal so that equal highs and lows occur.
+fn gap_walk(seed: u64, len: usize) -> Vec<Bar> {
+    let mut state = seed;
+    let mut uniform = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        (state >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let round = |x: f64| (x * 10.0).round() / 10.0;
+    let mut close = 100.0 + 400.0 * uniform();
+    (0..len)
+        .map(|i| {
+            let mut open = close;
+            if uniform() < 1.0 / 12.0 {
+                let jump = 3.0 + 12.0 * uniform();
+                open += if uniform() < 0.5 { jump } else { -jump };
+            }
+            let open = round(open);
+            close = round(open + (uniform() + uniform() + uniform() - 1.5) * 1.6);
+            let wide = if uniform() < 0.05 { 8.0 } else { 1.2 };
+            let high = round(open.max(close) + uniform() * wide);
+            let low = round(open.min(close) - uniform() * wide);
+            Bar::new(i as i64 * 60, open, high, low, close, 1000.0)
+        })
+        .collect()
+}
+
+fn mirrored(bars: &[Bar]) -> Vec<Bar> {
+    bars.iter()
+        .map(|b| Bar::new(b.timestamp, -b.open, -b.low, -b.high, -b.close, b.volume))
+        .collect()
+}
+
+/// Eigenschaft über Zufallsreihen mit Kurslücken: Was ein ZigZag dieses Crates als Knoten führt,
+/// ist nach jeder Bar eine Pivotfolge — `zigzag_advanced` im Prozent- und im ATR-Modus, der
+/// einfache `zigzag`, dazu `reduce` und `project_to_timeframe` auf den Knoten, und die Pivots von
+/// `structure::threshold_zigzag` am Ende der Reihe. Die Elliott-Prüfer
+/// weisen kein Fenster als „keine Pivotfolge“ ab, und die gespiegelte Reihe ergibt die
+/// gespiegelten Knoten. 60 Reihen zu je 400 Bars, vier Tiefen, fünf Schwellen je Modus.
+#[test]
+fn test_scenario_zigzag_nodes_are_a_pivot_sequence_on_random_gap_series() {
+    use kestrel_chartkit::indicator::elliott::{
+        check_correction, check_impulse, CorrectionOptions,
+    };
+    use kestrel_chartkit::indicator::zigzag::ZigZagEngine;
+    use kestrel_chartkit::indicator::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
+    use kestrel_chartkit::structure::threshold_zigzag;
+    use kestrel_chartkit::timeframe::Timeframe;
+
+    let depths = [(1usize, 0usize), (2, 1), (3, 2), (5, 0)];
+    let deviations = [
+        ZigZagDeviationMode::Percent(0.2),
+        ZigZagDeviationMode::Percent(0.5),
+        ZigZagDeviationMode::Percent(1.0),
+        ZigZagDeviationMode::Percent(2.0),
+        ZigZagDeviationMode::Percent(5.0),
+        ZigZagDeviationMode::AtrMultiple(0.25),
+        ZigZagDeviationMode::AtrMultiple(0.5),
+        ZigZagDeviationMode::AtrMultiple(1.0),
+        ZigZagDeviationMode::AtrMultiple(2.0),
+        ZigZagDeviationMode::AtrMultiple(4.0),
+    ];
+    let (mut runs, mut nodes_seen, mut same_bar_pairs) = (0usize, 0usize, 0usize);
+    let mut threshold_pivots = 0usize;
+    for seed in 1..=60u64 {
+        let bars = gap_walk(seed, 400);
+        let mirror = mirrored(&bars);
+        // The third ZigZag of the crate, confirmed by closes a fixed distance beyond the extreme.
+        for distance in [0.5, 2.0, 6.0] {
+            let pivots = threshold_zigzag(&bars, &vec![Some(distance); bars.len()]);
+            let flat: Vec<_> = pivots
+                .iter()
+                .map(|p| (p.index as i64, p.price, p.is_high))
+                .collect();
+            assert_eq!(
+                pivot_sequence_break(&flat),
+                None,
+                "threshold_zigzag, seed {seed}, distance {distance}: {flat:?}"
+            );
+            assert!(pivots.iter().all(|p| p.confirmed_index > p.index));
+            threshold_pivots += pivots.len();
+        }
+        for (depth, backstep) in depths {
+            for deviation in deviations {
+                let context = format!("seed {seed}, depth {depth}, {deviation:?}");
+                let mut engine = AdvancedZigZagEngine::new(depth, backstep, deviation, 14);
+                let mut twin = AdvancedZigZagEngine::new(depth, backstep, deviation, 14);
+                for (bar, mirror_bar) in bars.iter().zip(&mirror) {
+                    engine.on_bar(bar);
+                    twin.on_bar(mirror_bar);
+                    let nodes: Vec<_> = engine
+                        .nodes()
+                        .iter()
+                        .map(|n| (n.timestamp, n.price, n.is_high))
+                        .collect();
+                    assert_eq!(
+                        pivot_sequence_break(&nodes),
+                        None,
+                        "{context}, bar {}: {nodes:?}",
+                        bar.timestamp / 60
+                    );
+                    // Every node but the newest is confirmed.
+                    let unconfirmed = engine.nodes().iter().filter(|n| !n.confirmed).count();
+                    assert!(unconfirmed <= 1 && engine.nodes().last().is_none_or(|n| !n.confirmed));
+                }
+                let nodes = engine.nodes();
+                let reflected: Vec<_> = twin
+                    .nodes()
+                    .iter()
+                    .map(|n| (n.timestamp, -n.price, !n.is_high, n.confirmed))
+                    .collect();
+                let plain: Vec<_> = nodes
+                    .iter()
+                    .map(|n| (n.timestamp, n.price, n.is_high, n.confirmed))
+                    .collect();
+                assert_eq!(plain, reflected, "{context}: mirror image");
+
+                for window in nodes.windows(6) {
+                    assert!(check_impulse(window).is_ok(), "{context}: {window:?}");
+                }
+                for window in nodes.windows(4) {
+                    let checked = check_correction(window, &CorrectionOptions::default());
+                    assert!(checked.is_ok(), "{context}: {window:?}");
+                }
+                for pct in [0.0, 1.0, 3.0, 10.0] {
+                    let coarse = AdvancedZigZagEngine::reduce(nodes, pct);
+                    let flat: Vec<_> = coarse
+                        .iter()
+                        .map(|n| (n.timestamp, n.price, n.is_high))
+                        .collect();
+                    assert_eq!(pivot_sequence_break(&flat), None, "{context}: reduce {pct}");
+                    if pct == 0.0 {
+                        assert_eq!(coarse, nodes, "{context}: reduce at 0 % keeps the sequence");
+                    }
+                }
+                for minutes in [5, 15, 60] {
+                    let projected = AdvancedZigZagEngine::project_to_timeframe(
+                        nodes,
+                        Timeframe::Minute(minutes),
+                        0,
+                    );
+                    let flat: Vec<_> = projected
+                        .iter()
+                        .map(|n| (n.timestamp, n.price, n.is_high))
+                        .collect();
+                    assert_eq!(
+                        pivot_sequence_break(&flat),
+                        None,
+                        "{context}: projected to {minutes} minutes: {flat:?}"
+                    );
+                }
+                runs += 1;
+                nodes_seen += nodes.len();
+                same_bar_pairs += nodes
+                    .windows(2)
+                    .filter(|p| p[0].timestamp == p[1].timestamp)
+                    .count();
+            }
+
+            for pct in [0.2, 0.5, 1.0, 2.0, 5.0] {
+                let context = format!("zigzag, seed {seed}, depth {depth}, {pct} %");
+                let mut engine = ZigZagEngine::new(depth.max(2), pct);
+                let mut twin = ZigZagEngine::new(depth.max(2), pct);
+                for (bar, mirror_bar) in bars.iter().zip(&mirror) {
+                    engine.on_bar(bar);
+                    twin.on_bar(mirror_bar);
+                    let nodes: Vec<_> = engine
+                        .nodes()
+                        .iter()
+                        .map(|n| (n.timestamp, n.price, n.is_high))
+                        .collect();
+                    assert_eq!(
+                        pivot_sequence_break(&nodes),
+                        None,
+                        "{context}, bar {}: {nodes:?}",
+                        bar.timestamp / 60
+                    );
+                }
+                let plain: Vec<_> = engine
+                    .nodes()
+                    .iter()
+                    .map(|n| (n.timestamp, n.price, n.is_high))
+                    .collect();
+                let reflected: Vec<_> = twin
+                    .nodes()
+                    .iter()
+                    .map(|n| (n.timestamp, -n.price, !n.is_high))
+                    .collect();
+                assert_eq!(plain, reflected, "{context}: mirror image");
+            }
+        }
+    }
+    // What the walks contain, recorded so that a change of the generator shows: the number of
+    // runs, of nodes at the end of the runs, and of neighbouring nodes on one bar.
+    assert_eq!((runs, nodes_seen, same_bar_pairs), (2400, 134024, 9447));
+    assert_eq!(threshold_pivots, 17323);
+}
+
+/// `trendlines` über Zufallsreihen mit Kurslücken: Die gespiegelte Reihe ergibt die gespiegelte
+/// Ausgabe, auf das Bit — Unterstützung und Widerstand tauschen die Plätze, Preise wechseln das
+/// Vorzeichen, alles andere bleibt. Ein Lauf über einen Anfang der Reihe endet mit derselben
+/// Ausgabe wie der Lauf über die ganze Reihe an dieser Bar (kausal). Dazu, was die Ausgabe je Bar
+/// zusagt.
+#[test]
+fn test_scenario_trendlines_mirror_symmetry_and_causality() {
+    let negated = ["value", "start_price", "end_price", "channel_value"];
+    let reflect = |out: &kestrel_chartkit::indicator::IndicatorOutput| {
+        let mut extra = HashMap::new();
+        for (key, value) in &out.extra {
+            let (side, field) = match key.split_once('_') {
+                Some(("support", field)) => ("resistance_", field),
+                Some(("resistance", field)) => ("support_", field),
+                _ => ("", key.as_str()),
+            };
+            let sign = if !side.is_empty() && negated.contains(&field) {
+                -1.0
+            } else {
+                1.0
+            };
+            extra.insert(format!("{side}{field}"), sign * value);
+        }
+        (out.value, extra)
+    };
+    let swap = |kind: &str| match kind {
+        "bear_support_line_break" => "bull_resistance_line_break".to_string(),
+        "bull_resistance_line_break" => "bear_support_line_break".to_string(),
+        other => panic!("unexpected alert {other}"),
+    };
+
+    let (mut lines, mut breaks, mut touches, mut channels) = (0usize, 0usize, 0usize, 0usize);
+    for seed in 1..=40u64 {
+        let bars = gap_walk(seed, 400);
+        let mirror = mirrored(&bars);
+        for (tolerance, deviation) in [(0.25, 1.0), (1.0, 0.5), (0.0, 2.0)] {
+            let params = HashMap::from([
+                ("tolerance_atr".to_string(), tolerance),
+                ("deviation_pct".to_string(), deviation),
+            ]);
+            let context = format!("seed {seed}, tolerance {tolerance}, deviation {deviation}");
+            let mut plain = build_checked("trendlines", &params).unwrap();
+            let mut twin = build_checked("trendlines", &params).unwrap();
+            let mut outputs = Vec::new();
+            for (i, (bar, mirror_bar)) in bars.iter().zip(&mirror).enumerate() {
+                let (out, reflected) = (plain.on_bar(bar), twin.on_bar(mirror_bar));
+                assert_eq!(out.is_some(), i >= 13, "{context}: output from bar 14 on");
+                let mut kinds: Vec<String> = plain.alerts().into_iter().map(|a| a.kind).collect();
+                let mut swapped: Vec<String> =
+                    twin.alerts().iter().map(|a| swap(&a.kind)).collect();
+                kinds.sort();
+                swapped.sort();
+                assert_eq!(kinds, swapped, "{context}, bar {i}");
+                if let (Some(out), Some(reflected)) = (&out, &reflected) {
+                    let (value, extra) = reflect(reflected);
+                    assert_eq!(out.value, value, "{context}, bar {i}");
+                    assert_eq!(out.extra, extra, "{context}, bar {i}");
+
+                    let mut present = 0.0;
+                    for side in ["support", "resistance"] {
+                        let get = |field: &str| out.extra.get(&format!("{side}_{field}")).copied();
+                        let Some(line) = get("value") else {
+                            assert!(out.extra.keys().all(|k| !k.starts_with(side)));
+                            continue;
+                        };
+                        present += 1.0;
+                        lines += 1;
+                        let broke = get("break") == Some(1.0);
+                        assert_eq!(
+                            broke,
+                            if side == "support" {
+                                bar.close < line
+                            } else {
+                                bar.close > line
+                            },
+                            "{context}, bar {i}: {side} break"
+                        );
+                        assert_eq!(
+                            broke,
+                            kinds.iter().any(|k| k.contains(side)),
+                            "{context}, bar {i}: {side} alert"
+                        );
+                        let extreme = if side == "support" { bar.low } else { bar.high };
+                        assert_eq!(
+                            get("touch") == Some(1.0),
+                            (extreme - line).abs() <= out.extra["tolerance"],
+                            "{context}, bar {i}: {side} touch"
+                        );
+                        let (nodes, on_line) =
+                            (get("nodes").unwrap(), get("node_touches").unwrap());
+                        assert!(2.0 <= on_line && on_line <= nodes, "{context}, bar {i}");
+                        assert!(get("start_bars_back") > get("end_bars_back"));
+                        if let Some(width) = get("channel_width") {
+                            assert!(width > 0.0);
+                            let far = if side == "support" {
+                                line + width
+                            } else {
+                                line - width
+                            };
+                            assert_eq!(get("channel_value"), Some(far));
+                            channels += 1;
+                        }
+                        breaks += usize::from(broke);
+                        touches += usize::from(get("touch") == Some(1.0));
+                    }
+                    assert_eq!(
+                        out.value, present,
+                        "{context}, bar {i}: value counts the lines"
+                    );
+                }
+                outputs.push(out);
+            }
+
+            for cut in (60..bars.len()).step_by(67) {
+                let mut prefix = build_checked("trendlines", &params).unwrap();
+                let mut last = None;
+                for bar in &bars[..=cut] {
+                    last = prefix.on_bar(bar);
+                }
+                assert_eq!(last, outputs[cut], "{context}: bar {cut}");
+            }
+        }
+    }
+    // Recorded, so that the walks are known to exercise the rules: bars with a line, breaks,
+    // touching bars and bars with a channel, summed over both sides and all runs.
+    assert_eq!(
+        (lines, breaks, touches, channels),
+        (32679, 1843, 2082, 32679)
+    );
+}
+
 /// A structure alert names its direction and kind in the prefix and suffix, matching the note.
 fn assert_structure_kind(kind: &str, note: &str) {
     let bull = note.starts_with("Bullish");

@@ -53,6 +53,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("liquidity_sweeps"),
     Coverage::full("liquidity_pools"),
     Coverage::full("zigzag_advanced"),
+    Coverage::full("trendlines"),
     Coverage::full("zone_rejection"),
     Coverage::full("double_pattern"),
     Coverage::full("bottom_formation"),
@@ -422,6 +423,33 @@ fn zigzag_advanced_rejects_invalid_configuration() {
     assert_rejected("zigzag_advanced", &[("deviation_mode", 2.0)]);
     assert_rejected("zigzag_advanced", &[("deviation_pct", 150.0)]);
     assert_rejected("zigzag_advanced", &[("back_step", 2.0)]);
+}
+
+// --- trendlines ------------------------------------------------------------------------------
+
+#[test]
+fn trendlines_defaults() {
+    holds("trendlines_defaults", "trendlines", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendlines_wide() {
+    holds("trendlines_wide", "trendlines", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendlines_mirrored() {
+    holds("trendlines_mirrored", "trendlines", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendlines_rejects_invalid_configuration() {
+    assert_rejected("trendlines", &[("depth", 0.0)]);
+    assert_rejected("trendlines", &[("deviation_pct", 0.0)]);
+    assert_rejected("trendlines", &[("atr_len", 0.0)]);
+    assert_rejected("trendlines", &[("tolerance_atr", -0.1)]);
+    assert_rejected("trendlines", &[("deviation_mode", 2.0)]);
+    assert_rejected("trendlines", &[("tolerance", 0.25)]);
 }
 
 // --- zone_rejection --------------------------------------------------------------------------
