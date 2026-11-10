@@ -336,25 +336,27 @@ const METHOD_RULES: [MethodRuleDescription; 8] = [
         method: StructureMethod::WyckoffRange,
         reason: ApplicabilityReason::StructureRollJumps,
         tier: ApplicabilityTier::Degraded,
-        explanation: "Ein Roll-Sprung weitet Spannenbreite und ATR, an denen die Spanne gemessen \
-            wird, und der Umsatz wechselt mit dem Kontrakt: der Climax-Test vergleicht Umsatz \
-            verschiedener Kontrakte",
+        explanation: "Ein Roll-Sprung verschiebt die Kurse gegen die bereits gesetzten \
+            Spannengrenzen und weitet die ATR, in der jede Distanz gemessen wird, und der Umsatz \
+            wechselt mit dem Kontrakt: Climax-Test und Sign of Strength messen an einer \
+            Umsatzschwelle aus Bars verschiedener Kontrakte",
     },
     MethodRuleDescription {
         method: StructureMethod::WyckoffRange,
         reason: ApplicabilityReason::StructureBackAdjustedLevels,
         tier: ApplicabilityTier::Degraded,
-        explanation: "Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: der \
-            Climax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die \
-            Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen",
+        explanation: "Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: \
+            Climax-Test, Secondary Test und Sign of Strength vergleichen an der Roll-Grenze Umsatz \
+            verschiedener Kontrakte, und die Spannengrenzen liegen vor dem Wechsel auf nie \
+            gehandelten Preisen",
     },
     MethodRuleDescription {
         method: StructureMethod::WyckoffRange,
         reason: ApplicabilityReason::StructureProviderExtreme,
         tier: ApplicabilityTier::Degraded,
-        explanation: "Spring und UTAD entstehen, wenn ein einzelnes Tief oder Hoch die \
-            Spannengrenze durchsticht und der Schlusskurs zurückkehrt; diese Extreme sind Quotes \
-            des Anbieters und gelten nicht am gehandelten Markt",
+        explanation: "Spannengrenzen, Spring und UTAD hängen an einzelnen Hochs und Tiefs (Extrem \
+            der Climax-Bar und der Gegenbewegung, Durchstoß einer einzelnen Bar); diese Extreme \
+            sind Quotes des Anbieters und gelten nicht am gehandelten Markt",
     },
 ];
 

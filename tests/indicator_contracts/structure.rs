@@ -586,6 +586,43 @@ fn wyckoff_no_volume() {
     holds("wyckoff_no_volume", "wyckoff", IndicatorUnit::Unitless);
 }
 
+/// Without dispersion in the volumes of the window there is no outlier: a close above the range
+/// on 101 against a constant 100 is no Sign of Strength.
+#[test]
+fn wyckoff_no_dispersion() {
+    holds("wyckoff_no_dispersion", "wyckoff", IndicatorUnit::Unitless);
+}
+
+/// The counterpart on varying volumes: 300 is an outlier, the sequence runs to Phase E.
+#[test]
+fn wyckoff_fallback_carried() {
+    holds(
+        "wyckoff_fallback_carried",
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
+}
+
+/// The bar that reports the Last Point of Support keeps the range and Phase E even where the
+/// width fallback would apply; the next range is set one bar later.
+#[test]
+fn wyckoff_lps_then_new_range() {
+    holds(
+        "wyckoff_lps_then_new_range",
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn wyckoff_lpsy_then_new_range() {
+    holds(
+        "wyckoff_lpsy_then_new_range",
+        "wyckoff",
+        IndicatorUnit::Unitless,
+    );
+}
+
 /// What a random walk reports is fixed bar by bar; the case comment in the fixture counts it.
 #[test]
 fn wyckoff_random_walk() {

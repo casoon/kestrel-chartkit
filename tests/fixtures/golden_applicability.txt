@@ -175,12 +175,12 @@ elliott	synthetic	applicable
 wyckoff	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
 wyckoff	index-future	applicable	
 wyckoff	future-single	applicable	
-wyckoff	future-continuous	limited	Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: der Climax-Test vergleicht an der Roll-Grenze Umsatz verschiedener Kontrakte, und die Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen
-wyckoff	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Spring und UTAD entstehen, wenn ein einzelnes Tief oder Hoch die Spannengrenze durchsticht und der Schlusskurs zurückkehrt; diese Extreme sind Quotes des Anbieters und gelten nicht am gehandelten Markt
-wyckoff	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Spring und UTAD entstehen, wenn ein einzelnes Tief oder Hoch die Spannengrenze durchsticht und der Schlusskurs zurückkehrt; diese Extreme sind Quotes des Anbieters und gelten nicht am gehandelten Markt
+wyckoff	future-continuous	limited	Die Preise sind über den Kontraktwechsel angeglichen, der Umsatz nicht: Climax-Test, Secondary Test und Sign of Strength vergleichen an der Roll-Grenze Umsatz verschiedener Kontrakte, und die Spannengrenzen liegen vor dem Wechsel auf nie gehandelten Preisen
+wyckoff	cfd-broker	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Spannengrenzen, Spring und UTAD hängen an einzelnen Hochs und Tiefs (Extrem der Climax-Bar und der Gegenbewegung, Durchstoß einer einzelnen Bar); diese Extreme sind Quotes des Anbieters und gelten nicht am gehandelten Markt
+wyckoff	fx-spot	misleading	zeigt Update-Häufigkeit, nicht Umsatz || Spannengrenzen, Spring und UTAD hängen an einzelnen Hochs und Tiefs (Extrem der Climax-Bar und der Gegenbewegung, Durchstoß einer einzelnen Bar); diese Extreme sind Quotes des Anbieters und gelten nicht am gehandelten Markt
 wyckoff	stock-adjusted	applicable	
 wyckoff	stock-thin	applicable	
-wyckoff	commodity-chained	limited	Ein Roll-Sprung weitet Spannenbreite und ATR, an denen die Spanne gemessen wird, und der Umsatz wechselt mit dem Kontrakt: der Climax-Test vergleicht Umsatz verschiedener Kontrakte
+wyckoff	commodity-chained	limited	Ein Roll-Sprung verschiebt die Kurse gegen die bereits gesetzten Spannengrenzen und weitet die ATR, in der jede Distanz gemessen wird, und der Umsatz wechselt mit dem Kontrakt: Climax-Test und Sign of Strength messen an einer Umsatzschwelle aus Bars verschiedener Kontrakte
 wyckoff	synthetic	applicable	
 pivot_sets	index-cash	applicable	
 pivot_sets	index-future	applicable	

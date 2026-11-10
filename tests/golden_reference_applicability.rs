@@ -252,7 +252,7 @@ fn elliott_and_wyckoff_give_each_class_its_own_reason() {
     for class in ["commodity-chained", "future-continuous"] {
         let row = find("wyckoff", class);
         assert!(row.contains("\tlimited\t"), "{class}");
-        assert!(row.contains("Umsatz verschiedener Kontrakte"), "{class}");
+        assert!(row.contains("verschiedener Kontrakte"), "{class}");
     }
     for class in [
         "index-future",

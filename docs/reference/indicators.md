@@ -1488,7 +1488,7 @@ Wyckoff accumulation/distribution state machine: range from climax and counter-m
 | `range_atr_max` | 3 | 0.1 – 1000 | width fallback: widest window, in ATR, that is set as a range while no climax is pending |
 | `min_range_bars` | 6 | whole number 2 – 10000 | bars a range must exist before a Spring or UTAD counts |
 | `atr_len` | 14 | whole number 1 – 10000 | bars of the Wilder ATR every distance is measured in |
-| `volume_k` | 2 | 0 – 100 | volume outlier: scaled MADs above the window median |
+| `volume_k` | 2 | 0 – 100 | volume outlier: scaled MADs above the window median; no outlier while the MAD is zero |
 | `climax_range_atr` | 1.5 | 0.1 – 100 | climax bar: smallest high-low spread, in ATR |
 | `st_atr` | 0.25 | 0 – 100 | Secondary Test: largest distance of the bar's extreme from the boundary, in ATR |
 | `breakout_volume` | `on` | `off`, `on` (f64 map: 0 – 1) | whether a Sign of Strength/Weakness needs a volume outlier |
