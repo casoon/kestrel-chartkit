@@ -1,7 +1,7 @@
-//! `docs/reference/wyckoff-transitions.md` is generated from `wyckoff::transitions()`, like the
-//! indicator reference from the indicator definitions, so the published table cannot drift from
-//! the code. This test renders the page and compares; after a change to the table, regenerate
-//! with
+//! `docs/reference/wyckoff-transitions.md` is generated from `wyckoff::transitions()` and
+//! `docs/reference/elliott-rules.md` from `elliott::rule_catalog()`, like the indicator
+//! reference from the indicator definitions, so the published tables cannot drift from the
+//! code. These tests render the pages and compare; after a change to a table, regenerate with
 //!
 //! ```sh
 //! KESTREL_UPDATE_DOCS=1 cargo test --all-features --test structure_catalog_doc
@@ -9,6 +9,7 @@
 
 use std::fmt::Write;
 
+use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckEntry, WaveSubdivision};
 use kestrel_chartkit::indicator::wyckoff::{transitions, WyckoffPhase, WyckoffRangeBias};
 
 const WYCKOFF_PATH: &str = concat!(
@@ -16,6 +17,11 @@ const WYCKOFF_PATH: &str = concat!(
     "/docs/reference/wyckoff-transitions.md"
 );
 const WYCKOFF_EXAMPLE: &str = include_str!("../examples/wyckoff_state_diagram.rs");
+const ELLIOTT_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/docs/reference/elliott-rules.md"
+);
+const ELLIOTT_EXAMPLE: &str = include_str!("../examples/elliott_check_flow.rs");
 
 fn code_list<'a>(items: impl Iterator<Item = &'a str>) -> String {
     let items: Vec<String> = items.map(|item| format!("`{item}`")).collect();
@@ -172,4 +178,248 @@ fn assert_current(path: &str, rendered: &str) {
 #[test]
 fn wyckoff_transitions_page_matches_the_table() {
     assert_current(WYCKOFF_PATH, &render_wyckoff());
+}
+
+fn number(v: f64) -> String {
+    format!("{v}")
+}
+
+fn usize_list(items: &[usize]) -> String {
+    if items.is_empty() {
+        "–".to_string()
+    } else {
+        items
+            .iter()
+            .map(usize::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+fn check_rows(out: &mut String, structure: &str, checks: &[CheckEntry]) {
+    for check in checks {
+        let assertion = match check.asserted_wave_a {
+            Some(WaveSubdivision::Five) => "`wave_a` = five",
+            Some(WaveSubdivision::Three) => "`wave_a` = three",
+            None => "–",
+        };
+        writeln!(
+            out,
+            "| {structure} | `{}` | {} | {} | {assertion} | {} | {} |",
+            check.id,
+            check.kind.id(),
+            code_list(check.variants.iter().map(|v| v.id())),
+            check.origin.id().replace('_', " "),
+            code_list(check.thresholds.iter().copied()),
+        )
+        .unwrap();
+    }
+}
+
+fn render_elliott() -> String {
+    let catalog = rule_catalog();
+    let checks = || {
+        catalog
+            .structures
+            .iter()
+            .filter(|entry| entry.segments.is_none())
+            .flat_map(|entry| {
+                entry
+                    .rules
+                    .iter()
+                    .chain(entry.guidelines)
+                    .map(move |check| (entry.structure.id(), check))
+            })
+    };
+    let mut out = String::new();
+    writeln!(
+        out,
+        "---\ntitle: Elliott rules\ndescription: What the Elliott validators check, generated from the rule catalogue of the crate, with the {} conditions of the pivot sequence, the rules and guidelines of the {} structures and the thresholds with their origin.\norder: 4\n---\n",
+        catalog.sequence_conditions.len(),
+        catalog.structures.len()
+    )
+    .unwrap();
+    out.push_str(
+        "> **Generated.** This page is rendered from `indicator::elliott::rule_catalog()` by\n\
+         > `tests/structure_catalog_doc.rs`, so it always matches the code of this version. The same\n\
+         > catalogue is bound to the behaviour by tests: every identifier a validator reports is listed\n\
+         > here with its sentence, variants and assertion, every entry is reported by at least one test\n\
+         > sequence for every variant it names, and every threshold is where the behaviour turns.\n\n",
+    );
+    out.push_str(
+        "The validators of `indicator::elliott` check a given labeling; they do not count waves. \
+         A **rule** makes a labeling invalid and is reported in `violations`. A **guideline** is \
+         reported in `guidelines` and leaves `valid` untouched. The reference for both is the \
+         summary of rules and guidelines of Frost and Prechter's *Elliott Wave Principle*, read in \
+         reproductions; where it leaves a choice open, the choice is this crate's convention and \
+         is marked as such below.\n\n",
+    );
+
+    out.push_str("## The pivot sequence\n\n");
+    out.push_str(
+        "Every validator first requires a pivot sequence. The conditions are tested in this \
+         order, each over the whole sequence, and the first that fails is reported: `check_*` \
+         returns the `SequenceError` naming the node, `validate_*` returns `None`. A refused \
+         sequence gets no verdict.\n\n",
+    );
+    out.push_str("| Order | `SequenceError` | `kind().id()` | Condition |\n|---|---|---|---|\n");
+    for (i, condition) in catalog.sequence_conditions.iter().enumerate() {
+        writeln!(
+            out,
+            "| {} | `{:?}` | `{}` | {} |",
+            i + 1,
+            condition.error,
+            condition.error.id(),
+            condition.text
+        )
+        .unwrap();
+    }
+
+    out.push_str("\n## Structures\n\n");
+    out.push_str(
+        "| Structure | Function | Nodes | Placement left to a rule | Rules | Guidelines |\n\
+         |---|---|---|---|---|---|\n",
+    );
+    for entry in catalog.structures {
+        let (rules, guidelines) = match entry.segments {
+            Some(segments) => (
+                format!("those of `{}`, per segment of four nodes", segments.id()),
+                format!("those of `{}`", segments.id()),
+            ),
+            None => (
+                entry.rules.len().to_string(),
+                entry.guidelines.len().to_string(),
+            ),
+        };
+        writeln!(
+            out,
+            "| `{}` | `{}` | {} | {} | {rules} | {guidelines} |",
+            entry.structure.id(),
+            entry.checker,
+            usize_list(entry.node_counts),
+            match entry.placement_left_to_rule {
+                [] => "–".to_string(),
+                nodes => format!("node {}", usize_list(nodes)),
+            },
+        )
+        .unwrap();
+    }
+    out.push_str(
+        "\nThe end of wave C of a correction is not held by the placement condition: a wave C \
+         that does not continue past wave B is reported as the violation \
+         `wave_c_must_extend_past_b` instead.\n\n",
+    );
+
+    out.push_str("## Variants\n\n");
+    out.push_str(
+        "Listed in the order the assignment tests them; a sequence takes the first variant whose \
+         condition holds. An impulse has no variants.\n\n",
+    );
+    out.push_str("| Structure | Variant | Condition |\n|---|---|---|\n");
+    for entry in catalog.structures {
+        for variant in entry.variants {
+            writeln!(
+                out,
+                "| `{}` | `{}` | {} |",
+                entry.structure.id(),
+                variant.variant.id(),
+                variant.text
+            )
+            .unwrap();
+        }
+    }
+
+    out.push_str("\n## Rules and guidelines\n\n");
+    out.push_str(
+        "Listed per structure in the order they are tested and reported. **Variants** are the \
+         variants a result can have when it reports the entry; a variant that is missing cannot \
+         depart from it, because the check is not made for it or its definition already satisfies \
+         it. **Needs assertion** marks the two rules that can only fail when the subdivision of \
+         wave A is asserted (`CorrectionOptions::wave_a`); without it they hold by construction. \
+         A combination reports the entries of `correction` for each of its segments.\n\n",
+    );
+    out.push_str(
+        "| Structure | Identifier | Kind | Variants | Needs assertion | Origin | Thresholds |\n\
+         |---|---|---|---|---|---|---|\n",
+    );
+    for entry in catalog
+        .structures
+        .iter()
+        .filter(|entry| entry.segments.is_none())
+    {
+        let structure = format!("`{}`", entry.structure.id());
+        check_rows(&mut out, &structure, entry.rules);
+        check_rows(&mut out, &structure, entry.guidelines);
+    }
+    out.push_str(
+        "\nWhat each entry demands (`statement`), the sentence reported with its identifier under \
+         the default options (`detail`), and what of it is this crate's convention:\n\n",
+    );
+    out.push_str(
+        "| Structure | Identifier | Statement | Sentence reported | Convention |\n|---|---|---|---|---|\n",
+    );
+    for (structure, check) in checks() {
+        writeln!(
+            out,
+            "| `{structure}` | `{}` | {} | {} | {} |",
+            check.id,
+            check.statement,
+            check.detail,
+            check.convention.unwrap_or("–")
+        )
+        .unwrap();
+    }
+    out.push_str(
+        "\nThe sentence of `flat_b_retrace_bound` carries its bound, which is an option \
+         (`CorrectionOptions::flat_b_typical_max`), as a percentage.\n\n",
+    );
+
+    out.push_str("## Thresholds\n\n");
+    out.push_str(
+        "The public constants of the module and what each decides. A constant with two uses has \
+         two rows.\n\n",
+    );
+    out.push_str(
+        "| Constant | Value | Role | Origin | Option | Meaning | Convention |\n|---|---|---|---|---|---|---|\n",
+    );
+    for threshold in catalog.thresholds {
+        writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} | {} | {} |",
+            threshold.constant,
+            number(threshold.value),
+            threshold.role.id().replace('_', " "),
+            threshold.origin.id().replace('_', " "),
+            threshold
+                .option
+                .map_or("–".to_string(), |o| format!("`{o}`")),
+            threshold.text,
+            threshold.convention.unwrap_or("–")
+        )
+        .unwrap();
+    }
+
+    out.push_str(
+        "\n## Not in the catalogue\n\n\
+         The catalogue lists what is reported as a rule or a guideline. `identify_extended_wave` \
+         and `is_truncated_fifth` are measures with their own functions and no identifier; \
+         `TriangleValidation::running` and `DiagonalValidation::wave4_overlaps_wave1` are \
+         properties of a result; the asserted `DiagonalKind` enters no check. Rules of the \
+         literature that need the subdivision of a wave or its place in a larger count are not \
+         checked, and the documentation of each `check_*` function names them.\n\n",
+    );
+
+    out.push_str("## Deriving the flow of the checks\n\n");
+    out.push_str(
+        "The conditions of the pivot sequence are steps that end the flow when they fail; the \
+         rules and guidelines are steps that each report on their own. \
+         `examples/elliott_check_flow.rs`, run with `cargo run --example elliott_check_flow`:\n\n",
+    );
+    writeln!(out, "```rust\n{}\n```", example_body(ELLIOTT_EXAMPLE)).unwrap();
+    out
+}
+
+#[test]
+fn elliott_rules_page_matches_the_catalogue() {
+    assert_current(ELLIOTT_PATH, &render_elliott());
 }

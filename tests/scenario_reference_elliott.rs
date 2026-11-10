@@ -664,3 +664,705 @@ fn every_correction_falls_into_exactly_one_form() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The rule catalogue (`elliott::rule_catalog`) against the behaviour
+// ---------------------------------------------------------------------------------------------
+
+use kestrel_chartkit::indicator::elliott::{
+    rule_catalog, CheckEntry, CheckKind, SequenceErrorKind, StructureEntry, StructureKind,
+    ThresholdRole, WaveVariant, BARRIER_LEVEL_TOLERANCE, EXPANDED_FLAT_B_MIN,
+    EXPANDING_TRIANGLE_RETRACE_MAX, EXPANDING_TRIANGLE_RETRACE_MIN, FLAT_B_MIN_RETRACE,
+    FLAT_B_TYPICAL_MAX, ZIGZAG_B_TYPICAL_MAX,
+};
+
+fn structure(kind: StructureKind) -> &'static StructureEntry {
+    rule_catalog()
+        .structures
+        .iter()
+        .find(|entry| entry.structure == kind)
+        .unwrap_or_else(|| panic!("{kind:?} is not in the catalogue"))
+}
+
+/// What the catalogue is compared with: every (structure, check, variant) a validator reported,
+/// and every variant it assigned.
+#[derive(Default)]
+struct Reported {
+    checks: BTreeSet<(&'static str, &'static str, &'static str)>,
+    variants: BTreeSet<(&'static str, &'static str)>,
+}
+
+/// One result of a validator against the catalogue entry of `kind`: every identifier reported
+/// is listed there as a rule or a guideline, with the sentence reported, for the variant of the
+/// result and under the assertion made; the identifiers come in the order of the catalogue.
+#[allow(clippy::too_many_arguments)]
+fn audit_result(
+    at: &str,
+    kind: StructureKind,
+    variant: Option<WaveVariant>,
+    wave_a: Option<WaveSubdivision>,
+    default_options: bool,
+    violations: &[RuleViolation],
+    deviations: &[GuidelineDeviation],
+    reported: &mut Reported,
+) {
+    let entry = structure(kind);
+    let variant_id = variant.map_or("-", |v| v.id());
+    // The variant belongs to the structure, or to the structure of its segments.
+    let variants = structure(entry.segments.unwrap_or(kind)).variants;
+    match variant {
+        Some(v) => assert!(
+            variants.iter().any(|listed| listed.variant == v),
+            "{at}: variant {v:?} is not listed for {kind:?}"
+        ),
+        None => assert!(variants.is_empty(), "{at}: {kind:?} has variants"),
+    }
+    if entry.segments.is_none() {
+        reported.variants.insert((kind.id(), variant_id));
+    }
+
+    let mut check = |list: &'static [CheckEntry], what: CheckKind, id: &str, detail: &str| {
+        let position = list
+            .iter()
+            .position(|listed| listed.id == id)
+            .unwrap_or_else(|| panic!("{at}: {id} is not a {what:?} of {kind:?}"));
+        let listed = &list[position];
+        assert_eq!(listed.kind, what, "{at}: {id}");
+        match variant {
+            Some(v) => assert!(
+                listed.variants.contains(&v),
+                "{at}: {id} reported for {v:?}"
+            ),
+            None => assert!(listed.variants.is_empty(), "{at}: {id}"),
+        }
+        if let Some(asserted) = listed.asserted_wave_a {
+            assert_eq!(wave_a, Some(asserted), "{at}: {id} without the assertion");
+        }
+        if default_options {
+            assert_eq!(listed.detail, detail, "{at}: sentence of {id}");
+        }
+        reported.checks.insert((kind.id(), listed.id, variant_id));
+        position
+    };
+    let rules: Vec<usize> = violations
+        .iter()
+        .map(|v| check(entry.rules, CheckKind::Rule, &v.rule, &v.detail))
+        .collect();
+    let guidelines: Vec<usize> = deviations
+        .iter()
+        .map(|d| {
+            check(
+                entry.guidelines,
+                CheckKind::Guideline,
+                &d.guideline,
+                &d.detail,
+            )
+        })
+        .collect();
+    for positions in [rules, guidelines] {
+        assert!(
+            positions.windows(2).all(|pair| pair[0] < pair[1]),
+            "{at}: reported out of the order of the catalogue"
+        );
+    }
+}
+
+fn audit_correction(
+    at: &str,
+    kind: StructureKind,
+    options: &CorrectionOptions,
+    v: &CorrectionValidation,
+    reported: &mut Reported,
+) {
+    audit_result(
+        at,
+        kind,
+        Some(WaveVariant::Correction(v.variant)),
+        options.wave_a,
+        options.flat_b_typical_max == FLAT_B_TYPICAL_MAX,
+        &v.violations,
+        &v.guidelines,
+        reported,
+    );
+}
+
+/// Six nodes whose legs have the given lengths, the first one rising from 100 or, mirrored,
+/// falling from -100.
+fn six_nodes(legs: [f64; 5], rising: bool) -> Vec<ZigZagNode> {
+    let mut price = 100.0;
+    let mut prices = vec![price];
+    for (i, leg) in legs.iter().enumerate() {
+        price += if i % 2 == 0 { *leg } else { -*leg };
+        prices.push(price);
+    }
+    prices
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| ZigZagNode {
+            timestamp: 60 * i as i64,
+            price: if rising { p } else { -p },
+            is_high: (i % 2 == 1) == rising,
+            confirmed: true,
+        })
+        .collect()
+}
+
+/// The catalogue lists what the validators report, and nothing else.
+///
+/// Every result of the fixture and of three sweeps is checked by [`audit_result`]: all 59049
+/// combinations of nine leg lengths as an impulse, a diagonal and a triangle, in both
+/// directions; the corrections with wave B retracing 0.001 to 2.000 of wave A, eight ends of
+/// wave C, the three assertions about wave A and two bounds of the flat guideline, in both
+/// directions; and a double three built from each kind of correction result. Then the reverse:
+/// every check of the catalogue was reported for every variant it names, and every variant was
+/// assigned.
+#[test]
+fn catalogue_lists_what_the_validators_report() {
+    let mut reported = Reported::default();
+
+    // The fixture.
+    for row in rows("impulse") {
+        if let Ok(v) = check_impulse(&row.nodes) {
+            let (kind, none) = (StructureKind::Impulse, &[]);
+            audit_result(
+                row.case,
+                kind,
+                None,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+        }
+    }
+    for row in rows("diagonal") {
+        if let Ok(v) = check_diagonal(&row.nodes, DiagonalKind::Leading) {
+            let variant = Some(WaveVariant::Diagonal(v.variant));
+            let (kind, none) = (StructureKind::Diagonal, &[]);
+            audit_result(
+                row.case,
+                kind,
+                variant,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+        }
+    }
+    for row in rows("correction") {
+        let options = correction_options(&row.options);
+        if let Ok(v) = check_correction(&row.nodes, &options) {
+            audit_correction(
+                row.case,
+                StructureKind::Correction,
+                &options,
+                &v,
+                &mut reported,
+            );
+        }
+    }
+    for row in rows("triangle") {
+        if let Ok(v) = check_triangle(&row.nodes, &TriangleOptions::default()) {
+            let variant = Some(WaveVariant::Triangle(v.variant));
+            let (kind, none) = (StructureKind::Triangle, &[]);
+            audit_result(
+                row.case,
+                kind,
+                variant,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+        }
+    }
+    for row in rows("combination") {
+        let options = correction_options(&row.options);
+        if let Ok(v) = check_combination(&row.nodes, &options) {
+            let kind = StructureKind::Combination;
+            reported
+                .variants
+                .insert((kind.id(), WaveVariant::Combination(v.variant).id()));
+            for segment in &v.segments {
+                audit_correction(row.case, kind, &options, segment, &mut reported);
+            }
+        }
+    }
+
+    // Six nodes: every combination of these leg lengths, rising and falling.
+    const LEGS: [f64; 9] = [2.0, 5.0, 9.0, 10.0, 14.0, 15.0, 20.0, 21.0, 30.0];
+    let mut legs = [0usize; 5];
+    loop {
+        for rising in [true, false] {
+            let nodes = six_nodes(legs.map(|k| LEGS[k]), rising);
+            let at = format!("legs {legs:?} rising {rising}");
+            let none = &[];
+            let v = check_impulse(&nodes).expect("a pivot sequence");
+            let kind = StructureKind::Impulse;
+            audit_result(
+                &at,
+                kind,
+                None,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+            let v = check_diagonal(&nodes, DiagonalKind::Ending).expect("a pivot sequence");
+            let variant = Some(WaveVariant::Diagonal(v.variant));
+            let kind = StructureKind::Diagonal;
+            audit_result(
+                &at,
+                kind,
+                variant,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+            let v = check_triangle(&nodes, &TriangleOptions::default()).expect("a pivot sequence");
+            let variant = Some(WaveVariant::Triangle(v.variant));
+            let kind = StructureKind::Triangle;
+            audit_result(
+                &at,
+                kind,
+                variant,
+                None,
+                true,
+                &v.violations,
+                none,
+                &mut reported,
+            );
+        }
+        let Some(next) = legs.iter().position(|&k| k + 1 < LEGS.len()) else {
+            break;
+        };
+        legs[next] += 1;
+        legs[..next].fill(0);
+    }
+
+    // Four nodes: wave A from 3000 to 4000, wave B retracing k thousandths, C around the ends
+    // of B and A. The first sequence of each kind of result is kept for the combinations.
+    let mut witnesses: Vec<(Vec<ZigZagNode>, CorrectionOptions)> = Vec::new();
+    let mut kinds_of_result = BTreeSet::new();
+    for direction in [WaveDirection::Up, WaveDirection::Down] {
+        for wave_a in [
+            None,
+            Some(WaveSubdivision::Five),
+            Some(WaveSubdivision::Three),
+        ] {
+            for flat_b_typical_max in [FLAT_B_TYPICAL_MAX, 0.95] {
+                let options = CorrectionOptions {
+                    wave_a,
+                    flat_b_typical_max,
+                };
+                for k in 1..=2000_i64 {
+                    let b = 4000 - k;
+                    for c in [b - 1, b, b + 1, 3999, 4000, 4001, 4700, 9000] {
+                        let prices = [3000, 4000, b, c].map(|p| match direction {
+                            WaveDirection::Up => p as f64,
+                            WaveDirection::Down => -(p as f64),
+                        });
+                        let nodes = correction_nodes(direction, prices);
+                        let v = check_correction(&nodes, &options).expect("a pivot sequence");
+                        let at = format!("{direction:?} {wave_a:?} k={k} c={c}");
+                        let kind = StructureKind::Correction;
+                        audit_correction(&at, kind, &options, &v, &mut reported);
+                        if kinds_of_result.insert(
+                            correction_text(&v)
+                                .replace(&format!("quality={:?}", v.pullback_quality), ""),
+                        ) {
+                            witnesses.push((nodes, options));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Eight nodes: each witness as W, and once more as Y, starting 5000 beyond the end of W
+    // against its direction. The X wave between them runs from the end of W to the start of Y.
+    for (w, options) in &witnesses {
+        let against = if w[0].is_high { -1.0 } else { 1.0 };
+        let drop = w[0].price - w[3].price + against * 5000.0;
+        let mut nodes = w.clone();
+        nodes.extend(w.iter().map(|n| ZigZagNode {
+            timestamp: n.timestamp + 240,
+            price: n.price - drop,
+            ..*n
+        }));
+        let v = check_combination(&nodes, options).expect("a pivot sequence of eight");
+        assert_eq!(v.segments.len(), 2);
+        for segment in &v.segments {
+            let kind = StructureKind::Combination;
+            audit_correction(
+                "combination of witnesses",
+                kind,
+                options,
+                segment,
+                &mut reported,
+            );
+        }
+    }
+
+    // The reverse: nothing in the catalogue that no sequence produced.
+    for entry in rule_catalog().structures {
+        let id = entry.structure.id();
+        for listed in entry.variants {
+            assert!(
+                reported.variants.contains(&(id, listed.variant.id())),
+                "{id}: no sequence is a {:?}",
+                listed.variant
+            );
+        }
+        for check in entry.rules.iter().chain(entry.guidelines) {
+            let variants: Vec<&str> = if check.variants.is_empty() {
+                vec!["-"]
+            } else {
+                check.variants.iter().map(|v| v.id()).collect()
+            };
+            for variant in variants {
+                assert!(
+                    reported.checks.contains(&(id, check.id, variant)),
+                    "{id}: no sequence reports {} as {variant}",
+                    check.id
+                );
+            }
+        }
+    }
+}
+
+/// The catalogue as a table: one entry per structure, every variant of every enum, checks with
+/// distinct identifiers per structure, and thresholds that are the public constants.
+#[test]
+fn catalogue_is_complete_and_consistent() {
+    let catalog = rule_catalog();
+
+    let kinds: Vec<StructureKind> = catalog.structures.iter().map(|e| e.structure).collect();
+    assert_eq!(
+        kinds,
+        [
+            StructureKind::Impulse,
+            StructureKind::Diagonal,
+            StructureKind::Correction,
+            StructureKind::Triangle,
+            StructureKind::Combination,
+        ]
+    );
+    // A new variant of one of these enums fails to compile here until it is listed.
+    let listed = |variant: WaveVariant| {
+        let kind = match variant {
+            WaveVariant::Diagonal(DiagonalVariant::Contracting | DiagonalVariant::Expanding) => {
+                StructureKind::Diagonal
+            }
+            WaveVariant::Correction(
+                CorrectionVariant::Zigzag
+                | CorrectionVariant::Flat
+                | CorrectionVariant::ExpandedFlat
+                | CorrectionVariant::RunningFlat,
+            ) => StructureKind::Correction,
+            WaveVariant::Triangle(
+                TriangleVariant::Contracting
+                | TriangleVariant::Barrier
+                | TriangleVariant::Expanding,
+            ) => StructureKind::Triangle,
+            WaveVariant::Combination(
+                CombinationVariant::DoubleThree | CombinationVariant::TripleThree,
+            ) => StructureKind::Combination,
+        };
+        structure(kind)
+            .variants
+            .iter()
+            .any(|v| v.variant == variant)
+    };
+    let counts: Vec<usize> = catalog
+        .structures
+        .iter()
+        .map(|e| e.variants.len())
+        .collect();
+    assert_eq!(counts, [0, 2, 4, 3, 2]);
+    for entry in catalog.structures {
+        for variant in entry.variants {
+            assert!(listed(variant.variant), "{:?}", variant.variant);
+        }
+        let mut ids = BTreeSet::new();
+        for check in entry.rules.iter().chain(entry.guidelines) {
+            assert!(
+                ids.insert(check.id),
+                "{} twice in {:?}",
+                check.id,
+                entry.structure
+            );
+            for name in check.thresholds {
+                let role = match check.kind {
+                    CheckKind::Rule => ThresholdRole::Rule,
+                    CheckKind::Guideline => ThresholdRole::Guideline,
+                };
+                assert!(
+                    catalog
+                        .thresholds
+                        .iter()
+                        .any(|t| t.constant == *name && t.role == role),
+                    "{}: no threshold {name} with the role {role:?}",
+                    check.id
+                );
+            }
+        }
+        assert!(entry.rules.iter().all(|c| c.kind == CheckKind::Rule));
+        assert!(entry
+            .guidelines
+            .iter()
+            .all(|c| c.kind == CheckKind::Guideline));
+    }
+    let combination = structure(StructureKind::Combination);
+    let correction = structure(StructureKind::Correction);
+    assert_eq!(combination.segments, Some(StructureKind::Correction));
+    assert_eq!(combination.rules, correction.rules);
+    assert_eq!(combination.guidelines, correction.guidelines);
+
+    for threshold in catalog.thresholds {
+        let constant = match threshold.constant {
+            "FLAT_B_MIN_RETRACE" => FLAT_B_MIN_RETRACE,
+            "EXPANDED_FLAT_B_MIN" => EXPANDED_FLAT_B_MIN,
+            "ZIGZAG_B_TYPICAL_MAX" => ZIGZAG_B_TYPICAL_MAX,
+            "FLAT_B_TYPICAL_MAX" => FLAT_B_TYPICAL_MAX,
+            "EXPANDING_TRIANGLE_RETRACE_MIN" => EXPANDING_TRIANGLE_RETRACE_MIN,
+            "EXPANDING_TRIANGLE_RETRACE_MAX" => EXPANDING_TRIANGLE_RETRACE_MAX,
+            "BARRIER_LEVEL_TOLERANCE" => BARRIER_LEVEL_TOLERANCE,
+            other => panic!("{other} is not a public constant of the module"),
+        };
+        assert_eq!(threshold.value, constant, "{}", threshold.constant);
+        if threshold.role != ThresholdRole::FormBoundary {
+            let used = catalog.structures.iter().any(|entry| {
+                entry
+                    .rules
+                    .iter()
+                    .chain(entry.guidelines)
+                    .any(|check| check.thresholds.contains(&threshold.constant))
+            });
+            assert!(used, "no check names {}", threshold.constant);
+        }
+    }
+    assert_eq!(
+        catalog.thresholds.len(),
+        8,
+        "seven constants, one with two roles"
+    );
+}
+
+/// A pivot sequence of `n` nodes that rises: every high above, every low below the node before.
+fn ladder(n: usize) -> Vec<ZigZagNode> {
+    (0..n)
+        .map(|i| ZigZagNode {
+            timestamp: 60 * i as i64,
+            price: 100.0 + 3.0 * i as f64 + if i % 2 == 1 { 8.0 } else { 0.0 },
+            is_high: i % 2 == 1,
+            confirmed: true,
+        })
+        .collect()
+}
+
+/// The validator of a structure, reduced to whether it refuses the sequence.
+fn refusal(kind: StructureKind, nodes: &[ZigZagNode]) -> Option<SequenceError> {
+    let corrections = CorrectionOptions::default();
+    match kind {
+        StructureKind::Impulse => check_impulse(nodes).err(),
+        StructureKind::Diagonal => check_diagonal(nodes, DiagonalKind::Leading).err(),
+        StructureKind::Correction => check_correction(nodes, &corrections).err(),
+        StructureKind::Triangle => check_triangle(nodes, &TriangleOptions::default()).err(),
+        StructureKind::Combination => check_combination(nodes, &corrections).err(),
+    }
+}
+
+/// Breaks one condition of the pivot sequence at a node.
+type Break = fn(&mut Vec<ZigZagNode>, usize);
+
+/// The conditions of the pivot sequence as the catalogue states them: the node counts of each
+/// structure, the nodes whose placement is left to a rule, and the order of the conditions (a
+/// sequence that breaks two of them is refused with the one listed first).
+#[test]
+fn catalogue_states_the_pivot_sequence_conditions() {
+    let catalog = rule_catalog();
+    let order: Vec<SequenceErrorKind> = catalog
+        .sequence_conditions
+        .iter()
+        .map(|c| c.error)
+        .collect();
+    assert_eq!(order.len(), 4);
+    let position = |kind: SequenceErrorKind| order.iter().position(|k| *k == kind).unwrap();
+
+    // Every refusal of the fixture names a condition of the catalogue, and each one occurs.
+    let mut refused = BTreeSet::new();
+    for (kind, name) in [
+        (StructureKind::Impulse, "impulse"),
+        (StructureKind::Diagonal, "diagonal"),
+        (StructureKind::Correction, "correction"),
+        (StructureKind::Triangle, "triangle"),
+        (StructureKind::Combination, "combination"),
+    ] {
+        for row in rows(name) {
+            if let Some(error) = refusal(kind, &row.nodes) {
+                assert!(order.contains(&error.kind()), "{}", row.case);
+                refused.insert(error.kind().id());
+            }
+        }
+    }
+    let ids: BTreeSet<&str> = order.iter().map(|kind| kind.id()).collect();
+    assert_eq!(refused, ids);
+
+    for entry in catalog.structures {
+        let kind = entry.structure;
+        // Node counts.
+        for n in 0..=14 {
+            let count_refused = matches!(
+                refusal(kind, &ladder(n)),
+                Some(SequenceError::NodeCount { .. })
+            );
+            assert_eq!(
+                count_refused,
+                !entry.node_counts.contains(&n),
+                "{kind:?} with {n} nodes"
+            );
+        }
+        for &n in entry.node_counts {
+            // Placement: a node on the level of the node before it is refused at that node,
+            // unless a rule of the structure reports it.
+            for i in 1..n {
+                let mut nodes = ladder(n);
+                nodes[i].price = nodes[i - 1].price;
+                let here =
+                    refusal(kind, &nodes) == Some(SequenceError::PivotPlacement { index: i });
+                let left_to_rule = entry.placement_left_to_rule.contains(&i);
+                assert_eq!(here, !left_to_rule, "{kind:?}: node {i} of {n}");
+            }
+
+            // Order: break two conditions at once, the later one at an earlier node.
+            let breaks: [(SequenceErrorKind, Break); 4] = [
+                (SequenceErrorKind::NodeCount, |nodes, _| nodes.truncate(3)),
+                (SequenceErrorKind::NotAlternating, |nodes, i| {
+                    nodes[i].is_high = nodes[i - 1].is_high
+                }),
+                (SequenceErrorKind::TimeOrder, |nodes, i| {
+                    nodes[i].timestamp = nodes[i - 1].timestamp - 1
+                }),
+                (SequenceErrorKind::PivotPlacement, |nodes, i| {
+                    nodes[i].price = nodes[i - 1].price
+                }),
+            ];
+            for (first, break_first) in &breaks {
+                for (second, break_second) in &breaks {
+                    if position(*first) >= position(*second) {
+                        continue;
+                    }
+                    let mut nodes = ladder(n);
+                    break_second(&mut nodes, 1);
+                    break_first(&mut nodes, 2);
+                    let error = refusal(kind, &nodes).expect("refused");
+                    assert_eq!(
+                        error.kind(),
+                        *first,
+                        "{kind:?}: {first:?} is tested before {second:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Where between `lo` and `hi` the answer of `holds` changes from false to true.
+fn turning_point(mut lo: f64, mut hi: f64, holds: impl Fn(f64) -> bool) -> f64 {
+    assert!(
+        !holds(lo) && holds(hi),
+        "the interval does not hold the turning point"
+    );
+    for _ in 0..60 {
+        let middle = (lo + hi) / 2.0;
+        if holds(middle) {
+            hi = middle;
+        } else {
+            lo = middle;
+        }
+    }
+    hi
+}
+
+/// Every threshold of the catalogue is where the behaviour changes: for each entry a sequence is
+/// varied along the quantity the threshold limits, and the value at which the variant, the rule
+/// or the guideline turns is the value listed.
+#[test]
+fn catalogue_thresholds_are_where_the_behaviour_turns() {
+    // Wave A from 100 down to 90, wave B retracing `r` of it, C beyond the end of A.
+    let correction = |r: f64, wave_a: Option<WaveSubdivision>| {
+        let nodes = correction_nodes(WaveDirection::Down, [100.0, 90.0, 90.0 + 10.0 * r, 85.0]);
+        let options = CorrectionOptions {
+            wave_a,
+            ..CorrectionOptions::default()
+        };
+        check_correction(&nodes, &options).expect("a pivot sequence")
+    };
+    let departs =
+        |v: &CorrectionValidation, id: &str| v.guidelines.iter().any(|g| g.guideline == id);
+    let triangle = |prices: [f64; 6]| {
+        let nodes: Vec<ZigZagNode> = prices
+            .iter()
+            .enumerate()
+            .map(|(i, &price)| node(if i % 2 == 1 { "H" } else { "L" }, 60 * i as i64, price))
+            .collect();
+        check_triangle(&nodes, &TriangleOptions::default()).expect("a pivot sequence")
+    };
+    // An expanding triangle whose wave b retraces `r` of wave a; only the start of a moves.
+    let b_retrace_broken = |r: f64| {
+        let v = triangle([110.0 - 13.0 / r, 110.0, 97.0, 113.0, 93.0, 117.0]);
+        assert_eq!(v.variant, TriangleVariant::Expanding);
+        v.violations
+            .iter()
+            .any(|x| x.rule == "expanding_triangle_b_retrace")
+    };
+
+    for threshold in rule_catalog().thresholds {
+        let found = match (threshold.constant, threshold.role) {
+            ("FLAT_B_MIN_RETRACE", ThresholdRole::FormBoundary) => turning_point(0.5, 0.95, |r| {
+                correction(r, None).variant != CorrectionVariant::Zigzag
+            }),
+            ("FLAT_B_MIN_RETRACE", ThresholdRole::Rule) => turning_point(0.5, 0.95, |r| {
+                correction(r, Some(WaveSubdivision::Three)).valid
+            }),
+            ("EXPANDED_FLAT_B_MIN", ThresholdRole::FormBoundary) => turning_point(0.95, 1.2, |r| {
+                correction(r, None).variant == CorrectionVariant::ExpandedFlat
+            }),
+            ("ZIGZAG_B_TYPICAL_MAX", ThresholdRole::Guideline) => turning_point(0.5, 0.85, |r| {
+                departs(&correction(r, None), "zigzag_b_retrace_bound")
+            }),
+            ("FLAT_B_TYPICAL_MAX", ThresholdRole::Guideline) => turning_point(1.2, 1.45, |r| {
+                departs(&correction(r, None), "flat_b_retrace_bound")
+            }),
+            ("EXPANDING_TRIANGLE_RETRACE_MIN", ThresholdRole::Rule) => {
+                turning_point(0.8, 1.2, |r| !b_retrace_broken(r))
+            }
+            ("EXPANDING_TRIANGLE_RETRACE_MAX", ThresholdRole::Rule) => {
+                turning_point(1.2, 1.8, b_retrace_broken)
+            }
+            // Wave b is 20 long; the end of d lies `share` of that above the end of b.
+            ("BARRIER_LEVEL_TOLERANCE", ThresholdRole::FormBoundary) => {
+                turning_point(0.01, 0.2, |share| {
+                    let v = triangle([100.0, 130.0, 110.0, 124.0, 110.0 + 20.0 * share, 119.0]);
+                    v.variant == TriangleVariant::Contracting
+                })
+            }
+            (constant, role) => panic!("no probe for {constant} as {role:?}"),
+        };
+        assert!(
+            (found - threshold.value).abs() < 1e-9,
+            "{} as {:?}: the behaviour turns at {found}, the catalogue says {}",
+            threshold.constant,
+            threshold.role,
+            threshold.value
+        );
+    }
+}

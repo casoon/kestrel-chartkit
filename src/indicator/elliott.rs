@@ -46,6 +46,14 @@
 //! A sequence and its mirror image (highs for lows, every price negated) give the same result
 //! with the opposite [`WaveDirection`], to the last bit: each validator evaluates a falling
 //! sequence as the rising one it mirrors.
+//!
+//! # The rules as data
+//!
+//! [`rule_catalog`] returns what the validators check as a [`RuleCatalog`]: the conditions of the
+//! pivot sequence in the order they are tested, per structure the node counts, variants, rules
+//! and guidelines with the identifiers and sentences reported, and the threshold constants with
+//! what each decides and where it comes from. A rule table or a flow of the checks can be
+//! generated from it instead of written by hand.
 
 use std::fmt;
 
@@ -1086,6 +1094,801 @@ impl FibonacciReactionMemory {
             .map(|(_, bucket)| bucket.len())
             .unwrap_or(0)
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The rules as data
+// ---------------------------------------------------------------------------------------------
+
+/// Which pivot-sequence condition a [`SequenceError`] names, without the node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SequenceErrorKind {
+    NodeCount,
+    NotAlternating,
+    TimeOrder,
+    PivotPlacement,
+}
+
+impl SequenceErrorKind {
+    /// Stable lower-case identifier: `node_count`, `not_alternating`, `time_order`,
+    /// `pivot_placement`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            SequenceErrorKind::NodeCount => "node_count",
+            SequenceErrorKind::NotAlternating => "not_alternating",
+            SequenceErrorKind::TimeOrder => "time_order",
+            SequenceErrorKind::PivotPlacement => "pivot_placement",
+        }
+    }
+}
+
+impl SequenceError {
+    /// The condition the error names.
+    pub fn kind(&self) -> SequenceErrorKind {
+        match self {
+            SequenceError::NodeCount { .. } => SequenceErrorKind::NodeCount,
+            SequenceError::NotAlternating { .. } => SequenceErrorKind::NotAlternating,
+            SequenceError::TimeOrder { .. } => SequenceErrorKind::TimeOrder,
+            SequenceError::PivotPlacement { .. } => SequenceErrorKind::PivotPlacement,
+        }
+    }
+}
+
+/// One condition of the pivot sequence every validator requires. See [`RuleCatalog`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SequenceCondition {
+    /// The [`SequenceError`] a sequence that breaks the condition is refused with.
+    pub error: SequenceErrorKind,
+    /// What the condition demands, in one English sentence.
+    pub text: &'static str,
+}
+
+/// The structures the validators check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructureKind {
+    Impulse,
+    Diagonal,
+    Correction,
+    Triangle,
+    Combination,
+}
+
+impl StructureKind {
+    /// Stable lower-case identifier: `impulse`, `diagonal`, `correction`, `triangle`,
+    /// `combination`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            StructureKind::Impulse => "impulse",
+            StructureKind::Diagonal => "diagonal",
+            StructureKind::Correction => "correction",
+            StructureKind::Triangle => "triangle",
+            StructureKind::Combination => "combination",
+        }
+    }
+}
+
+/// A variant of any structure, so that one table can name them all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WaveVariant {
+    Diagonal(DiagonalVariant),
+    Correction(CorrectionVariant),
+    Triangle(TriangleVariant),
+    Combination(CombinationVariant),
+}
+
+impl WaveVariant {
+    /// Stable lower-case identifier, unique within a structure: `contracting`, `expanding`,
+    /// `zigzag`, `flat`, `expanded_flat`, `running_flat`, `barrier`, `double_three`,
+    /// `triple_three`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            WaveVariant::Diagonal(DiagonalVariant::Contracting)
+            | WaveVariant::Triangle(TriangleVariant::Contracting) => "contracting",
+            WaveVariant::Diagonal(DiagonalVariant::Expanding)
+            | WaveVariant::Triangle(TriangleVariant::Expanding) => "expanding",
+            WaveVariant::Triangle(TriangleVariant::Barrier) => "barrier",
+            WaveVariant::Correction(CorrectionVariant::Zigzag) => "zigzag",
+            WaveVariant::Correction(CorrectionVariant::Flat) => "flat",
+            WaveVariant::Correction(CorrectionVariant::ExpandedFlat) => "expanded_flat",
+            WaveVariant::Correction(CorrectionVariant::RunningFlat) => "running_flat",
+            WaveVariant::Combination(CombinationVariant::DoubleThree) => "double_three",
+            WaveVariant::Combination(CombinationVariant::TripleThree) => "triple_three",
+        }
+    }
+}
+
+/// Whether departing from a check invalidates a labeling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckKind {
+    /// Reported as a [`RuleViolation`]; clears `valid`.
+    Rule,
+    /// Reported as a [`GuidelineDeviation`]; leaves `valid` untouched.
+    Guideline,
+}
+
+impl CheckKind {
+    /// Stable lower-case identifier: `rule`, `guideline`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            CheckKind::Rule => "rule",
+            CheckKind::Guideline => "guideline",
+        }
+    }
+}
+
+/// Where a check or a threshold comes from, as the documentation of the item states it. The
+/// literature is the summary of rules and guidelines named in the module documentation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleOrigin {
+    /// Stated there as a rule, or as the definition of a form.
+    LiteratureRule,
+    /// Stated there as a guideline.
+    LiteratureGuideline,
+    /// A decision of this crate where the literature gives none.
+    CrateConvention,
+}
+
+impl RuleOrigin {
+    /// Stable lower-case identifier: `literature_rule`, `literature_guideline`,
+    /// `crate_convention`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            RuleOrigin::LiteratureRule => "literature_rule",
+            RuleOrigin::LiteratureGuideline => "literature_guideline",
+            RuleOrigin::CrateConvention => "crate_convention",
+        }
+    }
+}
+
+/// One rule or guideline a validator checks. See [`RuleCatalog`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckEntry {
+    /// The identifier reported in [`RuleViolation::rule`] or [`GuidelineDeviation::guideline`].
+    pub id: &'static str,
+    pub kind: CheckKind,
+    /// What the check demands, in one English sentence.
+    pub statement: &'static str,
+    /// The sentence reported with the identifier ([`RuleViolation::detail`],
+    /// [`GuidelineDeviation::detail`]) under the default options. Only `flat_b_retrace_bound`
+    /// depends on an option: its sentence carries
+    /// [`CorrectionOptions::flat_b_typical_max`] as a percentage.
+    pub detail: &'static str,
+    /// The variants a result can have when it reports this check. Empty for a structure
+    /// without variants. A variant that is missing here cannot depart from the check: either it
+    /// is not tested for that variant, or the variant's definition already satisfies it.
+    pub variants: &'static [WaveVariant],
+    /// `Some` if the check can only fail when wave A is asserted to subdivide this way
+    /// ([`CorrectionOptions::wave_a`]); without the assertion it holds by construction.
+    pub asserted_wave_a: Option<WaveSubdivision>,
+    pub origin: RuleOrigin,
+    /// What of the check is this crate's convention although the check itself comes from the
+    /// literature: how a tie counts, or how a percentage is written.
+    pub convention: Option<&'static str>,
+    /// The names of the public constants the check compares against ([`ThresholdEntry`]).
+    pub thresholds: &'static [&'static str],
+}
+
+/// One variant of a structure and how a sequence comes to be assigned to it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VariantEntry {
+    pub variant: WaveVariant,
+    /// The condition of the variant, in one English sentence.
+    pub text: &'static str,
+}
+
+/// What one validator checks. See [`RuleCatalog`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StructureEntry {
+    pub structure: StructureKind,
+    /// The name of the function that checks it, e.g. `check_impulse`.
+    pub checker: &'static str,
+    /// The node counts the pivot sequence may have.
+    pub node_counts: &'static [usize],
+    /// The nodes the placement condition of the pivot sequence skips, because a rule of the
+    /// structure reports their misplacement instead (`wave_c_must_extend_past_b`).
+    pub placement_left_to_rule: &'static [usize],
+    /// `Some` if the structure is checked in groups of four nodes, each as this structure.
+    /// `rules` and `guidelines` are then those of the segments and are reported per segment,
+    /// and the variants named in a [`CheckEntry`] are the segment's.
+    pub segments: Option<StructureKind>,
+    /// The variants of the structure, in the order the assignment tests them.
+    pub variants: &'static [VariantEntry],
+    /// The rules, in the order they are tested and reported.
+    pub rules: &'static [CheckEntry],
+    /// The guidelines, in the order they are tested and reported.
+    pub guidelines: &'static [CheckEntry],
+}
+
+/// What a threshold decides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThresholdRole {
+    /// Which variant a sequence is assigned to.
+    FormBoundary,
+    /// Whether a rule is violated.
+    Rule,
+    /// Whether a guideline is departed from.
+    Guideline,
+}
+
+impl ThresholdRole {
+    /// Stable lower-case identifier: `form_boundary`, `rule`, `guideline`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            ThresholdRole::FormBoundary => "form_boundary",
+            ThresholdRole::Rule => "rule",
+            ThresholdRole::Guideline => "guideline",
+        }
+    }
+}
+
+/// One use of a public threshold constant. A constant with two uses has two entries.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ThresholdEntry {
+    /// The name of the constant in this module, e.g. `FLAT_B_MIN_RETRACE`.
+    pub constant: &'static str,
+    /// Its value.
+    pub value: f64,
+    pub role: ThresholdRole,
+    pub origin: RuleOrigin,
+    /// The option that replaces the constant, if there is one: `flat_b_typical_max`
+    /// ([`CorrectionOptions`]) or `barrier_tolerance` ([`TriangleOptions`]).
+    pub option: Option<&'static str>,
+    /// What lies on which side of the value, in one English sentence.
+    pub text: &'static str,
+    /// What of the number is this crate's convention although the threshold comes from the
+    /// literature.
+    pub convention: Option<&'static str>,
+}
+
+/// Everything the validators check, as data. See [`rule_catalog`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RuleCatalog {
+    /// The conditions of the pivot sequence, in the order they are tested. Each is tested over
+    /// the whole sequence before the next, and the first that fails is reported.
+    pub sequence_conditions: &'static [SequenceCondition],
+    /// One entry per `check_*` function.
+    pub structures: &'static [StructureEntry],
+    /// The public threshold constants and what each decides.
+    pub thresholds: &'static [ThresholdEntry],
+}
+
+const fn entry(
+    id: &'static str,
+    kind: CheckKind,
+    statement: &'static str,
+    detail: &'static str,
+    variants: &'static [WaveVariant],
+    origin: RuleOrigin,
+) -> CheckEntry {
+    CheckEntry {
+        id,
+        kind,
+        statement,
+        detail,
+        variants,
+        asserted_wave_a: None,
+        origin,
+        convention: None,
+        thresholds: &[],
+    }
+}
+
+const TIE_VIOLATES: Option<&str> =
+    Some("a wave that ends exactly on the level counts as beyond it");
+const TIE_IS_NOT_BEYOND: Option<&str> =
+    Some("a wave that ends exactly on the level counts as not beyond it");
+
+const WAVE2_NO_FULL_RETRACE: CheckEntry = CheckEntry {
+    convention: TIE_VIOLATES,
+    ..entry(
+        "wave2_no_full_retrace",
+        CheckKind::Rule,
+        "Wave 2 never moves beyond the start of wave 1",
+        "Wave 2 retraced beyond the start of wave 1",
+        &[],
+        RuleOrigin::LiteratureRule,
+    )
+};
+const WAVE3_NOT_SHORTEST: CheckEntry = entry(
+    "wave3_not_shortest",
+    CheckKind::Rule,
+    "Wave 3 is never the shortest of waves 1, 3 and 5: it is not shorter than both others",
+    "Wave 3 is the shortest of waves 1, 3, and 5",
+    &[],
+    RuleOrigin::LiteratureRule,
+);
+const WAVE4_NO_OVERLAP: CheckEntry = CheckEntry {
+    convention: TIE_VIOLATES,
+    ..entry(
+        "wave4_no_overlap",
+        CheckKind::Rule,
+        "Wave 4 never moves beyond the end of wave 1",
+        "Wave 4 entered wave 1's price territory",
+        &[],
+        RuleOrigin::LiteratureRule,
+    )
+};
+
+const DIAGONAL_VARIANTS: &[WaveVariant] = &[
+    WaveVariant::Diagonal(DiagonalVariant::Contracting),
+    WaveVariant::Diagonal(DiagonalVariant::Expanding),
+];
+const ZIGZAG: &[WaveVariant] = &[WaveVariant::Correction(CorrectionVariant::Zigzag)];
+const PLAIN_FLAT: &[WaveVariant] = &[WaveVariant::Correction(CorrectionVariant::Flat)];
+const EVERY_FLAT: &[WaveVariant] = &[
+    WaveVariant::Correction(CorrectionVariant::Flat),
+    WaveVariant::Correction(CorrectionVariant::ExpandedFlat),
+    WaveVariant::Correction(CorrectionVariant::RunningFlat),
+];
+const CONTRACTING: &[WaveVariant] = &[WaveVariant::Triangle(TriangleVariant::Contracting)];
+const CONTRACTING_OR_BARRIER: &[WaveVariant] = &[
+    WaveVariant::Triangle(TriangleVariant::Contracting),
+    WaveVariant::Triangle(TriangleVariant::Barrier),
+];
+const EXPANDING: &[WaveVariant] = &[WaveVariant::Triangle(TriangleVariant::Expanding)];
+
+static IMPULSE_RULES: [CheckEntry; 3] =
+    [WAVE2_NO_FULL_RETRACE, WAVE3_NOT_SHORTEST, WAVE4_NO_OVERLAP];
+
+static DIAGONAL_RULES: [CheckEntry; 2] = [
+    CheckEntry {
+        variants: DIAGONAL_VARIANTS,
+        ..WAVE2_NO_FULL_RETRACE
+    },
+    // A contracting diagonal's wave 3 is longer than its wave 5 by definition.
+    CheckEntry {
+        variants: &[WaveVariant::Diagonal(DiagonalVariant::Expanding)],
+        ..WAVE3_NOT_SHORTEST
+    },
+];
+
+static CORRECTION_RULES: [CheckEntry; 3] = [
+    // An expanded flat's wave C ends beyond the end of wave A, so past the end of wave B.
+    entry(
+        "wave_c_must_extend_past_b",
+        CheckKind::Rule,
+        "Wave C continues past the end of wave B in wave A's direction",
+        "Wave C did not continue past wave B in wave A's direction",
+        &[
+            WaveVariant::Correction(CorrectionVariant::Zigzag),
+            WaveVariant::Correction(CorrectionVariant::Flat),
+            WaveVariant::Correction(CorrectionVariant::RunningFlat),
+        ],
+        RuleOrigin::CrateConvention,
+    ),
+    CheckEntry {
+        asserted_wave_a: Some(WaveSubdivision::Five),
+        convention: TIE_IS_NOT_BEYOND,
+        ..entry(
+            "zigzag_b_not_beyond_start_of_a",
+            CheckKind::Rule,
+            "In a zigzag, wave B never moves beyond the start of wave A",
+            "Wave B moved beyond the start of wave A",
+            ZIGZAG,
+            RuleOrigin::LiteratureRule,
+        )
+    },
+    CheckEntry {
+        asserted_wave_a: Some(WaveSubdivision::Three),
+        thresholds: &["FLAT_B_MIN_RETRACE"],
+        ..entry(
+            "flat_b_min_retrace",
+            CheckKind::Rule,
+            "In a flat, wave B retraces at least 90 percent of wave A",
+            "Wave B retraced less than 90% of wave A",
+            PLAIN_FLAT,
+            RuleOrigin::LiteratureRule,
+        )
+    },
+];
+
+static CORRECTION_GUIDELINES: [CheckEntry; 4] = [
+    CheckEntry {
+        thresholds: &["ZIGZAG_B_TYPICAL_MAX"],
+        convention: Some("79 percent is written as 0.786"),
+        ..entry(
+            "zigzag_b_retrace_bound",
+            CheckKind::Guideline,
+            "A zigzag's wave B retraces at most 78.6 percent of wave A",
+            "Wave B retraced more than a Zigzag's typical bound (78.6%) without qualifying as a Flat",
+            ZIGZAG,
+            RuleOrigin::LiteratureGuideline,
+        )
+    },
+    CheckEntry {
+        convention: TIE_IS_NOT_BEYOND,
+        ..entry(
+            "zigzag_c_ends_beyond_a",
+            CheckKind::Guideline,
+            "A zigzag's wave C ends beyond the end of wave A",
+            "Wave C did not end beyond the end of wave A",
+            ZIGZAG,
+            RuleOrigin::LiteratureGuideline,
+        )
+    },
+    CheckEntry {
+        thresholds: &["FLAT_B_TYPICAL_MAX"],
+        convention: Some("138 percent is written as 1.382"),
+        ..entry(
+            "flat_b_retrace_bound",
+            CheckKind::Guideline,
+            "A flat's wave B retraces at most 138.2 percent of wave A, or the bound set as an option",
+            "Wave B retraced more than a Flat's typical bound (138.2%)",
+            EVERY_FLAT,
+            RuleOrigin::LiteratureGuideline,
+        )
+    },
+    CheckEntry {
+        convention: TIE_IS_NOT_BEYOND,
+        ..entry(
+            "flat_c_ends_beyond_a",
+            CheckKind::Guideline,
+            "The wave C of a flat that is neither expanded nor running ends beyond the end of \
+             wave A",
+            "Wave C did not end beyond the end of wave A",
+            PLAIN_FLAT,
+            RuleOrigin::LiteratureGuideline,
+        )
+    },
+];
+
+const fn triangle_rule(
+    id: &'static str,
+    statement: &'static str,
+    detail: &'static str,
+    variants: &'static [WaveVariant],
+) -> CheckEntry {
+    CheckEntry {
+        convention: TIE_IS_NOT_BEYOND,
+        ..entry(
+            id,
+            CheckKind::Rule,
+            statement,
+            detail,
+            variants,
+            RuleOrigin::LiteratureRule,
+        )
+    }
+}
+
+const fn retrace_rule(
+    id: &'static str,
+    statement: &'static str,
+    detail: &'static str,
+) -> CheckEntry {
+    CheckEntry {
+        thresholds: &[
+            "EXPANDING_TRIANGLE_RETRACE_MIN",
+            "EXPANDING_TRIANGLE_RETRACE_MAX",
+        ],
+        ..entry(
+            id,
+            CheckKind::Rule,
+            statement,
+            detail,
+            EXPANDING,
+            RuleOrigin::LiteratureRule,
+        )
+    }
+}
+
+static TRIANGLE_RULES: [CheckEntry; 9] = [
+    triangle_rule(
+        "triangle_c_not_beyond_a",
+        "In a contracting or barrier triangle, wave c never moves beyond the end of wave a",
+        "Wave C moved beyond the end of wave A",
+        CONTRACTING_OR_BARRIER,
+    ),
+    triangle_rule(
+        "triangle_d_not_beyond_b",
+        "In a contracting triangle, wave d never moves beyond the end of wave b",
+        "Wave D moved beyond the end of wave B",
+        CONTRACTING,
+    ),
+    triangle_rule(
+        "triangle_e_not_beyond_c",
+        "In a contracting or barrier triangle, wave e never moves beyond the end of wave c",
+        "Wave E moved beyond the end of wave C",
+        CONTRACTING_OR_BARRIER,
+    ),
+    triangle_rule(
+        "expanding_triangle_c_beyond_a",
+        "In an expanding triangle, wave c moves beyond the end of wave a",
+        "Wave C did not move beyond the end of wave A",
+        EXPANDING,
+    ),
+    triangle_rule(
+        "expanding_triangle_d_beyond_b",
+        "In an expanding triangle, wave d moves beyond the end of wave b",
+        "Wave D did not move beyond the end of wave B",
+        EXPANDING,
+    ),
+    triangle_rule(
+        "expanding_triangle_e_beyond_c",
+        "In an expanding triangle, wave e moves beyond the end of wave c",
+        "Wave E did not move beyond the end of wave C",
+        EXPANDING,
+    ),
+    retrace_rule(
+        "expanding_triangle_b_retrace",
+        "In an expanding triangle, wave b retraces at least 100 and at most 150 percent of wave a",
+        "Wave B retraced less than 100% or more than 150% of wave A",
+    ),
+    retrace_rule(
+        "expanding_triangle_c_retrace",
+        "In an expanding triangle, wave c retraces at least 100 and at most 150 percent of wave b",
+        "Wave C retraced less than 100% or more than 150% of wave B",
+    ),
+    retrace_rule(
+        "expanding_triangle_d_retrace",
+        "In an expanding triangle, wave d retraces at least 100 and at most 150 percent of wave c",
+        "Wave D retraced less than 100% or more than 150% of wave C",
+    ),
+];
+
+static CORRECTION_VARIANTS: [VariantEntry; 4] = [
+    VariantEntry {
+        variant: WaveVariant::Correction(CorrectionVariant::Zigzag),
+        text: "Wave A is asserted to subdivide into five waves, or nothing is asserted and wave \
+               B retraces less than 90 percent of wave A",
+    },
+    VariantEntry {
+        variant: WaveVariant::Correction(CorrectionVariant::RunningFlat),
+        text: "Not a zigzag, wave B ends beyond the start of wave A and wave C does not end \
+               beyond the end of wave A",
+    },
+    VariantEntry {
+        variant: WaveVariant::Correction(CorrectionVariant::ExpandedFlat),
+        text: "Not a zigzag, wave B retraces more than 105 percent of wave A and wave C ends \
+               beyond the end of wave A",
+    },
+    VariantEntry {
+        variant: WaveVariant::Correction(CorrectionVariant::Flat),
+        text: "Every other sequence that is not a zigzag",
+    },
+];
+
+static STRUCTURES: [StructureEntry; 5] = [
+    StructureEntry {
+        structure: StructureKind::Impulse,
+        checker: "check_impulse",
+        node_counts: &[6],
+        placement_left_to_rule: &[],
+        segments: None,
+        variants: &[],
+        rules: &IMPULSE_RULES,
+        guidelines: &[],
+    },
+    StructureEntry {
+        structure: StructureKind::Diagonal,
+        checker: "check_diagonal",
+        node_counts: &[6],
+        placement_left_to_rule: &[],
+        segments: None,
+        variants: &[
+            VariantEntry {
+                variant: WaveVariant::Diagonal(DiagonalVariant::Contracting),
+                text: "Wave 3 is shorter than wave 1, wave 5 shorter than wave 3 and wave 4 \
+                       shorter than wave 2",
+            },
+            VariantEntry {
+                variant: WaveVariant::Diagonal(DiagonalVariant::Expanding),
+                text: "Every other sequence",
+            },
+        ],
+        rules: &DIAGONAL_RULES,
+        guidelines: &[],
+    },
+    StructureEntry {
+        structure: StructureKind::Correction,
+        checker: "check_correction",
+        node_counts: &[4],
+        placement_left_to_rule: &[3],
+        segments: None,
+        variants: &CORRECTION_VARIANTS,
+        rules: &CORRECTION_RULES,
+        guidelines: &CORRECTION_GUIDELINES,
+    },
+    StructureEntry {
+        structure: StructureKind::Triangle,
+        checker: "check_triangle",
+        node_counts: &[6],
+        placement_left_to_rule: &[],
+        segments: None,
+        variants: &[
+            VariantEntry {
+                variant: WaveVariant::Triangle(TriangleVariant::Expanding),
+                text: "At least two of waves c, d and e end beyond the end of the wave two \
+                       before them",
+            },
+            VariantEntry {
+                variant: WaveVariant::Triangle(TriangleVariant::Barrier),
+                text: "Not expanding, and the ends of waves b and d lie within the barrier \
+                       tolerance of each other",
+            },
+            VariantEntry {
+                variant: WaveVariant::Triangle(TriangleVariant::Contracting),
+                text: "Every other sequence",
+            },
+        ],
+        rules: &TRIANGLE_RULES,
+        guidelines: &[],
+    },
+    StructureEntry {
+        structure: StructureKind::Combination,
+        checker: "check_combination",
+        node_counts: &[8, 12],
+        placement_left_to_rule: &[3, 7, 11],
+        segments: Some(StructureKind::Correction),
+        variants: &[
+            VariantEntry {
+                variant: WaveVariant::Combination(CombinationVariant::DoubleThree),
+                text: "Eight nodes: two corrections W and Y joined by one X wave",
+            },
+            VariantEntry {
+                variant: WaveVariant::Combination(CombinationVariant::TripleThree),
+                text: "Twelve nodes: three corrections W, Y and Z joined by two X waves",
+            },
+        ],
+        rules: &CORRECTION_RULES,
+        guidelines: &CORRECTION_GUIDELINES,
+    },
+];
+
+static SEQUENCE_CONDITIONS: [SequenceCondition; 4] = [
+    SequenceCondition {
+        error: SequenceErrorKind::NodeCount,
+        text: "The sequence has a node count the structure accepts",
+    },
+    SequenceCondition {
+        error: SequenceErrorKind::NotAlternating,
+        text: "Highs and lows alternate",
+    },
+    SequenceCondition {
+        error: SequenceErrorKind::TimeOrder,
+        text: "No node is earlier than the node before it; equal timestamps are accepted",
+    },
+    SequenceCondition {
+        error: SequenceErrorKind::PivotPlacement,
+        text: "Every high lies above the node before it and every low below it, except the \
+               nodes whose placement a rule of the structure reports",
+    },
+];
+
+static THRESHOLDS: [ThresholdEntry; 8] = [
+    ThresholdEntry {
+        constant: "FLAT_B_MIN_RETRACE",
+        value: FLAT_B_MIN_RETRACE,
+        role: ThresholdRole::FormBoundary,
+        origin: RuleOrigin::CrateConvention,
+        option: None,
+        text: "Without an assertion about wave A, a correction whose wave B retraces at least \
+               this share of wave A is a flat, below it a zigzag",
+        convention: None,
+    },
+    ThresholdEntry {
+        constant: "FLAT_B_MIN_RETRACE",
+        value: FLAT_B_MIN_RETRACE,
+        role: ThresholdRole::Rule,
+        origin: RuleOrigin::LiteratureRule,
+        option: None,
+        text: "In a flat, wave B retraces at least this share of wave A",
+        convention: None,
+    },
+    ThresholdEntry {
+        constant: "EXPANDED_FLAT_B_MIN",
+        value: EXPANDED_FLAT_B_MIN,
+        role: ThresholdRole::FormBoundary,
+        origin: RuleOrigin::LiteratureRule,
+        option: None,
+        text: "A flat whose wave B retraces more than this share of wave A and whose wave C \
+               ends beyond the end of wave A is an expanded flat",
+        convention: None,
+    },
+    ThresholdEntry {
+        constant: "ZIGZAG_B_TYPICAL_MAX",
+        value: ZIGZAG_B_TYPICAL_MAX,
+        role: ThresholdRole::Guideline,
+        origin: RuleOrigin::LiteratureGuideline,
+        option: None,
+        text: "A zigzag's wave B typically retraces at most this share of wave A",
+        convention: Some("79 percent is written as 0.786"),
+    },
+    ThresholdEntry {
+        constant: "FLAT_B_TYPICAL_MAX",
+        value: FLAT_B_TYPICAL_MAX,
+        role: ThresholdRole::Guideline,
+        origin: RuleOrigin::LiteratureGuideline,
+        option: Some("flat_b_typical_max"),
+        text: "A flat's wave B usually retraces at most this share of wave A",
+        convention: Some("138 percent is written as 1.382"),
+    },
+    ThresholdEntry {
+        constant: "EXPANDING_TRIANGLE_RETRACE_MIN",
+        value: EXPANDING_TRIANGLE_RETRACE_MIN,
+        role: ThresholdRole::Rule,
+        origin: RuleOrigin::LiteratureRule,
+        option: None,
+        text: "In an expanding triangle, waves b, c and d each retrace at least this share of \
+               the wave before them",
+        convention: None,
+    },
+    ThresholdEntry {
+        constant: "EXPANDING_TRIANGLE_RETRACE_MAX",
+        value: EXPANDING_TRIANGLE_RETRACE_MAX,
+        role: ThresholdRole::Rule,
+        origin: RuleOrigin::LiteratureRule,
+        option: None,
+        text: "In an expanding triangle, waves b, c and d each retrace at most this share of \
+               the wave before them",
+        convention: None,
+    },
+    ThresholdEntry {
+        constant: "BARRIER_LEVEL_TOLERANCE",
+        value: BARRIER_LEVEL_TOLERANCE,
+        role: ThresholdRole::FormBoundary,
+        origin: RuleOrigin::CrateConvention,
+        option: Some("barrier_tolerance"),
+        text: "A triangle that is not expanding is a barrier triangle if the ends of waves b \
+               and d lie at most this share of the length of wave b apart",
+        convention: None,
+    },
+];
+
+static CATALOG: RuleCatalog = RuleCatalog {
+    sequence_conditions: &SEQUENCE_CONDITIONS,
+    structures: &STRUCTURES,
+    thresholds: &THRESHOLDS,
+};
+
+/// What the validators check, as data: the conditions of the pivot sequence in the order they
+/// are tested, per structure the node counts, variants, rules and guidelines, and the public
+/// threshold constants with what each decides.
+///
+/// The identifiers and sentences are the ones the validators report; `variants` and
+/// `asserted_wave_a` say with which results a check can be reported. A check is listed once per
+/// structure that tests it, so `wave2_no_full_retrace` appears under the impulse and under the
+/// diagonal.
+///
+/// Not in the catalogue, because they report neither rule nor guideline:
+/// [`identify_extended_wave`] and [`is_truncated_fifth`], [`TriangleValidation::running`] and
+/// [`DiagonalValidation::wave4_overlaps_wave1`], and the asserted [`DiagonalKind`], which enters
+/// no check.
+///
+/// ```
+/// use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckKind, StructureKind};
+///
+/// // The order of checking as a flow: the conditions of the pivot sequence, then the rules of
+/// // the structure, each a step with the outcome "violated" labelled by its identifier.
+/// let catalog = rule_catalog();
+/// let impulse = catalog
+///     .structures
+///     .iter()
+///     .find(|s| s.structure == StructureKind::Impulse)
+///     .unwrap();
+/// let steps: Vec<&str> = catalog
+///     .sequence_conditions
+///     .iter()
+///     .map(|condition| condition.error.id())
+///     .chain(impulse.rules.iter().map(|rule| rule.id))
+///     .collect();
+///
+/// assert_eq!(
+///     steps,
+///     [
+///         "node_count",
+///         "not_alternating",
+///         "time_order",
+///         "pivot_placement",
+///         "wave2_no_full_retrace",
+///         "wave3_not_shortest",
+///         "wave4_no_overlap",
+///     ]
+/// );
+/// assert!(impulse.rules.iter().all(|rule| rule.kind == CheckKind::Rule));
+/// ```
+pub fn rule_catalog() -> &'static RuleCatalog {
+    &CATALOG
 }
 
 #[cfg(test)]
