@@ -9,6 +9,61 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Elliott:** `TriangleVariant::RunningOrBarrier` is removed and `TriangleVariant::Barrier` added;
+  a running triangle is now the field `TriangleValidation::running`. `CorrectionVariant` gains
+  `RunningFlat`. A `match` over either enum needs the new arms.
+- **Elliott:** the validation structs gain public fields, so a struct literal must set them:
+  `direction` on `ImpulseValidation`, `DiagonalValidation`, `CorrectionValidation` and
+  `TriangleValidation`; `guidelines` on `CorrectionValidation`; `running`, `valid` and
+  `violations` on `TriangleValidation`.
+
+### Added
+
+- **Elliott:** `check_impulse`, `check_diagonal`, `check_correction`, `check_triangle` and
+  `check_combination` return a `SequenceError` that names the node when the input is no pivot
+  sequence (node count, alternation, time order, a high not above or a low not below the node
+  before it). The `validate_*` functions keep their signatures and return `None` in those cases.
+- **Elliott:** every validation reports its `WaveDirection`, and a falling sequence is evaluated
+  as the exact mirror image of the rising one.
+- **Elliott:** guidelines are reported apart from rules, in `CorrectionValidation::guidelines`
+  (`GuidelineDeviation`), and never change `valid`: `zigzag_b_retrace_bound`,
+  `zigzag_c_ends_beyond_a`, `flat_c_ends_beyond_a`, `flat_b_retrace_bound`.
+- **Elliott:** `CorrectionOptions` takes the asserted subdivision of wave A (`wave_a`,
+  `WaveSubdivision`), with which the new rules `zigzag_b_not_beyond_start_of_a` and
+  `flat_b_min_retrace` can fail, and the bound of the flat guideline (`flat_b_typical_max`).
+- **Elliott:** triangles are checked, not only named: `TriangleValidation` carries `valid` and
+  `violations`, with three rules for contracting and barrier triangles (`triangle_*`) and six for
+  expanding ones (`expanding_triangle_*`), all listed on `check_triangle`.
+  `TriangleOptions::barrier_tolerance` sets how close the ends of waves b and d must lie for a
+  barrier triangle.
+- **Elliott:** the thresholds are public constants whose comments state their origin (rule or
+  guideline of the literature, or this crate's convention), for instance `FLAT_B_MIN_RETRACE`,
+  `EXPANDED_FLAT_B_MIN` and `BARRIER_LEVEL_TOLERANCE`.
+
+### Changed
+
+Results of the Elliott validators change, hence a minor version.
+
+- **Elliott:** all validators, `identify_extended_wave` and `is_truncated_fifth` evaluate pivot
+  sequences only. Nodes whose timestamps decrease, a high that is not above or a low that is not
+  below the node before it (a leg without length included) now give `None` instead of a result.
+  The end of wave C of a correction is the exception and stays the violation
+  `wave_c_must_extend_past_b`.
+- **Elliott:** a wave B that retraces more than 78.6 % and less than 90 % of wave A no longer makes
+  a zigzag invalid. `zigzag_b_retrace_bound` moved from `violations` to `guidelines`, so
+  `validate_correction` and `validate_combination` return `valid` for such sequences.
+- **Elliott:** the flat variants follow where waves B and C end. `ExpandedFlat` needs a wave B of
+  more than 105 % of wave A (before: at least 100 %) and a wave C beyond the end of wave A; a wave
+  B beyond the start of wave A with a wave C that stops short of the end of wave A is a
+  `RunningFlat`; everything else from 90 % on is a `Flat`, a wave B exactly on the start of wave A
+  included.
+- **Elliott:** `validate_triangle` assigns a sequence by its waves c, d and e against the waves two
+  before them instead of by two boundary comparisons. A triangle whose waves b and d end within
+  5 % of wave b of each other is a `Barrier`; a sequence that fits neither kind is assigned to the
+  kind it breaks fewer comparisons of and is invalid, where it was `RunningOrBarrier` before.
+
 ## [0.39.1] - 2026-11-10
 
 ### Changed
