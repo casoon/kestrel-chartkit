@@ -9,11 +9,22 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Trendlines:** the `trendlines` indicator draws a support line through confirmed ZigZag lows
+  and a resistance line through confirmed highs, each with its channel parallel, its touches and
+  its break as an event (`TrendlineEngine`, alerts `bear_support_line_break` and
+  `bull_resistance_line_break`). Details:
+  [Trendlines](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#trendlines).
+
 ### Changed
 
 Output values of `zigzag_advanced` and `zigzag` change on the series named below, hence a minor
 version.
 
+- **Chart patterns:** `ChartPatternDetector::scan` returns the auto-trendline through the highs
+  and the one through the lows side by side; before, the two evicted each other and only one was
+  left.
 - **ZigZag:** `zigzag_advanced` measures the move from the running node to a pivot of the other
   kind with its sign, so a pivot high at or below the running low (after a gap down, say) no
   longer confirms that low or becomes a node, and likewise mirrored. The nodes of both ZigZags

@@ -107,7 +107,7 @@ description names them.
 | Volume                         | `obv`, `vwap`, `anchored_vwap`, `cmf`, `mfi`, `volume_profile`, `cvd` |
 | Trend                          | `ichimoku`, `alligator`, `efficiency`, `zscore`                     |
 | Composite scores               | `trend_quality`, `buy_sell_pressure`, `volatility_regime`, `multi_factor` |
-| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `double_pattern`, `bottom_formation` |
+| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `trendlines`, `double_pattern`, `bottom_formation` |
 | Divergence                     | `pivot_divergence`, `oscillator_pivot_divergence`                   |
 
 Print the full list with `catalog()`. The [indicator reference](../../reference/indicators/) lists

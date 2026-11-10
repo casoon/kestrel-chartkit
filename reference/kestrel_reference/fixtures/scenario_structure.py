@@ -54,7 +54,7 @@ def gap_bars(mirrored):
 def node_keys(prefix, nodes):
     """Count and, per node, price, kind, confirmation and bar index (0-based)."""
     keys = {f"{prefix}_nodes": float(len(nodes))}
-    for i, (price, is_high, confirmed, bar) in enumerate(nodes, 1):
+    for i, (price, is_high, confirmed, bar, _) in enumerate(nodes, 1):
         keys[f"{prefix}_{i}_price"] = price
         keys[f"{prefix}_{i}_is_high"] = 1.0 if is_high else 0.0
         keys[f"{prefix}_{i}_confirmed"] = 1.0 if confirmed else 0.0
@@ -72,7 +72,7 @@ def gap_scenario():
                                 ("atr", {"atr_mult": 1.0, "atr_len": 14})):
             for cut, moment in ((ZIGZAG_GAP_CUT, "cut"), (len(bars), "end")):
                 _, _, nodes = advanced_zigzag(bars[:cut], 3, 1, **arguments)
-                sequence = [(bar, price, is_high) for price, is_high, _, bar in nodes]
+                sequence = [(bar, price, is_high) for price, is_high, _, bar, _ in nodes]
                 assert pivot_sequence_error(sequence) is None, (side, mode, moment)
                 keys.update(node_keys(f"{side}_{mode}_{moment}", nodes))
         _, _, expected = simple_zigzag(3, 2.0, bars)
@@ -150,7 +150,7 @@ def build():
     atr = {}
     for mult in (3, 6):
         _, _, nodes = advanced_zigzag(ZIGZAG, 2, 1, atr_mult=float(mult), atr_len=3)
-        confirmed = [price for price, _, done, _ in nodes if done]
+        confirmed = [price for price, _, done, _, _ in nodes if done]
         atr[f"zigzag_atr{mult}_confirmed_count"] = float(len(confirmed))
         atr.update({f"zigzag_atr{mult}_confirmed_{i}_price": p for i, p in enumerate(confirmed, 1)})
         atr[f"zigzag_atr{mult}_running_price"] = nodes[-1][0]

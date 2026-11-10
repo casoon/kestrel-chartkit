@@ -2204,6 +2204,137 @@ fn test_scenario_zigzag_nodes_are_a_pivot_sequence_on_random_gap_series() {
     assert_eq!((runs, nodes_seen, same_bar_pairs), (2400, 134024, 9447));
 }
 
+/// `trendlines` über Zufallsreihen mit Kurslücken: Die gespiegelte Reihe ergibt die gespiegelte
+/// Ausgabe, auf das Bit — Unterstützung und Widerstand tauschen die Plätze, Preise wechseln das
+/// Vorzeichen, alles andere bleibt. Ein Lauf über einen Anfang der Reihe endet mit derselben
+/// Ausgabe wie der Lauf über die ganze Reihe an dieser Bar (kausal). Dazu, was die Ausgabe je Bar
+/// zusagt.
+#[test]
+fn test_scenario_trendlines_mirror_symmetry_and_causality() {
+    let negated = ["value", "start_price", "end_price", "channel_value"];
+    let reflect = |out: &kestrel_chartkit::indicator::IndicatorOutput| {
+        let mut extra = HashMap::new();
+        for (key, value) in &out.extra {
+            let (side, field) = match key.split_once('_') {
+                Some(("support", field)) => ("resistance_", field),
+                Some(("resistance", field)) => ("support_", field),
+                _ => ("", key.as_str()),
+            };
+            let sign = if !side.is_empty() && negated.contains(&field) {
+                -1.0
+            } else {
+                1.0
+            };
+            extra.insert(format!("{side}{field}"), sign * value);
+        }
+        (out.value, extra)
+    };
+    let swap = |kind: &str| match kind {
+        "bear_support_line_break" => "bull_resistance_line_break".to_string(),
+        "bull_resistance_line_break" => "bear_support_line_break".to_string(),
+        other => panic!("unexpected alert {other}"),
+    };
+
+    let (mut lines, mut breaks, mut touches, mut channels) = (0usize, 0usize, 0usize, 0usize);
+    for seed in 1..=40u64 {
+        let bars = gap_walk(seed, 400);
+        let mirror = mirrored(&bars);
+        for (tolerance, deviation) in [(0.25, 1.0), (1.0, 0.5), (0.0, 2.0)] {
+            let params = HashMap::from([
+                ("tolerance_atr".to_string(), tolerance),
+                ("deviation_pct".to_string(), deviation),
+            ]);
+            let context = format!("seed {seed}, tolerance {tolerance}, deviation {deviation}");
+            let mut plain = build_checked("trendlines", &params).unwrap();
+            let mut twin = build_checked("trendlines", &params).unwrap();
+            let mut outputs = Vec::new();
+            for (i, (bar, mirror_bar)) in bars.iter().zip(&mirror).enumerate() {
+                let (out, reflected) = (plain.on_bar(bar), twin.on_bar(mirror_bar));
+                assert_eq!(out.is_some(), i >= 13, "{context}: output from bar 14 on");
+                let mut kinds: Vec<String> = plain.alerts().into_iter().map(|a| a.kind).collect();
+                let mut swapped: Vec<String> =
+                    twin.alerts().iter().map(|a| swap(&a.kind)).collect();
+                kinds.sort();
+                swapped.sort();
+                assert_eq!(kinds, swapped, "{context}, bar {i}");
+                if let (Some(out), Some(reflected)) = (&out, &reflected) {
+                    let (value, extra) = reflect(reflected);
+                    assert_eq!(out.value, value, "{context}, bar {i}");
+                    assert_eq!(out.extra, extra, "{context}, bar {i}");
+
+                    let mut present = 0.0;
+                    for side in ["support", "resistance"] {
+                        let get = |field: &str| out.extra.get(&format!("{side}_{field}")).copied();
+                        let Some(line) = get("value") else {
+                            assert!(out.extra.keys().all(|k| !k.starts_with(side)));
+                            continue;
+                        };
+                        present += 1.0;
+                        lines += 1;
+                        let broke = get("break") == Some(1.0);
+                        assert_eq!(
+                            broke,
+                            if side == "support" {
+                                bar.close < line
+                            } else {
+                                bar.close > line
+                            },
+                            "{context}, bar {i}: {side} break"
+                        );
+                        assert_eq!(
+                            broke,
+                            kinds.iter().any(|k| k.contains(side)),
+                            "{context}, bar {i}: {side} alert"
+                        );
+                        let extreme = if side == "support" { bar.low } else { bar.high };
+                        assert_eq!(
+                            get("touch") == Some(1.0),
+                            (extreme - line).abs() <= out.extra["tolerance"],
+                            "{context}, bar {i}: {side} touch"
+                        );
+                        let (nodes, on_line) =
+                            (get("nodes").unwrap(), get("node_touches").unwrap());
+                        assert!(2.0 <= on_line && on_line <= nodes, "{context}, bar {i}");
+                        assert!(get("start_bars_back") > get("end_bars_back"));
+                        if let Some(width) = get("channel_width") {
+                            assert!(width > 0.0);
+                            let far = if side == "support" {
+                                line + width
+                            } else {
+                                line - width
+                            };
+                            assert_eq!(get("channel_value"), Some(far));
+                            channels += 1;
+                        }
+                        breaks += usize::from(broke);
+                        touches += usize::from(get("touch") == Some(1.0));
+                    }
+                    assert_eq!(
+                        out.value, present,
+                        "{context}, bar {i}: value counts the lines"
+                    );
+                }
+                outputs.push(out);
+            }
+
+            for cut in (60..bars.len()).step_by(67) {
+                let mut prefix = build_checked("trendlines", &params).unwrap();
+                let mut last = None;
+                for bar in &bars[..=cut] {
+                    last = prefix.on_bar(bar);
+                }
+                assert_eq!(last, outputs[cut], "{context}: bar {cut}");
+            }
+        }
+    }
+    // Recorded, so that the walks are known to exercise the rules: bars with a line, breaks,
+    // touching bars and bars with a channel, summed over both sides and all runs.
+    assert_eq!(
+        (lines, breaks, touches, channels),
+        (32679, 1843, 2082, 32679)
+    );
+}
+
 /// A structure alert names its direction and kind in the prefix and suffix, matching the note.
 fn assert_structure_kind(kind: &str, note: &str) {
     let bull = note.starts_with("Bullish");

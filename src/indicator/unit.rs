@@ -189,6 +189,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("trend_break_risk", IndicatorUnit::Ratio),
     ("trend_quality", IndicatorUnit::Unitless),
     ("trend_relationship", IndicatorUnit::Unitless),
+    ("trendlines", IndicatorUnit::Unitless),
     ("trix", IndicatorUnit::Ratio),
     ("true_range", IndicatorUnit::Unitless),
     ("tsi", IndicatorUnit::Ratio),

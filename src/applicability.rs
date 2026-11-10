@@ -541,14 +541,13 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             structure_method: Some(StructureMethod::WyckoffRange),
             ..DataRequirements::default()
         },
-        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure" => {
-            DataRequirements {
-                session_sensitive: true,
-                roll_sensitive: true,
-                adjustment_sensitive: true,
-                ..DataRequirements::default()
-            }
-        }
+        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure"
+        | "trendlines" => DataRequirements {
+            session_sensitive: true,
+            roll_sensitive: true,
+            adjustment_sensitive: true,
+            ..DataRequirements::default()
+        },
         _ => DataRequirements::default(),
     }
 }

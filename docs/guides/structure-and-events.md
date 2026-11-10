@@ -43,6 +43,46 @@ its mirror image (every price negated, highs and lows exchanged) give mirrored n
 In `zigzag_advanced` every node but the newest is confirmed and no longer moves; the newest is
 the running node (`current_leg()`).
 
+## Trendlines
+
+`trendlines` draws a support line through the confirmed ZigZag lows and a resistance line through
+the confirmed highs, bar by bar. Its first five parameters are those of `zigzag_advanced` and name
+the same nodes; `tolerance_atr` (default 0.25, this crate's convention) times the ATR of the bar is
+the one tolerance of the calculation. For the support line, the resistance line mirrored:
+
+```text
+segment = the confirmed nodes since the last break of this line, beginning with a low
+
+on the bar that confirms a low c, with a low before it in the segment:
+    a = the oldest low for which no low between a and c lies more than the tolerance
+        below the line through a and c; older nodes leave the segment
+    line(time)   = a.price + (c.price - a.price) / (c.time - a.time) · (time - a.time)
+    node_touches = the lows from a to c within the tolerance of the line
+    channel      = line + the largest distance of a high after a above the line
+
+on every bar from the one that fixed the line:
+    touch:  |low - line| <= tolerance
+    break:  close < line        -> the line ends, the segment is emptied
+```
+
+A node only counts once it is confirmed, so a line is known later than its newest anchor lies:
+nothing repaints. Every newly confirmed low is the newest anchor and fixes the line anew. The line
+is straight in time, like `TrendLine`.
+
+`value` counts the lines in the output. `extra` carries `atr` and `tolerance`, and per line
+(`support_`, `resistance_`) what a chart draws: `value` (the line at this bar), `start_price` /
+`start_bars_back` and `end_price` / `end_bars_back` (the anchors), `nodes`, `node_touches`,
+`touches` (bars within the tolerance since the line was fixed), the flags `touch`, `formed` and
+`break` for this bar, and `channel_value` / `channel_width` while a node of the other kind lies
+beyond the line. A broken line is in the output of its break bar, with the line value the close
+crossed, and gone from the next. Alerts: `bear_support_line_break`, `bull_resistance_line_break`.
+`TrendlineEngine::support()` and `resistance()` return the same lines as `Trendline`.
+
+`ChartPatternDetector::scan` fits the same two-point lines over a finished node list and returns
+the line through the highs and the line through the lows side by side. It gives no line where a
+node in between pierces it by more than `tolerance_pct`; `trendlines` moves the anchor forward
+instead.
+
 ## Zones
 
 `find_sr_zones(bars, pivot_len)` uses the same pivot test and returns up to two supports below and

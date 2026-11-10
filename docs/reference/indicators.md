@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 133 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 134 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1510,6 +1510,23 @@ ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (d
 | `deviation_mode` | `percent` | `percent`, `atr_multiple` (f64 map: 0 – 1) | unit of the deviation: percent of price or multiples of the ATR |
 | `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple); also accepted as `deviation_value` | minimum move for a new leg, in the unit of deviation_mode |
 | `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR |
+
+### `trendlines`
+
+Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width); alerts bear_support_line_break, bull_resistance_line_break
+
+[See it in the showcase](../../../showcase/trendlines/)
+
+**Output** unit Unitless, range not declared · **warmup** 14 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `depth` | 3 | whole number 1 – 10000 | bars on each side of a pivot |
+| `backstep` | 2 | whole number 0 – 10000 | bars within which a newer pivot replaces an older one |
+| `deviation_mode` | `percent` | `percent`, `atr_multiple` (f64 map: 0 – 1) | unit of the deviation: percent of price or multiples of the ATR |
+| `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move for a new leg, in the unit of deviation_mode |
+| `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR |
+| `tolerance_atr` | 0.25 | 0 – 100 | distance from a line, in ATR, within which a node or a bar touches it and beyond which a node pierces it |
 
 ## Composite read-outs, part 1
 

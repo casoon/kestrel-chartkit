@@ -24,6 +24,7 @@ from ..fixture import provenance, render_contract
 from ..indicators import rsi_lines
 from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
+from ..structure import trendlines as trendline_model
 from .contract_pilot import case_block
 
 NAME = "contract_structure"
@@ -487,6 +488,46 @@ def zigzag_advanced(depth, backstep, deviation_pct, atr_len, bars):
         expected.append(((value, {}), alerts))
     params = {"depth": float(depth), "backstep": float(backstep), "deviation_pct": deviation_pct,
               "atr_len": float(atr_len)}
+    return params, bars, expected
+
+
+# --- trendlines ------------------------------------------------------------------------------
+
+# Closes of the trendline scenario. Bars 0-39: lows at 100 (bar 5), 103.5 (bar 15) and 108
+# (bar 25), highs at 108 (bar 10), 112 (bar 20) and 116 (bar 30), ten bars apart, then a decline
+# through the line of the lows. Bars 40-69: a low at 106.9 (bar 43), lower highs at 111.5 (bar 47)
+# and 109.3 (bar 58), lower lows at 105 (bar 54) and 103.4 (bar 64).
+TRENDLINE_CLOSES = [
+    104.0, 103.3, 102.6, 101.9, 101.2, 100.5, 102.0, 103.5, 105.0, 106.4, 107.5, 106.6, 105.7,
+    104.9, 104.4, 104.0, 105.6, 107.2, 108.9, 110.4, 111.5, 110.7, 109.9, 109.2, 108.8, 108.5,
+    110.0, 111.6, 113.1, 114.5, 115.5, 115.0, 114.0, 113.1, 112.3, 111.4, 110.8, 110.3, 110.6,
+    110.2, 109.4, 108.6, 107.9, 107.4, 108.3, 109.3, 110.2, 111.0, 110.4, 109.6, 108.7, 107.8,
+    106.9, 106.1, 105.5, 106.3, 107.2, 108.1, 108.8, 108.2, 107.3, 106.4, 105.5, 104.6, 103.9,
+    104.6, 105.4, 106.0, 105.5, 104.9,
+]
+
+
+def trendline_bars(mirrored=False):
+    """Bars around `TRENDLINE_CLOSES`: the open is the previous close (the first its own close),
+    the high 0.5 above the close or the open if that is higher, the low 0.5 below the close or the
+    open if that is lower. Mirrored: every price negated, so highs and lows change places."""
+    bars, previous = [], TRENDLINE_CLOSES[0]
+    for close in TRENDLINE_CLOSES:
+        open_, previous = previous, close
+        high, low = max(close + 0.5, open_), min(close - 0.5, open_)
+        bars.append((-open_, -low, -high, -close, 1000.0) if mirrored
+                    else (open_, high, low, close, 1000.0))
+    return bars
+
+
+def trendlines(depth, backstep, deviation_pct, atr_len, tolerance_atr, bars):
+    """Values from `structure.trendlines` (the rule documented on `indicator::trendlines`, time
+    counted in bars): the number of lines as value, every extra field, the break alerts."""
+    outputs = trendline_model([b[:4] for b in bars], depth, backstep, deviation_pct, atr_len,
+                              tolerance_atr)
+    expected = [(None, {}) if out is None else ((out[0], out[1]), out[2]) for out in outputs]
+    params = {"depth": float(depth), "backstep": float(backstep), "deviation_pct": deviation_pct,
+              "atr_len": float(atr_len), "tolerance_atr": tolerance_atr}
     return params, bars, expected
 
 
@@ -1562,6 +1603,25 @@ def build():
                    *zigzag_advanced(2, 0, 3.0, 5, zz)),
         case_block("zigzag_advanced_backstep", "zigzag_advanced 3/6/1 %: the backstep holds the wiggle's turn",
                    *zigzag_advanced(3, 6, 1.0, 14, zz)),
+        # By hand, tolerance 0.25 ATR: the low 103.5 (bar 15) is confirmed on bar 23 and gives the
+        # line 100 -> 103.5, slope 0.35, value 106.3 on bar 23; its channel runs through the high
+        # 108 of bar 10, 6.25 above the line (108 - 101.75). On bar 33 the low 108 is confirmed:
+        # the line 100 -> 108 has the value 104 at bar 15, the low 103.5 lies 0.5 below it and the
+        # tolerance is 0.25 x 1.529 = 0.38, so the anchor moves to 103.5 (slope 0.45). Bar 34: low
+        # 111.8 against 112.05, a touch. Bar 35: close 111.4 below 112.5, the break. The highs
+        # 108, 112, 116 lie on one line (slope 0.4), so the resistance line of bar 46 has three
+        # nodes that all touch it.
+        case_block("trendlines_defaults",
+                   "trendlines 3/2/1 %/14/0.25: lines through lows and highs, channel, touches, breaks",
+                   *trendlines(3, 2, 1.0, 14, 0.25, trendline_bars())),
+        # Tolerance 0.5 ATR (0.76 on bar 33): the low 103.5 no longer pierces, the line 100 -> 108
+        # (slope 0.4) keeps three nodes; bar 35 breaks it with the close 111.4 below 112.0.
+        case_block("trendlines_wide",
+                   "trendlines 3/2/1 %/14/0.5: the middle low stays within the tolerance",
+                   *trendlines(3, 2, 1.0, 14, 0.5, trendline_bars())),
+        case_block("trendlines_mirrored",
+                   "trendlines 3/2/1 %/14/0.25 on the negated series: support and resistance change places",
+                   *trendlines(3, 2, 1.0, 14, 0.25, trendline_bars(mirrored=True))),
         case_block("zone_rejection_defaults",
                    "zone_rejection 5/14/0.25/2/2: rejections at support and resistance, an outside bar, breaks",
                    *zone_rejection(5, 14, 0.25, 2.0, 2, rng)),
