@@ -75,23 +75,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         wyckoff_bars.len()
     );
 
-    let mut wyckoff_machine = WyckoffStateMachine::new(20, 5.0, 3);
+    let mut wyckoff_machine = WyckoffStateMachine::with_defaults();
     let mut prev_phase = WyckoffPhase::Undefined;
 
     for (i, qb) in wyckoff_bars.iter().enumerate() {
         wyckoff_machine.on_bar(&qb.bar);
         let curr_phase = wyckoff_machine.phase();
 
-        // Report state transitions and emitted alerts
-        if curr_phase != prev_phase && curr_phase != WyckoffPhase::Undefined {
+        // Report phase changes and the events behind them. PS, SC and AR are reported together
+        // on the bar that confirms the Automatic Rally and sets the range.
+        if curr_phase != prev_phase {
             println!(
-                "  bar {i:>2}: Transition to Phase {:?} (close={:.2}, vol={:.0})",
+                "  bar {i:>2}: Phase {:?} (close={:.2}, vol={:.0})",
                 curr_phase, qb.bar.close, qb.bar.volume
             );
-            for alert in wyckoff_machine.alerts() {
-                println!("          Alert: [{}] {}", alert.kind, alert.note);
-            }
             prev_phase = curr_phase;
+        }
+        for alert in wyckoff_machine.alerts() {
+            println!("  bar {i:>2}: Alert [{}] {}", alert.kind, alert.note);
         }
     }
 
