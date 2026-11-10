@@ -42,6 +42,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 Output values of `wyckoff` change on every series, hence a minor version.
 
+- **Applicability:** the three Wyckoff explanations (rolled, back-adjusted and broker-quoted
+  series) describe the new calculation: fixed range boundaries from single extremes, distances
+  in ATR, and the volume comparisons of the climax test, the Secondary Test and the Sign of
+  Strength. Tiers and reasons are unchanged.
 - **Wyckoff:** the range boundaries are the climax extreme and the extreme of the counter-move,
   and the bias follows from the climax, wherever in the window it lies. The window-width
   condition (`range_atr_max`) remains as a fallback for ranges without a climax, marked by
