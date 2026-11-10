@@ -105,9 +105,10 @@ pub use adapters::{
     NotificationSeverity, NotificationSink, WebhookNotificationSink,
 };
 pub use applicability::{
-    check_applicability, data_requirements, method_rule_catalog, rule_catalog, Applicability,
-    ApplicabilityNote, ApplicabilityReason, ApplicabilityTier, DataRequirements,
-    MethodRuleDescription, RuleDescription, StructureMethod,
+    check_applicability, check_pair_applicability, data_requirements, method_rule_catalog,
+    pair_requirements, pair_rule_catalog, rule_catalog, Applicability, ApplicabilityNote,
+    ApplicabilityReason, ApplicabilityTier, DataRequirements, MethodRuleDescription,
+    PairRequirements, RuleDescription, StructureMethod,
 };
 pub use artifact::{
     Artifact, PivotArtifact, ProfileArtifact, ProfileBin, ScenarioArtifact, ZoneArtifact,
@@ -136,6 +137,9 @@ pub use graph::{ComposedNode, CompositionGraph, GraphError, GraphIndicator, Leaf
 pub use indicator::cvd_intrabar::{
     DeltaAnchor, DeltaProvenance, IntrabarCvd, IntrabarDelta, UnchangedIntrabarPolicy,
 };
+pub use indicator::pair::{
+    build_pair_checked, input_series, pair_catalog, run_pair_batch, PairIndicator, WithReference,
+};
 pub use indicator::registry::{
     build, build_checked, build_typed, catalog, ParamValue, RegistryError, TypedParams,
 };
@@ -151,8 +155,9 @@ pub use model::{
 };
 pub use option::{
     black_76, black_scholes_merton, implied_volatility, normal_cdf, normal_pdf,
-    verify_put_call_parity, BlackScholesInputs, OptionError, OptionGreeks, OptionPricingResult,
-    OptionStyle, OptionType,
+    option_expiry_profile, option_expiry_result, option_expiry_series, verify_put_call_parity,
+    BlackScholesInputs, OptionError, OptionExpiryPoint, OptionExpiryPosition, OptionExpiryProfile,
+    OptionGreeks, OptionPricingResult, OptionStyle, OptionType, PayoffBound,
 };
 pub use parity::{
     ParityFixture, ParityFixtureError, ParityFixtureRow, ParityOutcome, ParityReport,

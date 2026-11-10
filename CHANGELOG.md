@@ -9,12 +9,28 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Applicability:** `ApplicabilityReason` has two new variants (`PairPriceAdjustmentDiffers`,
+  `PairSessionDiffers`), so exhaustive `match` expressions over it need an update.
+
 ### Added
 
+- **Applicability:** `check_pair_applicability`, with `pair_requirements` and `pair_rule_catalog`,
+  reports when the two series of a two-series indicator differ in price adjustment or session.
 - **Elliott:** the validators describe what they check as data. `elliott::rule_catalog()` lists
   the conditions of the pivot sequence in the order they are tested, per structure the variants,
   rules and guidelines with their identifiers, sentences and origin, and the threshold constants,
   among them the new `EXTENDED_WAVE_MIN_RATIO` of `identify_extended_wave`. Details: [Elliott rules](https://casoon.github.io/kestrel-chartkit/docs/reference/elliott-rules/).
+- **Options:** `option_expiry_result` gives the result of a call or put at expiry for the bought
+  or sold side with premium and contract size (`OptionExpiryPosition`), `option_expiry_profile`
+  its break-even, largest profit and largest loss (`PayoffBound`: `Limited` or `Unlimited`), and
+  `option_expiry_series` the result over a price grid. Details:
+  [Options at expiry](https://casoon.github.io/kestrel-chartkit/docs/reference/api/#options-at-expiry).
+- **Two-series indicators:** `relative_strength` and the new `correlation` are built by name with
+  `build_pair_checked`, listed by `pair_catalog()` and run with `run_pair_batch`, which pairs two
+  bar series by timestamp. `catalog()` and `build_checked` are unchanged. Details:
+  [Two series](https://casoon.github.io/kestrel-chartkit/docs/guides/indicators/#two-series).
 - **Wyckoff:** the state machine describes itself as data. `wyckoff::transitions()` lists every
   move between the phases (`WyckoffTransition`: phases, bias, condition, events, parameters), and
   `WyckoffStateMachine::last_transition()` names the one the last bar took. Details:

@@ -11,6 +11,7 @@ use std::fmt::Write;
 
 use kestrel_chartkit::applicability::data_requirements;
 use kestrel_chartkit::indicator::definition::{families, Check, ParamKind, ParamSpec};
+use kestrel_chartkit::indicator::pair::{build_pair_checked, pair_definitions};
 use kestrel_chartkit::indicator::registry::{build_checked, output_range, OutputRange};
 use kestrel_chartkit::output_unit;
 
@@ -155,31 +156,64 @@ fn render() -> String {
                 range(definition.name)
             )
             .unwrap();
-            if !definition.params.is_empty() {
-                out.push_str("| Parameter | Default | Accepted | Meaning |\n|---|---|---|---|\n");
-                for spec in definition.params {
-                    writeln!(
-                        out,
-                        "| `{}` | {} | {} | {} |",
-                        spec.name,
-                        default(spec),
-                        cell(&accepted(spec)),
-                        cell(spec.meaning)
-                    )
-                    .unwrap();
-                }
-                out.push('\n');
-            }
-            for check in definition.checks {
-                match check {
-                    Check::Less { lower, upper } => {
-                        writeln!(out, "Requires `{lower}` to be smaller than `{upper}`.\n").unwrap()
-                    }
-                }
+            parameters(&mut out, definition.params, definition.checks);
+        }
+    }
+    two_series(&mut out);
+    out
+}
+
+/// The parameter table of one definition and the relations between its parameters.
+fn parameters(out: &mut String, params: &[ParamSpec], checks: &[Check]) {
+    if !params.is_empty() {
+        out.push_str("| Parameter | Default | Accepted | Meaning |\n|---|---|---|---|\n");
+        for spec in params {
+            writeln!(
+                out,
+                "| `{}` | {} | {} | {} |",
+                spec.name,
+                default(spec),
+                cell(&accepted(spec)),
+                cell(spec.meaning)
+            )
+            .unwrap();
+        }
+        out.push('\n');
+    }
+    for check in checks {
+        match check {
+            Check::Less { lower, upper } => {
+                writeln!(out, "Requires `{lower}` to be smaller than `{upper}`.\n").unwrap()
             }
         }
     }
-    out
+}
+
+/// The indicators of `pair_catalog()`, which are not part of the families above.
+fn two_series(out: &mut String) {
+    out.push_str(
+        "## Two-series indicators\n\n\
+         These compare the series with a second one, the reference, and are not part of \
+         `catalog()`: they are listed by `pair_catalog()`, built with `build_pair_checked` and run \
+         with `run_pair_batch`, which pairs the bars of the two series by timestamp. A bar whose \
+         timestamp the reference lacks is skipped and has no output. **Warmup** counts paired \
+         bars. See [Indicators](../../guides/indicators/#two-series) for the rules.\n\n",
+    );
+    for definition in pair_definitions() {
+        writeln!(out, "### `{}`\n", definition.name).unwrap();
+        writeln!(out, "{}\n", definition.description).unwrap();
+        let warmup = build_pair_checked(definition.name, &HashMap::new())
+            .map(|i| i.warmup_period().to_string())
+            .unwrap_or_else(|e| format!("({e})"));
+        writeln!(
+            out,
+            "**Output** unit {:?}, range {} · **warmup** {warmup} paired bars\n",
+            output_unit(definition.name),
+            range(definition.name)
+        )
+        .unwrap();
+        parameters(out, definition.params, definition.checks);
+    }
 }
 
 #[test]

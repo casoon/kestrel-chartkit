@@ -12,6 +12,7 @@
 
 use std::collections::HashSet;
 
+use kestrel_chartkit::indicator::pair::pair_catalog;
 use kestrel_chartkit::indicator::registry::catalog;
 
 const README: &str = include_str!("../README.md");
@@ -159,7 +160,9 @@ fn indicator_status_fuehrt_jeden_katalogeintrag_genau_einmal() {
         })
         .collect();
 
-    for entry in catalog() {
+    // The two-series indicators have a section of their own and the same rule.
+    let entries: Vec<_> = catalog().into_iter().chain(pair_catalog()).collect();
+    for entry in &entries {
         let hits = listed.iter().filter(|n| **n == entry.name).count();
         assert_eq!(
             hits, 1,
@@ -168,7 +171,7 @@ fn indicator_status_fuehrt_jeden_katalogeintrag_genau_einmal() {
         );
     }
 
-    let known: HashSet<&str> = catalog().into_iter().map(|e| e.name).collect();
+    let known: HashSet<&str> = entries.iter().map(|e| e.name).collect();
     for name in &listed {
         assert!(
             known.contains(name),

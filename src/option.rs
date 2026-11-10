@@ -3,12 +3,18 @@
 //! Implements Black-Scholes-Merton (BSM) for spot/equity with continuous dividend yield,
 //! Black-76 for futures/forwards, analytical Greeks, put-call parity verification,
 //! and robust root-finding for implied volatility.
+//!
+//! The result of a position held to expiry needs no model: [`option_expiry_result`],
+//! [`option_expiry_profile`] and [`option_expiry_series`] give it for a call or put, bought or
+//! sold, with the premium and the contract size.
 
 use std::f64::consts::PI;
 use std::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+use crate::portfolio::PositionSide;
 
 /// Type of option contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -592,6 +598,220 @@ pub fn verify_put_call_parity(
     let forward_term = spot * (-dividend_yield * time_to_expiry_years).exp();
     let discount_strike = strike * (-risk_free_rate * time_to_expiry_years).exp();
     (call_price - put_price) - (forward_term - discount_strike)
+}
+
+/// One option position held to expiry: a call or put, bought or sold, and the premium it changed
+/// hands at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct OptionExpiryPosition {
+    pub option_type: OptionType,
+    /// [`PositionSide::Long`] bought the option and paid the premium, [`PositionSide::Short`]
+    /// sold it and received the premium.
+    pub side: PositionSide,
+    /// Strike price (must be positive).
+    pub strike: f64,
+    /// Premium per unit of the underlying (must be non-negative; for a put at most the strike,
+    /// the most a put can pay). Always the positive amount, for both sides.
+    pub premium: f64,
+    /// Units of the underlying per contract (must be positive). With `1.0` every amount is per
+    /// unit of the underlying.
+    pub contract_size: f64,
+}
+
+impl OptionExpiryPosition {
+    /// Validates the position.
+    pub fn validate(&self) -> Result<(), OptionError> {
+        if !self.strike.is_finite() || self.strike <= 0.0 {
+            return Err(OptionError::InvalidInput(
+                "strike price must be positive and finite",
+            ));
+        }
+        if !self.premium.is_finite() || self.premium < 0.0 {
+            return Err(OptionError::InvalidInput(
+                "premium must be non-negative and finite",
+            ));
+        }
+        if !self.contract_size.is_finite() || self.contract_size <= 0.0 {
+            return Err(OptionError::InvalidInput(
+                "contract size must be positive and finite",
+            ));
+        }
+        if self.option_type == OptionType::Put && self.premium > self.strike {
+            return Err(OptionError::PriceAboveBoundary);
+        }
+        Ok(())
+    }
+}
+
+/// A largest profit or largest loss, which a sold or bought call does not have.
+///
+/// `Unlimited` is a variant of its own so that no infinite number stands in for it: a value
+/// meant for an axis or a JSON document is always finite.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum PayoffBound {
+    /// The amount, never negative.
+    Limited(f64),
+    /// Grows without bound as the underlying rises.
+    Unlimited,
+}
+
+impl PayoffBound {
+    /// The amount, `None` for [`PayoffBound::Unlimited`].
+    pub fn limited(self) -> Option<f64> {
+        match self {
+            Self::Limited(amount) => Some(amount),
+            Self::Unlimited => None,
+        }
+    }
+}
+
+/// The key figures of an [`OptionExpiryPosition`], see [`option_expiry_profile`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct OptionExpiryProfile {
+    /// The price of the underlying at expiry at which the result is zero: `strike + premium`
+    /// for a call, `strike - premium` for a put, the same for both sides.
+    pub break_even: f64,
+    /// The largest result over all prices of the underlying from `0` up.
+    pub max_profit: PayoffBound,
+    /// The largest loss as a positive amount: the lowest result is `-max_loss`.
+    pub max_loss: PayoffBound,
+}
+
+/// One point of [`option_expiry_series`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct OptionExpiryPoint {
+    /// Price of the underlying at expiry.
+    pub underlying: f64,
+    /// Result of the position at that price, see [`option_expiry_result`].
+    pub result: f64,
+}
+
+/// The result of `position` when the underlying stands at `underlying` at expiry.
+///
+/// At expiry an option is worth its intrinsic value, `max(S - K, 0)` for a call and
+/// `max(K - S, 0)` for a put — what [`black_scholes_merton`] returns with no time left. With the
+/// premium `P` and the contract size `c`:
+///
+/// - bought: `(intrinsic - P) * c`
+/// - sold: `(P - intrinsic) * c`
+///
+/// Positive is a profit of the position's holder, negative a loss; the two sides of one trade add
+/// up to zero. The premium counts at its amount: no interest between trade and expiry, no fees.
+///
+/// `underlying` must be finite and not negative.
+pub fn option_expiry_result(
+    position: &OptionExpiryPosition,
+    underlying: f64,
+) -> Result<f64, OptionError> {
+    position.validate()?;
+    if !underlying.is_finite() || underlying < 0.0 {
+        return Err(OptionError::InvalidInput(
+            "underlying price at expiry must be non-negative and finite",
+        ));
+    }
+    Ok(expiry_result(position, underlying))
+}
+
+/// [`option_expiry_result`] for a validated position and price.
+fn expiry_result(position: &OptionExpiryPosition, underlying: f64) -> f64 {
+    let intrinsic = match position.option_type {
+        OptionType::Call => (underlying - position.strike).max(0.0),
+        OptionType::Put => (position.strike - underlying).max(0.0),
+    };
+    // Written out per side so that a result of zero is `0.0` for both, never `-0.0`.
+    let per_unit = match position.side {
+        PositionSide::Long => intrinsic - position.premium,
+        PositionSide::Short => position.premium - intrinsic,
+    };
+    per_unit * position.contract_size
+}
+
+/// Break-even, largest profit and largest loss of `position` at expiry, over every price of the
+/// underlying from `0` up. With strike `K`, premium `P` and contract size `c`:
+///
+/// | Position | Break-even | Largest profit | Largest loss |
+/// |---|---|---|---|
+/// | call bought | `K + P` | unlimited | `P * c` |
+/// | call sold | `K + P` | `P * c` | unlimited |
+/// | put bought | `K - P` | `(K - P) * c` | `P * c` |
+/// | put sold | `K - P` | `P * c` | `(K - P) * c` |
+///
+/// The put's `(K - P) * c` is reached with the underlying at `0`. With a premium of `0` the
+/// result is zero on the whole side on which the option expires worthless, and the break-even
+/// is the strike, where that side ends.
+pub fn option_expiry_profile(
+    position: &OptionExpiryPosition,
+) -> Result<OptionExpiryProfile, OptionError> {
+    position.validate()?;
+    let premium = position.premium * position.contract_size;
+    let (break_even, bought_profit) = match position.option_type {
+        OptionType::Call => (position.strike + position.premium, PayoffBound::Unlimited),
+        OptionType::Put => (
+            position.strike - position.premium,
+            PayoffBound::Limited((position.strike - position.premium) * position.contract_size),
+        ),
+    };
+    let (max_profit, max_loss) = match position.side {
+        PositionSide::Long => (bought_profit, PayoffBound::Limited(premium)),
+        PositionSide::Short => (PayoffBound::Limited(premium), bought_profit),
+    };
+    Ok(OptionExpiryProfile {
+        break_even,
+        max_profit,
+        max_loss,
+    })
+}
+
+/// The most points [`option_expiry_series`] returns.
+pub const MAX_EXPIRY_SERIES_POINTS: usize = 10_001;
+
+/// [`option_expiry_result`] over a grid of prices of the underlying, for a payoff diagram.
+///
+/// The grid has `points` prices from `from` to `to`, both included and equally spaced:
+/// `S_i = from + (to - from) * i / (points - 1)`. The result is linear on both sides of the
+/// strike and bends there; the line through the points shows the bend exactly when the strike is
+/// one of them (`from = 88`, `to = 112`, `points = 25` puts a point on every whole price).
+///
+/// Requires `0 <= from < to`, both finite, and `2 <= points <= `[`MAX_EXPIRY_SERIES_POINTS`].
+pub fn option_expiry_series(
+    position: &OptionExpiryPosition,
+    from: f64,
+    to: f64,
+    points: usize,
+) -> Result<Vec<OptionExpiryPoint>, OptionError> {
+    position.validate()?;
+    if !from.is_finite() || !to.is_finite() || from < 0.0 || from >= to {
+        return Err(OptionError::InvalidInput(
+            "price grid must satisfy 0 <= from < to, both finite",
+        ));
+    }
+    if !(2..=MAX_EXPIRY_SERIES_POINTS).contains(&points) {
+        return Err(OptionError::InvalidInput(
+            "price grid must have between 2 and 10001 points",
+        ));
+    }
+    let last = points - 1;
+    Ok((0..points)
+        .map(|i| {
+            let underlying = if i == last {
+                to
+            } else {
+                from + (to - from) * i as f64 / last as f64
+            };
+            OptionExpiryPoint {
+                underlying,
+                result: expiry_result(position, underlying),
+            }
+        })
+        .collect())
 }
 
 #[cfg(test)]

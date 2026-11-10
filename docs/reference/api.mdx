@@ -62,6 +62,41 @@ order: 1
   See [Indicators](../../guides/indicators/) for the output fields.
 </ApiEntry>
 
+<ApiEntry
+  kind="fn"
+  name="pair_catalog"
+  signature={`pub fn pair_catalog() -> Vec<IndicatorCatalogEntry>`}
+>
+  The indicators that read two bar series (`relative_strength`, `correlation`). None of them is in
+  `catalog()`; `input_series(name)` returns `Some(2)` for these names and `Some(1)` for the others.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="build_pair_checked"
+  signature={`pub fn build_pair_checked(
+    name: &str,
+    params: &HashMap<String, f64>,
+) -> Result<Box<dyn PairIndicator>, RegistryError>`}
+  params={[
+    { name: 'name', type: '&str', desc: 'A name from pair_catalog(), e.g. "relative_strength".' },
+    { name: 'params', type: '&HashMap<String, f64>', desc: 'Parameter overrides. Missing keys take the defaults.' },
+  ]}
+/>
+
+<ApiEntry
+  kind="fn"
+  name="run_pair_batch"
+  signature={`pub fn run_pair_batch<P: PairIndicator + ?Sized>(
+    indicator: &mut P,
+    bars: &[Bar],
+    reference: &[Bar],
+) -> Vec<TimestampedOutput>`}
+>
+  Pairs the bars of the two series by timestamp and returns one entry per bar of `bars`. See
+  [Two series](../../guides/indicators/#two-series) for the pairing rules.
+</ApiEntry>
+
 ## Market regime
 
 <ApiEntry
@@ -117,6 +152,62 @@ kestrel-chartkit draws nothing for presentation; see
   signature={`pub fn render_chart_svg(data: &ChartRenderData, width: u32, height: u32) -> String`}
 >
   Quick-look SVG for tests and debugging, not a presentation layer.
+</ApiEntry>
+
+## Options at expiry
+
+<ApiEntry
+  kind="struct"
+  name="OptionExpiryPosition"
+  signature={`pub struct OptionExpiryPosition {
+    pub option_type: OptionType,   // Call | Put
+    pub side: PositionSide,        // Long = bought, Short = sold
+    pub strike: f64,
+    pub premium: f64,              // per unit of the underlying, the positive amount
+    pub contract_size: f64,        // 1.0 = every amount per unit
+}`}
+>
+  One option position held to expiry. The result at expiry needs no pricing model.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_result"
+  signature={`pub fn option_expiry_result(
+    position: &OptionExpiryPosition,
+    underlying: f64,
+) -> Result<f64, OptionError>`}
+>
+  `(intrinsic - premium) * contract_size` for the bought option and its negative for the sold
+  one, with `intrinsic = max(S - K, 0)` for a call and `max(K - S, 0)` for a put. Positive is a
+  profit of the position's holder.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_profile"
+  signature={`pub fn option_expiry_profile(
+    position: &OptionExpiryPosition,
+) -> Result<OptionExpiryProfile, OptionError>`}
+>
+  `break_even` (`K + P` for a call, `K - P` for a put), `max_profit` and `max_loss` over every
+  price from 0 up. Both are a `PayoffBound`: `Limited(amount)` or `Unlimited`, so no infinite
+  number reaches an axis or a JSON document. `max_loss` is a positive amount.
+</ApiEntry>
+
+<ApiEntry
+  kind="fn"
+  name="option_expiry_series"
+  signature={`pub fn option_expiry_series(
+    position: &OptionExpiryPosition,
+    from: f64,
+    to: f64,
+    points: usize,
+) -> Result<Vec<OptionExpiryPoint>, OptionError>`}
+>
+  The result over `points` equally spaced prices from `from` to `to`, both included, for a payoff
+  diagram. The line through the points shows the bend at the strike exactly when the strike is
+  one of them.
 </ApiEntry>
 
 ## Beyond these docs

@@ -121,6 +121,13 @@ pub enum ApplicabilityReason {
     /// [`StructureMethod`] rule: `continuity == SingleContract`, the series ends with the
     /// contract's expiry and holds only that contract's life.
     StructureFiniteHistory,
+    /// [`PairRequirements::same_price_adjustment`] against two series with different
+    /// [`PriceAdjustment`]: a split or dividend stands in one series only.
+    PairPriceAdjustmentDiffers,
+    /// [`PairRequirements::same_session`] against two series with different
+    /// [`SessionKind`](crate::model::SessionKind): bars with the same timestamp cover different
+    /// trading hours.
+    PairSessionDiffers,
 }
 
 /// A single applicability finding: which rule fired, and a publication-ready explanation.
@@ -550,6 +557,90 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             }
         }
         _ => DataRequirements::default(),
+    }
+}
+
+/// What a two-series indicator ([`crate::indicator::pair`]) needs its two series to agree in.
+///
+/// A property of the *pair*, not of either series: each of the two can be a sound series on its
+/// own and the comparison still measure something else. All-`false` (the [`Default`]) is the
+/// answer for every name that is not a two-series indicator.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PairRequirements {
+    /// Compares price changes of the two series: both need the same [`PriceAdjustment`].
+    pub same_price_adjustment: bool,
+    /// Pairs the bars of the two series by timestamp: both need the same
+    /// [`SessionKind`](crate::model::SessionKind).
+    pub same_session: bool,
+}
+
+/// Pair rule 1: `same_price_adjustment` && the two `price_adjustment` differ -> Degraded.
+const PAIR_RULE_PRICE_ADJUSTMENT: RuleDescription = RuleDescription {
+    reason: ApplicabilityReason::PairPriceAdjustmentDiffers,
+    tier: ApplicabilityTier::Degraded,
+    explanation: "Die beiden Reihen sind verschieden bereinigt: Ein Split oder eine Dividende \
+        steht nur in einer von beiden als Kurssprung, in der anderen ist er herausgerechnet; \
+        der Vergleich enthält diesen Unterschied als Kursbewegung",
+};
+
+/// Pair rule 2: `same_session` && the two `session` differ -> Degraded.
+const PAIR_RULE_SESSION: RuleDescription = RuleDescription {
+    reason: ApplicabilityReason::PairSessionDiffers,
+    tier: ApplicabilityTier::Degraded,
+    explanation: "Die beiden Reihen haben verschiedene Handelszeiten: Bars mit gleichem \
+        Zeitstempel umfassen verschiedene Zeiträume, und Zeitstempel, die nur eine Reihe führt, \
+        entfallen bei der Ausrichtung; die verglichenen Schlusskurse stammen nicht vom selben \
+        Zeitpunkt",
+};
+
+/// The rules of [`check_pair_applicability`], in the order they are evaluated.
+pub fn pair_rule_catalog() -> [RuleDescription; 2] {
+    [PAIR_RULE_PRICE_ADJUSTMENT, PAIR_RULE_SESSION]
+}
+
+/// The [`PairRequirements`] of a two-series indicator, by its
+/// [`pair_catalog`](crate::indicator::pair::pair_catalog) name or alias (case-insensitive).
+///
+/// `relative_strength` and `correlation` set both: each compares the returns of two close series
+/// bar by bar (and `relative_strength` their ratio), so an adjustment applied to one series only
+/// and bars that do not cover the same span both enter the result.
+pub fn pair_requirements(name: &str) -> PairRequirements {
+    match crate::indicator::pair::pair_definition(name).map(|d| d.name) {
+        Some("relative_strength" | "correlation") => PairRequirements {
+            same_price_adjustment: true,
+            same_session: true,
+        },
+        _ => PairRequirements::default(),
+    }
+}
+
+/// Matches `requirements` against the capabilities of the two series of a two-series indicator.
+///
+/// Only what the two series must have in common is checked here; what the indicator needs from
+/// each series alone stays with [`check_applicability`]. Both rules are
+/// [`ApplicabilityTier::Degraded`]: the calculation runs, its meaning shifts.
+///
+/// The check sees declared properties only. Two series with the same
+/// [`SessionKind`](crate::model::SessionKind) can still trade at different hours (two regular
+/// sessions in different time zones); that difference is not in
+/// [`SeriesCapabilities`] and is not found here.
+pub fn check_pair_applicability(
+    requirements: &PairRequirements,
+    series: &SeriesCapabilities,
+    reference: &SeriesCapabilities,
+) -> Applicability {
+    let mut reasons = Vec::new();
+    if requirements.same_price_adjustment && series.price_adjustment != reference.price_adjustment {
+        reasons.push(note_from(PAIR_RULE_PRICE_ADJUSTMENT));
+    }
+    if requirements.same_session && series.session != reference.session {
+        reasons.push(note_from(PAIR_RULE_SESSION));
+    }
+    if reasons.is_empty() {
+        Applicability::Applicable
+    } else {
+        Applicability::Degraded { reasons }
     }
 }
 

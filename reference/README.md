@@ -29,6 +29,7 @@ Python 3.10 or newer; nothing else.
 | Fixture | Module |
 |---|---|
 | `golden_option_diff` | `kestrel_reference/fixtures/option_diff.py` |
+| `golden_option_expiry` | `kestrel_reference/fixtures/option_expiry.py` |
 | `golden_bond_diff` | `kestrel_reference/fixtures/bond_diff.py` |
 | `golden_curve_diff` | `kestrel_reference/fixtures/curve_diff.py` |
 | `golden_business_days` | `kestrel_reference/fixtures/business_days.py` |
@@ -37,6 +38,8 @@ Python 3.10 or newer; nothing else.
 | `golden_sample_stats` | `kestrel_reference/fixtures/sample_stats.py` |
 | `golden_changepoint` | `kestrel_reference/fixtures/changepoint.py` |
 | `golden_cross_asset_alignment` | `kestrel_reference/fixtures/cross_asset_alignment.py` |
+| `golden_pair_indicators` | `kestrel_reference/fixtures/pair_indicators.py` |
+| `golden_applicability_pairs` | `kestrel_reference/fixtures/applicability_pairs.py` |
 | `golden_forward` | `kestrel_reference/fixtures/forward.py` |
 | `golden_deflated_sharpe` | `kestrel_reference/fixtures/deflated_sharpe.py` |
 | `golden_logistic` | `kestrel_reference/fixtures/logistic.py` |

@@ -21,7 +21,7 @@ active development: names, parameters and outputs can still change fundamentally
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
 - **Trade Statistics & Evaluation:** Comprehensive backtest evaluation ($R$-multiples, winrate, profit factor, max drawdown, EV).
 - **Bar Transformations:** Heikin-Ashi candles as their own result type, carrying the observed bar they were derived from so computed prices cannot pass as traded ones (`transform`).
-- **Instrument Valuation:** European options (Black-Scholes-Merton, Black-76, Greeks, implied volatility) and fixed-rate bonds valued over real coupon schedules — month-end rule, stub periods, business-day conventions, day-count-driven coupons and accrued interest (`option`, `finance`).
+- **Instrument Valuation:** European options (Black-Scholes-Merton, Black-76, Greeks, implied volatility), the result of an option position at expiry with premium, side and contract size (`option_expiry_result`, `option_expiry_profile`, `option_expiry_series`), and fixed-rate bonds valued over real coupon schedules — month-end rule, stub periods, business-day conventions, day-count-driven coupons and accrued interest (`option`, `finance`).
 - **Portfolio, Risk and Stress:** Exposures, cashflow-adjusted returns, drawdown, VaR and expected shortfall, scenario revaluation and path simulation (`portfolio`, `risk`, `stress`).
 - **Renderer-Neutral Output:** Every result is plain data (values, extras, alerts, zones); overlays such as signal markers, levels and zones can travel as a `viz::scene::Scene`, the model kestrel-loom draws. Draw static charts with chartlet — the [showcase](https://casoon.github.io/kestrel-chartkit/showcase/) shows every indicator that way. The small built-in `viz::render_chart_svg`/`render_scene_svg` are quick-look helpers for tests and debugging, not a presentation layer.
 
@@ -30,6 +30,11 @@ active development: names, parameters and outputs can still change fundamentally
 `correlation_matrix` and `relative_strength_ranking` accept close samples with a common
 caller-defined timestamp convention. `aggregate_agreement` combines directional statements;
 its confidence is agreement, not a calibrated success probability.
+
+Indicators over two bar series (`relative_strength`, `correlation`) are listed by
+`pair_catalog()`, built by name with `build_pair_checked(name, params)` and run with
+`run_pair_batch(indicator, bars, reference_bars)`, which pairs the two series by timestamp: a bar
+without a partner is skipped, nothing is carried forward. They are not part of `catalog()`.
 
 `PriceDirection`, `ForwardPriceOutcome`, `PriceStats` and `PriceOutcomeStats` provide
 price-unit paper/outcome calculations. They do not imply contract sizing, account-currency
