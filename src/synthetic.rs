@@ -151,30 +151,102 @@ pub fn trending_bars(
     bars
 }
 
-/// Minimum effective range lookback this generator calibrates against.
-///
-/// Matches [`WyckoffStateMachine::with_defaults`](crate::indicator::wyckoff::WyckoffStateMachine::with_defaults)'s
-/// `range_lookback` and gives both `Rma::new(14)` (ATR warmup) and the robust MAD-based
-/// volume-outlier window enough samples to be statistically meaningful before the directed climax
-/// bar arrives. Smaller `WyckoffStateMachine`/`"wyckoff"` configurations are structurally
-/// supported (deque and volume-outlier window are derived from the same `range_lookback` there,
-/// see `src/indicator/wyckoff.rs`), but a climax-outlier band computed from very few samples is
-/// noisy, so this generator does not tune below the default for its forced-bias guarantee.
+/// Shortest decline the schematic carries before its climax bar: the default `range_lookback` of
+/// [`WyckoffStateMachine`](crate::indicator::wyckoff::WyckoffStateMachine). A longer lookback gets
+/// that many more bars of decline in front, so the state machine's window is full at the climax.
 const WYCKOFF_MIN_RANGE_LOOKBACK: usize = 20;
+
+/// The accumulation schematic: (close, wick above the body, wick below the body, volume), in the
+/// units of a range from 94 to 100 at a base volume of 100. The open is the previous close, the
+/// first bar opens at [`WYCKOFF_SCHEMATIC_START`]. Each event lies on one bar:
+/// Preliminary Support 16, Selling Climax 21, Automatic Rally 24, Secondary Test 29, Spring 48,
+/// Sign of Strength 53, Last Point of Support 57.
+const WYCKOFF_SCHEMATIC: [(f64, f64, f64, f64); 62] = [
+    (109.6, 0.3, 0.4, 105.0),
+    (108.9, 0.4, 0.3, 110.0),
+    (109.3, 0.3, 0.3, 90.0),
+    (108.2, 0.2, 0.4, 115.0),
+    (107.3, 0.3, 0.3, 120.0),
+    (107.7, 0.3, 0.2, 95.0),
+    (106.5, 0.2, 0.4, 125.0),
+    (105.6, 0.3, 0.3, 120.0),
+    (105.9, 0.3, 0.3, 100.0),
+    (104.7, 0.2, 0.4, 130.0),
+    (103.6, 0.3, 0.3, 135.0),
+    (103.9, 0.3, 0.2, 105.0),
+    (102.6, 0.2, 0.4, 140.0),
+    (101.6, 0.3, 0.4, 150.0),
+    (101.0, 0.2, 0.4, 145.0),
+    (98.6, 0.2, 0.5, 185.0),
+    (98.9, 0.3, 1.1, 240.0),
+    (99.3, 0.3, 0.3, 150.0),
+    (98.4, 0.2, 0.4, 140.0),
+    (97.4, 0.2, 0.5, 165.0),
+    (97.0, 0.2, 0.4, 190.0),
+    (94.8, 0.2, 0.8, 430.0),
+    (96.4, 0.3, 0.2, 260.0),
+    (98.3, 0.3, 0.2, 210.0),
+    (99.6, 0.4, 0.2, 180.0),
+    (98.7, 0.3, 0.3, 130.0),
+    (97.4, 0.2, 0.4, 120.0),
+    (96.2, 0.2, 0.4, 115.0),
+    (95.1, 0.3, 0.5, 125.0),
+    (95.3, 0.2, 0.8, 140.0),
+    (96.5, 0.3, 0.2, 110.0),
+    (97.8, 0.3, 0.3, 105.0),
+    (98.9, 0.4, 0.2, 100.0),
+    (98.2, 0.3, 0.3, 85.0),
+    (97.6, 0.3, 0.3, 90.0),
+    (96.5, 0.2, 0.4, 85.0),
+    (95.6, 0.3, 0.4, 80.0),
+    (95.0, 0.2, 0.5, 75.0),
+    (95.4, 0.2, 0.8, 70.0),
+    (96.6, 0.3, 0.2, 85.0),
+    (97.9, 0.3, 0.3, 90.0),
+    (99.0, 0.4, 0.2, 95.0),
+    (98.3, 0.3, 0.3, 75.0),
+    (98.9, 0.5, 0.3, 80.0),
+    (97.7, 0.2, 0.4, 70.0),
+    (96.5, 0.2, 0.3, 75.0),
+    (95.6, 0.3, 0.4, 70.0),
+    (94.8, 0.2, 0.3, 80.0),
+    (94.9, 0.2, 1.4, 95.0),
+    (95.8, 0.2, 0.5, 85.0),
+    (96.9, 0.3, 0.2, 110.0),
+    (98.2, 0.3, 0.2, 140.0),
+    (99.3, 0.3, 0.3, 170.0),
+    (101.6, 0.2, 0.2, 310.0),
+    (102.1, 0.3, 0.4, 240.0),
+    (101.3, 0.2, 0.3, 150.0),
+    (100.6, 0.2, 0.3, 110.0),
+    (100.7, 0.2, 0.5, 85.0),
+    (101.7, 0.3, 0.2, 130.0),
+    (102.6, 0.3, 0.2, 160.0),
+    (103.3, 0.3, 0.3, 170.0),
+    (103.9, 0.3, 0.3, 150.0),
+];
+const WYCKOFF_SCHEMATIC_START: f64 = 110.4;
+/// Centre and half-width of the schematic's range (94 to 100).
+const WYCKOFF_SCHEMATIC_CENTER: f64 = 97.0;
+const WYCKOFF_SCHEMATIC_HALF_WIDTH: f64 = 3.0;
+/// Bars of [`WYCKOFF_SCHEMATIC`] whose volume carries an event; the seed leaves them alone.
+const WYCKOFF_SCHEMATIC_EVENT_BARS: [usize; 7] = [16, 21, 24, 29, 48, 53, 57];
+/// Close-to-close step of the extra decline bars in front of the schematic, in its units.
+const WYCKOFF_SCHEMATIC_LEAD_STEP: f64 = 0.6;
 
 /// Configuration parameters for generating Wyckoff schematic bar sequences.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WyckoffGeneratorConfig {
-    /// Baseline price around which the trading range contracts.
+    /// Middle of the trading range.
     pub center_price: f64,
-    /// Number of bars used for the lookback window.
-    ///
-    /// Internally clamped up to `WYCKOFF_MIN_RANGE_LOOKBACK` regardless of the value supplied
-    /// here — see that (private) constant's doc comment in this module for why.
+    /// The `range_lookback` of the state machine the series is meant for. Values up to 20 leave
+    /// the schematic as it is (it carries 21 bars before its climax); every bar beyond 20 adds
+    /// one bar of decline in front.
     pub range_lookback: usize,
-    /// Price spread / half-width of the trading range.
+    /// Half-width of the trading range: it runs from `center_price - spread` to
+    /// `center_price + spread`.
     pub spread: f64,
-    /// Baseline volume during the range phase.
+    /// Volume of an ordinary bar of the preceding trend; the climax trades about four times that.
     pub base_volume: f64,
 }
 
@@ -189,180 +261,68 @@ impl Default for WyckoffGeneratorConfig {
     }
 }
 
-/// Generates a calibrated Wyckoff schematic sequence completing Phases A through E.
+/// Generates a Wyckoff schematic that [`WyckoffStateMachine`](crate::indicator::wyckoff::WyckoffStateMachine)
+/// reads through Phases A to E with its default thresholds.
 ///
-/// The sequence consists of:
-/// 1. Warmup contraction range bars establishing baseline ATR and volume statistics.
-/// 2. Directed climax bar (high volume down-close for Accumulation, up-close for Distribution)
-///    locking the trading range with the target [`WyckoffBias`] deterministically.
-/// 3. Secondary boundary test / pause bar (Phase B).
-/// 4. Decisive Spring (Accumulation) or UTAD (Distribution) test bar (Phase C).
-/// 5. Sign of Strength (Accumulation) or Sign of Weakness (Distribution) breakout bar (Phase D).
-/// 6. Last Point of Support (Accumulation) or Last Point of Supply (Distribution) confirmation bar (Phase E).
+/// Accumulation: a decline with a Preliminary Support, the Selling Climax that sets the range
+/// low, the Automatic Rally that sets the range high, a Secondary Test, a Spring, a Sign of
+/// Strength on expanded volume and a pullback that holds above the range (Last Point of Support).
+/// Distribution is the same series reflected at `center_price`.
+///
+/// The prices are a fixed schematic, scaled to `center_price` and `spread`; `seed` only varies
+/// the volume of the bars that carry no event, by up to 1 % of `base_volume`.
 pub fn wyckoff_schematic_bars(
     seed: u64,
     bias: WyckoffBias,
     config: WyckoffGeneratorConfig,
 ) -> Vec<QualifiedBar> {
     let mut rng = SimpleRng::new(seed);
-    let warmup_bars = config
+    let lead = config
         .range_lookback
-        .max(WYCKOFF_MIN_RANGE_LOOKBACK)
-        .saturating_sub(1);
-    let mut bars = Vec::with_capacity(warmup_bars + 6);
-    let center = config.center_price;
-    let spread = config.spread;
-    let base_volume = config.base_volume;
-
-    // 1. Warmup oscillating range bars (contracting range, stable ATR and volume)
-    // Runs for exactly `lookback - 1` bars so range lock evaluates on the subsequent climax bar.
-    for i in 0..warmup_bars {
-        let pattern_offset = ((i % 4) as f64 - 1.5) * spread * 0.15;
-        let noise = rng.next_range(-0.02, 0.02) * spread;
-        let price = center + pattern_offset + noise;
-        let open = price - 0.05 * spread;
-        let close = price + 0.05 * spread;
-        let high = price + spread * 0.2;
-        let low = price - spread * 0.2;
-        let vol = base_volume + rng.next_range(-1.0, 1.0);
-
-        bars.push(synthetic_bar(i as i64 * 60, open, high, low, close, vol));
-    }
-
-    let mut timestamp = warmup_bars as i64 * 60;
-
-    // 2. Climax Bar: Evaluated as the `lookback`-th bar. Outlier volume + directional close
-    // locks the range and picks the bias deterministically.
-    let climax_vol = base_volume * 4.0;
-    let (c_open, c_high, c_low, c_close) = match bias {
-        WyckoffBias::Accumulation => {
-            // Down climax: close < open and close < prev_close
-            (
-                center + 0.2 * spread,
-                center + 0.3 * spread,
-                center - 0.4 * spread,
-                center - 0.3 * spread,
-            )
-        }
-        WyckoffBias::Distribution => {
-            // Up climax: close > open and close > prev_close
-            (
-                center - 0.2 * spread,
-                center + 0.4 * spread,
-                center - 0.3 * spread,
-                center + 0.3 * spread,
-            )
+        .saturating_sub(WYCKOFF_MIN_RANGE_LOOKBACK);
+    let scale = config.spread / WYCKOFF_SCHEMATIC_HALF_WIDTH;
+    let price = |schematic: f64| {
+        let offset = (schematic - WYCKOFF_SCHEMATIC_CENTER) * scale;
+        match bias {
+            WyckoffBias::Accumulation => config.center_price + offset,
+            WyckoffBias::Distribution => config.center_price - offset,
         }
     };
-    bars.push(synthetic_bar(
-        timestamp, c_open, c_high, c_low, c_close, climax_vol,
-    ));
-    timestamp += 60;
 
-    // 3. Decisive Test (Phase A/B -> Phase C): Spring (Accumulation) or UTAD (Distribution)
-    match bias {
-        WyckoffBias::Accumulation => {
-            // Spring: low < range_low && close > range_low
-            let s_open = center - 0.2 * spread;
-            let s_low = center - 1.5 * spread;
-            let s_high = center;
-            let s_close = center - 0.1 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                s_open,
-                s_high,
-                s_low,
-                s_close,
-                base_volume,
-            ));
-        }
-        WyckoffBias::Distribution => {
-            // UTAD: high > range_high && close < range_high
-            let u_open = center + 0.2 * spread;
-            let u_high = center + 1.5 * spread;
-            let u_low = center;
-            let u_close = center + 0.1 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                u_open,
-                u_high,
-                u_low,
-                u_close,
-                base_volume,
-            ));
-        }
+    // (close, wick above, wick below, volume, carries an event) in schematic units.
+    let lead_rows = (0..lead).map(|k| {
+        let close = WYCKOFF_SCHEMATIC_START + WYCKOFF_SCHEMATIC_LEAD_STEP * (lead - 1 - k) as f64;
+        (close, 0.3, 0.3, 100.0, false)
+    });
+    let schematic_rows =
+        WYCKOFF_SCHEMATIC
+            .iter()
+            .enumerate()
+            .map(|(i, &(close, above, below, volume))| {
+                let event = WYCKOFF_SCHEMATIC_EVENT_BARS.contains(&i);
+                (close, above, below, volume, event)
+            });
+
+    let mut bars = Vec::with_capacity(lead + WYCKOFF_SCHEMATIC.len());
+    let mut previous = WYCKOFF_SCHEMATIC_START + WYCKOFF_SCHEMATIC_LEAD_STEP * lead as f64;
+    for (i, (close, above, below, volume, event)) in lead_rows.chain(schematic_rows).enumerate() {
+        let top = price(previous.max(close) + above);
+        let bottom = price(previous.min(close) - below);
+        let noise = if event {
+            0.0
+        } else {
+            rng.next_range(-0.01, 0.01)
+        };
+        bars.push(synthetic_bar(
+            i as i64 * 60,
+            price(previous),
+            top.max(bottom),
+            top.min(bottom),
+            price(close),
+            config.base_volume * (volume / 100.0 + noise),
+        ));
+        previous = close;
     }
-    timestamp += 60;
-
-    // 4. Breakout (Phase C -> Phase D): SOS (Accumulation) or SOW (Distribution)
-    match bias {
-        WyckoffBias::Accumulation => {
-            // SOS: close > range_high
-            let sos_open = center;
-            let sos_high = center + 1.6 * spread;
-            let sos_low = center - 0.1 * spread;
-            let sos_close = center + 1.5 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                sos_open,
-                sos_high,
-                sos_low,
-                sos_close,
-                base_volume * 1.5,
-            ));
-        }
-        WyckoffBias::Distribution => {
-            // SOW: close < range_low
-            let sow_open = center;
-            let sow_low = center - 1.6 * spread;
-            let sow_high = center + 0.1 * spread;
-            let sow_close = center - 1.5 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                sow_open,
-                sow_high,
-                sow_low,
-                sow_close,
-                base_volume * 1.5,
-            ));
-        }
-    }
-    timestamp += 60;
-
-    // 5. Confirmation (Phase D -> Phase E): LPS (Accumulation) or LPSY (Distribution)
-    match bias {
-        WyckoffBias::Accumulation => {
-            // LPS: low >= range_high - atr * 0.5 && close > range_high
-            let lps_open = center + 1.2 * spread;
-            let lps_low = center + 0.8 * spread;
-            let lps_high = center + 1.5 * spread;
-            let lps_close = center + 1.3 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                lps_open,
-                lps_high,
-                lps_low,
-                lps_close,
-                base_volume,
-            ));
-        }
-        WyckoffBias::Distribution => {
-            // LPSY: high <= range_low + atr * 0.5 && close < range_low
-            let lpsy_open = center - 1.2 * spread;
-            let lpsy_high = center - 0.8 * spread;
-            let lpsy_low = center - 1.5 * spread;
-            let lpsy_close = center - 1.3 * spread;
-            bars.push(synthetic_bar(
-                timestamp,
-                lpsy_open,
-                lpsy_high,
-                lpsy_low,
-                lpsy_close,
-                base_volume,
-            ));
-        }
-    }
-
     bars
 }
 
@@ -565,7 +525,7 @@ mod tests {
             WyckoffGeneratorConfig::default(),
         );
 
-        let mut machine = WyckoffStateMachine::new(20, 5.0, 3);
+        let mut machine = WyckoffStateMachine::with_defaults();
         for qb in &bars {
             machine.on_bar(&qb.bar);
         }
@@ -588,7 +548,7 @@ mod tests {
             WyckoffGeneratorConfig::default(),
         );
 
-        let mut machine = WyckoffStateMachine::new(20, 5.0, 3);
+        let mut machine = WyckoffStateMachine::with_defaults();
         for qb in &bars {
             machine.on_bar(&qb.bar);
         }
@@ -601,6 +561,83 @@ mod tests {
             "Sequence quality was {}",
             score.sequence_quality
         );
+    }
+
+    /// The generator promises the whole schematic for any seed, scale and lookback: every event
+    /// once (the Secondary Test at least once), in the order of the schematic.
+    #[test]
+    fn test_wyckoff_schematic_holds_for_seeds_scales_and_lookbacks() {
+        use crate::indicator::wyckoff::{WyckoffEventKind as Kind, WyckoffParams};
+
+        let configs = [
+            WyckoffGeneratorConfig::default(),
+            WyckoffGeneratorConfig {
+                center_price: 4_250.0,
+                spread: 75.0,
+                base_volume: 2.5e6,
+                range_lookback: 20,
+            },
+            WyckoffGeneratorConfig {
+                center_price: 1.1,
+                spread: 0.004,
+                base_volume: 40.0,
+                range_lookback: 35,
+            },
+        ];
+        for config in configs {
+            for seed in 0..25 {
+                for (bias, expected) in [
+                    (
+                        WyckoffBias::Accumulation,
+                        [
+                            Kind::PreliminarySupport,
+                            Kind::SellingClimax,
+                            Kind::AutomaticRally,
+                            Kind::SecondaryTest,
+                            Kind::Spring,
+                            Kind::SignOfStrength,
+                            Kind::LastPointOfSupport,
+                        ],
+                    ),
+                    (
+                        WyckoffBias::Distribution,
+                        [
+                            Kind::PreliminarySupply,
+                            Kind::BuyingClimax,
+                            Kind::AutomaticReaction,
+                            Kind::SecondaryTest,
+                            Kind::Utad,
+                            Kind::SignOfWeakness,
+                            Kind::LastPointOfSupply,
+                        ],
+                    ),
+                ] {
+                    let bars = wyckoff_schematic_bars(seed, bias, config);
+                    assert!(bars.iter().all(|qb| qb.bar.validate().is_ok()));
+                    let mut machine = WyckoffStateMachine::with_params(WyckoffParams {
+                        range_lookback: config.range_lookback,
+                        ..WyckoffParams::default()
+                    });
+                    for qb in &bars {
+                        machine.on_bar(&qb.bar);
+                    }
+                    let mut kinds: Vec<Kind> = machine.events().iter().map(|e| e.kind).collect();
+                    kinds.dedup();
+                    assert_eq!(kinds, expected, "seed {seed}, {bias:?}, {config:?}");
+                    assert_eq!(machine.phase(), WyckoffPhase::E);
+                    assert_eq!(machine.score().sequence_quality, 1.0);
+
+                    let range = machine.range().expect("range set");
+                    let (low, high) = (
+                        config.center_price - config.spread,
+                        config.center_price + config.spread,
+                    );
+                    let tolerance = 1e-9 * config.center_price;
+                    assert!((range.low - low).abs() < tolerance, "{range:?}");
+                    assert!((range.high - high).abs() < tolerance, "{range:?}");
+                }
+            }
+        }
     }
 
     #[test]

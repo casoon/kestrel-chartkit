@@ -950,72 +950,573 @@ fn test_scenario_pivots_structure() {
 // ============================================================================
 // 10. Wyckoff State Machine (Phases A..E)
 // ============================================================================
-#[test]
-fn test_scenario_wyckoff() {
-    let mut ind = build_checked(
+
+/// The textbook accumulation and the other hand-built Wyckoff series, as the contract fixture
+/// carries them (`reference/kestrel_reference/fixtures/contract_structure.py`).
+const WYCKOFF_CASES: &str = include_str!("fixtures/contract_structure.txt");
+
+fn wyckoff_case(name: &str) -> common::contract::ContractCase {
+    common::contract::load(
+        WYCKOFF_CASES,
+        name,
         "wyckoff",
-        &HashMap::from([
-            ("range_lookback".to_string(), 8.0),
-            ("range_atr_max".to_string(), 5.0),
-            ("min_range_bars".to_string(), 3.0),
-        ]),
+        kestrel_chartkit::IndicatorUnit::Unitless,
     )
-    .unwrap();
+}
 
-    // 1. Warmup with oscillating range bars around 100.0
-    for i in 0..20 {
-        let offset = ((i % 4) as f64 - 1.5) * 2.0 * 0.3;
-        let price = 100.0 + offset;
-        let b = Bar::new(i as i64 * 60, price, price + 0.6, price - 0.6, price, 100.0);
-        ind.on_bar(&b);
-    }
+/// 0-based position of the bar with this timestamp.
+fn bar_of(bars: &[Bar], timestamp: i64) -> usize {
+    bars.iter()
+        .position(|b| b.timestamp == timestamp)
+        .expect("event on a bar of the series")
+}
 
-    // 2. Feed the appropriate 3-bar resolution sequence (Accumulation: Spring -> SOS -> LPS, or Distribution: UTAD -> SOW -> LPSY)
-    // Both drive the state machine through Phase C -> Phase D -> Phase E.
-    let bars_seq = [
-        Bar::new(2000, 101.5, 104.0, 101.0, 101.2, 100.0), // Phase C event
-        Bar::new(2060, 101.0, 101.5, 94.0, 94.5, 100.0),   // Phase D event
-        Bar::new(2120, 94.5, 97.0, 94.0, 95.0, 100.0),     // Phase E event
-    ];
+/// What a run of the typed state machine shows: the first bar of every phase it entered, and the
+/// events of the range in play at the end with the bar each lies on and its price.
+struct WyckoffRun {
+    machine: kestrel_chartkit::indicator::wyckoff::WyckoffStateMachine,
+    phase_starts: Vec<(usize, f64)>,
+    events: Vec<(
+        kestrel_chartkit::indicator::wyckoff::WyckoffEventKind,
+        usize,
+        f64,
+    )>,
+}
 
-    let mut final_phase = 0.0;
-    let mut alerts = Vec::new();
-    for b in &bars_seq {
-        if let Some(out) = ind.on_bar(b) {
-            final_phase = out.value;
-            for a in ind.alerts() {
-                alerts.push(a.kind);
+fn wyckoff_run(bars: &[Bar]) -> WyckoffRun {
+    let mut machine = kestrel_chartkit::indicator::wyckoff::WyckoffStateMachine::with_defaults();
+    let mut phase_starts = Vec::new();
+    let mut previous = None;
+    for (i, bar) in bars.iter().enumerate() {
+        let value = machine.on_bar(bar).map(|o| o.value);
+        if value != previous {
+            if let Some(value) = value {
+                phase_starts.push((i, value));
             }
+            previous = value;
         }
     }
+    let events = machine
+        .events()
+        .iter()
+        .map(|e| (e.kind, bar_of(bars, e.timestamp), e.price))
+        .collect();
+    WyckoffRun {
+        machine,
+        phase_starts,
+        events,
+    }
+}
 
+fn assert_wyckoff_events(
+    actual: &[(
+        kestrel_chartkit::indicator::wyckoff::WyckoffEventKind,
+        usize,
+        f64,
+    )],
+    expected: &[(
+        kestrel_chartkit::indicator::wyckoff::WyckoffEventKind,
+        usize,
+        f64,
+    )],
+) {
     assert_eq!(
-        final_phase, 5.0,
-        "Wyckoff Phase must transition to Phase E (code 5.0) after complete structural sequence"
+        actual.iter().map(|e| (e.0, e.1)).collect::<Vec<_>>(),
+        expected.iter().map(|e| (e.0, e.1)).collect::<Vec<_>>(),
+        "event kinds and bars"
     );
-    assert!(
-        alerts
-            .iter()
-            .any(|k| k == "wyckoff_lastpointofsupply" || k == "wyckoff_lastpointofsupport"),
-        "Must emit Wyckoff Phase E confirmation alert (LPS / LPSY)"
+    for (a, e) in actual.iter().zip(expected) {
+        common::assert_close(a.2, e.2, 1e-9, &format!("price of {:?}", e.0));
+    }
+}
+
+/// The textbook accumulation with the default thresholds. The expected bars are those the series
+/// was built around (bars count from 0): Preliminary Support 16, Selling Climax 21 (low 94.0),
+/// Automatic Rally 24 (high 100.0), Secondary Test 29, Spring 48 (low 93.4), Sign of Strength 53
+/// (close 101.6), Last Point of Support 57 (low 100.1).
+///
+/// Two expectations follow from the documented rules rather than from the construction:
+/// - The range is set on bar 26. The rally high is bar 24 (low 98.1); bar 25 closes at 98.7,
+///   bar 26 at 97.4, the first close below that low.
+/// - Bar 38 is a second Secondary Test: its low of 94.2 is within a quarter ATR (about 0.4) of
+///   the range low, on a volume of 70 against the climax's 430 and 1.4 wide against 3.2.
+#[test]
+fn test_scenario_wyckoff_textbook_accumulation() {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffBias, WyckoffEventKind as Kind, WyckoffPhase, WyckoffRangeSource,
+    };
+
+    let bars = wyckoff_case("wyckoff_textbook_accumulation").bars;
+    assert_eq!(bars.len(), 62);
+    let run = wyckoff_run(&bars);
+
+    assert_wyckoff_events(
+        &run.events,
+        &[
+            (Kind::PreliminarySupport, 16, 97.5),
+            (Kind::SellingClimax, 21, 94.0),
+            (Kind::AutomaticRally, 24, 100.0),
+            (Kind::SecondaryTest, 29, 95.3),
+            (Kind::SecondaryTest, 38, 95.4),
+            (Kind::Spring, 48, 93.4),
+            (Kind::SignOfStrength, 53, 101.6),
+            (Kind::LastPointOfSupport, 57, 100.1),
+        ],
+    );
+    // No output while the window of 20 bars fills, then no range, then A to E.
+    assert_eq!(
+        run.phase_starts,
+        vec![
+            (19, 0.0),
+            (26, 1.0),
+            (29, 2.0),
+            (48, 3.0),
+            (53, 4.0),
+            (57, 5.0)
+        ]
+    );
+    assert_eq!(run.machine.phase(), WyckoffPhase::E);
+    assert_eq!(run.machine.bias(), Some(WyckoffBias::Accumulation));
+    let range = run.machine.range().expect("range set");
+    common::assert_close(range.low, 94.0, 1e-9, "range low: the climax low");
+    common::assert_close(range.high, 100.0, 1e-9, "range high: the rally high");
+    assert_eq!(range.source, WyckoffRangeSource::Climax);
+    assert_eq!(run.machine.score().sequence_quality, 1.0);
+    // The cause counts the bars of Phases A to D: bars 27 to 57, 31 bars of a range 6 wide.
+    common::assert_close(run.machine.score().cause_score, 186.0, 1e-9, "cause");
+}
+
+/// The same series reflected at 200: the mirror events on the same bars, the range from 100
+/// (the reaction low) to 106 (the climax high).
+#[test]
+fn test_scenario_wyckoff_textbook_distribution() {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffBias, WyckoffEventKind as Kind, WyckoffPhase, WyckoffRangeSource,
+    };
+
+    let bars = wyckoff_case("wyckoff_textbook_distribution").bars;
+    let run = wyckoff_run(&bars);
+
+    assert_wyckoff_events(
+        &run.events,
+        &[
+            (Kind::PreliminarySupply, 16, 102.5),
+            (Kind::BuyingClimax, 21, 106.0),
+            (Kind::AutomaticReaction, 24, 100.0),
+            (Kind::SecondaryTest, 29, 104.7),
+            (Kind::SecondaryTest, 38, 104.6),
+            (Kind::Utad, 48, 106.6),
+            (Kind::SignOfWeakness, 53, 98.4),
+            (Kind::LastPointOfSupply, 57, 99.9),
+        ],
+    );
+    assert_eq!(
+        run.phase_starts,
+        vec![
+            (19, 0.0),
+            (26, 1.0),
+            (29, 2.0),
+            (48, 3.0),
+            (53, 4.0),
+            (57, 5.0)
+        ]
+    );
+    assert_eq!(run.machine.phase(), WyckoffPhase::E);
+    assert_eq!(run.machine.bias(), Some(WyckoffBias::Distribution));
+    let range = run.machine.range().expect("range set");
+    common::assert_close(range.low, 100.0, 1e-9, "range low: the reaction low");
+    common::assert_close(range.high, 106.0, 1e-9, "range high: the climax high");
+    assert_eq!(range.source, WyckoffRangeSource::Climax);
+}
+
+/// The name of an `extra` key or alert kind on the other side of the mirror.
+fn wyckoff_mirrored_name(name: &str) -> String {
+    const PAIRS: [(&str, &str); 6] = [
+        ("preliminarysupport", "preliminarysupply"),
+        ("sellingclimax", "buyingclimax"),
+        ("automaticrally", "automaticreaction"),
+        ("spring", "utad"),
+        ("signofstrength", "signofweakness"),
+        ("lastpointofsupport", "lastpointofsupply"),
+    ];
+    let (prefix, event) = name.split_once('_').unwrap_or(("", name));
+    for (a, b) in PAIRS {
+        if event == a {
+            return format!("{prefix}_{b}");
+        }
+        if event == b {
+            return format!("{prefix}_{a}");
+        }
+    }
+    name.to_string()
+}
+
+/// Accumulation and distribution are mirror images: reflecting any series at a price level
+/// leaves phases, ATR, volume threshold, range source and cause untouched, negates bias and
+/// climax, swaps the boundaries and turns every event into its counterpart on the same bar.
+/// Checked on every hand-built Wyckoff series and on the random walk, with the parameters of
+/// each case.
+#[test]
+fn test_scenario_wyckoff_mirror_symmetry() {
+    const LEVEL: f64 = 200.0;
+    for name in [
+        "wyckoff_textbook_accumulation",
+        "wyckoff_failed_breakout",
+        "wyckoff_cycle",
+        "wyckoff_fallback_spring",
+        "wyckoff_no_volume",
+        "wyckoff_random_walk",
+        "wyckoff_pullback_too_deep",
+        "wyckoff_tuned_cycle",
+        "wyckoff_tuned_walk",
+    ] {
+        let case = wyckoff_case(name);
+        let mut plain = build_checked("wyckoff", &case.params).unwrap();
+        let mut mirrored = build_checked("wyckoff", &case.params).unwrap();
+        let mut events = 0;
+        for (i, bar) in case.bars.iter().enumerate() {
+            let reflected = Bar::new(
+                bar.timestamp,
+                LEVEL - bar.open,
+                LEVEL - bar.low,
+                LEVEL - bar.high,
+                LEVEL - bar.close,
+                bar.volume,
+            );
+            let (a, b) = (plain.on_bar(bar), mirrored.on_bar(&reflected));
+            let at = format!("{name} bar {i}");
+            assert_eq!(a.is_some(), b.is_some(), "{at}: output present");
+            let (Some(a), Some(b)) = (a, b) else {
+                continue;
+            };
+            assert_eq!(a.value, b.value, "{at}: phase");
+            assert_eq!(a.extra.len(), b.extra.len(), "{at}: extra keys");
+            for (key, &value) in &a.extra {
+                let (other_key, expected) = match key.as_str() {
+                    "climax" | "bias" => (key.clone(), -value),
+                    "range_high" => ("range_low".to_string(), LEVEL - value),
+                    "range_low" => ("range_high".to_string(), LEVEL - value),
+                    _ if key.starts_with("event_") => {
+                        events += 1;
+                        (wyckoff_mirrored_name(key), value)
+                    }
+                    _ => (key.clone(), value),
+                };
+                let actual = *b
+                    .extra
+                    .get(&other_key)
+                    .unwrap_or_else(|| panic!("{at}: mirrored run lacks {other_key}"));
+                common::assert_close(actual, expected, 1e-9, &format!("{at}: {other_key}"));
+            }
+            let kinds = |ind: &dyn Indicator, mirror: bool| {
+                let mut kinds: Vec<String> = ind
+                    .alerts()
+                    .into_iter()
+                    .map(|alert| {
+                        if mirror {
+                            wyckoff_mirrored_name(&alert.kind)
+                        } else {
+                            alert.kind
+                        }
+                    })
+                    .collect();
+                kinds.sort();
+                kinds
+            };
+            assert_eq!(
+                kinds(plain.as_ref(), true),
+                kinds(mirrored.as_ref(), false),
+                "{at}: alerts"
+            );
+        }
+        assert!(events > 0, "{name}: the case reports events");
+    }
+}
+
+/// Phase E does not end by a width rule: on the accumulation followed by its mirror image it
+/// lasts through the whole markup (bars 57 to 87) and ends on bar 88, where the Automatic
+/// Reaction of the distribution is confirmed and the next range is set.
+#[test]
+fn test_scenario_wyckoff_phase_e_ends_with_the_next_range() {
+    use kestrel_chartkit::indicator::wyckoff::{WyckoffBias, WyckoffEventKind as Kind};
+
+    let bars = wyckoff_case("wyckoff_cycle").bars;
+    assert_eq!(bars.len(), 124);
+    let run = wyckoff_run(&bars);
+    assert_eq!(
+        run.phase_starts,
+        vec![
+            (19, 0.0),
+            (26, 1.0),
+            (29, 2.0),
+            (48, 3.0),
+            (53, 4.0),
+            (57, 5.0),
+            // The second range: the first one's bars shifted by the 62 bars of the accumulation.
+            (88, 1.0),
+            (91, 2.0),
+            (110, 3.0),
+            (115, 4.0),
+            (119, 5.0)
+        ]
+    );
+    assert_eq!(run.machine.bias(), Some(WyckoffBias::Distribution));
+    // Only the events of the range in play: the mirror at 214.3 puts the climax high at 120.3.
+    assert_wyckoff_events(
+        &run.events,
+        &[
+            (Kind::PreliminarySupply, 78, 116.8),
+            (Kind::BuyingClimax, 83, 120.3),
+            (Kind::AutomaticReaction, 86, 114.3),
+            (Kind::SecondaryTest, 91, 119.0),
+            (Kind::SecondaryTest, 100, 118.9),
+            (Kind::Utad, 110, 120.9),
+            (Kind::SignOfWeakness, 115, 112.7),
+            (Kind::LastPointOfSupply, 119, 114.2),
+        ],
     );
 }
 
+/// A breakout that fails: the bar after the Sign of Strength closes at 100.9, the next one at
+/// 99.4, back below the range high of 100. Phase D returns to Phase B on that bar (56) and the
+/// range stays in play; there is no Last Point of Support.
+#[test]
+fn test_scenario_wyckoff_failed_breakout_returns_to_phase_b() {
+    use kestrel_chartkit::indicator::wyckoff::{WyckoffEventKind as Kind, WyckoffPhase};
+
+    let bars = wyckoff_case("wyckoff_failed_breakout").bars;
+    let run = wyckoff_run(&bars);
+    assert_eq!(
+        run.phase_starts,
+        vec![
+            (19, 0.0),
+            (26, 1.0),
+            (29, 2.0),
+            (48, 3.0),
+            (53, 4.0),
+            (56, 2.0)
+        ]
+    );
+    assert_eq!(run.machine.phase(), WyckoffPhase::B);
+    assert_eq!(
+        run.events.last().map(|e| (e.0, e.1)),
+        Some((Kind::SignOfStrength, 53))
+    );
+    let range = run.machine.range().expect("the range stays in play");
+    common::assert_close(range.low, 94.0, 1e-9, "range low");
+    common::assert_close(range.high, 100.0, 1e-9, "range high");
+}
+
+/// A range without a climax and a series without volume. The closes swing between 100 and 102
+/// at one constant volume, so no bar is a volume outlier: the width fallback sets the range on
+/// the first bar with an output, with an open bias. Bar 33 undercuts the range and closes back
+/// inside: a Spring, which makes it an accumulation. Bar 35 closes above the range without any
+/// volume expansion: with the defaults that is no Sign of Strength, the output stays at Phase C
+/// until a close more than one ATR above the range abandons it.
+#[test]
+fn test_scenario_wyckoff_without_volume() {
+    use kestrel_chartkit::indicator::wyckoff::{
+        WyckoffBias, WyckoffEventKind as Kind, WyckoffPhase, WyckoffRangeSource,
+        WyckoffStateMachine,
+    };
+
+    let bars = wyckoff_case("wyckoff_no_volume").bars;
+    assert!(bars.iter().all(|b| b.volume == 0.0));
+
+    let mut machine = WyckoffStateMachine::with_defaults();
+    let mut values = Vec::new();
+    for (i, bar) in bars.iter().enumerate() {
+        let out = machine.on_bar(bar);
+        if let Some(out) = &out {
+            assert_eq!(
+                out.extra["climax"], 0.0,
+                "bar {i}: no climax without volume"
+            );
+            assert_eq!(out.extra["volume_threshold"], 0.0);
+        }
+        if i == 19 {
+            let range = machine.range().expect("set on the first full window");
+            assert_eq!(range.source, WyckoffRangeSource::Width);
+            assert_eq!(machine.bias(), None, "bias open");
+            assert_eq!(machine.phase(), WyckoffPhase::A);
+        }
+        if i == 33 {
+            assert_eq!(machine.bias(), Some(WyckoffBias::Accumulation));
+            assert_eq!(machine.phase(), WyckoffPhase::C);
+        }
+        values.push(out.map(|o| o.value));
+    }
+    assert_eq!(
+        values[35],
+        Some(3.0),
+        "a close above the range without volume"
+    );
+    assert_eq!(machine.phase(), WyckoffPhase::Undefined);
+    assert!(machine.range().is_none());
+    assert!(machine
+        .events()
+        .iter()
+        .all(|e| matches!(e.kind, Kind::SecondaryTest | Kind::Spring)));
+
+    // The same prices with `breakout_volume` off: the close above the range is the Sign of
+    // Strength, the pullback of bar 36 holds, bar 37 turns up: Last Point of Support, Phase E.
+    let mut price_only = build_checked(
+        "wyckoff",
+        &HashMap::from([("breakout_volume".to_string(), 0.0)]),
+    )
+    .unwrap();
+    let mut last = None;
+    let mut kinds = Vec::new();
+    for bar in &bars {
+        last = price_only.on_bar(bar).map(|o| o.value).or(last);
+        kinds.extend(price_only.alerts().into_iter().map(|a| a.kind));
+    }
+    assert_eq!(last, Some(5.0));
+    kinds.retain(|k| k != "wyckoff_secondarytest");
+    assert_eq!(
+        kinds,
+        [
+            "wyckoff_spring",
+            "wyckoff_signofstrength",
+            "wyckoff_lastpointofsupport"
+        ]
+    );
+}
+
+/// `extra["atr"]` is the ATR the registry `atr` reports as `extra["raw"]`: Wilder's average of
+/// the true range over 14 bars, in price units. The `value` of `atr` is that number in percent
+/// of the close, which is what makes the two look different at first sight: on bar 35 of the
+/// textbook series the range of 6.0 is 3.64 ATR wide, and 6.0 divided by the percentage is 3.51.
+#[test]
+fn test_scenario_wyckoff_atr_is_the_registry_atr_in_price_units() {
+    let bars = wyckoff_case("wyckoff_textbook_accumulation").bars;
+    let mut wyckoff = build_checked("wyckoff", &HashMap::new()).unwrap();
+    let mut atr = build_checked(
+        "atr",
+        &HashMap::from([("atr_len".to_string(), 14.0), ("sig_len".to_string(), 1.0)]),
+    )
+    .unwrap();
+    let mut compared = 0;
+    for (i, bar) in bars.iter().enumerate() {
+        let (w, a) = (wyckoff.on_bar(bar), atr.on_bar(bar));
+        let (Some(w), Some(a)) = (w, a) else {
+            continue;
+        };
+        assert_eq!(w.extra["atr"], a.extra["raw"], "bar {i}");
+        common::assert_close(
+            a.value,
+            100.0 * a.extra["raw"] / bar.close,
+            1e-12,
+            "atr value: percent of the close",
+        );
+        if i == 35 {
+            common::assert_close(6.0 / w.extra["atr"], 3.64, 0.005, "range width in ATR");
+            common::assert_close(6.0 / a.value, 3.51, 0.005, "the same by the percentage");
+        }
+        compared += 1;
+    }
+    assert_eq!(compared, bars.len() - 19, "every bar with a wyckoff output");
+}
+
+/// No look-ahead: the output of a bar is the same whether or not later bars follow.
+#[test]
+fn test_scenario_wyckoff_is_causal() {
+    for name in ["wyckoff_cycle", "wyckoff_random_walk"] {
+        let bars = wyckoff_case(name).bars;
+        let mut full = build_checked("wyckoff", &HashMap::new()).unwrap();
+        let outputs: Vec<_> = bars.iter().map(|b| full.on_bar(b)).collect();
+        for cut in (20..bars.len()).step_by(7) {
+            let mut prefix = build_checked("wyckoff", &HashMap::new()).unwrap();
+            let mut last = None;
+            for bar in &bars[..=cut] {
+                last = prefix.on_bar(bar);
+            }
+            assert_eq!(last, outputs[cut], "{name}: bar {cut}");
+        }
+    }
+}
+
+/// What the default thresholds report on series with no structure built in: 20 random walks of
+/// 1000 bars each. A 64-bit linear congruential generator supplies uniform numbers; the close
+/// moves by the sum of three of them minus 1.5, times 1.6, the wicks are up to 0.6, and the
+/// volume is 1000 x (0.5 + u) x (0.6 + 0.5 x spread), so wide bars tend to trade more.
+///
+/// Recorded, not judged: the counts below are what the rules yield on these walks. Of the 19620
+/// bars with an output, 228 are climax bars by the bar test and 21 of them become the climax of
+/// a range; the width fallback sets 235 ranges. Three quarters of the bars carry no range. Most
+/// ranges end abandoned: 149 Springs and UTADs lead to 12 Signs of Strength or Weakness and 4
+/// Last Points of Support or Supply.
+#[test]
+fn test_scenario_wyckoff_random_walks() {
+    let mut state_counts = [0usize; 6];
+    let mut alerts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    let (mut climax_bars, mut by_climax, mut by_width) = (0, 0, 0);
+    for seed in 1..=20u64 {
+        let mut state = seed;
+        let mut uniform = move || {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 11) as f64 / (1u64 << 53) as f64
+        };
+        let round = |x: f64, digits: f64| (x * digits).round() / digits;
+        let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
+        let mut close = 100.0;
+        let mut boundaries = None;
+        for i in 0..1000 {
+            let open = close;
+            close = round(open + (uniform() + uniform() + uniform() - 1.5) * 1.6, 1e4);
+            let high = round(open.max(close) + uniform() * 0.6, 1e4);
+            let low = round(open.min(close) - uniform() * 0.6, 1e4);
+            let volume = round(1000.0 * (0.5 + uniform()) * (0.6 + 0.5 * (high - low)), 1e2);
+            let Some(out) = ind.on_bar(&Bar::new(i * 60, open, high, low, close, volume)) else {
+                continue;
+            };
+            state_counts[out.value as usize] += 1;
+            climax_bars += usize::from(out.extra["climax"] != 0.0);
+            let now = out
+                .extra
+                .get("range_high")
+                .map(|high| (high.to_bits(), out.extra["range_low"].to_bits()));
+            if now.is_some() && now != boundaries {
+                match out.extra["range_source"] as i32 {
+                    1 => by_climax += 1,
+                    _ => by_width += 1,
+                }
+            }
+            boundaries = now;
+            for alert in ind.alerts() {
+                *alerts.entry(alert.kind).or_default() += 1;
+            }
+        }
+    }
+    let count = |kind: &str| alerts.get(kind).copied().unwrap_or(0);
+    assert_eq!(state_counts.iter().sum::<usize>(), 20 * 981);
+    assert_eq!(state_counts, [14744, 1418, 927, 2364, 37, 130]);
+    assert_eq!((climax_bars, by_climax, by_width), (228, 21, 235));
+    assert_eq!(
+        count("wyckoff_sellingclimax") + count("wyckoff_buyingclimax"),
+        by_climax
+    );
+    assert_eq!(count("wyckoff_secondarytest"), 238);
+    assert_eq!(count("wyckoff_spring") + count("wyckoff_utad"), 149);
+    assert_eq!(
+        count("wyckoff_signofstrength") + count("wyckoff_signofweakness"),
+        12
+    );
+    assert_eq!(
+        count("wyckoff_lastpointofsupport") + count("wyckoff_lastpointofsupply"),
+        4
+    );
+}
+
+/// The schematic generator of the crate, read with the registry defaults.
 #[test]
 fn test_scenario_wyckoff_synthetic_accumulation() {
     use kestrel_chartkit::indicator::wyckoff::WyckoffBias;
     use kestrel_chartkit::synthetic::{wyckoff_schematic_bars, WyckoffGeneratorConfig};
 
-    let mut ind = build_checked(
-        "wyckoff",
-        &HashMap::from([
-            ("range_lookback".to_string(), 20.0),
-            ("range_atr_max".to_string(), 5.0),
-            ("min_range_bars".to_string(), 3.0),
-        ]),
-    )
-    .unwrap();
-
+    let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
     let bars = wyckoff_schematic_bars(
         123,
         WyckoffBias::Accumulation,
@@ -1048,16 +1549,7 @@ fn test_scenario_wyckoff_synthetic_distribution() {
     use kestrel_chartkit::indicator::wyckoff::WyckoffBias;
     use kestrel_chartkit::synthetic::{wyckoff_schematic_bars, WyckoffGeneratorConfig};
 
-    let mut ind = build_checked(
-        "wyckoff",
-        &HashMap::from([
-            ("range_lookback".to_string(), 20.0),
-            ("range_atr_max".to_string(), 5.0),
-            ("min_range_bars".to_string(), 3.0),
-        ]),
-    )
-    .unwrap();
-
+    let mut ind = build_checked("wyckoff", &HashMap::new()).unwrap();
     let bars = wyckoff_schematic_bars(
         123,
         WyckoffBias::Distribution,

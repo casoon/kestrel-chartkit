@@ -934,107 +934,357 @@ def wave_bars(n):
 
 MAD_TO_SIGMA = 1.0 / statistics.NormalDist().inv_cdf(0.75)
 
+WYCKOFF_DEFAULTS = {
+    "range_lookback": 20, "range_atr_max": 3.0, "min_range_bars": 6, "atr_len": 14,
+    "volume_k": 2.0, "climax_range_atr": 1.5, "st_atr": 0.25, "breakout_volume": 1,
+    "lps_atr": 0.5, "abandon_atr": 1.0,
+}
 
-def wyckoff(range_lookback, range_atr_max, min_range_bars, bars):
-    """The Wyckoff state machine as its rules state them. ATR(14) of the true range; outputs once
-    `range_lookback` bars and a positive ATR exist. Unlocked: when the window of the last
-    `range_lookback` bars spans at most `range_atr_max` ATR, its high and low become the range
-    (locked, phase A, output 0); the bias is accumulation after a climax bar falling (close below
-    open), distribution after a rising one, else accumulation if the close fell from the previous
-    close and distribution otherwise. A climax bar's volume exceeds median + 2 MAD-sigma of the
-    last `range_lookback` volumes (the current one included; MAD scaled by 1 / Phi^-1(3/4)).
-    Locked, per bar: once the window spans more than twice the limit after more than 3
-    `min_range_bars` bars in the range, the range unlocks (output 0). Phases A/B (B from the first
-    bar): a Spring (accumulation: low below the range low, close back above) moves to C
-    (`wyckoff_spring`), a UTAD (distribution: high above the range high, close back below) to C
-    (`wyckoff_utad`); else a high within 0.25 ATR below the range high or a low within 0.25 ATR
-    above the range low is a Secondary Test (`wyckoff_secondarytest`). C: a close beyond the
-    opposite boundary moves to D (`wyckoff_signofstrength` / `wyckoff_signofweakness`). D: a bar
-    holding within 0.5 ATR of the broken boundary and closing beyond it moves to E
-    (`wyckoff_lastpointofsupport` / `wyckoff_lastpointofsupply`); a close back inside returns to
-    B. E stays. `value`: the phase, 1 A ... 5 E. Strengths: ST 0.4, Spring/UTAD 0.85, SOS/SOW
-    0.8, LPS/LPSY 0.9.
+# Event names per side (accumulation, distribution) and the fixed alert strength of each pair.
+WYCKOFF_EVENTS = {
+    "preliminary": ("preliminarysupport", "preliminarysupply", 0.3),
+    "climax": ("sellingclimax", "buyingclimax", 0.7),
+    "counter": ("automaticrally", "automaticreaction", 0.5),
+    "test": ("spring", "utad", 0.85),
+    "breakout": ("signofstrength", "signofweakness", 0.8),
+    "hold": ("lastpointofsupport", "lastpointofsupply", 0.9),
+}
+SECONDARY_TEST = ("secondarytest", 0.4)
+WYCKOFF_STRENGTH = {names[k]: names[2] for names in WYCKOFF_EVENTS.values() for k in (0, 1)}
+WYCKOFF_STRENGTH[SECONDARY_TEST[0]] = SECONDARY_TEST[1]
+
+
+def wyckoff(bars, **overrides):
+    """The Wyckoff state machine as the module documentation of `src/indicator/wyckoff.rs` states
+    its rules; `overrides` replace the documented defaults.
+
+    Outputs once `range_lookback` bars and a positive Wilder ATR(`atr_len`) exist. Per bar: the
+    volume threshold is median + `volume_k` MAD-sigma of the last `range_lookback` volumes (the
+    current one included; MAD scaled by 1 / Phi^-1(3/4)). A selling climax bar is at least
+    `climax_range_atr` ATR wide (high - low), exceeds the volume threshold, closes below its open
+    and has the lowest low of the window; a buying climax bar is the mirror image (closes above
+    its open, highest high of the window).
+
+    Search, while no range is in play (no range, or phase E after the rules of that phase): a
+    pending climax is followed first. It is dropped once `range_lookback` bars have passed or its
+    extreme is exceeded; a bar beyond the counter-move's extreme so far becomes the counter-move
+    bar; otherwise the range is set when the close has crossed back over that bar's opposite
+    extreme (selling climax: close below the low of the rally-high bar) and the counter-move has
+    gone beyond the climax bar's own opposite extreme (rally high above the climax bar's high).
+    The range runs from the climax extreme to the counter-move extreme, phase A, bias from the
+    climax; the events climax and counter-move are reported with the number of bars they lie
+    back, and the preliminary support/supply if there is one: the first bar of the window before
+    the climax bar whose volume exceeds the climax bar's threshold and that closed against the
+    climax (above its open before a selling climax). Then a climax bar becomes the pending climax
+    (replacing an earlier one). Last, only while no climax is pending: a window at most
+    `range_atr_max` ATR wide sets the range from its extremes, phase A, bias open (0).
+
+    Range in play (the setting bar runs none of this), `in_range` counting the bars of phases A
+    to D. A/B: a Spring (low below the range low, close back above, not also the mirror image on
+    the same bar, bias not distribution, `in_range` >= `min_range_bars`) fixes the bias and moves
+    to C, the UTAD likewise; else a close more than `abandon_atr` ATR outside the range abandons
+    it; else a Secondary Test (the low within `st_atr` ATR above the range low without undercutting
+    it - bias open: or the high at the range high - and, for a range set by a climax, volume and
+    spread below the climax bar's) moves to B. C: a close beyond the opposite boundary, with
+    volume above the threshold unless `breakout_volume` is 0, is the SOS/SOW and moves to D; else
+    the same abandonment. D: a close back inside moves to B; a pullback starts with a close
+    against the breakout (accumulation: below the previous close) and tracks its extreme; the
+    first later close with the breakout again ends it, and if its extreme held within `lps_atr`
+    ATR of the broken boundary it is the LPS/LPSY at the bar of that extreme, phase E. E: a close
+    back inside moves to B.
+
+    `value`: the phase, 1 A ... 5 E. Extras: `atr`, `volume_threshold`, `climax` (-1 selling, 1
+    buying climax bar), `bias` (1 accumulation, -1 distribution, 0 open or none), `range_source`
+    (0 none, 1 climax, 2 width); with a range `range_high`, `range_low` and `cause_score` (width
+    x `in_range`); `event_<name>` = bars back on the reporting bar, with the alert
+    `wyckoff_<name>`.
     Convention: the median of an even count is the mean of the two middle values."""
-    atr = wilder_atr(bars, 14)
+    p = dict(WYCKOFF_DEFAULTS, **overrides)
+    lookback = p["range_lookback"]
+    atr = wilder_atr(bars, p["atr_len"])
     expected = []
-    locked, bias, phase, rh, rl, in_range = False, None, 0, None, None, 0
+    # rng: [high, low, bias, source, climax volume, climax spread]; pending: the climax awaiting
+    # its counter-move; pullback: (extreme, bar) in phase D.
+    phase, rng, pending, pullback, in_range = 0, None, None, None, 0
+
+    def beyond(side, a, b):
+        """a lies beyond b in the direction of a climax of this side (down for accumulation)."""
+        return a < b if side == 1 else a > b
+
+    def name(key, side):
+        return WYCKOFF_EVENTS[key][0 if side == 1 else 1]
+
     for i, (open_, high, low, close, volume) in enumerate(bars):
-        if i + 1 < range_lookback or atr[i] is None or atr[i] <= 0.0:
+        if i + 1 < lookback or atr[i] is None or atr[i] <= 0.0:
             expected.append((None, {}))
             continue
         a = atr[i]
-        window = bars[i + 1 - range_lookback:i + 1]
-        wh, wl = max(b[1] for b in window), min(b[2] for b in window)
-        width = (wh - wl) / a
-        if not locked:
-            if width <= range_atr_max:
-                volumes = [b[4] for b in window]
-                median = statistics.median(volumes)
-                mad = statistics.median([abs(v - median) for v in volumes]) * MAD_TO_SIGMA
-                climax = volume > median + 2.0 * mad
-                if climax and close < open_:
-                    bias = "acc"
-                elif climax and close > open_:
-                    bias = "dist"
-                else:
-                    bias = "acc" if close < bars[i - 1][3] else "dist"
-                locked, phase, rh, rl, in_range = True, 1, wh, wl, 0
-            expected.append(((0.0, {}), {}))
-            continue
-        in_range += 1
-        if width > 2.0 * range_atr_max and in_range > 3 * min_range_bars:
-            locked, bias, phase = False, None, 0
-            expected.append(((0.0, {}), {}))
-            continue
-        alerts = {}
+        window = bars[i + 1 - lookback:i + 1]
+        volumes = [b[4] for b in window]
+        median = statistics.median(volumes)
+        mad = statistics.median([abs(v - median) for v in volumes]) * MAD_TO_SIGMA
+        threshold = median + p["volume_k"] * mad
+        window_high, window_low = max(b[1] for b in window), min(b[2] for b in window)
+        climax = 0  # the side a range from this bar would take: 1 after a selling climax
+        if high - low >= p["climax_range_atr"] * a and volume > threshold:
+            if close < open_ and low <= window_low:
+                climax = 1
+            elif close > open_ and high >= window_high:
+                climax = -1
+        events = {}  # name -> bars back
+        previous_close = bars[i - 1][3]
+        far = p["abandon_atr"] * a
+
+        if phase in (1, 2, 3, 4):
+            in_range += 1
         if phase in (1, 2):
-            phase = 2
-            if bias == "acc" and low < rl and close > rl:
-                phase, alerts["wyckoff_spring"] = 3, 0.85
-            elif bias == "dist" and high > rh and close < rh:
-                phase, alerts["wyckoff_utad"] = 3, 0.85
-            elif rh - 0.25 * a <= high <= rh or rl <= low <= rl + 0.25 * a:
-                alerts["wyckoff_secondarytest"] = 0.4
+            spring = low < rng[1] and close > rng[1]
+            utad = high > rng[0] and close < rng[0]
+            old_enough = in_range >= p["min_range_bars"]
+            if old_enough and spring and not utad and rng[2] != -1:
+                rng[2], phase = 1, 3
+                events["spring"] = 0
+            elif old_enough and utad and not spring and rng[2] != 1:
+                rng[2], phase = -1, 3
+                events["utad"] = 0
+            elif close > rng[0] + far or close < rng[1] - far:
+                phase, rng = 0, None
+            else:
+                at_low = rng[2] != -1 and rng[1] <= low <= rng[1] + p["st_atr"] * a
+                at_high = rng[2] != 1 and rng[0] - p["st_atr"] * a <= high <= rng[0]
+                quieter = rng[3] != 1 or (volume < rng[4] and high - low < rng[5])
+                if (at_low or at_high) and quieter:
+                    phase = 2
+                    events[SECONDARY_TEST[0]] = 0
         elif phase == 3:
-            if bias == "acc" and close > rh:
-                phase, alerts["wyckoff_signofstrength"] = 4, 0.8
-            elif bias == "dist" and close < rl:
-                phase, alerts["wyckoff_signofweakness"] = 4, 0.8
+            side = rng[2]
+            out = close > rng[0] if side == 1 else close < rng[1]
+            if out and (p["breakout_volume"] == 0 or volume > threshold):
+                phase, pullback = 4, None
+                events[name("breakout", side)] = 0
+            elif close > rng[0] + far or close < rng[1] - far:
+                phase, rng = 0, None
         elif phase == 4:
-            if bias == "acc" and low >= rh - 0.5 * a and close > rh:
-                phase, alerts["wyckoff_lastpointofsupport"] = 5, 0.9
-            elif bias == "dist" and high <= rl + 0.5 * a and close < rl:
-                phase, alerts["wyckoff_lastpointofsupply"] = 5, 0.9
-            elif (bias == "acc" and close < rh) or (bias == "dist" and close > rl):
+            side = rng[2]
+            broken = rng[0] if side == 1 else rng[1]
+            extreme = low if side == 1 else high
+            if beyond(side, close, broken):
+                phase, pullback = 2, None
+            elif pullback is None:
+                if beyond(side, close, previous_close):
+                    pullback = (extreme, i)
+            else:
+                if beyond(side, extreme, pullback[0]):
+                    pullback = (extreme, i)
+                if beyond(-side, close, previous_close):
+                    limit = broken - p["lps_atr"] * a if side == 1 else broken + p["lps_atr"] * a
+                    if not beyond(side, pullback[0], limit):
+                        phase = 5
+                        events[name("hold", side)] = i - pullback[1]
+                    pullback = None
+        elif phase == 5:
+            side = rng[2]
+            if beyond(side, close, rng[0] if side == 1 else rng[1]):
                 phase = 2
-        expected.append(((float(phase), {}), alerts))
-    params = {"range_lookback": float(range_lookback), "range_atr_max": range_atr_max,
-              "min_range_bars": float(min_range_bars)}
-    return params, bars, expected
+
+        if phase in (0, 5) and pending is not None:
+            side = pending["side"]
+            extreme, opposite = (low, high) if side == 1 else (high, low)
+            if i - pending["bar"] >= lookback or beyond(side, extreme, pending["extreme"]):
+                pending = None
+            elif pending["counter"] is None or beyond(-side, opposite, pending["counter"][0]):
+                pending["counter"] = (opposite, i, extreme)
+            else:
+                counter, counter_bar, counter_back = pending["counter"]
+                if (beyond(side, close, counter_back)
+                        and beyond(-side, counter, pending["opposite"])):
+                    rng = [max(counter, pending["extreme"]), min(counter, pending["extreme"]),
+                           side, 1, pending["volume"], pending["spread"]]
+                    phase, in_range, pullback = 1, 0, None
+                    if pending["preliminary"] is not None:
+                        events[name("preliminary", side)] = i - pending["preliminary"]
+                    events[name("climax", side)] = i - pending["bar"]
+                    events[name("counter", side)] = i - counter_bar
+                    pending = None
+        if phase in (0, 5):
+            if climax != 0:
+                preliminary = None
+                for k in range(i + 1 - lookback, i):
+                    against = bars[k][3] > bars[k][0] if climax == 1 else bars[k][3] < bars[k][0]
+                    if bars[k][4] > threshold and against:
+                        preliminary = k
+                        break
+                pending = {"side": climax, "bar": i, "extreme": low if climax == 1 else high,
+                           "opposite": high if climax == 1 else low, "volume": volume,
+                           "spread": high - low, "preliminary": preliminary, "counter": None}
+            if pending is None and window_high - window_low <= p["range_atr_max"] * a:
+                rng = [window_high, window_low, 0, 2, None, None]
+                phase, in_range, pullback = 1, 0, None
+        else:
+            pending = None
+
+        extra = {"atr": a, "volume_threshold": threshold, "climax": float(-climax),
+                 "bias": float(rng[2]) if rng else 0.0,
+                 "range_source": float(rng[3]) if rng else 0.0}
+        if rng:
+            extra.update({"range_high": rng[0], "range_low": rng[1],
+                          "cause_score": (rng[0] - rng[1]) * in_range})
+        alerts = {}
+        for event, back in events.items():
+            extra[f"event_{event}"] = float(back)
+            alerts[f"wyckoff_{event}"] = WYCKOFF_STRENGTH[event]
+        expected.append(((float(phase), extra), alerts))
+    return {key: float(value) for key, value in overrides.items()}, bars, expected
 
 
-def wyckoff_bars(climax=False, failed_breakout=False):
-    """A decline from 120 into a sideways range around 108-109 (closes stepping +-0.4), which the
-    window locks on bar 30 (a falling close: accumulation; spanning bars 11-30, range 107.3 to
-    111.0); bar 52 undercuts the range low and closes back inside (Spring), bar 54 closes above
-    the range (SOS), bar 55 holds above it (LPS), and the markup finally drags the window far
-    beyond the range (unlock). `climax`: bar 30 rises on five times the volume, a climax that
-    makes the range a distribution. `failed_breakout`: bar 55 closes back inside the range
-    instead (phase D back to B)."""
-    closes = path(120.0, [(-1.0, 12), (0.4, 1)] + [(0.4, 2), (-0.4, 2)] * 9 + [(0.4, 2)]
-                  + [(1.2, 4), (0.3, 2), (1.5, 30)])
-    bars = replace(candles(closes), {52: (108.6, 109.0, 106.0, 108.9)})
-    if climax:
-        bars = replace(bars, {30: (107.9, 108.9, 107.6, 108.6)})
-        bars[29] = bars[29][:4] + (5000.0,)
-    if failed_breakout:
-        bars = replace(bars, {55: (112.0, 112.3, 109.9, 110.2)})
+# The textbook accumulation: (close, wick above the body, wick below the body, volume); the open
+# is the previous close, the first bar opens at 110.4. Built bar by bar so that each event of the
+# schematic lies on one bar and shows there what the literature describes (0-based bar numbers):
+#   16 Preliminary Support - the highest volume so far, a long lower wick, close above the open;
+#      the decline continues afterwards
+#   21 Selling Climax      - the widest bar (3.2) on the highest volume (430), low 94.0
+#   24 Automatic Rally     - third rising bar after the climax, high 100.0
+#   29 Secondary Test      - low 94.3, a third of the climax volume, 1.2 wide
+#   48 Spring              - low 93.4 below the climax low, close 94.9 back above
+#   53 Sign of Strength    - close 101.6 above the rally high on the highest volume since the climax
+#   57 Last Point of Support - the pullback low 100.1 holds above the former range high
+WYCKOFF_TEXTBOOK = [
+    (109.6, 0.3, 0.4, 105.0), (108.9, 0.4, 0.3, 110.0), (109.3, 0.3, 0.3, 90.0),
+    (108.2, 0.2, 0.4, 115.0), (107.3, 0.3, 0.3, 120.0), (107.7, 0.3, 0.2, 95.0),
+    (106.5, 0.2, 0.4, 125.0), (105.6, 0.3, 0.3, 120.0), (105.9, 0.3, 0.3, 100.0),
+    (104.7, 0.2, 0.4, 130.0), (103.6, 0.3, 0.3, 135.0), (103.9, 0.3, 0.2, 105.0),
+    (102.6, 0.2, 0.4, 140.0), (101.6, 0.3, 0.4, 150.0), (101.0, 0.2, 0.4, 145.0),
+    (98.6, 0.2, 0.5, 185.0),
+    (98.9, 0.3, 1.1, 240.0),  # 16 PS
+    (99.3, 0.3, 0.3, 150.0), (98.4, 0.2, 0.4, 140.0), (97.4, 0.2, 0.5, 165.0),
+    (97.0, 0.2, 0.4, 190.0),
+    (94.8, 0.2, 0.8, 430.0),  # 21 SC
+    (96.4, 0.3, 0.2, 260.0), (98.3, 0.3, 0.2, 210.0),
+    (99.6, 0.4, 0.2, 180.0),  # 24 AR
+    (98.7, 0.3, 0.3, 130.0), (97.4, 0.2, 0.4, 120.0), (96.2, 0.2, 0.4, 115.0),
+    (95.1, 0.3, 0.5, 125.0),
+    (95.3, 0.2, 0.8, 140.0),  # 29 ST
+    (96.5, 0.3, 0.2, 110.0), (97.8, 0.3, 0.3, 105.0), (98.9, 0.4, 0.2, 100.0),
+    (98.2, 0.3, 0.3, 85.0), (97.6, 0.3, 0.3, 90.0), (96.5, 0.2, 0.4, 85.0),
+    (95.6, 0.3, 0.4, 80.0), (95.0, 0.2, 0.5, 75.0), (95.4, 0.2, 0.8, 70.0),
+    (96.6, 0.3, 0.2, 85.0), (97.9, 0.3, 0.3, 90.0), (99.0, 0.4, 0.2, 95.0),
+    (98.3, 0.3, 0.3, 75.0), (98.9, 0.5, 0.3, 80.0), (97.7, 0.2, 0.4, 70.0),
+    (96.5, 0.2, 0.3, 75.0), (95.6, 0.3, 0.4, 70.0), (94.8, 0.2, 0.3, 80.0),
+    (94.9, 0.2, 1.4, 95.0),  # 48 Spring
+    (95.8, 0.2, 0.5, 85.0), (96.9, 0.3, 0.2, 110.0), (98.2, 0.3, 0.2, 140.0),
+    (99.3, 0.3, 0.3, 170.0),
+    (101.6, 0.2, 0.2, 310.0),  # 53 SOS
+    (102.1, 0.3, 0.4, 240.0), (101.3, 0.2, 0.3, 150.0), (100.6, 0.2, 0.3, 110.0),
+    (100.7, 0.2, 0.5, 85.0),  # 57 LPS
+    (101.7, 0.3, 0.2, 130.0), (102.6, 0.3, 0.2, 160.0), (103.3, 0.3, 0.3, 170.0),
+    (103.9, 0.3, 0.3, 150.0),
+]
+WYCKOFF_TEXTBOOK_START = 110.4
+
+# The same series up to the bar after the Sign of Strength, then a pullback that closes back
+# inside the range (bar 56) and stays there.
+WYCKOFF_FAILED_TAIL = [
+    (100.9, 0.2, 0.3, 150.0), (99.4, 0.2, 0.3, 140.0), (98.6, 0.3, 0.3, 110.0),
+    (97.9, 0.2, 0.4, 95.0), (98.7, 0.3, 0.2, 90.0), (99.3, 0.3, 0.3, 85.0),
+    (98.5, 0.2, 0.3, 80.0), (97.6, 0.3, 0.3, 85.0),
+]
+
+
+def table_bars(start, table):
+    """Bars from rows (close, wick above the body, wick below the body, volume): the open is the
+    previous close, the first one `start`. Prices rounded to 1e-6."""
+    bars, previous = [], start
+    for close, above, below, volume in table:
+        bars.append((previous, round(max(previous, close) + above, 6),
+                     round(min(previous, close) - below, 6), close, volume))
+        previous = close
     return bars
 
 
-def wyckoff_distribution_bars():
-    """`wyckoff_bars` mirrored at 240: a rally into a range, a UTAD, a breakdown (SOW, LPSY)."""
-    return [(240.0 - o, 240.0 - l, 240.0 - h, 240.0 - c, v) for o, h, l, c, v in wyckoff_bars()]
+def mirror_at(bars, level):
+    """`bars` reflected at the price `level`: highs and lows trade places, volumes stay."""
+    return [(round(level - o, 6), round(level - l, 6), round(level - h, 6), round(level - c, 6), v)
+            for o, h, l, c, v in bars]
+
+
+def wyckoff_textbook_bars():
+    return table_bars(WYCKOFF_TEXTBOOK_START, WYCKOFF_TEXTBOOK)
+
+
+def wyckoff_failed_breakout_bars():
+    return table_bars(WYCKOFF_TEXTBOOK_START, WYCKOFF_TEXTBOOK[:55] + WYCKOFF_FAILED_TAIL)
+
+
+def wyckoff_deep_pullback_bars():
+    """The textbook series with a longer lower wick on bar 57: the pullback low is 99.5, half a
+    point below the former range high, and the bar still closes above it."""
+    table = list(WYCKOFF_TEXTBOOK)
+    table[57] = (100.7, 0.2, 1.1, 85.0)
+    return table_bars(WYCKOFF_TEXTBOOK_START, table)
+
+
+def wyckoff_cycle_bars():
+    """The textbook accumulation, then its mirror image at 214.3: that one opens where the
+    accumulation closed (103.9), its mirrored decline is the markup, and it ends as a
+    distribution with a Buying Climax at 120.3. Phase E of the first range lasts until the second
+    range is set."""
+    bars = wyckoff_textbook_bars()
+    return bars + mirror_at(bars, 2 * 103.9 + (WYCKOFF_TEXTBOOK_START - 103.9))
+
+
+def wyckoff_quiet_bars(volume):
+    """A range without a climax: closes swinging between 100 and 102 in steps of 0.5 for 33 bars
+    at one constant `volume`, so no bar is a volume outlier and only the width fallback can set
+    the range; only the bars at the turns come near a boundary. Bar 34 undercuts the range and
+    closes back inside, bar 36 closes above it, bar 37 pulls back, bar 38 turns up again, then
+    the advance runs on."""
+    closes = path(100.0, [(0.5, 4), (-0.5, 4)] * 4
+                  + [(0.1, 1), (0.8, 1), (2.4, 1), (-0.4, 1), (0.4, 1), (0.8, 8)])
+    return replace(candles(closes, volume=volume), {34: (100.0, 100.3, 98.2, 100.1)})
+
+
+def wyckoff_walk_bars(n, seed):
+    """A random walk with no structure built in. A 64-bit linear congruential generator (Knuth's
+    MMIX constants) gives uniform numbers in [0, 1) from its top 53 bits; the close moves by the
+    sum of three of them minus 1.5, times 1.6; the wicks are 0.6 times one each; the volume is
+    1000 x (0.5 + u) x (0.6 + 0.5 x spread), so wide bars tend to trade more. Prices rounded to
+    1e-4, volumes to 1e-2."""
+    state = seed
+
+    def uniform():
+        nonlocal state
+        state = (state * 6364136223846793005 + 1442695040888963407) % 2 ** 64
+        return (state >> 11) / 2 ** 53
+
+    bars, close = [], 100.0
+    for _ in range(n):
+        open_ = close
+        close = round(open_ + (uniform() + uniform() + uniform() - 1.5) * 1.6, 4)
+        high = round(max(open_, close) + uniform() * 0.6, 4)
+        low = round(min(open_, close) - uniform() * 0.6, 4)
+        volume = round(1000.0 * (0.5 + uniform()) * (0.6 + 0.5 * (high - low)), 2)
+        bars.append((open_, high, low, close, volume))
+    return bars
+
+
+def wyckoff_summary(expected):
+    """What a run reported, for the case comment: bars per phase and events by name."""
+    phases, events, ranges, last = {}, {}, {1: 0, 2: 0}, None
+    for output, alerts in expected:
+        if output is None:
+            continue
+        value, extra = output
+        phases[int(value)] = phases.get(int(value), 0) + 1
+        for kind in alerts:
+            events[kind[len("wyckoff_"):]] = events.get(kind[len("wyckoff_"):], 0) + 1
+        boundaries = (extra.get("range_high"), extra.get("range_low"))
+        if boundaries != last and boundaries[0] is not None:
+            ranges[int(extra["range_source"])] += 1
+        last = boundaries
+    letters = "0ABCDE"
+    return ("bars per phase " + ", ".join(f"{letters[k]} {phases[k]}" for k in sorted(phases))
+            + f"; ranges set: {ranges[1]} by climax, {ranges[2]} by width; events: "
+            + (", ".join(f"{events[k]} {k}" for k in sorted(events)) or "none"))
 
 
 # --- candle_classification -------------------------------------------------------------------
@@ -1237,6 +1487,15 @@ def build():
     wave, zz, sw, rng, dbl = (structure_wave(), zigzag_bars(), sweep_bars(),
                                 range_bars(), double_bars())
     waves = wave_bars(350)
+    textbook, quiet = wyckoff_textbook_bars(), wyckoff_quiet_bars(1000.0)
+    walk = wyckoff_walk_bars(400, 20261110)
+    walk_run = wyckoff(walk)
+    # Every threshold off its default. Resetting any single one changes the reported phases or
+    # events of at least one of the two runs (`lps_atr`: see the deep pullback cases).
+    tuned = {"range_lookback": 15, "range_atr_max": 4.0, "min_range_bars": 3, "atr_len": 10,
+             "volume_k": 3.0, "climax_range_atr": 1.8, "st_atr": 0.4, "breakout_volume": 0,
+             "lps_atr": 0.2, "abandon_atr": 1.5}
+    tuned_cycle, tuned_walk = wyckoff(wyckoff_cycle_bars(), **tuned), wyckoff(walk, **tuned)
     blocks = [
         case_block("liquidity_fvg_defaults", "liquidity_fvg, lookback 20: gaps both ways, sweeps both ways",
                    *liquidity_fvg(20, fvg_bars())),
@@ -1316,23 +1575,47 @@ def build():
         case_block("oscillator_pivot_divergence_williams",
                    "oscillator_pivot_divergence, Williams %R 4/3/5/80/3",
                    *pivot_divergence(3, 4, 3, 5, 80, 3, waves, oscillator_pivots=True)),
-        case_block("wyckoff_accumulation",
-                   "wyckoff 20/3/6: range lock, Spring, SOS, LPS, unlock",
-                   *wyckoff(20, 3.0, 6, wyckoff_bars())),
-        case_block("wyckoff_distribution",
-                   "wyckoff 20/3/6 on the mirrored bars: UTAD, SOW, LPSY",
-                   *wyckoff(20, 3.0, 6, wyckoff_distribution_bars())),
-        case_block("wyckoff_climax",
-                   "wyckoff 20/3/6: a rising climax bar on the lock makes it a distribution",
-                   *wyckoff(20, 3.0, 6, wyckoff_bars(climax=True))),
+        case_block("wyckoff_textbook_accumulation",
+                   "wyckoff, defaults, textbook accumulation: PS, SC, AR, ST, Spring, SOS, LPS; phases A to E",
+                   *wyckoff(textbook)),
+        case_block("wyckoff_textbook_distribution",
+                   "wyckoff, defaults, the textbook series mirrored at 200: PSY, BC, AR, ST, UTAD, SOW, LPSY",
+                   *wyckoff(mirror_at(textbook, 200.0))),
         case_block("wyckoff_failed_breakout",
-                   "wyckoff 20/3/6: the bar after the SOS closes back inside (D back to B)",
-                   *wyckoff(20, 3.0, 6, wyckoff_bars(failed_breakout=True))),
-        case_block("wyckoff_wide", "wyckoff 15/4/3: an earlier, wider range",
-                   *wyckoff(15, 4.0, 3, wyckoff_bars())),
+                   "wyckoff, defaults: the pullback after the SOS closes back inside the range (D back to B)",
+                   *wyckoff(wyckoff_failed_breakout_bars())),
+        case_block("wyckoff_cycle",
+                   "wyckoff, defaults: accumulation, markup, distribution; phase E ends when the next range is set",
+                   *wyckoff(wyckoff_cycle_bars())),
+        case_block("wyckoff_fallback_spring",
+                   "wyckoff, breakout_volume off, constant volume: range by the width fallback, bias open until the Spring",
+                   *wyckoff(quiet, breakout_volume=0)),
+        case_block("wyckoff_fallback_utad",
+                   "wyckoff, breakout_volume off, the same bars mirrored at 200: the UTAD decides the open bias",
+                   *wyckoff(mirror_at(quiet, 200.0), breakout_volume=0)),
+        case_block("wyckoff_no_volume",
+                   "wyckoff, defaults, volume 0 on every bar: no climax, no SOS; phase C until the range is abandoned",
+                   *wyckoff(wyckoff_quiet_bars(0.0))),
+        case_block("wyckoff_random_walk",
+                   "wyckoff, defaults, random walk without built-in structure: " + wyckoff_summary(walk_run[2]),
+                   *walk_run),
+        case_block("wyckoff_pullback_held",
+                   "wyckoff, defaults: the pullback reaches half a point below the former range high and holds (lps_atr 0.5)",
+                   *wyckoff(wyckoff_deep_pullback_bars())),
+        case_block("wyckoff_pullback_too_deep",
+                   "wyckoff, lps_atr 0.2: the same pullback reaches too far back; no LPS, phase D to the end",
+                   *wyckoff(wyckoff_deep_pullback_bars(), lps_atr=0.2)),
+        case_block("wyckoff_tuned_cycle",
+                   "wyckoff, every threshold off its default, accumulation and distribution: "
+                   + wyckoff_summary(tuned_cycle[2]),
+                   *tuned_cycle),
+        case_block("wyckoff_tuned_walk",
+                   "wyckoff, every threshold off its default, the random walk: "
+                   + wyckoff_summary(tuned_walk[2]),
+                   *tuned_walk),
         case_block("wyckoff_short_lookback",
-                   "wyckoff 10/3/2: the window is full before the ATR(14) exists",
-                   *wyckoff(10, 3.0, 2, wyckoff_bars())),
+                   "wyckoff, range_lookback 10: the window is full before the ATR(14) exists",
+                   *wyckoff(textbook, range_lookback=10)),
     ] + candle_cases()
     return header, blocks
 
