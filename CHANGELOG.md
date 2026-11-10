@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-10
+
 ### Breaking
 
 - **Elliott:** `TriangleVariant::RunningOrBarrier` is removed and `TriangleVariant::Barrier` added;
