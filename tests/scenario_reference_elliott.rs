@@ -672,8 +672,8 @@ fn every_correction_falls_into_exactly_one_form() {
 use kestrel_chartkit::indicator::elliott::{
     rule_catalog, CheckEntry, CheckKind, SequenceErrorKind, StructureEntry, StructureKind,
     ThresholdRole, WaveVariant, BARRIER_LEVEL_TOLERANCE, EXPANDED_FLAT_B_MIN,
-    EXPANDING_TRIANGLE_RETRACE_MAX, EXPANDING_TRIANGLE_RETRACE_MIN, FLAT_B_MIN_RETRACE,
-    FLAT_B_TYPICAL_MAX, ZIGZAG_B_TYPICAL_MAX,
+    EXPANDING_TRIANGLE_RETRACE_MAX, EXPANDING_TRIANGLE_RETRACE_MIN, EXTENDED_WAVE_MIN_RATIO,
+    FLAT_B_MIN_RETRACE, FLAT_B_TYPICAL_MAX, ZIGZAG_B_TYPICAL_MAX,
 };
 
 fn structure(kind: StructureKind) -> &'static StructureEntry {
@@ -1135,10 +1135,14 @@ fn catalogue_is_complete_and_consistent() {
             "EXPANDING_TRIANGLE_RETRACE_MIN" => EXPANDING_TRIANGLE_RETRACE_MIN,
             "EXPANDING_TRIANGLE_RETRACE_MAX" => EXPANDING_TRIANGLE_RETRACE_MAX,
             "BARRIER_LEVEL_TOLERANCE" => BARRIER_LEVEL_TOLERANCE,
+            "EXTENDED_WAVE_MIN_RATIO" => EXTENDED_WAVE_MIN_RATIO,
             other => panic!("{other} is not a public constant of the module"),
         };
         assert_eq!(threshold.value, constant, "{}", threshold.constant);
-        if threshold.role != ThresholdRole::FormBoundary {
+        // The threshold of `identify_extended_wave` belongs to a measure, not to a check.
+        let of_a_check = threshold.role != ThresholdRole::FormBoundary
+            && threshold.constant != "EXTENDED_WAVE_MIN_RATIO";
+        if of_a_check {
             let used = catalog.structures.iter().any(|entry| {
                 entry
                     .rules
@@ -1151,8 +1155,8 @@ fn catalogue_is_complete_and_consistent() {
     }
     assert_eq!(
         catalog.thresholds.len(),
-        8,
-        "seven constants, one with two roles"
+        9,
+        "eight constants, one with two roles"
     );
 }
 
@@ -1353,6 +1357,21 @@ fn catalogue_thresholds_are_where_the_behaviour_turns() {
                 turning_point(0.01, 0.2, |share| {
                     let v = triangle([100.0, 130.0, 110.0, 124.0, 110.0 + 20.0 * share, 119.0]);
                     v.variant == TriangleVariant::Contracting
+                })
+            }
+            // Waves 1 and 5 are 10 long, wave 3 is `ratio` times that.
+            ("EXTENDED_WAVE_MIN_RATIO", ThresholdRole::Guideline) => {
+                turning_point(1.2, 2.0, |ratio| {
+                    let third = 10.0 * ratio;
+                    let prices = [0.0, 10.0, 5.0, 5.0 + third, 1.0 + third, 11.0 + third];
+                    let nodes: Vec<ZigZagNode> = prices
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &price)| {
+                            node(if i % 2 == 1 { "H" } else { "L" }, 60 * i as i64, price)
+                        })
+                        .collect();
+                    identify_extended_wave(&nodes) == Some(3)
                 })
             }
             (constant, role) => panic!("no probe for {constant} as {role:?}"),

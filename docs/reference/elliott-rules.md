@@ -88,8 +88,8 @@ What each entry demands (`statement`), the sentence reported with its identifier
 | `impulse` | `wave2_no_full_retrace` | Wave 2 never moves beyond the start of wave 1 | Wave 2 retraced beyond the start of wave 1 | a wave that ends exactly on the level counts as beyond it |
 | `impulse` | `wave3_not_shortest` | Wave 3 is never the shortest of waves 1, 3 and 5: it is not shorter than both others | Wave 3 is the shortest of waves 1, 3, and 5 | – |
 | `impulse` | `wave4_no_overlap` | Wave 4 never moves beyond the end of wave 1 | Wave 4 entered wave 1's price territory | a wave that ends exactly on the level counts as beyond it |
-| `diagonal` | `wave2_no_full_retrace` | Wave 2 never moves beyond the start of wave 1 | Wave 2 retraced beyond the start of wave 1 | a wave that ends exactly on the level counts as beyond it |
-| `diagonal` | `wave3_not_shortest` | Wave 3 is never the shortest of waves 1, 3 and 5: it is not shorter than both others | Wave 3 is the shortest of waves 1, 3, and 5 | – |
+| `diagonal` | `wave2_no_full_retrace` | Wave 2 never moves beyond the start of wave 1 | Wave 2 retraced beyond the start of wave 1 | taken over from the impulse, and whether the literature states it for diagonals in this form is not established; a wave that ends exactly on the level counts as beyond it |
+| `diagonal` | `wave3_not_shortest` | Wave 3 is never the shortest of waves 1, 3 and 5: it is not shorter than both others | Wave 3 is the shortest of waves 1, 3, and 5 | taken over from the impulse, and whether the literature states it for diagonals in this form is not established |
 | `correction` | `wave_c_must_extend_past_b` | Wave C continues past the end of wave B in wave A's direction | Wave C did not continue past wave B in wave A's direction | – |
 | `correction` | `zigzag_b_not_beyond_start_of_a` | In a zigzag, wave B never moves beyond the start of wave A | Wave B moved beyond the start of wave A | a wave that ends exactly on the level counts as not beyond it |
 | `correction` | `flat_b_min_retrace` | In a flat, wave B retraces at least 90 percent of wave A | Wave B retraced less than 90% of wave A | – |
@@ -111,7 +111,7 @@ The sentence of `flat_b_retrace_bound` carries its bound, which is an option (`C
 
 ## Thresholds
 
-The public constants of the module and what each decides. A constant with two uses has two rows.
+The public constants of the module and what each decides. A constant with two uses has two rows. `EXTENDED_WAVE_MIN_RATIO` belongs to the measure `identify_extended_wave`, not to an entry of the table above.
 
 | Constant | Value | Role | Origin | Option | Meaning | Convention |
 |---|---|---|---|---|---|---|
@@ -123,10 +123,11 @@ The public constants of the module and what each decides. A constant with two us
 | `EXPANDING_TRIANGLE_RETRACE_MIN` | 1 | rule | literature rule | – | In an expanding triangle, waves b, c and d each retrace at least this share of the wave before them | – |
 | `EXPANDING_TRIANGLE_RETRACE_MAX` | 1.5 | rule | literature rule | – | In an expanding triangle, waves b, c and d each retrace at most this share of the wave before them | – |
 | `BARRIER_LEVEL_TOLERANCE` | 0.05 | form boundary | crate convention | `barrier_tolerance` | A triangle that is not expanding is a barrier triangle if the ends of waves b and d lie at most this share of the length of wave b apart | – |
+| `EXTENDED_WAVE_MIN_RATIO` | 1.618 | guideline | crate convention | – | A wave 1, 3 or 5 of an impulse at least this many times as long as the longer of the other two is reported as extended by identify_extended_wave | – |
 
-## Not in the catalogue
+## Not among the checks
 
-The catalogue lists what is reported as a rule or a guideline. `identify_extended_wave` and `is_truncated_fifth` are measures with their own functions and no identifier; `TriangleValidation::running` and `DiagonalValidation::wave4_overlaps_wave1` are properties of a result; the asserted `DiagonalKind` enters no check. Rules of the literature that need the subdivision of a wave or its place in a larger count are not checked, and the documentation of each `check_*` function names them.
+The checks above are what is reported as a rule or a guideline. `identify_extended_wave` and `is_truncated_fifth` are measures of the impulse with their own functions and no identifier, and only the threshold of the former is listed; `TriangleValidation::running` and `DiagonalValidation::wave4_overlaps_wave1` are properties of a result; the asserted `DiagonalKind` enters no check. Rules of the literature that need the subdivision of a wave or its place in a larger count are not checked, and the documentation of each `check_*` function names them.
 
 ## Deriving the flow of the checks
 

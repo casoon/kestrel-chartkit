@@ -377,7 +377,8 @@ fn render_elliott() -> String {
     out.push_str("## Thresholds\n\n");
     out.push_str(
         "The public constants of the module and what each decides. A constant with two uses has \
-         two rows.\n\n",
+         two rows. `EXTENDED_WAVE_MIN_RATIO` belongs to the measure `identify_extended_wave`, not \
+         to an entry of the table above.\n\n",
     );
     out.push_str(
         "| Constant | Value | Role | Origin | Option | Meaning | Convention |\n|---|---|---|---|---|---|---|\n",
@@ -400,9 +401,10 @@ fn render_elliott() -> String {
     }
 
     out.push_str(
-        "\n## Not in the catalogue\n\n\
-         The catalogue lists what is reported as a rule or a guideline. `identify_extended_wave` \
-         and `is_truncated_fifth` are measures with their own functions and no identifier; \
+        "\n## Not among the checks\n\n\
+         The checks above are what is reported as a rule or a guideline. `identify_extended_wave` \
+         and `is_truncated_fifth` are measures of the impulse with their own functions and no \
+         identifier, and only the threshold of the former is listed; \
          `TriangleValidation::running` and `DiagonalValidation::wave4_overlaps_wave1` are \
          properties of a result; the asserted `DiagonalKind` enters no check. Rules of the \
          literature that need the subdivision of a wave or its place in a larger count are not \

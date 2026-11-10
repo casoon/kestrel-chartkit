@@ -194,10 +194,14 @@ pub enum WyckoffPhase {
     /// No range set.
     Undefined,
     /// A range is set: by a climax and the counter-move after it (Selling Climax and Automatic
-    /// Rally, or Buying Climax and Automatic Reaction), or by the width fallback. Lasts until the
-    /// first Secondary Test.
+    /// Rally, or Buying Climax and Automatic Reaction), or by the width fallback. Entered from no
+    /// range and from Phase E. Ends with the first Secondary Test (Phase B), with a Spring or
+    /// UTAD before any such test (Phase C), or with the abandonment of the range.
     A,
-    /// Range building, from the first Secondary Test on: further tests of the boundary.
+    /// Range building: further tests of the boundary. Entered with the first Secondary Test
+    /// (from Phase A), when a breakout fails (from Phase D) and when the move out of the range
+    /// closes back inside it (from Phase E). Further Secondary Tests leave it in place; it ends
+    /// with a Spring or UTAD (Phase C) or with the abandonment of the range.
     B,
     /// A Spring (accumulation) or UTAD (distribution) has occurred: the decisive test.
     C,

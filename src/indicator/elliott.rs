@@ -30,18 +30,20 @@
 //!
 //! A **rule** makes a labeling invalid: it appears in `violations` and clears `valid`. A
 //! **guideline** describes what a structure usually looks like: departing from it is listed as a
-//! [`GuidelineDeviation`] (in `guidelines` of a correction) and leaves `valid` untouched. Only
-//! what the literature states as a rule is reported as a violation. The reference is the "Summary
-//! of Rules and Guidelines for Waves" of later editions of Frost and Prechter's *Elliott Wave
-//! Principle*; it was consulted in reproductions, not in the book itself. Each `check_*` function
-//! lists the rules it checks. Whatever needs the subdivision of a wave or its place in a larger
-//! count cannot be checked, since neither is in the pivots of one degree.
+//! [`GuidelineDeviation`] (in `guidelines` of a correction) and leaves `valid` untouched.
+//! Reported as a violation is what the literature states as a rule, and one condition that is
+//! this crate's convention: the placement of the end of wave C of a correction
+//! (`wave_c_must_extend_past_b`, see above). The reference is the "Summary of Rules and
+//! Guidelines for Waves" of later editions of Frost and Prechter's *Elliott Wave Principle*; it
+//! was consulted in reproductions, not in the book itself. Each `check_*` function lists the
+//! rules it checks. Whatever needs the subdivision of a wave or its place in a larger count
+//! cannot be checked, since neither is in the pivots of one degree.
 //!
 //! Where that summary leaves a choice open, the choice is **this crate's convention** and is
 //! named as such on the item it belongs to: how a tie is counted, where four points cannot tell a
-//! zigzag from a flat, which triangle a mixed sequence is measured against, and the tolerance for
-//! "the same level". The thresholds of these checks are public constants whose comments state
-//! their origin.
+//! zigzag from a flat, which triangle a mixed sequence is measured against, the tolerance for
+//! "the same level", and from which length on a wave counts as extended. The thresholds are
+//! public constants whose comments state their origin.
 //!
 //! A sequence and its mirror image (highs for lows, every price negated) give the same result
 //! with the opposite [`WaveDirection`], to the last bit: each validator evaluates a falling
@@ -261,6 +263,12 @@ pub const EXPANDING_TRIANGLE_RETRACE_MAX: f64 = 1.5;
 /// this crate's convention.
 pub const BARRIER_LEVEL_TOLERANCE: f64 = 0.05;
 
+/// From how many times the length of the longer of the other two motive waves on a wave of an
+/// impulse is reported as extended by [`identify_extended_wave`]. This crate's convention: the
+/// number is the Fibonacci ratio 1.618, and no source in the literature is established for it
+/// here.
+pub const EXTENDED_WAVE_MIN_RATIO: f64 = 1.618;
+
 /// The form of a three-wave correction labeled `[0, A, B, C]`, read from where waves B and C end.
 /// See [`check_correction`] for the boundaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -470,21 +478,27 @@ pub fn validate_impulse(nodes: &[ZigZagNode]) -> Option<ImpulseValidation> {
 /// Rules (in `violations`):
 ///
 /// - `wave_c_must_extend_past_b`: wave C continues past the end of wave B in wave A's direction.
-///   Without that there are no three waves.
+///   Without that there are no three waves. This is the placement of the last pivot, reported as
+///   a rule by this crate's convention; the literature does not list it. It cannot fail in an
+///   expanded flat, whose wave C ends beyond the end of wave A and so past the end of wave B.
 /// - `zigzag_b_not_beyond_start_of_a`: in a zigzag, wave B never moves beyond the start of wave A.
 ///   Can only fail when wave A is asserted to be `Five`.
 /// - `flat_b_min_retrace`: in a flat, wave B retraces at least 90 percent of wave A. Can only fail
-///   when wave A is asserted to be `Three`.
+///   when wave A is asserted to be `Three`, and the variant is then [`CorrectionVariant::Flat`]:
+///   the expanded and the running flat need a wave B beyond the start of wave A.
 ///
-/// Guidelines (in `guidelines`, never invalidating):
+/// Guidelines (in `guidelines`, never invalidating), in the order they are reported:
 ///
 /// - `zigzag_b_retrace_bound`: a zigzag's wave B retraces at most [`ZIGZAG_B_TYPICAL_MAX`] of
 ///   wave A. Up to 0.39 this was reported as a violation.
 /// - `zigzag_c_ends_beyond_a`: a zigzag's wave C ends beyond the end of wave A.
-/// - `flat_c_ends_beyond_a`: the wave C of a [`CorrectionVariant::Flat`] ends beyond the end of
-///   wave A. Not reported for a running flat, which is defined by the opposite.
 /// - `flat_b_retrace_bound`: a flat's wave B retraces at most
-///   [`CorrectionOptions::flat_b_typical_max`] of wave A, in every flat variant.
+///   [`CorrectionOptions::flat_b_typical_max`] of wave A. Tested in every flat variant; with the
+///   default bound only an expanded or a running flat can depart from it, since the wave B of a
+///   [`CorrectionVariant::Flat`] retraces at most [`EXPANDED_FLAT_B_MIN`] of wave A.
+/// - `flat_c_ends_beyond_a`: the wave C of a [`CorrectionVariant::Flat`] ends beyond the end of
+///   wave A. Not reported for a running flat, which is defined by the opposite, and an expanded
+///   flat cannot depart from it.
 ///
 /// That four points are a correction at all is not something they can show: the first four
 /// pivots of an impulse satisfy every rule of a zigzag, whose outline is the same. What separates
@@ -633,12 +647,16 @@ pub enum DiagonalKind {
 
 /// Whether the two boundary lines (through waves 1-3-5 and 2-4) converge or diverge. Approximated
 /// here from wave lengths rather than line intersection: a contracting diagonal's waves shrink
-/// leg over leg, an expanding diagonal's waves grow leg over leg. This is the same simplification
-/// [`super::chart_patterns`] makes for wedges — a converging/diverging channel read off the pivots
-/// rather than a fitted line.
+/// leg over leg. This is the same simplification [`super::chart_patterns`] makes for wedges — a
+/// converging/diverging channel read off the pivots rather than a fitted line. Only the
+/// contracting form is tested; [`check_diagonal`] assigns every other sequence to
+/// [`DiagonalVariant::Expanding`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagonalVariant {
+    /// Wave 3 is shorter than wave 1, wave 5 shorter than wave 3 and wave 4 shorter than wave 2.
     Contracting,
+    /// Every other sequence. The name says what the variant is not: that the waves grow leg over
+    /// leg, as in the literature's expanding diagonal, is not tested.
     Expanding,
 }
 
@@ -671,6 +689,11 @@ impl DiagonalValidation {
 /// with `wave4_no_overlap` relaxed (wave 4 may enter wave 1's territory) and the other two rules
 /// retained. The variant is [`DiagonalVariant::Contracting`] when waves 1, 3, 5 and waves 2, 4
 /// each shrink, and [`DiagonalVariant::Expanding`] for every other sequence.
+///
+/// The two rules, `wave2_no_full_retrace` and `wave3_not_shortest`, are taken over from the
+/// impulse, where they are rules of Frost and Prechter's summary. Whether the summary states
+/// them for diagonals in this form is not established here. `wave3_not_shortest` cannot fail in
+/// a contracting diagonal, since that variant requires wave 5 to be shorter than wave 3.
 ///
 /// Frost and Prechter's summary states further rules for diagonals that six pivots could decide
 /// and that are not checked here: wave 3 moves beyond the end of wave 1, wave 4 never moves
@@ -739,11 +762,15 @@ pub fn validate_diagonal(nodes: &[ZigZagNode], kind: DiagonalKind) -> Option<Dia
 /// [`check_triangle`] for how a sequence is assigned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriangleVariant {
-    /// Waves c, d and e each stay within the end of the wave two before them.
+    /// Every sequence that is neither expanding nor a barrier triangle: at most one of waves c,
+    /// d and e moves beyond the end of the wave two before it. In the valid form none does; the
+    /// one that does is reported as a violation.
     Contracting,
-    /// A contracting triangle whose waves b and d end at essentially the same level.
+    /// Not expanding, and waves b and d end at essentially the same level
+    /// ([`TriangleOptions::barrier_tolerance`]).
     Barrier,
-    /// Waves c, d and e each move beyond the end of the wave two before them.
+    /// At least two of waves c, d and e move beyond the end of the wave two before them. In the
+    /// valid form all three do; the one that does not is reported as a violation.
     Expanding,
 }
 
@@ -1013,9 +1040,10 @@ pub fn validate_combination(nodes: &[ZigZagNode]) -> Option<CombinationValidatio
 }
 
 /// Which of waves 1, 3, or 5 is "extended" — long enough relative to the other two that it reads
-/// as the dominant wave of the impulse. Elliott's guideline: extended when its length is at least
-/// 1.618 times the longer of the other two. Returns `None` if no wave qualifies, or if `nodes` is
-/// not a pivot sequence of six nodes (see the module documentation).
+/// as the dominant wave of the impulse: its length is at least [`EXTENDED_WAVE_MIN_RATIO`] times
+/// the longer of the other two. A measure of the impulse, reported neither as a rule nor as a
+/// guideline. Returns `None` if no wave qualifies, or if `nodes` is not a pivot sequence of six
+/// nodes (see the module documentation).
 pub fn identify_extended_wave(nodes: &[ZigZagNode]) -> Option<u8> {
     let direction = pivot_sequence(nodes, &[6], &[]).ok()?;
     let [p0, p1, p2, p3, p4, p5] = oriented(nodes, direction);
@@ -1024,23 +1052,22 @@ pub fn identify_extended_wave(nodes: &[ZigZagNode]) -> Option<u8> {
     let len3 = p3 - p2;
     let len5 = p5 - p4;
 
-    const EXTENSION_RATIO: f64 = 1.618;
-
-    if len1 >= EXTENSION_RATIO * len3.max(len5) {
+    if len1 >= EXTENDED_WAVE_MIN_RATIO * len3.max(len5) {
         Some(1)
-    } else if len3 >= EXTENSION_RATIO * len1.max(len5) {
+    } else if len3 >= EXTENDED_WAVE_MIN_RATIO * len1.max(len5) {
         Some(3)
-    } else if len5 >= EXTENSION_RATIO * len1.max(len3) {
+    } else if len5 >= EXTENDED_WAVE_MIN_RATIO * len1.max(len3) {
         Some(5)
     } else {
         None
     }
 }
 
-/// A truncated (failed) fifth: wave 5 fails to move beyond wave 3's extreme, even though the three
-/// cardinal rules ([`check_impulse`]) may still all hold — this is a guideline violation, not a
-/// rule violation. Returns `None` if `nodes` is not a pivot sequence of six nodes (see the module
-/// documentation).
+/// A truncated (failed) fifth: wave 5 fails to move beyond wave 3's extreme; ending exactly on it
+/// counts as truncated. A measure of the impulse with its own function: the three rules of
+/// [`check_impulse`] can all hold on a truncated fifth, it does not enter `valid`, and it is not
+/// reported as a [`GuidelineDeviation`]. Returns `None` if `nodes` is not a pivot sequence of six
+/// nodes (see the module documentation).
 pub fn is_truncated_fifth(nodes: &[ZigZagNode]) -> Option<bool> {
     let direction = pivot_sequence(nodes, &[6], &[]).ok()?;
     let [_, _, _, p3, _, p5] = oriented::<6>(nodes, direction);
@@ -1262,7 +1289,8 @@ pub struct CheckEntry {
     pub asserted_wave_a: Option<WaveSubdivision>,
     pub origin: RuleOrigin,
     /// What of the check is this crate's convention although the check itself comes from the
-    /// literature: how a tie counts, or how a percentage is written.
+    /// literature: how a tie counts, how a percentage is written, or that a rule of one structure
+    /// is applied to another.
     pub convention: Option<&'static str>,
     /// The names of the public constants the check compares against ([`ThresholdEntry`]).
     pub thresholds: &'static [&'static str],
@@ -1321,7 +1349,10 @@ impl ThresholdRole {
     }
 }
 
-/// One use of a public threshold constant. A constant with two uses has two entries.
+/// One use of a public threshold constant. A constant with two uses has two entries. Every
+/// entry with the role rule or guideline is named by a [`CheckEntry`], except
+/// `EXTENDED_WAVE_MIN_RATIO`: it belongs to [`identify_extended_wave`], a measure that reports
+/// no identifier.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ThresholdEntry {
     /// The name of the constant in this module, e.g. `FLAT_B_MIN_RETRACE`.
@@ -1430,14 +1461,25 @@ const EXPANDING: &[WaveVariant] = &[WaveVariant::Triangle(TriangleVariant::Expan
 static IMPULSE_RULES: [CheckEntry; 3] =
     [WAVE2_NO_FULL_RETRACE, WAVE3_NOT_SHORTEST, WAVE4_NO_OVERLAP];
 
+// The origin of the two entries is that of the impulse's rules. That the literature states them
+// for diagonals in this form is not established, which `convention` says.
 static DIAGONAL_RULES: [CheckEntry; 2] = [
     CheckEntry {
         variants: DIAGONAL_VARIANTS,
+        convention: Some(
+            "taken over from the impulse, and whether the literature states it for diagonals in \
+             this form is not established; a wave that ends exactly on the level counts as \
+             beyond it",
+        ),
         ..WAVE2_NO_FULL_RETRACE
     },
     // A contracting diagonal's wave 3 is longer than its wave 5 by definition.
     CheckEntry {
         variants: &[WaveVariant::Diagonal(DiagonalVariant::Expanding)],
+        convention: Some(
+            "taken over from the impulse, and whether the literature states it for diagonals in \
+             this form is not established",
+        ),
         ..WAVE3_NOT_SHORTEST
     },
 ];
@@ -1755,7 +1797,7 @@ static SEQUENCE_CONDITIONS: [SequenceCondition; 4] = [
     },
 ];
 
-static THRESHOLDS: [ThresholdEntry; 8] = [
+static THRESHOLDS: [ThresholdEntry; 9] = [
     ThresholdEntry {
         constant: "FLAT_B_MIN_RETRACE",
         value: FLAT_B_MIN_RETRACE,
@@ -1833,6 +1875,16 @@ static THRESHOLDS: [ThresholdEntry; 8] = [
                and d lie at most this share of the length of wave b apart",
         convention: None,
     },
+    ThresholdEntry {
+        constant: "EXTENDED_WAVE_MIN_RATIO",
+        value: EXTENDED_WAVE_MIN_RATIO,
+        role: ThresholdRole::Guideline,
+        origin: RuleOrigin::CrateConvention,
+        option: None,
+        text: "A wave 1, 3 or 5 of an impulse at least this many times as long as the longer of \
+               the other two is reported as extended by identify_extended_wave",
+        convention: None,
+    },
 ];
 
 static CATALOG: RuleCatalog = RuleCatalog {
@@ -1850,10 +1902,10 @@ static CATALOG: RuleCatalog = RuleCatalog {
 /// structure that tests it, so `wave2_no_full_retrace` appears under the impulse and under the
 /// diagonal.
 ///
-/// Not in the catalogue, because they report neither rule nor guideline:
-/// [`identify_extended_wave`] and [`is_truncated_fifth`], [`TriangleValidation::running`] and
-/// [`DiagonalValidation::wave4_overlaps_wave1`], and the asserted [`DiagonalKind`], which enters
-/// no check.
+/// Not among the checks, because they report neither rule nor guideline:
+/// [`identify_extended_wave`] (its threshold is listed) and [`is_truncated_fifth`],
+/// [`TriangleValidation::running`] and [`DiagonalValidation::wave4_overlaps_wave1`], and the
+/// asserted [`DiagonalKind`], which enters no check.
 ///
 /// ```
 /// use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckKind, StructureKind};
