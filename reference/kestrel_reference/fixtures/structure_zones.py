@@ -3,6 +3,10 @@
 Written from the published definition, not from the Rust code, with the
 inputs at their defaults. Series are full arrays (`x[k]` read as `series[t - k]`); the arrays of
 gaps, order blocks and zones are followed bar by bar as in the script.
+
+The list of zones in the output is this crate's addition and follows the crate's documentation:
+every tracked zone, oldest first, with its edges, type, role, status, tests, age, the events of
+the bar, and the bar and close of its latest break and the bar of its latest role reversal.
 """
 
 import math
@@ -19,6 +23,9 @@ ZONE_KEYS = ["mid", "upper", "lower", "type", "status", "distance_atr", "reach",
              "structural", "respect", "approach", "context", "state"]
 STATE = {"STABLE": 0, "HOLD POSSIBLE": 1, "WEAKENING": 2, "UNDER PRESSURE": 3,
          "REACTION LIKELY": 4, "BREAK LIKELY": 5}
+
+# Bits of a zone's `event` on one bar.
+EVENT_CREATED, EVENT_TEST, EVENT_BOUNCE, EVENT_BREAK, EVENT_FLIP = 1, 2, 4, 8, 16
 
 
 def _series(with_volume):
@@ -158,6 +165,8 @@ def compute(bars):
         cum += v[t]
         real = cum > 0
         a = atr[t]
+        for z in zones:
+            z["event"] = 0
         rel_vol = v[t] / avg_vol[t] if real and avg_vol[t] is not None and avg_vol[t] > 0 else 1.0
         body_ratio = abs(c[t] - o[t]) / rng[t] if rng[t] > 0 else 0.0
         catr = rng[t] / a if a is not None and a > 0 else 0.0
@@ -378,7 +387,9 @@ def compute(bars):
             def add(kind, upper, lower, d, q):
                 zones.append({"kind": kind, "upper": upper, "lower": lower, "mid": (upper + lower) / 2.0,
                               "dir": d, "q": q, "bar": t, "status": 0, "touch": 0, "good": 0,
-                              "weak": 0, "maxb": 0.0, "lastb": 0.0, "deep": 0, "vb": False})
+                              "weak": 0, "maxb": 0.0, "lastb": 0.0, "deep": 0, "vb": False,
+                              "event": EVENT_CREATED, "break_bar": None, "break_close": None,
+                              "flip_bar": None})
 
             half = a * 0.3 / 2.0
             if mph is not None:
@@ -424,12 +435,14 @@ def compute(bars):
                     prev_in = h[t - 1] >= z["lower"] and lo[t - 1] <= z["upper"]
                     if in_z and not prev_in:
                         z["touch"] += 1
+                        z["event"] |= EVENT_TEST
                         z["vb"] = False
                         if z["status"] == 0:
                             z["status"] = 1
                     can = z["status"] in (1, 2) and in_z and not z["vb"]
                     if can and z["dir"] == 1 and c[t] > z["mid"] and c[t] > o[t]:
                         z["status"] = 2
+                        z["event"] |= EVENT_BOUNCE
                         z["vb"] = True
                         b = (c[t] - z["lower"]) / a if a > 0 else 0.0
                         z["lastb"] = b
@@ -440,6 +453,7 @@ def compute(bars):
                             z["weak"] += 1
                     if can and z["dir"] == -1 and c[t] < z["mid"] and c[t] < o[t]:
                         z["status"] = 2
+                        z["event"] |= EVENT_BOUNCE
                         z["vb"] = True
                         b = (z["upper"] - c[t]) / a if a > 0 else 0.0
                         z["lastb"] = b
@@ -459,12 +473,19 @@ def compute(bars):
                     if z["dir"] == -1 and above and c[t - 1] <= z["upper"]:
                         z["status"] = 3
                         broke = True
+                    if broke:
+                        z["event"] |= EVENT_BREAK
+                        z["break_bar"], z["break_close"] = t, c[t]
                     if z["status"] == 3 and not broke and z["dir"] == 1 and in_z and c[t] < z["mid"]:
                         z["status"] = 4
                         z["dir"] = -1
+                        z["event"] |= EVENT_FLIP
+                        z["flip_bar"] = t
                     elif z["status"] == 3 and not broke and z["dir"] == -1 and in_z and c[t] > z["mid"]:
                         z["status"] = 4
                         z["dir"] = 1
+                        z["event"] |= EVENT_FLIP
+                        z["flip_bar"] = t
 
         code = 0
         for hit, bit in ((ph is not None, 1), (pl is not None, 2), (micro_bull, 4), (micro_bear, 8),
@@ -601,6 +622,19 @@ def compute(bars):
                     "clx_direction": float(clx_dir), "event_code": float(code)})
         if poc is not None:
             row.update({"poc": poc, "va_high": va_hi, "va_low": va_lo})
+        row["atr"] = a
+        for i, z in enumerate(zones, 1):
+            row.update({
+                f"zone_{i}_lower": z["lower"], f"zone_{i}_upper": z["upper"],
+                f"zone_{i}_type": float(z["kind"]), f"zone_{i}_role": float(z["dir"]),
+                f"zone_{i}_status": float(z["status"]), f"zone_{i}_tests": float(z["touch"]),
+                f"zone_{i}_age": float(t - z["bar"]), f"zone_{i}_event": float(z["event"]),
+            })
+            if z["break_bar"] is not None:
+                row[f"zone_{i}_break_bars_back"] = float(t - z["break_bar"])
+                row[f"zone_{i}_break_close"] = z["break_close"]
+            if z["flip_bar"] is not None:
+                row[f"zone_{i}_flip_bars_back"] = float(t - z["flip_bar"])
         out["reported"][t] = True
         out["rows"][t] = row
     return out
@@ -632,6 +666,14 @@ HEADER = [
     "<v|nv>_first is the first reporting bar; _cp<bar>_* the outputs at that bar (zone keys only",
     "where that zone exists); _ev_<kind>_n the number of alerts of that kind and _ev_<kind>_<j> the",
     "bar of the j-th (up to 8).",
+    "",
+    "_cp<bar>_atr and, at the first and the last checkpoint, _cp<bar>_zone_<i>_*: the ATR and the",
+    "list of all tracked zones as the crate documents it (its own addition), oldest first: lower,",
+    "upper, type, role (1 support, -1",
+    "resistance), status (0 fresh, 1 tested, 2 confirmed, 3 broken, 4 flipped), tests, age (bars",
+    "since the zone was created), event (bits of this bar: 1 created, 2 test, 4 bounce, 8 break,",
+    "16 role reversal), break_bars_back and break_close (bar and close of the latest break) and",
+    "flip_bars_back (latest role reversal).",
 ]
 
 
@@ -639,6 +681,10 @@ def _block(prefix, out):
     case = {"first": float(next(t for t in range(N_BARS) if out["reported"][t]))}
     for cp in CHECKPOINTS:
         for k, val in out["rows"][cp].items():
+            # The list of zones at the first and the last checkpoint only; the contract cases
+            # check it on every bar.
+            if k.startswith("zone_") and cp not in (CHECKPOINTS[0], CHECKPOINTS[-1]):
+                continue
             case[f"cp{cp}_{k}"] = val
     for k in EVENTS:
         bars = out["events"][k]

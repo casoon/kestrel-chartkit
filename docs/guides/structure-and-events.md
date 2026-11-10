@@ -110,6 +110,53 @@ Two detectors hold their own zones and expose them directly:
 
 `created_bar` counts bars since the engine started, not a timestamp.
 
+## Levels and zones in the output
+
+Two detectors list what they track in `extra`, so a chart can draw it without recomputing
+anything. Lists are numbered from 1, oldest first; an entry keeps its place until it is dropped,
+after which the later ones move up.
+
+**`equal_level_liquidity`** groups confirmed pivots into levels: a pivot high joins the first
+buy-side level within `eq_tolerance_atr · ATR` of it (the level's price becomes the mean of its
+pivots) or founds a new one; pivot lows form the sell-side levels. `extra["atr"]` is the ATR of
+the bar and `extra["tolerance"]` the absolute tolerance, the half-width of every level's band.
+`bsl_levels` and `ssl_levels` count the levels with at least `list_min_touches` pivots (default
+2, the levels that take part in ranking and events; 1 lists single pivots too), and level `i` has
+`bsl_<i>_price`, `_touches` (its pivots), `_tests`, `_status` (0 unswept, 1 swept, 2 broken out,
+3 reclaimed), `_first_bars_back` and `_last_bars_back` (its first and latest pivot),
+`_swept_bars_back` once swept, and `_event`, the bit mask of what happened to it on this bar:
+1 a pivot joined or founded it, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim.
+
+```text
+tolerance = eq_tolerance_atr · ATR
+test:     high >= price - tolerance  and  low <= price + tolerance,
+          and the previous bar's range did not reach the band      (from the bar after the level was created)
+sweep:    high >= price + min_sweep_atr · ATR, for the first time   (levels with at least min_touches pivots)
+          close below that mark -> swept, close at or above it -> broken out
+reclaim:  within reclaim_bars bars of the sweep, close <= price - min_close_back_atr · ATR with high >= price
+```
+
+A swept level leaves the ranking (`primary_bsl`, `secondary_bsl`) but stays in the list with its
+status. Sell-side levels mirror every line.
+
+**`structure_zones`** lists every tracked zone, the broken ones included, until it expires after
+200 bars: `value` is their number, `extra["atr"]` the ATR, and zone `i` has `zone_<i>_lower`,
+`_upper`, `_type`, `_role` (1 support, -1 resistance), `_status` (0 fresh, 1 tested, 2 confirmed,
+3 broken, 4 flipped), `_tests`, `_age` and `_event` (1 created, 2 test, 4 bounce, 8 break, 16 role
+reversal). Once a zone has broken, `_break_bars_back` and `_break_close` name the bar and the
+close of its latest break; once it has flipped, `_flip_bars_back` names that bar. For a
+resistance zone, support mirrored:
+
+```text
+visit:          high >= lower  and  low <= upper
+test:           a visit when the previous bar was none                   -> tests + 1
+break:          close > upper  and  previous close <= upper              -> status broken
+role reversal:  a broken zone, a later visit with close > midpoint       -> status flipped, role support
+```
+
+The assessment keys (`support_*`, `resistance_*`) keep describing the nearest unbroken zone on
+either side of the close.
+
 ## Artifacts
 
 `IndicatorOutput::artifacts` holds typed results as the `Artifact` enum: `Pivot`, `Zone`,

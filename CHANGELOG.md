@@ -9,8 +9,21 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Equal-level liquidity:** `EqualLevelLiquidityConfig` gains the public field
+  `list_min_touches`, so a struct literal must set it or end in `..Default::default()`.
+
 ### Added
 
+- **Equal-level liquidity:** the output carries the calculation: `atr`, `tolerance` (absolute),
+  and every level with at least `list_min_touches` pivots as `bsl_<i>_*` / `ssl_<i>_*` with
+  price, pivots, tests, status and the events of the bar (pivot, test, sweep, breakout, stop
+  hunt, reclaim). Swept levels stay listed. Details:
+  [Levels and zones in the output](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#levels-and-zones-in-the-output).
+- **Structure zones:** `structure_zones` lists every tracked zone as `zone_<i>_*`, the broken
+  ones included, with edges, role, status, tests and the events of the bar (created, test,
+  bounce, break, role reversal), plus bar and close of the latest break and `atr`.
 - **Trendlines:** the `trendlines` indicator draws a support line through confirmed ZigZag lows
   and a resistance line through confirmed highs, each with its channel parallel, its touches and
   its break as an event (`TrendlineEngine`, alerts `bear_support_line_break` and

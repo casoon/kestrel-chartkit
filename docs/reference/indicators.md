@@ -1795,7 +1795,7 @@ Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off)
 
 ### `equal_level_liquidity`
 
-Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score; alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near
+Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near
 
 [See it in the showcase](../../../showcase/equal_level_liquidity/)
 
@@ -1811,6 +1811,7 @@ Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr A
 | `reclaim_bars` | 3 | whole number 0 – 100 | bars after a sweep within which a reclaim counts |
 | `min_volume_ratio` | 1.2 | 0 – 100 | volume against its average a reclaim needs |
 | `alert_distance_atr` | 1 | 0 – 100 | distance to the primary level, in ATR, that counts as near |
+| `list_min_touches` | 2 | whole number 1 – 20 | pivots a level needs to be listed in the output |
 
 ### `leg_character`
 
@@ -1861,7 +1862,7 @@ Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear 
 
 ### `structure_zones`
 
-Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break
+Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break
 
 [See it in the showcase](../../../showcase/structure_zones/)
 

@@ -364,19 +364,21 @@ EQUAL_LEVEL_STRENGTH = {"bear_bsl_sweep": 0.6, "bull_bsl_breakout": 0.6, "bear_b
 
 def equal_level_liquidity_case(bars, pivot_len=8, eq_tolerance_atr=0.12, min_touches=2,
                                max_age=400, max_distance_atr=8.0, reclaim_bars=3,
-                               min_volume_ratio=1.2, alert_distance_atr=1.0):
+                               min_volume_ratio=1.2, alert_distance_atr=1.0, list_min_touches=2):
     """Levels, events and reclaim scores from the golden module (`equal_level_liquidity.compute`),
     mapped per bar onto the documented output: output from the first bar with an ATR; value = the
     bias; extra primary_/secondary_bsl/ssl with _score (primary also _touches) while they exist,
     bsl_count, ssl_count, recent_bull_score, recent_bear_score, volume_ratio, and
-    bear_/bull_reclaim_score on a reclaim bar. The golden module lists reclaim scores per bar in
+    bear_/bull_reclaim_score on a reclaim bar, plus atr, tolerance and the list of levels with at
+    least `list_min_touches` pivots (bsl_levels, ssl_levels, bsl_<i>_*, ssl_<i>_*) as the golden
+    module derives it. The golden module lists reclaim scores per bar in
     the order bear, bull. Alert strengths are not documented on the type. Assumed: the reclaim
     score / 100 for a reclaim and a premium reclaim, a fixed 0.6 for sweeps, breakouts and stop
     hunts, 0.4 for the proximity warnings."""
     with constants(golden_equal_levels, PIVOT_LEN=pivot_len, EQ_TOL_ATR=eq_tolerance_atr,
                    MIN_TOUCHES=min_touches, MAX_AGE=max_age, MAX_DIST_ATR=max_distance_atr,
                    RECLAIM_BARS=reclaim_bars, MIN_VOLUME_RATIO=min_volume_ratio,
-                   ALERT_DIST_ATR=alert_distance_atr) as golden:
+                   ALERT_DIST_ATR=alert_distance_atr, LIST_MIN_TOUCHES=list_min_touches) as golden:
         out = golden.compute(bars)
     fired = {}
     for kind, at in out["events"].items():
@@ -400,6 +402,7 @@ def equal_level_liquidity_case(bars, pivot_len=8, eq_tolerance_atr=0.12, min_tou
         extra["bsl_count"], extra["ssl_count"] = out["counts"][t]
         extra["recent_bull_score"], extra["recent_bear_score"] = out["recent"][t]
         extra["volume_ratio"] = out["volume_ratio"][t]
+        extra.update(out["list"][t])
         kinds = fired.get(t, set())
         reclaims = list(scores.get(t, []))
         alerts = {k: EQUAL_LEVEL_STRENGTH[k] for k in kinds if k in EQUAL_LEVEL_STRENGTH}
@@ -415,8 +418,61 @@ def equal_level_liquidity_case(bars, pivot_len=8, eq_tolerance_atr=0.12, min_tou
     params = {"pivot_len": float(pivot_len), "eq_tolerance_atr": eq_tolerance_atr,
               "min_touches": float(min_touches), "max_age": float(max_age),
               "max_distance_atr": max_distance_atr, "reclaim_bars": float(reclaim_bars),
-              "min_volume_ratio": min_volume_ratio, "alert_distance_atr": alert_distance_atr}
+              "min_volume_ratio": min_volume_ratio, "alert_distance_atr": alert_distance_atr,
+              "list_min_touches": float(list_min_touches)}
     return params, bars, expected
+
+
+def around_closes(closes, half):
+    """Bars around closes: the open is the previous close (the first its own close), the high
+    `half` above the close or the open if that is higher, the low `half` below the close or the
+    open if that is lower; no volume."""
+    bars, previous = [], closes[0]
+    for close in closes:
+        open_, previous = previous, close
+        bars.append((open_, max(close + half, open_), min(close - half, open_), close, 0.0))
+    return bars
+
+
+# Closes of the level scenario, bars 1 above and 1 below them: every true range is 2, so the ATR
+# is 2 and the tolerance 0.12 x 2 = 0.24. Pivot highs (8 bars each side) at 100.00 (bar 9),
+# 100.20 (bar 25), 99.40 (bar 41) and 99.85 (bar 57); from bar 67 a rise that tests the level of
+# the first two, sweeps it and closes back below it.
+LEVEL_CLOSES = [
+    95.0, 95.6, 96.2, 96.8, 97.3, 97.8, 98.2, 98.5, 98.8, 99.0, 98.5, 98.0, 97.4, 96.8, 96.2,
+    95.8, 95.5, 95.3, 95.6, 96.0, 96.6, 97.2, 97.8, 98.4, 98.9, 99.2, 98.7, 98.1, 97.5, 96.9,
+    96.4, 96.2, 96.0, 95.9, 96.1, 96.4, 96.8, 97.2, 97.6, 98.0, 98.3, 98.4, 98.0, 97.5, 97.0,
+    96.5, 96.1, 95.8, 95.6, 95.5, 95.7, 96.1, 96.6, 97.1, 97.6, 98.0, 98.4, 98.85, 98.4, 97.9,
+    97.4, 96.9, 96.5, 96.2, 96.0, 95.9, 96.0,
+    96.8, 97.6, 98.4, 99.0, 100.0, 99.3, 98.6, 97.9,
+]
+
+
+def level_bars():
+    return around_closes(LEVEL_CLOSES, 1.0)
+
+
+# The zone scenario: 24 bars around closes (1 above, 1 below, true range 2) with a pivot high of
+# 100 at bar 13, then bars given in full (open, high, low, close).
+ZONE_CLOSES = [
+    96.2, 96.4, 96.6, 96.8, 97.0, 97.2, 97.4, 97.6, 97.8, 98.0, 98.3, 98.6, 98.8, 99.0, 98.6,
+    98.2, 97.8, 97.4, 97.0, 96.6, 96.3, 96.5, 96.9, 97.3,
+]
+ZONE_BARS = [
+    (97.3, 98.6, 97.2, 98.0), (98.2, 99.9, 98.1, 99.5), (99.5, 100.1, 99.2, 99.6),
+    (99.9, 101.0, 99.8, 100.8), (100.8, 102.0, 100.5, 101.5), (101.5, 101.8, 100.2, 100.9),
+    (100.9, 101.5, 100.6, 101.2), (101.2, 101.6, 100.7, 101.0), (101.0, 101.5, 100.6, 101.3),
+    (101.3, 101.7, 100.8, 101.1), (101.1, 101.8, 100.9, 101.6), (101.6, 102.1, 101.2, 101.9),
+    (101.9, 102.4, 101.5, 102.2), (102.2, 102.5, 101.8, 102.3),
+]
+
+
+def zone_bars(mirrored=False):
+    """The zone scenario; mirrored: every price negated, highs and lows exchanged."""
+    bars = around_closes(ZONE_CLOSES, 1.0) + [bar + (0.0,) for bar in ZONE_BARS]
+    if mirrored:
+        bars = [(-o, -lo, -h, -c, v) for o, h, lo, c, v in bars]
+    return bars
 
 
 # --- Accumulation phase ----------------------------------------------------------------------
@@ -569,8 +625,8 @@ def structure_zones_case(bars):
     """Zones, assessment and events from the golden module (`structure_zones.compute`, the
     original with its defaults), mapped per bar onto the documented output: value = number of
     tracked zones, extra = the support_/resistance_ fields of the assessed zones, micro_trend,
-    major_trend, clx_state, clx_direction, event_code, and poc/va_high/va_low once a profile
-    exists. Alert strength is not documented on the type. Assumed: a fixed 0.5 for every kind."""
+    major_trend, clx_state, clx_direction, event_code, poc/va_high/va_low once a profile
+    exists, atr and the list of all tracked zones (zone_<i>_*). Alert strength is not documented on the type. Assumed: a fixed 0.5 for every kind."""
     out = golden_structure_zones.compute(bars)
     fired = {}
     for kind, at in out["events"].items():
@@ -742,6 +798,32 @@ def build():
               "Reversal setup score: golden series with volume, bars 620-729: bull candidate, "
               "long signal invalidated",
               *reversal_setup_score_case(golden_reversal_setup._series(True)[620:730])),
+        # By hand (ATR 2, tolerance 0.24, no volume, levels from 1 pivot listed). Buy side: the
+        # pivot high 100.00 founds level 1 on bar 17. Bar 24 (high 99.9) reaches its band
+        # 99.76..100.24 after bar 23 (high 99.4) did not: its first test. The pivot high 100.20
+        # lies 0.20 from the level and joins it on bar 33: 2 pivots, price 100.10. The pivot high
+        # 99.40 (0.70 away) founds level 2 on bar 49, the pivot high 99.85 (0.25 away, 0.01 too
+        # far) level 3 on bar 65. Bar 70 (high 100.0) reaches the band 99.86..100.34 of level 1
+        # after bar 69 (high 99.4) did not: its second test. Bar 71 (high 101.0, close 100.0)
+        # reaches 100.10 + 0.05 x 2 and closes below that mark: a sweep, status 1. Bar 72 (high
+        # 100.3, close 99.3) closes 0.2 or more below the level within 3 bars: a reclaim,
+        # status 3. Levels 2 and 3 have one pivot and take no part in events.
+        block("equal_level_liquidity_listed",
+              "Equal-level liquidity, list_min_touches 1, no volume: four pivot highs on a series "
+              "with ATR 2, the level of the first two tested, swept and reclaimed",
+              *equal_level_liquidity_case(level_bars(), list_min_touches=1)),
+        # By hand (ATR 2 until bar 23): the major pivot high 100 of bar 13 is confirmed on bar 20
+        # and founds zone 1 as resistance, 99.7..100.3. Bar 25 (high 99.9) reaches it after bar
+        # 24 (high 98.6) did not: test 1. Bar 26 stays inside it: the same visit. Bar 27 closes at
+        # 100.8 above 100.3 after a close of 99.6: the break. Bar 28 (low 100.5) is outside. Bar
+        # 29 (low 100.2) reaches the zone again, test 2, and closes at 100.9 above the midpoint:
+        # the role reversal, the zone is support from then on.
+        block("structure_zones_lifecycle",
+              "Structure zones: one resistance zone tested, broken and flipped to support, no volume",
+              *structure_zones_case(zone_bars())),
+        block("structure_zones_mirrored_lifecycle",
+              "Structure zones: the same series negated, a support zone tested, broken and flipped",
+              *structure_zones_case(zone_bars(mirrored=True))),
         block("structure_zones_volume",
               "Structure zones (no parameters): golden series bars 0-199, volume from bar 21: "
               "relevance, resistance hold, support and resistance breaks, profile",
