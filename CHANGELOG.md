@@ -9,6 +9,13 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Wyckoff:** the state machine describes itself as data. `wyckoff::transitions()` lists every
+  move between the phases (`WyckoffTransition`: phases, bias, condition, events, parameters), and
+  `WyckoffStateMachine::last_transition()` names the one the last bar took. Details:
+  [Wyckoff transitions](https://casoon.github.io/kestrel-chartkit/docs/reference/wyckoff-transitions/).
+
 ## [0.40.0] - 2026-11-10
 
 ### Breaking

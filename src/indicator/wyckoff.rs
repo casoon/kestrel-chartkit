@@ -107,6 +107,15 @@
 //! bars they lie on. Every other event lies on the bar that reports it. Each reported event also
 //! raises the alert `wyckoff_<kind>`.
 //!
+//! # The state machine as data
+//!
+//! [`transitions`] lists every move the calculation above can make as a [`WyckoffTransition`]:
+//! the phase and bias it starts from, the phase and bias it leads to, the condition, the events
+//! it reports and the parameters the condition reads. [`WyckoffPhase::ALL`] lists the states. A
+//! bar takes at most one transition, and [`WyckoffStateMachine::last_transition`] names the one
+//! the last bar took, so a state diagram can be generated from the table instead of drawn by
+//! hand.
+//!
 //! # Series without volume, or without dispersion in it
 //!
 //! Without dispersion there is no outlier. The MAD of the window is zero when more than half of
@@ -200,7 +209,18 @@ pub enum WyckoffPhase {
 }
 
 impl WyckoffPhase {
-    fn code(self) -> f64 {
+    /// Every state of the machine, in the order of the output codes.
+    pub const ALL: [WyckoffPhase; 6] = [
+        WyckoffPhase::Undefined,
+        WyckoffPhase::A,
+        WyckoffPhase::B,
+        WyckoffPhase::C,
+        WyckoffPhase::D,
+        WyckoffPhase::E,
+    ];
+
+    /// The output `value` of a bar in this phase: 0 none, 1 A, 2 B, 3 C, 4 D, 5 E.
+    pub fn code(self) -> f64 {
         match self {
             WyckoffPhase::Undefined => 0.0,
             WyckoffPhase::A => 1.0,
@@ -208,6 +228,19 @@ impl WyckoffPhase {
             WyckoffPhase::C => 3.0,
             WyckoffPhase::D => 4.0,
             WyckoffPhase::E => 5.0,
+        }
+    }
+
+    /// Stable lower-case identifier: `none`, `a`, `b`, `c`, `d`, `e`. The identifier of a
+    /// [`WyckoffTransition`] starts with those of its two phases.
+    pub const fn id(self) -> &'static str {
+        match self {
+            WyckoffPhase::Undefined => "none",
+            WyckoffPhase::A => "a",
+            WyckoffPhase::B => "b",
+            WyckoffPhase::C => "c",
+            WyckoffPhase::D => "d",
+            WyckoffPhase::E => "e",
         }
     }
 }
@@ -422,6 +455,516 @@ impl Default for WyckoffParams {
     }
 }
 
+/// The bias of a range in play, as the transition table refers to it:
+/// [`WyckoffStateMachine::bias`] with the open case named.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WyckoffRangeBias {
+    Accumulation,
+    Distribution,
+    /// Set by the width fallback and not yet decided by a Spring or UTAD.
+    Open,
+}
+
+impl WyckoffRangeBias {
+    /// Stable lower-case identifier: `accumulation`, `distribution`, `open`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            WyckoffRangeBias::Accumulation => "accumulation",
+            WyckoffRangeBias::Distribution => "distribution",
+            WyckoffRangeBias::Open => "open",
+        }
+    }
+
+    /// The output `extra["bias"]` of a bar whose range has this bias: 1, -1, or 0 for open.
+    pub fn code(self) -> f64 {
+        match self {
+            WyckoffRangeBias::Accumulation => WyckoffBias::Accumulation.code(),
+            WyckoffRangeBias::Distribution => WyckoffBias::Distribution.code(),
+            WyckoffRangeBias::Open => 0.0,
+        }
+    }
+}
+
+/// What a bar must show for a [`WyckoffTransition`] to be taken. The module documentation states
+/// each condition in full; the variants name them. Written for accumulation, distribution
+/// mirrors them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WyckoffCondition {
+    /// The counter-move after a pending climax is confirmed: a close below the low of the bar
+    /// with the rally high, which lies above the high of the climax bar.
+    CounterMoveConfirmed,
+    /// No climax is pending and the window is at most `range_atr_max` ATR wide.
+    WidthFallback,
+    /// The low undercuts the range low and the close is back above it, in a range at least
+    /// `min_range_bars` bars old, on a bar that does not also pierce the other boundary.
+    BoundarySwept,
+    /// The close lies more than `abandon_atr` ATR outside the range.
+    ClosedFarOutside,
+    /// The low lies at or above the range low and within `st_atr` ATR of it, and in a range set
+    /// by a climax the bar has less volume and a narrower spread than the climax bar.
+    BoundaryTested,
+    /// The close lies above the range high, on outlier volume unless `breakout_volume` is off.
+    BreakoutClose,
+    /// The close lies below the range high again.
+    ClosedBackInside,
+    /// A pullback turns up with its low at or above the range high minus `lps_atr` ATR.
+    PullbackHeld,
+}
+
+impl WyckoffCondition {
+    /// Stable lower-case identifier, e.g. `counter_move_confirmed`.
+    pub const fn id(self) -> &'static str {
+        match self {
+            WyckoffCondition::CounterMoveConfirmed => "counter_move_confirmed",
+            WyckoffCondition::WidthFallback => "width_fallback",
+            WyckoffCondition::BoundarySwept => "boundary_swept",
+            WyckoffCondition::ClosedFarOutside => "closed_far_outside",
+            WyckoffCondition::BoundaryTested => "boundary_tested",
+            WyckoffCondition::BreakoutClose => "breakout_close",
+            WyckoffCondition::ClosedBackInside => "closed_back_inside",
+            WyckoffCondition::PullbackHeld => "pullback_held",
+        }
+    }
+}
+
+/// One move of the state machine: an edge of its state diagram. See [`transitions`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WyckoffTransition {
+    /// Stable identifier, unique in the table: the identifiers of the two phases
+    /// ([`WyckoffPhase::id`]) and a name for the move, e.g. `a_c_spring`.
+    pub id: &'static str,
+    /// The phase the bar began in.
+    pub from: WyckoffPhase,
+    /// The biases the range in play can have when the transition is taken. Empty where there is
+    /// no range (`from` is [`WyckoffPhase::Undefined`]).
+    pub bias_from: &'static [WyckoffRangeBias],
+    /// The phase the bar reports.
+    pub to: WyckoffPhase,
+    /// The bias of the range after the transition. `None` where no range is left (`to` is
+    /// [`WyckoffPhase::Undefined`]).
+    pub bias_to: Option<WyckoffRangeBias>,
+    /// Machine-readable name of the condition.
+    pub condition: WyckoffCondition,
+    /// The events the bar reports, in the order they are reported. Each also raises the alert
+    /// `wyckoff_<kind>` and sets `extra["event_<kind>"]`.
+    pub events: &'static [WyckoffEventKind],
+    /// Those of `events` that are only reported when found: the Preliminary Support or Supply.
+    pub optional_events: &'static [WyckoffEventKind],
+    /// The parameters the condition reads ([`WyckoffParams`], by their registry names).
+    /// Parameters that only shaped earlier bars (the climax test behind "no climax pending",
+    /// say) are not repeated.
+    pub params: &'static [&'static str],
+    /// The condition in one English sentence, with the side written out.
+    pub text: &'static str,
+}
+
+const NO_RANGE: &[WyckoffRangeBias] = &[];
+const ACCUMULATION: &[WyckoffRangeBias] = &[WyckoffRangeBias::Accumulation];
+const DISTRIBUTION: &[WyckoffRangeBias] = &[WyckoffRangeBias::Distribution];
+const OPEN: &[WyckoffRangeBias] = &[WyckoffRangeBias::Open];
+const DECIDED: &[WyckoffRangeBias] = &[
+    WyckoffRangeBias::Accumulation,
+    WyckoffRangeBias::Distribution,
+];
+const ANY_BIAS: &[WyckoffRangeBias] = &[
+    WyckoffRangeBias::Accumulation,
+    WyckoffRangeBias::Distribution,
+    WyckoffRangeBias::Open,
+];
+const NOT_DISTRIBUTION: &[WyckoffRangeBias] =
+    &[WyckoffRangeBias::Accumulation, WyckoffRangeBias::Open];
+const NOT_ACCUMULATION: &[WyckoffRangeBias] =
+    &[WyckoffRangeBias::Distribution, WyckoffRangeBias::Open];
+
+const SELLING_CLIMAX_EVENTS: &[WyckoffEventKind] = &[
+    WyckoffEventKind::PreliminarySupport,
+    WyckoffEventKind::SellingClimax,
+    WyckoffEventKind::AutomaticRally,
+];
+const BUYING_CLIMAX_EVENTS: &[WyckoffEventKind] = &[
+    WyckoffEventKind::PreliminarySupply,
+    WyckoffEventKind::BuyingClimax,
+    WyckoffEventKind::AutomaticReaction,
+];
+
+const CLIMAX_PARAMS: &[&str] = &["range_lookback", "atr_len", "volume_k", "climax_range_atr"];
+const WIDTH_PARAMS: &[&str] = &["range_lookback", "range_atr_max", "atr_len"];
+const SWEEP_PARAMS: &[&str] = &["min_range_bars"];
+const ABANDON_PARAMS: &[&str] = &["abandon_atr", "atr_len"];
+const TEST_PARAMS: &[&str] = &["st_atr", "atr_len"];
+const BREAKOUT_PARAMS: &[&str] = &["breakout_volume", "volume_k", "range_lookback"];
+const HOLD_PARAMS: &[&str] = &["lps_atr", "atr_len"];
+
+const SELLING_CLIMAX_TEXT: &str = "Automatic Rally confirmed after a Selling Climax: close below \
+    the low of the bar that made the rally high, and that high above the high of the climax bar; \
+    range from the climax low to the rally high";
+const BUYING_CLIMAX_TEXT: &str = "Automatic Reaction confirmed after a Buying Climax: close above \
+    the high of the bar that made the reaction low, and that low below the low of the climax bar; \
+    range from the reaction low to the climax high";
+const WIDTH_TEXT: &str = "Width fallback: no climax pending and the window at most range_atr_max \
+    ATR wide; range at the window extremes, bias open";
+const SPRING_TEXT: &str = "Spring: low below the range low and close back above it, in a range at \
+    least min_range_bars bars old; the bar does not also sweep the range high";
+const UTAD_TEXT: &str = "UTAD: high above the range high and close back below it, in a range at \
+    least min_range_bars bars old; the bar does not also sweep the range low";
+const ABANDON_TEXT: &str = "Range abandoned: close more than abandon_atr ATR above the range high \
+    or below the range low";
+const TEST_LOW_TEXT: &str = "Secondary Test: low at or above the range low and within st_atr ATR \
+    of it; in a range set by a climax, on less volume and a narrower spread than the climax bar";
+const TEST_HIGH_TEXT: &str = "Secondary Test: high at or below the range high and within st_atr \
+    ATR of it; in a range set by a climax, on less volume and a narrower spread than the climax \
+    bar";
+const TEST_OPEN_TEXT: &str = "Secondary Test of either boundary: low at or above the range low \
+    and within st_atr ATR of it, or high at or below the range high and within st_atr ATR of it";
+const STRENGTH_TEXT: &str = "Sign of Strength: close above the range high, on outlier volume \
+    unless breakout_volume is off";
+const WEAKNESS_TEXT: &str = "Sign of Weakness: close below the range low, on outlier volume \
+    unless breakout_volume is off";
+const FAILED_UP_TEXT: &str = "Breakout failed: close back below the range high";
+const FAILED_DOWN_TEXT: &str = "Breakout failed: close back above the range low";
+const SUPPORT_TEXT: &str = "Last Point of Support: first higher close of a pullback whose low \
+    held at or above the range high minus lps_atr ATR";
+const SUPPLY_TEXT: &str = "Last Point of Supply: first lower close of a pullback whose high held \
+    at or below the range low plus lps_atr ATR";
+const MARKUP_ENDED_TEXT: &str = "Markup ended: close back below the range high";
+const MARKDOWN_ENDED_TEXT: &str = "Markdown ended: close back above the range low";
+
+/// The transitions out of Phase A or B, which share one rule set.
+const fn building(from: WyckoffPhase, ids: [&'static str; 6]) -> [WyckoffTransition; 6] {
+    use WyckoffEventKind as Kind;
+    use WyckoffRangeBias as Bias;
+    [
+        WyckoffTransition {
+            id: ids[0],
+            from,
+            bias_from: NOT_DISTRIBUTION,
+            to: WyckoffPhase::C,
+            bias_to: Some(Bias::Accumulation),
+            condition: WyckoffCondition::BoundarySwept,
+            events: &[Kind::Spring],
+            optional_events: &[],
+            params: SWEEP_PARAMS,
+            text: SPRING_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[1],
+            from,
+            bias_from: NOT_ACCUMULATION,
+            to: WyckoffPhase::C,
+            bias_to: Some(Bias::Distribution),
+            condition: WyckoffCondition::BoundarySwept,
+            events: &[Kind::Utad],
+            optional_events: &[],
+            params: SWEEP_PARAMS,
+            text: UTAD_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[2],
+            from,
+            bias_from: ANY_BIAS,
+            to: WyckoffPhase::Undefined,
+            bias_to: None,
+            condition: WyckoffCondition::ClosedFarOutside,
+            events: &[],
+            optional_events: &[],
+            params: ABANDON_PARAMS,
+            text: ABANDON_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[3],
+            from,
+            bias_from: ACCUMULATION,
+            to: WyckoffPhase::B,
+            bias_to: Some(Bias::Accumulation),
+            condition: WyckoffCondition::BoundaryTested,
+            events: &[Kind::SecondaryTest],
+            optional_events: &[],
+            params: TEST_PARAMS,
+            text: TEST_LOW_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[4],
+            from,
+            bias_from: DISTRIBUTION,
+            to: WyckoffPhase::B,
+            bias_to: Some(Bias::Distribution),
+            condition: WyckoffCondition::BoundaryTested,
+            events: &[Kind::SecondaryTest],
+            optional_events: &[],
+            params: TEST_PARAMS,
+            text: TEST_HIGH_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[5],
+            from,
+            bias_from: OPEN,
+            to: WyckoffPhase::B,
+            bias_to: Some(Bias::Open),
+            condition: WyckoffCondition::BoundaryTested,
+            events: &[Kind::SecondaryTest],
+            optional_events: &[],
+            params: TEST_PARAMS,
+            text: TEST_OPEN_TEXT,
+        },
+    ]
+}
+
+/// The transitions that set a range, out of no range or out of Phase E.
+const fn range_setting(
+    from: WyckoffPhase,
+    bias_from: &'static [WyckoffRangeBias],
+    ids: [&'static str; 3],
+) -> [WyckoffTransition; 3] {
+    use WyckoffEventKind as Kind;
+    use WyckoffRangeBias as Bias;
+    [
+        WyckoffTransition {
+            id: ids[0],
+            from,
+            bias_from,
+            to: WyckoffPhase::A,
+            bias_to: Some(Bias::Accumulation),
+            condition: WyckoffCondition::CounterMoveConfirmed,
+            events: SELLING_CLIMAX_EVENTS,
+            optional_events: &[Kind::PreliminarySupport],
+            params: CLIMAX_PARAMS,
+            text: SELLING_CLIMAX_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[1],
+            from,
+            bias_from,
+            to: WyckoffPhase::A,
+            bias_to: Some(Bias::Distribution),
+            condition: WyckoffCondition::CounterMoveConfirmed,
+            events: BUYING_CLIMAX_EVENTS,
+            optional_events: &[Kind::PreliminarySupply],
+            params: CLIMAX_PARAMS,
+            text: BUYING_CLIMAX_TEXT,
+        },
+        WyckoffTransition {
+            id: ids[2],
+            from,
+            bias_from,
+            to: WyckoffPhase::A,
+            bias_to: Some(Bias::Open),
+            condition: WyckoffCondition::WidthFallback,
+            events: &[],
+            optional_events: &[],
+            params: WIDTH_PARAMS,
+            text: WIDTH_TEXT,
+        },
+    ]
+}
+
+const FROM_NONE: [WyckoffTransition; 3] = range_setting(
+    WyckoffPhase::Undefined,
+    NO_RANGE,
+    [
+        "none_a_selling_climax",
+        "none_a_buying_climax",
+        "none_a_width",
+    ],
+);
+const FROM_A: [WyckoffTransition; 6] = building(
+    WyckoffPhase::A,
+    [
+        "a_c_spring",
+        "a_c_utad",
+        "a_none_abandon",
+        "a_b_secondary_test_accumulation",
+        "a_b_secondary_test_distribution",
+        "a_b_secondary_test_open",
+    ],
+);
+const FROM_B: [WyckoffTransition; 6] = building(
+    WyckoffPhase::B,
+    [
+        "b_c_spring",
+        "b_c_utad",
+        "b_none_abandon",
+        "b_b_secondary_test_accumulation",
+        "b_b_secondary_test_distribution",
+        "b_b_secondary_test_open",
+    ],
+);
+const FROM_E: [WyckoffTransition; 3] = range_setting(
+    WyckoffPhase::E,
+    DECIDED,
+    ["e_a_selling_climax", "e_a_buying_climax", "e_a_width"],
+);
+
+static TRANSITIONS: [WyckoffTransition; 27] = [
+    FROM_NONE[0],
+    FROM_NONE[1],
+    FROM_NONE[2],
+    FROM_A[0],
+    FROM_A[1],
+    FROM_A[2],
+    FROM_A[3],
+    FROM_A[4],
+    FROM_A[5],
+    FROM_B[0],
+    FROM_B[1],
+    FROM_B[2],
+    FROM_B[3],
+    FROM_B[4],
+    FROM_B[5],
+    WyckoffTransition {
+        id: "c_d_sign_of_strength",
+        from: WyckoffPhase::C,
+        bias_from: ACCUMULATION,
+        to: WyckoffPhase::D,
+        bias_to: Some(WyckoffRangeBias::Accumulation),
+        condition: WyckoffCondition::BreakoutClose,
+        events: &[WyckoffEventKind::SignOfStrength],
+        optional_events: &[],
+        params: BREAKOUT_PARAMS,
+        text: STRENGTH_TEXT,
+    },
+    WyckoffTransition {
+        id: "c_d_sign_of_weakness",
+        from: WyckoffPhase::C,
+        bias_from: DISTRIBUTION,
+        to: WyckoffPhase::D,
+        bias_to: Some(WyckoffRangeBias::Distribution),
+        condition: WyckoffCondition::BreakoutClose,
+        events: &[WyckoffEventKind::SignOfWeakness],
+        optional_events: &[],
+        params: BREAKOUT_PARAMS,
+        text: WEAKNESS_TEXT,
+    },
+    WyckoffTransition {
+        id: "c_none_abandon",
+        from: WyckoffPhase::C,
+        bias_from: DECIDED,
+        to: WyckoffPhase::Undefined,
+        bias_to: None,
+        condition: WyckoffCondition::ClosedFarOutside,
+        events: &[],
+        optional_events: &[],
+        params: ABANDON_PARAMS,
+        text: ABANDON_TEXT,
+    },
+    WyckoffTransition {
+        id: "d_b_failed_breakout_accumulation",
+        from: WyckoffPhase::D,
+        bias_from: ACCUMULATION,
+        to: WyckoffPhase::B,
+        bias_to: Some(WyckoffRangeBias::Accumulation),
+        condition: WyckoffCondition::ClosedBackInside,
+        events: &[],
+        optional_events: &[],
+        params: &[],
+        text: FAILED_UP_TEXT,
+    },
+    WyckoffTransition {
+        id: "d_b_failed_breakout_distribution",
+        from: WyckoffPhase::D,
+        bias_from: DISTRIBUTION,
+        to: WyckoffPhase::B,
+        bias_to: Some(WyckoffRangeBias::Distribution),
+        condition: WyckoffCondition::ClosedBackInside,
+        events: &[],
+        optional_events: &[],
+        params: &[],
+        text: FAILED_DOWN_TEXT,
+    },
+    WyckoffTransition {
+        id: "d_e_last_point_of_support",
+        from: WyckoffPhase::D,
+        bias_from: ACCUMULATION,
+        to: WyckoffPhase::E,
+        bias_to: Some(WyckoffRangeBias::Accumulation),
+        condition: WyckoffCondition::PullbackHeld,
+        events: &[WyckoffEventKind::LastPointOfSupport],
+        optional_events: &[],
+        params: HOLD_PARAMS,
+        text: SUPPORT_TEXT,
+    },
+    WyckoffTransition {
+        id: "d_e_last_point_of_supply",
+        from: WyckoffPhase::D,
+        bias_from: DISTRIBUTION,
+        to: WyckoffPhase::E,
+        bias_to: Some(WyckoffRangeBias::Distribution),
+        condition: WyckoffCondition::PullbackHeld,
+        events: &[WyckoffEventKind::LastPointOfSupply],
+        optional_events: &[],
+        params: HOLD_PARAMS,
+        text: SUPPLY_TEXT,
+    },
+    WyckoffTransition {
+        id: "e_b_markup_ended",
+        from: WyckoffPhase::E,
+        bias_from: ACCUMULATION,
+        to: WyckoffPhase::B,
+        bias_to: Some(WyckoffRangeBias::Accumulation),
+        condition: WyckoffCondition::ClosedBackInside,
+        events: &[],
+        optional_events: &[],
+        params: &[],
+        text: MARKUP_ENDED_TEXT,
+    },
+    WyckoffTransition {
+        id: "e_b_markdown_ended",
+        from: WyckoffPhase::E,
+        bias_from: DISTRIBUTION,
+        to: WyckoffPhase::B,
+        bias_to: Some(WyckoffRangeBias::Distribution),
+        condition: WyckoffCondition::ClosedBackInside,
+        events: &[],
+        optional_events: &[],
+        params: &[],
+        text: MARKDOWN_ENDED_TEXT,
+    },
+    FROM_E[0],
+    FROM_E[1],
+    FROM_E[2],
+];
+
+/// The state machine as data: every transition between the phases of [`WyckoffPhase::ALL`].
+///
+/// A bar takes at most one transition. That is why a bar that reports an event, changes the
+/// phase or abandons a range does not also set a range: the transitions into Phase A start from
+/// no range or from Phase E, and are tested on a later bar at the earliest. A bar that takes
+/// none leaves phase, bias and boundaries as they were and reports no event.
+///
+/// The transitions are listed by the phase they start from and, within one phase, in the order
+/// the calculation tests them: of several whose condition holds on a bar, the first is taken.
+/// Accumulation and distribution are separate entries, mirror images of each other; `bias_from`
+/// and `bias_to` say which side an entry belongs to and where an open bias is decided.
+///
+/// What the table does not carry are the two waits inside a phase, which the module
+/// documentation describes: the pending climax before a range is set, and the pullback that
+/// runs in Phase D.
+///
+/// [`WyckoffStateMachine::last_transition`] reports which of these the last bar took.
+///
+/// ```
+/// use kestrel_chartkit::indicator::wyckoff::{transitions, WyckoffPhase, WyckoffRangeBias};
+///
+/// // The state diagram of an accumulation: one node per phase, one edge per transition that
+/// // starts from or leads to an accumulation bias, labelled with its condition and events.
+/// let side = WyckoffRangeBias::Accumulation;
+/// let nodes: Vec<&str> = WyckoffPhase::ALL.iter().map(|phase| phase.id()).collect();
+/// let edges: Vec<(&str, &str, String)> = transitions()
+///     .iter()
+///     .filter(|t| t.bias_from.contains(&side) || t.bias_to == Some(side))
+///     .map(|t| {
+///         let events: Vec<String> = t.events.iter().map(|e| format!("{e:?}")).collect();
+///         let label = format!("{} [{}]", t.condition.id(), events.join(", "));
+///         (t.from.id(), t.to.id(), label)
+///     })
+///     .collect();
+///
+/// assert_eq!(nodes, ["none", "a", "b", "c", "d", "e"]);
+/// assert!(edges.contains(&("a", "c", "boundary_swept [Spring]".to_string())));
+/// ```
+pub fn transitions() -> &'static [WyckoffTransition] {
+    &TRANSITIONS
+}
+
 /// A bar an event lies on. `index` counts the bars fed so far.
 #[derive(Debug, Clone, Copy)]
 struct Marker {
@@ -451,6 +994,16 @@ struct PendingClimax {
     spread: f64,
     preliminary: Option<Marker>,
     counter: Option<CounterMove>,
+}
+
+/// The move of one bar: where it began, where it ended and under which condition.
+#[derive(Debug, Clone, Copy)]
+struct Step {
+    from: WyckoffPhase,
+    bias_from: Option<WyckoffRangeBias>,
+    to: WyckoffPhase,
+    bias_to: Option<WyckoffRangeBias>,
+    condition: WyckoffCondition,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -497,6 +1050,10 @@ pub struct WyckoffStateMachine {
     /// Events reported on the current bar, with the number of bars they lie back.
     reported: Vec<(WyckoffEventKind, u64)>,
     alerts: Vec<IndicatorAlert>,
+    /// The condition under which the current bar moved, if it did.
+    condition: Option<WyckoffCondition>,
+    /// What the current bar did, for [`WyckoffStateMachine::last_transition`].
+    step: Option<Step>,
 }
 
 impl WyckoffStateMachine {
@@ -535,6 +1092,8 @@ impl WyckoffStateMachine {
             events: Vec::new(),
             reported: Vec::new(),
             alerts: Vec::new(),
+            condition: None,
+            step: None,
         }
     }
 
@@ -568,6 +1127,32 @@ impl WyckoffStateMachine {
     /// Full event history observed for the current (or most recently completed) range.
     pub fn events(&self) -> &[WyckoffEvent] {
         &self.events
+    }
+
+    /// The entry of [`transitions`] the last bar took. `None` if it took none: phase, bias and
+    /// boundaries are then those of the bar before, and no event was reported. Also `None`
+    /// before the first output and after [`Indicator::reset`].
+    pub fn last_transition(&self) -> Option<&'static WyckoffTransition> {
+        let step = self.step?;
+        TRANSITIONS.iter().find(|t| {
+            t.from == step.from
+                && t.to == step.to
+                && t.bias_to == step.bias_to
+                && t.condition == step.condition
+                && match step.bias_from {
+                    Some(bias) => t.bias_from.contains(&bias),
+                    None => t.bias_from.is_empty(),
+                }
+        })
+    }
+
+    /// The bias of the range in play as the transition table names it.
+    fn range_bias(&self) -> Option<WyckoffRangeBias> {
+        self.range.map(|r| match r.bias {
+            Some(WyckoffBias::Accumulation) => WyckoffRangeBias::Accumulation,
+            Some(WyckoffBias::Distribution) => WyckoffRangeBias::Distribution,
+            None => WyckoffRangeBias::Open,
+        })
     }
 
     pub fn score(&self) -> WyckoffScore {
@@ -657,6 +1242,7 @@ impl WyckoffStateMachine {
                         ..range
                     });
                     self.phase = WyckoffPhase::C;
+                    self.condition = Some(WyckoffCondition::BoundarySwept);
                     let extreme = side.orient(side.orient_bar(bar).low);
                     self.report(kinds(side).test, self.here(bar, extreme));
                     return;
@@ -666,6 +1252,7 @@ impl WyckoffStateMachine {
 
         if range.left_behind(bar.close, self.params.abandon_atr * atr) {
             self.abandon_range();
+            self.condition = Some(WyckoffCondition::ClosedFarOutside);
             return;
         }
 
@@ -682,6 +1269,7 @@ impl WyckoffStateMachine {
             .is_none_or(|(volume, spread)| bar.volume < volume && bar.high - bar.low < spread);
         if at_boundary && quieter {
             self.phase = WyckoffPhase::B;
+            self.condition = Some(WyckoffCondition::BoundaryTested);
             self.report(WyckoffEventKind::SecondaryTest, self.here(bar, bar.close));
         }
     }
@@ -695,9 +1283,11 @@ impl WyckoffStateMachine {
         if side.orient_bar(bar).close > broken && carried {
             self.phase = WyckoffPhase::D;
             self.pullback = None;
+            self.condition = Some(WyckoffCondition::BreakoutClose);
             self.report(kinds(side).breakout, self.here(bar, bar.close));
         } else if range.left_behind(bar.close, self.params.abandon_atr * atr) {
             self.abandon_range();
+            self.condition = Some(WyckoffCondition::ClosedFarOutside);
         }
     }
 
@@ -712,6 +1302,7 @@ impl WyckoffStateMachine {
         if seen.close < broken {
             self.phase = WyckoffPhase::B;
             self.pullback = None;
+            self.condition = Some(WyckoffCondition::ClosedBackInside);
             return;
         }
         let Some(mut low) = self.pullback else {
@@ -727,6 +1318,7 @@ impl WyckoffStateMachine {
             self.pullback = None;
             if low.price >= broken - self.params.lps_atr * atr {
                 self.phase = WyckoffPhase::E;
+                self.condition = Some(WyckoffCondition::PullbackHeld);
                 self.report(
                     kinds(side).hold,
                     Marker {
@@ -747,6 +1339,7 @@ impl WyckoffStateMachine {
         let (_, broken) = range.bounds(side);
         if side.orient_bar(bar).close < broken {
             self.phase = WyckoffPhase::B;
+            self.condition = Some(WyckoffCondition::ClosedBackInside);
         }
     }
 
@@ -828,6 +1421,7 @@ impl WyckoffStateMachine {
                         bias: Some(side),
                         climax: Some((pending.volume, pending.spread)),
                     });
+                    self.condition = Some(WyckoffCondition::CounterMoveConfirmed);
                     let kinds = kinds(side);
                     if let Some(preliminary) = pending.preliminary {
                         self.report(kinds.preliminary, preliminary);
@@ -873,6 +1467,7 @@ impl WyckoffStateMachine {
                 bias: None,
                 climax: None,
             });
+            self.condition = Some(WyckoffCondition::WidthFallback);
         }
     }
 }
@@ -900,11 +1495,15 @@ impl Indicator for WyckoffStateMachine {
         self.events.clear();
         self.reported.clear();
         self.alerts.clear();
+        self.condition = None;
+        self.step = None;
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
         self.reported.clear();
+        self.condition = None;
+        self.step = None;
         self.index += 1;
 
         let prev_close = self.prev_close.replace(bar.close);
@@ -940,6 +1539,7 @@ impl Indicator for WyckoffStateMachine {
             self.bars_in_range += 1;
         }
         let started_in = self.phase;
+        let bias_from = self.range_bias();
         match self.phase {
             WyckoffPhase::A | WyckoffPhase::B => self.step_building(bar, atr),
             WyckoffPhase::C => self.step_tested(bar, atr, threshold),
@@ -955,6 +1555,13 @@ impl Indicator for WyckoffStateMachine {
         } else {
             self.pending = None;
         }
+        self.step = self.condition.map(|condition| Step {
+            from: started_in,
+            bias_from,
+            to: self.phase,
+            bias_to: self.range_bias(),
+            condition,
+        });
 
         let mut extra = HashMap::new();
         extra.insert("atr".to_string(), atr);
@@ -1307,6 +1914,177 @@ mod tests {
         assert_eq!(out.extra["range_source"], 2.0);
         assert!((out.extra["range_high"] - 101.9).abs() < 1e-9);
         assert_eq!(out.extra["cause_score"], 0.0);
+    }
+
+    /// The table against itself and against the parameter definition: unique identifiers that
+    /// start with the two phases, a bias exactly where there is a range, optional events among
+    /// the reported ones, and parameter names that are those of the registry, each used.
+    #[test]
+    fn test_transition_table_is_well_formed() {
+        let table = transitions();
+        let codes: Vec<f64> = WyckoffPhase::ALL.iter().map(|p| p.code()).collect();
+        assert_eq!(codes, [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]);
+
+        let names: Vec<&str> = WYCKOFF_DEFINITION.params.iter().map(|p| p.name).collect();
+        let mut used = std::collections::BTreeSet::new();
+        let mut ids = std::collections::BTreeSet::new();
+        for t in table {
+            assert!(ids.insert(t.id), "{} is listed twice", t.id);
+            assert!(
+                t.id.starts_with(&format!("{}_{}_", t.from.id(), t.to.id())),
+                "{}",
+                t.id
+            );
+            assert_eq!(
+                t.bias_from.is_empty(),
+                t.from == WyckoffPhase::Undefined,
+                "{}",
+                t.id
+            );
+            assert_eq!(
+                t.bias_to.is_none(),
+                t.to == WyckoffPhase::Undefined,
+                "{}",
+                t.id
+            );
+            for kind in t.optional_events {
+                assert!(t.events.contains(kind), "{}: {kind:?}", t.id);
+            }
+            for name in t.params {
+                assert!(names.contains(name), "{}: no parameter {name}", t.id);
+                used.insert(*name);
+            }
+            assert!(!t.text.is_empty() && !t.text.ends_with('.'), "{}", t.id);
+        }
+        for name in names {
+            assert!(used.contains(name), "no transition reads {name}");
+        }
+        // Every phase is entered and left, and every condition is used.
+        for phase in WyckoffPhase::ALL {
+            assert!(table.iter().any(|t| t.from == phase), "{phase:?}");
+            assert!(table.iter().any(|t| t.to == phase), "{phase:?}");
+        }
+        for condition in [
+            WyckoffCondition::CounterMoveConfirmed,
+            WyckoffCondition::WidthFallback,
+            WyckoffCondition::BoundarySwept,
+            WyckoffCondition::ClosedFarOutside,
+            WyckoffCondition::BoundaryTested,
+            WyckoffCondition::BreakoutClose,
+            WyckoffCondition::ClosedBackInside,
+            WyckoffCondition::PullbackHeld,
+        ] {
+            assert!(
+                table.iter().any(|t| t.condition == condition),
+                "{condition:?}"
+            );
+        }
+    }
+
+    /// Accumulation and distribution are mirror images in the table as in the calculation:
+    /// swapping the two sides in bias and events maps the table onto itself.
+    #[test]
+    fn test_transition_table_is_closed_under_mirroring() {
+        let bias = |b: WyckoffRangeBias| match b {
+            WyckoffRangeBias::Accumulation => WyckoffRangeBias::Distribution,
+            WyckoffRangeBias::Distribution => WyckoffRangeBias::Accumulation,
+            WyckoffRangeBias::Open => WyckoffRangeBias::Open,
+        };
+        let event = |kind: WyckoffEventKind| {
+            let (a, d) = (
+                kinds(WyckoffBias::Accumulation),
+                kinds(WyckoffBias::Distribution),
+            );
+            [
+                (a.preliminary, d.preliminary),
+                (a.climax, d.climax),
+                (a.reaction, d.reaction),
+                (a.test, d.test),
+                (a.breakout, d.breakout),
+                (a.hold, d.hold),
+            ]
+            .into_iter()
+            .find_map(|(x, y)| match kind {
+                k if k == x => Some(y),
+                k if k == y => Some(x),
+                _ => None,
+            })
+            .unwrap_or(kind)
+        };
+        let mut mirrored_onto = std::collections::BTreeSet::new();
+        for t in transitions() {
+            let events: Vec<_> = t.events.iter().map(|&k| event(k)).collect();
+            let optional: Vec<_> = t.optional_events.iter().map(|&k| event(k)).collect();
+            let twin = transitions()
+                .iter()
+                .find(|other| {
+                    other.from == t.from
+                        && other.to == t.to
+                        && other.condition == t.condition
+                        && other.bias_to == t.bias_to.map(bias)
+                        && other.bias_from.len() == t.bias_from.len()
+                        && t.bias_from
+                            .iter()
+                            .all(|&b| other.bias_from.contains(&bias(b)))
+                        && other.events == events
+                        && other.optional_events == optional
+                        && other.params == t.params
+                })
+                .unwrap_or_else(|| panic!("{} has no mirror image", t.id));
+            mirrored_onto.insert(twin.id);
+        }
+        assert_eq!(mirrored_onto.len(), transitions().len());
+    }
+
+    /// The order of the table is the order of the tests. On a bar that meets two conditions of
+    /// its phase the earlier entry is taken: a Spring before the abandonment, the abandonment
+    /// before a Secondary Test, a Sign of Strength before the abandonment.
+    #[test]
+    fn test_transitions_are_tested_in_the_order_listed() {
+        let position = |id: &str| {
+            transitions()
+                .iter()
+                .position(|t| t.id == id)
+                .unwrap_or_else(|| panic!("no transition {id}"))
+        };
+        let params = WyckoffParams {
+            breakout_volume: false,
+            ..WyckoffParams::default()
+        };
+        // The range is 98.5 to 101.5 with an ATR of about 1.5, in Phase B after the tests of
+        // the quiet bars.
+        let mut machine = machine_in_quiet_range(params);
+        assert_eq!(machine.phase(), WyckoffPhase::B);
+
+        // Low below the range, close far above it: a Spring and a close that would abandon.
+        machine.on_bar(&bar(26, 99.5, 104.2, 97.5, 104.0));
+        let taken = machine.last_transition().expect("a transition");
+        assert_eq!(taken.id, "b_c_spring");
+        assert!(position("b_c_spring") < position("b_none_abandon"));
+
+        // In Phase C the same close is the Sign of Strength, not the abandonment.
+        machine.on_bar(&bar(27, 104.0, 104.6, 103.8, 104.4));
+        let taken = machine.last_transition().expect("a transition");
+        assert_eq!(taken.id, "c_d_sign_of_strength");
+        assert!(position("c_d_sign_of_strength") < position("c_none_abandon"));
+
+        // Low just inside the range low, close far above the range: the test of the boundary
+        // and the abandonment both apply.
+        let mut machine = machine_in_quiet_range(params);
+        machine.on_bar(&bar(26, 99.5, 104.2, 98.6, 104.0));
+        let taken = machine.last_transition().expect("a transition");
+        assert_eq!(taken.id, "b_none_abandon");
+        assert!(position("b_none_abandon") < position("b_b_secondary_test_open"));
+        assert!(machine.alerts().is_empty());
+
+        // A bar that takes no transition says so.
+        let mut machine = machine_in_quiet_range(params);
+        machine.on_bar(&bar(26, 100.0, 100.4, 99.6, 100.1));
+        assert!(machine.last_transition().is_none());
+        machine.on_bar(&bar(27, 99.5, 100.0, 97.5, 99.6));
+        assert!(machine.last_transition().is_some());
+        machine.reset();
+        assert!(machine.last_transition().is_none());
     }
 
     #[test]
