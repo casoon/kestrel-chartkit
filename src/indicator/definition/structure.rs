@@ -5,6 +5,7 @@ use super::IndicatorDefinition;
 pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::order_block::ORDER_BLOCK_DEFINITION,
     &crate::indicator::liquidity_fvg::LIQUIDITY_FVG_DEFINITION,
+    &crate::indicator::gap::GAP_DEFINITION,
     &crate::indicator::market_structure_breaks::MARKET_STRUCTURE_BREAKS_DEFINITION,
     &crate::indicator::pivots_structure::PIVOTS_STRUCTURE_DEFINITION,
     &crate::indicator::candle_classification::CANDLE_CLASSIFICATION_DEFINITION,

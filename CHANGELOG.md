@@ -9,6 +9,20 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Applicability:** `ApplicabilityReason` gains `StructureContinuousSession` and
+  `StructureMethod` gains `PriceGaps`, so exhaustive `match` expressions over them need the new
+  arms. `method_rule_catalog` returns 13 rules instead of 8.
+
+### Added
+
+- **Gap:** the new detector `gap` (`reference`, `atr_len`, `min_atr`, `max_bars`; defaults
+  `range`, 14, 0, 100) reports price gaps between consecutive bars: edges, size in ATR of the
+  previous bar, the filled fraction of every open gap and the closing with the bars it took.
+  `data_requirements("gap")` names the series properties that limit the result. The catalog
+  grows from 133 to 134 entries.
+
 ## [0.40.0] - 2026-11-10
 
 ### Breaking

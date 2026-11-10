@@ -36,6 +36,7 @@ pub mod exhaustion;
 pub mod fisher_transform;
 pub mod flow_exhaustion;
 pub mod force_index;
+pub mod gap;
 pub mod harmonics;
 pub mod kst;
 pub mod leg_character;

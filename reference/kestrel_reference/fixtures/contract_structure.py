@@ -21,6 +21,7 @@ import math
 import statistics
 
 from ..fixture import provenance, render_contract
+from ..gap import expected_outputs as gap_outputs
 from ..indicators import rsi_lines
 from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
@@ -153,6 +154,117 @@ def fvg_touch_bars():
     return [(100.0, 101.0, 99.0, 100.5, 1000.0), (100.5, 102.0, 100.4, 101.8, 1000.0),
             (101.8, 103.0, 101.0, 102.8, 1000.0), (102.8, 103.2, 101.5, 102.0, 1000.0),
             (102.0, 102.5, 100.9, 101.2, 1000.0), (101.2, 101.5, 100.0, 100.2, 1000.0)]
+
+
+# --- gap -------------------------------------------------------------------------------------
+
+def gap(bars, **params):
+    """Price gaps per the module documentation of `src/indicator/gap.rs`; the model is
+    `kestrel_reference/gap.py`. `reference` is the option name there and its position (0 range,
+    1 close) in the case parameters."""
+    case = {key: float(value) for key, value in params.items() if key != "reference"}
+    if "reference" in params:
+        case["reference"] = float(["range", "close"].index(params["reference"]))
+    return case, bars, gap_outputs(bars, **params)
+
+
+def gap_bars():
+    """Nineteen bars of range 2 climbing from 94 to 100 (true range 2 on every bar, so the ATR is
+    exactly 2), then by bar:
+    20  opens at 104 above the high 101 of bar 19: a gap up of 3 = 1.5 ATR, a sixth filled
+    23  opens below the low of bar 22: a gap down while the gap up is still open
+    26  its high reaches the top of the gap down and its low the bottom of the gap up: both
+        closed, three and six bars after they formed
+    27  opens above the high of bar 26 and trades back to it: formed and closed on one bar
+    28  opens exactly on the high of bar 27: touching is no gap
+    29  a gap down that stays open to the end, a third filled, later more than half."""
+    steps = [0.5, 0.25, 0.25] * 6
+    closes = [94.0]
+    for step in steps:
+        closes.append(closes[-1] + step)
+    bars = [(closes[0], closes[0] + 1.0, closes[0] - 1.0, closes[0], 1000.0)]
+    bars += [(previous, close + 1.0, close - 1.0, close, 1000.0)
+             for previous, close in zip(closes, closes[1:])]
+    assert len(bars) == 19 and bars[-1][1:4] == (101.0, 99.0, 100.0)
+    return bars + [(o, h, l, c, 1000.0) for o, h, l, c in [
+        (104.0, 105.0, 103.5, 104.5), (104.5, 105.5, 103.0, 103.5), (103.5, 104.0, 102.5, 103.0),
+        (102.0, 102.2, 101.6, 101.8), (101.8, 102.4, 101.5, 102.3), (102.3, 102.45, 101.2, 101.4),
+        (101.4, 102.6, 100.9, 102.0), (103.0, 103.2, 102.5, 102.8), (103.2, 103.6, 102.9, 103.4),
+        (102.0, 102.3, 101.0, 101.2), (101.2, 101.6, 100.5, 100.8), (100.8, 101.3, 100.0, 100.4),
+        (100.4, 102.5, 100.1, 102.2)]]
+
+
+def gap_close_bars():
+    """Against the previous close, ATR over 5 bars (exactly 2 after bar 5), minimum 0.5 ATR:
+    6   opens 1.0 above the close of bar 5: exactly 0.5 ATR, counts (the minimum is inclusive)
+    7   opens 0.5 above the close of bar 6, below the minimum 0.95: no gap
+    8   opens 2.0 below the close of bar 7: a gap down; its low closes the gap up of bar 6
+    10  its high touches the top of the gap down: closed by reaching the edge."""
+    return [(o, h, l, c, 1000.0) for o, h, l, c in [
+        (100.0, 101.0, 99.0, 100.0), (100.0, 101.25, 99.25, 100.25), (100.25, 101.5, 99.5, 100.5),
+        (100.5, 101.25, 99.25, 100.25), (100.25, 101.5, 99.5, 100.5),
+        (101.5, 102.0, 101.0, 101.25), (101.75, 102.25, 101.5, 102.0),
+        (100.0, 100.75, 99.5, 100.25), (100.25, 101.5, 100.0, 101.25),
+        (101.25, 102.0, 101.0, 101.75), (101.75, 102.0, 101.5, 101.75)]]
+
+
+def gap_horizon_bars():
+    """max_bars 3, ATR over 3 bars:
+    4   a gap up from 101.5 to 103, followed on bars 4 to 7 and never closed there
+    8   its low is below the bottom of that gap, which is no longer followed: no event
+    9   a gap down from 101 to 100
+    12  the last bar on which it is followed; its high touches the top: closed after 3 bars."""
+    return [(o, h, l, c, 1000.0) for o, h, l, c in [
+        (100.0, 101.0, 99.0, 100.0), (100.0, 101.25, 99.25, 100.25), (100.25, 101.5, 99.5, 100.5),
+        (103.0, 104.0, 102.5, 103.5), (103.5, 104.0, 102.75, 103.0), (103.0, 103.5, 102.0, 102.5),
+        (102.5, 103.0, 101.75, 102.0), (102.0, 102.25, 101.0, 101.25),
+        (100.0, 100.5, 99.0, 99.5), (99.5, 100.25, 99.0, 100.0), (100.0, 100.75, 99.5, 100.5),
+        (100.5, 101.0, 100.0, 100.75), (100.75, 101.25, 100.5, 101.0)]]
+
+
+def gap_flat_bars():
+    """Three bars without a range (ATR 0), then single-price bars stepping up:
+    4   opens above bar 3 while the ATR is 0: counts for every minimum, `size_atr` absent
+    6   a step of 0.5 against an ATR of 1/9: 4.5 ATR
+    7   a step of 0.1 against an ATR of 13/54, below the minimum of 2 ATR: no gap."""
+    return [(p, p, p, p, 0.0) for p in [50.0, 50.0, 50.0, 50.5, 50.5, 51.0, 51.1, 51.1]]
+
+
+def gap_walk_bars(n, seed):
+    """A random walk whose open jumps away from the previous close on about a third of the bars
+    (by up to 2 either way), so gaps of both directions form, overlap, close and run out."""
+    state = seed
+
+    def uniform():
+        nonlocal state
+        state = (state * 6364136223846793005 + 1442695040888963407) % 2 ** 64
+        return (state >> 11) / 2 ** 53
+
+    bars, close = [], 100.0
+    for _ in range(n):
+        jump = (uniform() - 0.5) * 4.0 if uniform() < 0.35 else 0.0
+        open_ = round(close + jump, 4)
+        close = round(open_ + (uniform() + uniform() - 1.0) * 1.2, 4)
+        high = round(max(open_, close) + uniform() * 0.5, 4)
+        low = round(min(open_, close) - uniform() * 0.5, 4)
+        bars.append((open_, high, low, close, 1000.0))
+    return bars
+
+
+def gap_summary(expected):
+    """What a run reported, for the case comment."""
+    outputs = [output for output, _ in expected if output is not None]
+    up = sum(1 for value, _ in outputs if value > 0)
+    down = sum(1 for value, _ in outputs if value < 0)
+    closed = sum(int(extra["closed_count"]) for _, extra in outputs)
+    same_bar = sum(1 for _, extra in outputs
+                   for key, bars_since in extra.items()
+                   if key.startswith("closed_") and key.endswith("_bars") and bars_since == 0.0)
+    most = max(int(extra["open_count"]) for _, extra in outputs)
+    left = int(outputs[-1][1]["open_count"])
+    return (f"{up} gaps up, {down} down; {closed} closed ({same_bar} on their own bar), "
+            f"{up + down - closed - left} dropped unclosed, {left} open at the end; "
+            f"at most {most} open at once")
 
 
 # --- market_structure_breaks -----------------------------------------------------------------
@@ -1518,6 +1630,7 @@ def build():
              "volume_k": 3.0, "climax_range_atr": 1.8, "st_atr": 0.4, "breakout_volume": 0,
              "lps_atr": 0.2, "abandon_atr": 1.5}
     tuned_cycle, tuned_walk = wyckoff(wyckoff_cycle_bars(), **tuned), wyckoff(walk, **tuned)
+    gap_walk = gap(gap_walk_bars(150, 20261110), min_atr=0.25, max_bars=20)
     blocks = [
         case_block("liquidity_fvg_defaults", "liquidity_fvg, lookback 20: gaps both ways, sweeps both ways",
                    *liquidity_fvg(20, fvg_bars())),
@@ -1525,6 +1638,20 @@ def build():
                    *liquidity_fvg(3, fvg_bars())),
         case_block("liquidity_fvg_touch", "liquidity_fvg, lookback 2: touching levels are no gap",
                    *liquidity_fvg(2, fvg_touch_bars())),
+        case_block("gap_defaults", "gap, defaults: a gap of 1.5 ATR closed six bars later, two gaps "
+                   "open at once and closed by one bar, a gap closed on its own bar",
+                   *gap(gap_bars())),
+        case_block("gap_close_reference", "gap against the previous close, minimum 0.5 ATR: on the "
+                   "minimum, below it, closed by touching the edge",
+                   *gap(gap_close_bars(), reference="close", atr_len=5, min_atr=0.5)),
+        case_block("gap_horizon", "gap, max_bars 3: dropped unclosed after the last followed bar, "
+                   "closed on the last followed bar",
+                   *gap(gap_horizon_bars(), atr_len=3, max_bars=3)),
+        case_block("gap_flat", "gap, minimum 2 ATR after bars without a range: no size in ATR "
+                   "while the ATR is 0",
+                   *gap(gap_flat_bars(), atr_len=3, min_atr=2.0)),
+        case_block("gap_walk", "gap on a random walk with jumping opens, minimum 0.25 ATR, "
+                   f"max_bars 20: {gap_summary(gap_walk[2])}", *gap_walk),
         case_block("market_structure_breaks_equal_highs",
                    "market_structure_breaks, lookback 2: equal highs are no strict swing high",
                    *market_structure_breaks(2, equal_highs_bars())),

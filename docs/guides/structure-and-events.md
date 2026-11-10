@@ -211,3 +211,33 @@ back, and the best-scoring candidate is reported.
 Alerts fire `right` bars after the pivot; strength is the quality score. `value` is the oscillator.
 On event bars `extra` carries `pivot_price`, `previous_price`, `pivot_age`, `bars_between` and
 `direction` (`1` or `-1`).
+
+## Price gaps
+
+`gap` reports a gap between two consecutive bars: the open beyond the previous bar's high or low
+(`reference` `range`, the default) or beyond its close (`close`). The size is the distance from
+that edge to the open, in price units (`size`) and in ATR of the previous bar (`size_atr`); the
+previous bar's ATR is known at the open and does not contain the gap. A gap smaller than `min_atr`
+ATR is not counted.
+
+| Parameter   | Default |
+| ----------- | ------- |
+| `reference` | `range` |
+| `atr_len`   | 14      |
+| `min_atr`   | 0       |
+| `max_bars`  | 100     |
+
+`value` is `1` (gap up), `-1` (gap down) or `0`; a gap bar carries `gap_top`, `gap_bottom`, `size`
+and `size_atr`. Every gap is followed on its own bar and the `max_bars` bars after it. While it is
+open, each bar lists it under `open_<n>_direction`, `_top`, `_bottom`, `_fill` and `_bars`
+(`n` from 1, the youngest first; `open_count` gaps in all), where `fill` is the fraction of the
+gap the price has gone back into. It is closed on the first bar whose low (gap up) or high (gap
+down) reaches the far edge, which can be the gap bar itself: that bar reports `closed_count` and
+`closed_<n>_bars`, the bars since the gap bar. A gap still open after `max_bars` bars is dropped
+without an event. Alerts: `gap_up`, `gap_down`, `gap_closed`.
+
+`GapEngine::open_gaps()` and `closed_gaps()` return the same gaps as `Gap` values (`direction`,
+`top`, `bottom`, `size_atr`, `bar`, `fill`, `closed_after`). The detector does not classify gaps
+as common, breakaway, runaway or exhaustion gaps: those names are given in hindsight.
+`data_requirements("gap")` carries the series properties that limit the result: a series without
+a session boundary, contract rolls, adjusted prices and broker quotes.

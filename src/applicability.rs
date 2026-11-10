@@ -21,7 +21,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::model::{
-    ContinuityKind, LiquidityTier, PriceAdjustment, Provenance, SeriesCapabilities, VolumeKind,
+    ContinuityKind, LiquidityTier, PriceAdjustment, Provenance, SeriesCapabilities, SessionKind,
+    VolumeKind,
 };
 
 /// What an indicator's calculation needs from the bar series it runs over, beyond plain OHLC
@@ -73,6 +74,10 @@ pub enum StructureMethod {
     /// Spring and UTAD are a single bar's high or low piercing a range boundary while the close
     /// returns.
     WyckoffRange,
+    /// Price gaps (`src/indicator/gap.rs`): the open of a bar against the high and low (or the
+    /// close) of the bar before it, the distance measured in the ATR of that bar; a gap is closed
+    /// by a later low or high that reaches its far edge.
+    PriceGaps,
 }
 
 /// Which rule in [`check_applicability`] produced a given [`ApplicabilityNote`].
@@ -121,6 +126,9 @@ pub enum ApplicabilityReason {
     /// [`StructureMethod`] rule: `continuity == SingleContract`, the series ends with the
     /// contract's expiry and holds only that contract's life.
     StructureFiniteHistory,
+    /// [`StructureMethod`] rule: `session == Continuous`, the series has no session boundary
+    /// between two bars.
+    StructureContinuousSession,
 }
 
 /// A single applicability finding: which rule fired, and a publication-ready explanation.
@@ -284,7 +292,7 @@ pub struct MethodRuleDescription {
     pub explanation: &'static str,
 }
 
-const METHOD_RULES: [MethodRuleDescription; 8] = [
+const METHOD_RULES: [MethodRuleDescription; 13] = [
     // Elliott: leg lengths are differences of swing prices, retracements are ratios of such
     // differences, swing points are bar highs and lows.
     MethodRuleDescription {
@@ -358,10 +366,52 @@ const METHOD_RULES: [MethodRuleDescription; 8] = [
             der Climax-Bar und der Gegenbewegung, Durchstoß einer einzelnen Bar); diese Extreme \
             sind Quotes des Anbieters und gelten nicht am gehandelten Markt",
     },
+    // Price gaps: the open against the previous bar's high and low (or close), the distance in
+    // ATR of the previous bar, closing by a later bar's low or high.
+    MethodRuleDescription {
+        method: StructureMethod::PriceGaps,
+        reason: ApplicabilityReason::StructureRollJumps,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Ein Kontraktwechsel steht als Kurssprung zwischen zwei Bars in der Reihe \
+            und wird als Kurslücke gemeldet, ohne dass sich der Markt bewegt hat",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PriceGaps,
+        reason: ApplicabilityReason::StructureBackAdjustedLevels,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Rückwärtsbereinigung verschiebt frühere Kurse additiv: Abstände und \
+            damit die Größe früherer Lücken bleiben erhalten, ihre Ränder liegen auf nie \
+            gehandelten Preisen; ob an der Roll-Grenze eine Lücke steht, hängt daran, welche \
+            Kurse der beiden Kontrakte die Bereinigung angleicht",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PriceGaps,
+        reason: ApplicabilityReason::StructureProportionalAdjustment,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Bereinigung skaliert frühere Kurse proportional: Ränder und absolute \
+            Größe früherer Lücken stehen an anderen Zahlen als gehandelt, und der Kurssprung am \
+            Stichtag, den die Bereinigung herausnimmt, steht nicht als Lücke in der Reihe",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PriceGaps,
+        reason: ApplicabilityReason::StructureProviderExtreme,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Eröffnung, Hoch und Tief sind Quotes des Anbieters: ob zwischen zwei Bars \
+            eine Lücke steht und wie groß sie ist, hängt an dessen Kursstellung und \
+            Handelszeiten und gilt nicht am gehandelten Markt",
+    },
+    MethodRuleDescription {
+        method: StructureMethod::PriceGaps,
+        reason: ApplicabilityReason::StructureContinuousSession,
+        tier: ApplicabilityTier::Degraded,
+        explanation: "Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster \
+            Eröffnung liegt keine Handelspause, und eine Lücke steht nur dort, wo die Reihe \
+            unterbrochen ist (Wochenende, Ausfall der Kursstellung)",
+    },
 ];
 
 /// All [`StructureMethod`] rules in the order [`check_applicability`] evaluates them.
-pub fn method_rule_catalog() -> [MethodRuleDescription; 8] {
+pub fn method_rule_catalog() -> [MethodRuleDescription; 13] {
     METHOD_RULES
 }
 
@@ -382,6 +432,9 @@ fn method_rule_applies(reason: ApplicabilityReason, capabilities: &SeriesCapabil
         }
         ApplicabilityReason::StructureFiniteHistory => {
             capabilities.continuity == ContinuityKind::SingleContract
+        }
+        ApplicabilityReason::StructureContinuousSession => {
+            capabilities.session == SessionKind::Continuous
         }
         _ => false,
     }
@@ -506,6 +559,10 @@ pub fn check_applicability(
 /// and (unless `breakout_volume` is off) its Sign of Strength/Weakness read the volume. Without
 /// volume it finds no climax; only its width fallback then sets a range.
 ///
+/// `gap` carries a [`StructureMethod`] as well: whether a series shows gaps at all depends on its
+/// session cut, and a contract change or a price adjustment puts gaps into the series or takes
+/// them out of it.
+///
 /// Names not listed below (including all pure price indicators) return
 /// [`DataRequirements::default()`] — deliberately conservative: `needs_trade_direction` and
 /// `needs_liquidity_depth` are left `false` everywhere for now, since no indicator covered by the
@@ -541,6 +598,10 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             structure_method: Some(StructureMethod::WyckoffRange),
             ..DataRequirements::default()
         },
+        "gap" => DataRequirements {
+            structure_method: Some(StructureMethod::PriceGaps),
+            ..DataRequirements::default()
+        },
         "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure" => {
             DataRequirements {
                 session_sensitive: true,
@@ -556,7 +617,6 @@ pub fn data_requirements(name: &str) -> DataRequirements {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::SessionKind;
 
     /// A neutral baseline: deep, exchange-provenance, regular-session, single-contract, raw,
     /// real-turnover series. Individual tests override only the field(s) relevant to the rule
@@ -966,9 +1026,73 @@ mod tests {
                             })
                     })
             })
+            .chain([SeriesCapabilities {
+                session: SessionKind::Continuous,
+                ..baseline_capabilities()
+            }])
             .any(|caps| method_rule_applies(a.reason, &caps));
             assert!(hit, "{:?} is never triggered", a.reason);
         }
+    }
+
+    #[test]
+    fn gap_rules_follow_session_roll_adjustment_and_provenance() {
+        use ApplicabilityReason::*;
+        let gap = data_requirements("gap");
+        // A single contract on an exchange, regular session, raw prices: gaps mean what they say.
+        assert_eq!(
+            check_applicability(&gap, &baseline_capabilities()),
+            Applicability::Applicable
+        );
+        let cases = [
+            (
+                SeriesCapabilities {
+                    session: SessionKind::Continuous,
+                    ..baseline_capabilities()
+                },
+                StructureContinuousSession,
+            ),
+            (
+                SeriesCapabilities {
+                    continuity: ContinuityKind::StitchedUnadjusted,
+                    ..baseline_capabilities()
+                },
+                StructureRollJumps,
+            ),
+            (
+                SeriesCapabilities {
+                    continuity: ContinuityKind::StitchedBackAdjusted,
+                    ..baseline_capabilities()
+                },
+                StructureBackAdjustedLevels,
+            ),
+            (
+                SeriesCapabilities {
+                    price_adjustment: PriceAdjustment::Split,
+                    ..baseline_capabilities()
+                },
+                StructureProportionalAdjustment,
+            ),
+            (
+                SeriesCapabilities {
+                    provenance: Provenance::Broker,
+                    ..baseline_capabilities()
+                },
+                StructureProviderExtreme,
+            ),
+        ];
+        for (caps, reason) in cases {
+            assert_eq!(reasons_of(&check_applicability(&gap, &caps)), vec![reason]);
+        }
+        // An extended session still has a break between two sessions.
+        let extended = SeriesCapabilities {
+            session: SessionKind::Extended,
+            ..baseline_capabilities()
+        };
+        assert_eq!(
+            check_applicability(&gap, &extended),
+            Applicability::Applicable
+        );
     }
 
     /// N28: an alias carries the requirements of the indicator it builds.

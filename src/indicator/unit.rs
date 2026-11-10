@@ -123,6 +123,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("extended_volume_profile", IndicatorUnit::Price),
     ("fisher_transform", IndicatorUnit::Ratio),
     ("flow_exhaustion", IndicatorUnit::Ratio),
+    ("gap", IndicatorUnit::Unitless),
     ("garman_klass", IndicatorUnit::Ratio),
     ("hires_volume_flow", IndicatorUnit::Volume),
     ("historical_volatility", IndicatorUnit::Ratio),

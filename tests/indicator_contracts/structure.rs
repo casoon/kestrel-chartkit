@@ -35,6 +35,7 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage::full("liquidity_fvg"),
+    Coverage::full("gap"),
     Coverage::full("market_structure_breaks"),
     Coverage::full("pivots_structure"),
     Coverage::full("zigzag"),
@@ -121,6 +122,43 @@ fn liquidity_fvg_rejects_invalid_configuration() {
     assert_rejected("liquidity_fvg", &[("lookback", 2.5)]);
     assert_rejected("liquidity_fvg", &[("lookback", f64::NAN)]);
     assert_rejected("liquidity_fvg", &[("look_back", 20.0)]);
+}
+
+// --- gap -------------------------------------------------------------------------------------
+
+#[test]
+fn gap_defaults() {
+    holds("gap_defaults", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_close_reference() {
+    holds("gap_close_reference", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_horizon() {
+    holds("gap_horizon", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_flat() {
+    holds("gap_flat", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_walk() {
+    holds("gap_walk", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_rejects_invalid_configuration() {
+    assert_rejected("gap", &[("reference", 2.0)]);
+    assert_rejected("gap", &[("reference", 0.5)]);
+    assert_rejected("gap", &[("atr_len", 0.0)]);
+    assert_rejected("gap", &[("min_atr", -0.1)]);
+    assert_rejected("gap", &[("max_bars", 0.0)]);
+    assert_rejected("gap", &[("lookback", 20.0)]);
 }
 
 // --- market_structure_breaks -----------------------------------------------------------------

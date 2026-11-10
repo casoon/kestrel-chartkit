@@ -6,10 +6,10 @@ requirements, and a verdict follows from which rule conditions hold.
 
 Two files come out of this module:
 
-- `golden_applicability.txt`: the complete matrix (19 indicators x 10 series classes).
+- `golden_applicability.txt`: the complete matrix (20 indicators x 10 series classes).
 - `golden_applicability_v0_35.txt`: the part of the matrix that existed in 0.35.0 (17 indicators x
-  9 series classes, every indicator except `elliott` and `wyckoff`), computed with the eight
-  generic rules only. It was checked against the output of the 0.35.0 tag once; the Rust test
+  9 series classes, every indicator except those with a named structure method), computed with
+  the eight generic rules only. It was checked against the output of the 0.35.0 tag once; the Rust test
   `unchanged_indicators_keep_their_v0_35_rows` keeps it from changing silently.
 
 Line format: `indicator<TAB>class<TAB>verdict<TAB>explanations joined by " || "`, where the verdict
@@ -21,19 +21,19 @@ NAME = "golden_applicability"
 NAME_FROZEN = "golden_applicability_v0_35"
 
 # --- series classes: declared properties --------------------------------------------------------
-# volume, continuity, price_adjustment, provenance, liquidity_tier. (trade_direction is false for
-# all of them and `session` is read by no rule.)
+# volume, continuity, price_adjustment, provenance, liquidity_tier, session. (trade_direction is
+# false for all of them; `session` is read by the gap rules only.)
 CLASSES = {
-    "index-cash": ("none", "spot", "raw", "exchange", "deep"),
-    "index-future": ("real", "single", "raw", "exchange", "deep"),
-    "future-single": ("real", "single", "raw", "exchange", "normal"),
-    "future-continuous": ("real", "back_adjusted", "raw", "exchange", "deep"),
-    "cfd-broker": ("tick", "spot", "raw", "broker", "unknown"),
-    "fx-spot": ("tick", "spot", "raw", "broker", "deep"),
-    "stock-adjusted": ("real", "spot", "split_and_dividend", "exchange", "deep"),
-    "stock-thin": ("real", "spot", "raw", "exchange", "thin"),
-    "commodity-chained": ("real", "unadjusted", "raw", "exchange", "normal"),
-    "synthetic": ("real", "spot", "raw", "synthetic", "normal"),
+    "index-cash": ("none", "spot", "raw", "exchange", "deep", "regular"),
+    "index-future": ("real", "single", "raw", "exchange", "deep", "extended"),
+    "future-single": ("real", "single", "raw", "exchange", "normal", "extended"),
+    "future-continuous": ("real", "back_adjusted", "raw", "exchange", "deep", "extended"),
+    "cfd-broker": ("tick", "spot", "raw", "broker", "unknown", "continuous"),
+    "fx-spot": ("tick", "spot", "raw", "broker", "deep", "continuous"),
+    "stock-adjusted": ("real", "spot", "split_and_dividend", "exchange", "deep", "regular"),
+    "stock-thin": ("real", "spot", "raw", "exchange", "thin", "regular"),
+    "commodity-chained": ("real", "unadjusted", "raw", "exchange", "normal", "extended"),
+    "synthetic": ("real", "spot", "raw", "synthetic", "normal", "continuous"),
 }
 FROZEN_CLASSES = [c for c in CLASSES if c != "future-single"]
 
@@ -60,9 +60,10 @@ INDICATORS = {
     "zigzag": EXTREMES,
     "elliott": {"method": "elliott"},
     "wyckoff": {"volume": True, "method": "wyckoff"},
+    "gap": {"method": "gap"},
     "pivot_sets": EXTREMES,
 }
-FROZEN_INDICATORS = [i for i in INDICATORS if i not in ("elliott", "wyckoff")]
+FROZEN_INDICATORS = [i for i in INDICATORS if "method" not in INDICATORS[i]]
 
 # --- the generic rules, in evaluation order ------------------------------------------------------
 TEXT_TICK = "zeigt Update-Häufigkeit, nicht Umsatz"
@@ -76,7 +77,7 @@ TEXT_EXTREME = "Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht üb
 # --- the rules of the named structure methods ----------------------------------------------------
 # (method, series property) -> explanation. Properties: roll_jumps = unadjusted stitched series,
 # back_adjusted = back-adjusted stitched series, adjusted = any split/dividend adjustment,
-# broker = broker provenance, finite = single contract.
+# broker = broker provenance, finite = single contract, continuous = no session boundary.
 METHOD_TEXT = {
     ("elliott", "roll_jumps"): (
         "Roll-Sprünge zwischen den Kontrakten stehen als Kursbewegung in der Reihe und würden "
@@ -110,29 +111,52 @@ METHOD_TEXT = {
         "Spannengrenzen, Spring und UTAD hängen an einzelnen Hochs und Tiefs (Extrem der "
         "Climax-Bar und der Gegenbewegung, Durchstoß einer einzelnen Bar); diese Extreme sind "
         "Quotes des Anbieters und gelten nicht am gehandelten Markt"),
+    ("gap", "roll_jumps"): (
+        "Ein Kontraktwechsel steht als Kurssprung zwischen zwei Bars in der Reihe und wird als "
+        "Kurslücke gemeldet, ohne dass sich der Markt bewegt hat"),
+    ("gap", "back_adjusted"): (
+        "Die Rückwärtsbereinigung verschiebt frühere Kurse additiv: Abstände und damit die Größe "
+        "früherer Lücken bleiben erhalten, ihre Ränder liegen auf nie gehandelten Preisen; ob an "
+        "der Roll-Grenze eine Lücke steht, hängt daran, welche Kurse der beiden Kontrakte die "
+        "Bereinigung angleicht"),
+    ("gap", "adjusted"): (
+        "Die Bereinigung skaliert frühere Kurse proportional: Ränder und absolute Größe früherer "
+        "Lücken stehen an anderen Zahlen als gehandelt, und der Kurssprung am Stichtag, den die "
+        "Bereinigung herausnimmt, steht nicht als Lücke in der Reihe"),
+    ("gap", "broker"): (
+        "Eröffnung, Hoch und Tief sind Quotes des Anbieters: ob zwischen zwei Bars eine Lücke "
+        "steht und wie groß sie ist, hängt an dessen Kursstellung und Handelszeiten und gilt "
+        "nicht am gehandelten Markt"),
+    ("gap", "continuous"): (
+        "Die Reihe hat keine Sitzungsgrenze: zwischen Schluss und nächster Eröffnung liegt keine "
+        "Handelspause, und eine Lücke steht nur dort, wo die Reihe unterbrochen ist (Wochenende, "
+        "Ausfall der Kursstellung)"),
 }
-# Which properties each method reads (Wyckoff has no rule for adjusted prices or finite life).
+# Which properties each method reads (Wyckoff has no rule for adjusted prices or finite life;
+# only the gaps read the session).
 METHOD_PROPERTIES = {
     "elliott": ["roll_jumps", "back_adjusted", "adjusted", "broker", "finite"],
     "wyckoff": ["roll_jumps", "back_adjusted", "broker"],
+    "gap": ["roll_jumps", "back_adjusted", "adjusted", "broker", "continuous"],
 }
 
 
 def property_holds(prop, cls):
-    volume, continuity, adjustment, provenance, tier = CLASSES[cls]
+    volume, continuity, adjustment, provenance, tier, session = CLASSES[cls]
     return {
         "roll_jumps": continuity == "unadjusted",
         "back_adjusted": continuity == "back_adjusted",
         "adjusted": adjustment != "raw",
         "broker": provenance == "broker",
         "finite": continuity == "single",
+        "continuous": session == "continuous",
     }[prop]
 
 
 def verdict(indicator, cls):
     """(verdict, [explanations]) of one pair."""
     need = INDICATORS[indicator]
-    volume, continuity, adjustment, provenance, tier = CLASSES[cls]
+    volume, continuity, adjustment, provenance, tier, session = CLASSES[cls]
     unsuitable, degraded = [], []
     if need.get("volume") and volume == "tick":
         unsuitable.append(TEXT_TICK)
@@ -173,7 +197,7 @@ def render(header, rows):
 
 def build():
     header = [
-        "golden_applicability: verdict of every (indicator, series class) pair, all 19 x 10.",
+        "golden_applicability: verdict of every (indicator, series class) pair, all 20 x 10.",
         "",
         "Derived by reference/kestrel_reference/fixtures/applicability.py from the documented",
         "rules, not from the Rust code. Line: indicator<TAB>class<TAB>verdict<TAB>explanations.",

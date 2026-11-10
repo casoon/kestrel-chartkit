@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 133 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 134 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1238,6 +1238,21 @@ Fair value gap (imbalance) detection
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `lookback` | 20 | whole number 1 – 10000 | bars kept for gap and sweep detection |
+
+### `gap`
+
+Price gap between consecutive bars: the open beyond the previous bar's range or close, size in ATR of the previous bar, every open gap with its filled fraction, closing as an event
+
+[See it in the showcase](../../../showcase/gap/)
+
+**Output** unit Unitless, range not declared · **warmup** 15 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `reference` | `range` | `range`, `close` (f64 map: 0 – 1) | what the open is compared with: the previous bar's high and low, or its close |
+| `atr_len` | 14 | whole number 1 – 10000 | bars of the Wilder ATR the gap size is measured in |
+| `min_atr` | 0 | 0 – 1000 | smallest gap that counts, in ATR of the previous bar; 0 counts every gap |
+| `max_bars` | 100 | whole number 1 – 10000 | bars after its own on which a gap is followed; a gap still open then is dropped |
 
 ### `market_structure_breaks` · alias `bos`, `choch`
 
