@@ -2060,7 +2060,8 @@ fn mirrored(bars: &[Bar]) -> Vec<Bar> {
 
 /// Eigenschaft über Zufallsreihen mit Kurslücken: Was ein ZigZag dieses Crates als Knoten führt,
 /// ist nach jeder Bar eine Pivotfolge — `zigzag_advanced` im Prozent- und im ATR-Modus, der
-/// einfache `zigzag`, dazu `reduce` und `project_to_timeframe` auf den Knoten. Die Elliott-Prüfer
+/// einfache `zigzag`, dazu `reduce` und `project_to_timeframe` auf den Knoten, und die Pivots von
+/// `structure::threshold_zigzag` am Ende der Reihe. Die Elliott-Prüfer
 /// weisen kein Fenster als „keine Pivotfolge“ ab, und die gespiegelte Reihe ergibt die
 /// gespiegelten Knoten. 60 Reihen zu je 400 Bars, vier Tiefen, fünf Schwellen je Modus.
 #[test]
@@ -2070,6 +2071,7 @@ fn test_scenario_zigzag_nodes_are_a_pivot_sequence_on_random_gap_series() {
     };
     use kestrel_chartkit::indicator::zigzag::ZigZagEngine;
     use kestrel_chartkit::indicator::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode};
+    use kestrel_chartkit::structure::threshold_zigzag;
     use kestrel_chartkit::timeframe::Timeframe;
 
     let depths = [(1usize, 0usize), (2, 1), (3, 2), (5, 0)];
@@ -2086,9 +2088,25 @@ fn test_scenario_zigzag_nodes_are_a_pivot_sequence_on_random_gap_series() {
         ZigZagDeviationMode::AtrMultiple(4.0),
     ];
     let (mut runs, mut nodes_seen, mut same_bar_pairs) = (0usize, 0usize, 0usize);
+    let mut threshold_pivots = 0usize;
     for seed in 1..=60u64 {
         let bars = gap_walk(seed, 400);
         let mirror = mirrored(&bars);
+        // The third ZigZag of the crate, confirmed by closes a fixed distance beyond the extreme.
+        for distance in [0.5, 2.0, 6.0] {
+            let pivots = threshold_zigzag(&bars, &vec![Some(distance); bars.len()]);
+            let flat: Vec<_> = pivots
+                .iter()
+                .map(|p| (p.index as i64, p.price, p.is_high))
+                .collect();
+            assert_eq!(
+                pivot_sequence_break(&flat),
+                None,
+                "threshold_zigzag, seed {seed}, distance {distance}: {flat:?}"
+            );
+            assert!(pivots.iter().all(|p| p.confirmed_index > p.index));
+            threshold_pivots += pivots.len();
+        }
         for (depth, backstep) in depths {
             for deviation in deviations {
                 let context = format!("seed {seed}, depth {depth}, {deviation:?}");
@@ -2202,6 +2220,7 @@ fn test_scenario_zigzag_nodes_are_a_pivot_sequence_on_random_gap_series() {
     // What the walks contain, recorded so that a change of the generator shows: the number of
     // runs, of nodes at the end of the runs, and of neighbouring nodes on one bar.
     assert_eq!((runs, nodes_seen, same_bar_pairs), (2400, 134024, 9447));
+    assert_eq!(threshold_pivots, 17323);
 }
 
 /// `trendlines` über Zufallsreihen mit Kurslücken: Die gespiegelte Reihe ergibt die gespiegelte
