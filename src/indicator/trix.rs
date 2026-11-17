@@ -80,6 +80,11 @@ impl Indicator for Trix {
         self.len + 1
     }
 
+    fn convergence_period(&self) -> usize {
+        let t = super::ema_tau(self.len);
+        super::settle_bars(&[t, t, t, super::ema_tau(self.signal_len)]).max(self.warmup_period())
+    }
+
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.bars_seen += 1;
 

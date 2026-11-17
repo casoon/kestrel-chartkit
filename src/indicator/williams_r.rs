@@ -14,6 +14,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// defaults `oversold = 20` / `overbought = 80` are on this ascending scale.
 ///
 /// **`value` is the line**: `Ema(avg_len)` over the raw value with the first-sample seed.
+/// `extra["raw"]` is the unsmoothed value before that EMA (equals `value` for `avg_len = 1`).
 /// `extra["signal"]` is `Ema(sig_len)` over the line; the context line runs over `ctx_len` bars.
 /// Alerts fire on line/signal crosses inside the extreme zones, on crosses of `mid_line` and on
 /// the trend wedge (`bull_/bear_trend_wedge`, see [`SlopeDivergence`]).
@@ -159,6 +160,7 @@ impl Indicator for WilliamsR {
             50.0
         };
 
+        let raw_value = wpr_raw;
         let wpr_line = self.avg.update(wpr_raw)?;
         let signal = self.signal_avg.update(wpr_line)?;
 
@@ -196,6 +198,7 @@ impl Indicator for WilliamsR {
         self.prev_signal = Some(signal);
 
         let mut extra = HashMap::new();
+        extra.insert("raw".to_string(), raw_value);
         extra.insert("signal".to_string(), signal);
         if let Some(ctx_line) = ctx_line {
             let div = self.divergence.update(wpr_line, ctx_line);

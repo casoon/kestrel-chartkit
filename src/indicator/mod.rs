@@ -265,11 +265,36 @@ impl fmt::Display for IndicatorAlert {
     }
 }
 
+/// Conservative settling length for a chain of exponential smoothers.
+///
+/// `taus` are the time constants (`1/alpha`) of the smoothers a value passes through in series:
+/// `(len + 1) / 2` for `Ema(len)`, `len` for `Rma(len)`. A start-up error shrinks like
+/// `exp(-n / sum(taus))` up to a polynomial factor for cascades; `20 * sum(taus)` bars leave it
+/// far below `1e-3` for price-like data.
+pub(crate) fn settle_bars(taus: &[f64]) -> usize {
+    (20.0 * taus.iter().sum::<f64>()).ceil() as usize
+}
+
+pub(crate) fn ema_tau(len: usize) -> f64 {
+    (len as f64 + 1.0) / 2.0
+}
+
 /// Core trait implemented by all technical indicators.
 pub trait Indicator: Send + Sync {
     fn name(&self) -> &str;
     fn warmup_period(&self) -> usize {
         0
+    }
+    /// Bars after which the influence of the start-up state (first-sample EMA seed, Wilder/RMA
+    /// seed) on the published values has decayed below roughly `1e-3` on price-like data.
+    ///
+    /// Not the same as [`Indicator::warmup_period`], which is the first bar with a technically
+    /// defined value. Cascaded smoothers are only seed-free long after that. The default is
+    /// `warmup_period()`, i.e. no statement beyond it; cascade indicators override it. Counts
+    /// bars from the first input bar, covers `value` and `extra["signal"]` (context lines
+    /// excluded), and is a conservative bound, not the tightest one.
+    fn convergence_period(&self) -> usize {
+        self.warmup_period()
     }
     fn reset(&mut self);
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput>;
@@ -292,6 +317,9 @@ impl<T: Indicator + ?Sized> Indicator for Box<T> {
     }
     fn warmup_period(&self) -> usize {
         (**self).warmup_period()
+    }
+    fn convergence_period(&self) -> usize {
+        (**self).convergence_period()
     }
     fn reset(&mut self) {
         (**self).reset()

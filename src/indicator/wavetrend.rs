@@ -33,6 +33,8 @@ pub struct WaveTrendAlerts {
 pub struct WaveTrendEngine {
     ob_level: f64,
     os_level: f64,
+    n1: usize,
+    n2: usize,
     ema_ap: Ema,
     ema_d: Ema,
     ema_wt1: Ema,
@@ -47,6 +49,8 @@ impl WaveTrendEngine {
         Self {
             ob_level,
             os_level,
+            n1,
+            n2,
             ema_ap: Ema::new(n1),
             ema_d: Ema::new(n1),
             ema_wt1: Ema::new(n2),
@@ -73,6 +77,16 @@ impl Indicator for WaveTrendEngine {
 
     fn warmup_period(&self) -> usize {
         4
+    }
+
+    fn convergence_period(&self) -> usize {
+        // channel EMA -> deviation EMA -> wt1 EMA -> SMA(4) for wt2
+        super::settle_bars(&[
+            super::ema_tau(self.n1),
+            super::ema_tau(self.n1),
+            super::ema_tau(self.n2),
+        ])
+        .max(self.warmup_period())
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

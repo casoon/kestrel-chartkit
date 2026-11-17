@@ -87,7 +87,8 @@ impl ChangeSmoother {
 /// `avg_len = 3` the published RSI lags and deviates from the raw figure; `avg_len = 1` gives the
 /// raw RSI itself.
 ///
-/// `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
+/// `extra["raw"]`: the unsmoothed RSI before the `avg_len` smoothing (equals `value` for
+/// `avg_len = 1`). `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
 /// `ctx_len` changes (default 100), present once that many changes exist; the trend wedge is judged
 /// between line and context ([`SlopeDivergence`]). Alerts fire on line/signal crosses (inside the extreme zones when
 /// `require_extreme_zone` is set), on crosses of `mid_line`, on the trend wedge (`bull_/bear_trend_wedge`) and on exhaustion of
@@ -104,6 +105,8 @@ pub struct Rsi {
     require_extreme_zone: bool,
     rsi_len: usize,
     ctx_len: usize,
+    avg_len: usize,
+    sig_len: usize,
     smoothing: RsiSmoothing,
 
     prev_close: Option<f64>,
@@ -163,6 +166,8 @@ impl Rsi {
             require_extreme_zone,
             rsi_len,
             ctx_len,
+            avg_len,
+            sig_len,
             smoothing: RsiSmoothing::Wilder,
             prev_close: None,
             avg_gain: ChangeSmoother::new(RsiSmoothing::Wilder, rsi_len),
@@ -219,6 +224,19 @@ impl Indicator for Rsi {
 
     fn warmup_period(&self) -> usize {
         self.warmup_period
+    }
+
+    fn convergence_period(&self) -> usize {
+        let core = match self.smoothing {
+            RsiSmoothing::Wilder => self.rsi_len as f64,
+            RsiSmoothing::Ema => super::ema_tau(self.rsi_len),
+        };
+        // The context line (`ctx_len`) is excluded, see `Indicator::convergence_period`.
+        (self.warmup_period).max(super::settle_bars(&[
+            core,
+            super::ema_tau(self.avg_len),
+            super::ema_tau(self.sig_len),
+        ]))
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
@@ -319,6 +337,7 @@ impl Indicator for Rsi {
         self.alerts.exhaustion_strength = exhaustion.strength;
 
         let mut extra = HashMap::new();
+        extra.insert("raw".to_string(), raw_rsi);
         extra.insert("signal".to_string(), signal);
         if let Some(ctx_line) = ctx_line {
             let div = self.divergence.update(rsi_line, ctx_line);

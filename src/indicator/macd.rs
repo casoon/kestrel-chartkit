@@ -17,7 +17,9 @@ pub struct Macd {
     fast_ema: Ema,
     slow_ema: Ema,
     signal_ema: Ema,
+    fast_len: usize,
     slow_len: usize,
+    signal_len: usize,
 
     prev_macd: Option<f64>,
     prev_signal: Option<f64>,
@@ -40,7 +42,9 @@ impl Macd {
             fast_ema: Ema::new(fast_len),
             slow_ema: Ema::new(slow_len),
             signal_ema: Ema::new(signal_len),
+            fast_len,
             slow_len,
+            signal_len,
             prev_macd: None,
             prev_signal: None,
             bars_seen: 0,
@@ -60,6 +64,15 @@ impl Indicator for Macd {
 
     fn warmup_period(&self) -> usize {
         self.slow_len
+    }
+
+    fn convergence_period(&self) -> usize {
+        // MACD = fast - slow EMA: the slower one dominates; the signal EMA runs on top of it.
+        super::settle_bars(&[
+            super::ema_tau(self.fast_len.max(self.slow_len)),
+            super::ema_tau(self.signal_len),
+        ])
+        .max(self.warmup_period())
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {

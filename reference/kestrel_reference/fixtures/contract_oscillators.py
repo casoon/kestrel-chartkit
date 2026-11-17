@@ -233,10 +233,11 @@ def extreme_alerts(line, signal, k, overbought, oversold, mid, plain=False):
     return alerts
 
 
-def line_signal(first, line, signal, overbought, oversold, mid, plain=False):
+def line_signal(first, line, signal, overbought, oversold, mid, plain=False, raw=None):
     expected = none_until(first)
     for k, (value, sig) in enumerate(zip(line, signal)):
-        expected.append(((value, {"signal": sig}),
+        extra = {"signal": sig} if raw is None else {"raw": raw[k], "signal": sig}
+        expected.append(((value, extra),
                          extreme_alerts(line, signal, k, overbought, oversold, mid, plain)))
     return expected
 
@@ -292,12 +293,13 @@ def mfi_case(mfi_len, avg_len, overbought, oversold, bars):
 def williams_r_case(wpr_len, avg_len, overbought, oversold, bars):
     """Ascending %R over wpr_len (50 for a flat window); line = EMA(avg_len), signal = EMA(3)."""
     assert len(bars) < 50, "the context line would appear"
-    line = ema_first_sample(_percent_r(bars, wpr_len), avg_len)
+    raw = _percent_r(bars, wpr_len)  # extra["raw"]: the value before the avg_len EMA
+    line = ema_first_sample(raw, avg_len)
     signal = ema_first_sample(line, 3)
     params = {"wpr_len": wpr_len, "avg_len": avg_len, "overbought": overbought,
               "oversold": oversold}
     return (_floats(params), bars,
-            line_signal(wpr_len - 1, line, signal, overbought, oversold, 50.0))
+            line_signal(wpr_len - 1, line, signal, overbought, oversold, 50.0, raw=raw))
 
 
 def fisher_case(fish_len, avg_len, overbought, oversold, bars):

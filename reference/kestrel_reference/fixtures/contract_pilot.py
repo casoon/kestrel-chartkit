@@ -11,7 +11,7 @@ derived bar by bar in the comments below.
 """
 
 from ..fixture import provenance, render_contract
-from ..indicators import clamp, rsi_lines, true_ranges
+from ..indicators import clamp, raw_rsi, rsi_lines, true_ranges
 from ..smoothing import rma
 
 NAME = "contract_pilot"
@@ -80,6 +80,7 @@ def rsi_case(rsi_len, avg_len, sig_len, overbought, oversold, closes):
     assert len(closes) <= 100
     bars = [flat_bar(c) for c in closes]
     line, signal, _ = rsi_lines(closes, rsi_len, avg_len, sig_len)
+    raw = raw_rsi(closes, rsi_len)  # extra["raw"]: the unsmoothed RSI before the avg_len EMA
     first = rsi_len  # 0-based bar of the first output: rsi_len changes need rsi_len + 1 closes
     expected = [(None, {}) for _ in range(first)]
     for k, (value, sig) in enumerate(zip(line, signal)):
@@ -96,7 +97,7 @@ def rsi_case(rsi_len, avg_len, sig_len, overbought, oversold, closes):
                 alerts["bull_mid_cross"] = 1.0
             if crossed_under(prev_value, 50.0, value, 50.0):
                 alerts["bear_mid_cross"] = 1.0
-        expected.append(((value, {"signal": sig}), alerts))
+        expected.append(((value, {"raw": raw[k], "signal": sig}), alerts))
     params = {"rsi_len": float(rsi_len), "avg_len": float(avg_len), "sig_len": float(sig_len),
               "overbought": overbought, "oversold": oversold}
     return params, bars, expected

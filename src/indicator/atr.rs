@@ -179,6 +179,18 @@ impl Indicator for Atr {
         self.warmup_period
     }
 
+    fn convergence_period(&self) -> usize {
+        let core = match self.smoothing {
+            TrueRangeSmoothing::Rma => self.atr_len as f64,
+            TrueRangeSmoothing::Ema => super::ema_tau(self.atr_len),
+            // finite-memory averages have no seed
+            TrueRangeSmoothing::Sma | TrueRangeSmoothing::Wma => 0.0,
+        };
+        let sig = self.warmup_period + 1 - self.atr_len; // sig_len
+        self.warmup_period
+            .max(super::settle_bars(&[core, sig as f64]))
+    }
+
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts = AtrAlerts::default();
         self.bars_seen += 1;

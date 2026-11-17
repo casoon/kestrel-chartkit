@@ -9,6 +9,17 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+
+## [0.42.0] - 2026-11-17
+
+### Added
+
+- **RSI, Williams %R:** `extra["raw"]` carries the unsmoothed value before the `avg_len` EMA
+  (equal to `value` for `avg_len = 1`); `value` is unchanged.
+- **Indicator:** `convergence_period()` (default `warmup_period()`) states after how many bars the
+  start-up state no longer matters beyond about 1e-3; overridden for WaveTrend, TSI, MACD, TRIX,
+  RSI and ATR.
+
 ### Changed
 
 - **Pages:** the project site uses the current shared theme (0.12.14).
