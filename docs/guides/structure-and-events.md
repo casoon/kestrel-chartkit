@@ -266,6 +266,45 @@ highest high of the counter-swing is the neckline.
 pattern's extreme or the end of `max_wait` ends it without an alert. Event bars carry `neckline`,
 `target` (neckline plus pattern height) and `wick` (the lower low, or higher high).
 
+### chart_patterns and harmonic_patterns
+
+`ChartPatternDetector` and `HarmonicDetector` as per-bar events. Each entry runs its own ZigZag
+(the parameters and defaults of `zigzag_advanced`) and hands the detector the newest confirmed
+nodes every time one is confirmed; the running leg is never an input. An instance (a pattern kind
+and its anchor nodes) is found on the bar that confirms its last anchor, and the detector's own
+lifecycle rule then follows it: one alert on the bar the rule reports it confirmed, nothing for an
+instance the rule invalidates. The bars between the last anchor and the bar that confirms it are
+replayed through the rule, so a neckline break inside that swing is dated to the confirming bar.
+Overlapping instances are each followed and each raises its own alert; the ranking of the batch scan
+does not take part. An instance still open when `pending_swings` (default 2) further nodes have been
+confirmed behind its last anchor expires without an alert.
+
+| Parameter                                         | Default | `chart_patterns` | `harmonic_patterns` |
+| ------------------------------------------------- | ------- | :--------------: | :-----------------: |
+| `depth`, `backstep`, `deviation_mode`, `deviation_pct`, `atr_len` | 3, 2, percent, 1, 14 | yes | yes |
+| `tolerance_pct`                                   | 2       | yes              |                     |
+| `flat_pct`                                        | 1.5     | yes              |                     |
+| `ratio_tolerance`                                 | 0.03    |                  | yes                 |
+| `min_prz_share`                                   | 0.005   |                  | yes                 |
+| `pending_swings`                                  | 2       | yes              | yes                 |
+
+`value` is the direction of the latest confirmed instance (`1`, `-1`, `0` before the first).
+Alerts are `bull_<kind>` / `bear_<kind>`: for the triangles, wedges and the broadening formation
+the side of the breakout, for the 1-2-3 and the Wolfe wave the swing structure, for the reversal
+family the pattern (top: bearish), for harmonics the resolution at D. `extra["pattern"]` is the kind
+code: for `chart_patterns` 1 triangle, 2 ascending triangle, 3 descending triangle, 4 broadening,
+5 rising wedge, 6 falling wedge, 7 one-two-three, 8 Wolfe wave, 9 double top, 10 double bottom,
+11 triple top, 12 triple bottom, 13 head and shoulders, 14 inverse head and shoulders; for
+`harmonic_patterns` the row of the ratio table (1 gartley, 2 bat, 3 butterfly, 4 crab, 5 deep crab,
+6 shark). On a confirming bar `extra` also has `level` (the line or neckline the close went
+through), `invalidation` (the pattern's extreme, the 1-2-3's second node, the far edge of the PRZ),
+`fit` (chart patterns), `target` (Wolfe wave: the line through points 1 and 4) and, for harmonics,
+`prz_low`, `prz_high` and `d`; with several instances on one bar these describe the first.
+`extra["active"]` counts the instances followed, `extra["confirmed"]` those confirmed on the bar.
+The auto-fitted trendlines of the batch detector are the `trendlines` entry's. The Wolfe wave of
+`ChartPatternDetector` currently matches no input (its piercing test reads point 5 against the
+type of point 1, which an alternating window never differs in), so `wolfe_wave` raises no alert yet.
+
 ### bottom_formation
 
 A bottom as a sequence of four stages, a top as the same sequence on mirrored prices:

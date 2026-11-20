@@ -82,7 +82,24 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage::full("wyckoff"),
+    Coverage {
+        indicator: "chart_patterns",
+        values: Status::Partial(PATTERN_SCENARIOS),
+        alerts: Status::Partial(PATTERN_SCENARIOS),
+        configuration: Status::Specified,
+    },
+    Coverage {
+        indicator: "harmonic_patterns",
+        values: Status::Partial(PATTERN_SCENARIOS),
+        alerts: Status::Partial(PATTERN_SCENARIOS),
+        configuration: Status::Specified,
+    },
 ];
+
+const PATTERN_SCENARIOS: &str =
+    "fixed by hand-counted scenario series in tests/scenario_reference_pattern_events.rs (every \
+     geometry and harmonic row, near misses, invalidation, expiry, mirror image), not by a \
+     generated fixture: the reference generator has no second implementation of the detectors";
 
 const FESTE_OSZILLATOREN: &str =
     "oscillator_pivot_divergence fixed to WaveTrend / Stochastic RSI; the reference generator has \
@@ -906,4 +923,29 @@ fn candle_classification_rejects_invalid_configuration() {
     assert_rejected("candle_classification", &[("trend_lookback", 0.0)]);
     assert_rejected("candle_classification", &[("trend_min_atr", -1.0)]);
     assert_rejected("candle_classification", &[("pin_wick", 0.55)]);
+}
+
+// --- chart_patterns and harmonic_patterns ----------------------------------------------------
+
+#[test]
+fn chart_patterns_rejects_invalid_configuration() {
+    assert_rejected("chart_patterns", &[("depth", 0.0)]);
+    assert_rejected("chart_patterns", &[("deviation_pct", 0.0)]);
+    assert_rejected("chart_patterns", &[("tolerance_pct", 0.0)]);
+    assert_rejected("chart_patterns", &[("tolerance_pct", 51.0)]);
+    assert_rejected("chart_patterns", &[("flat_pct", -1.0)]);
+    assert_rejected("chart_patterns", &[("pending_swings", 0.0)]);
+    assert_rejected("chart_patterns", &[("pending_swings", 2.5)]);
+    assert_rejected("chart_patterns", &[("ratio_tolerance", 0.03)]);
+}
+
+#[test]
+fn harmonic_patterns_rejects_invalid_configuration() {
+    assert_rejected("harmonic_patterns", &[("backstep", -1.0)]);
+    assert_rejected("harmonic_patterns", &[("atr_len", 0.0)]);
+    assert_rejected("harmonic_patterns", &[("ratio_tolerance", -0.01)]);
+    assert_rejected("harmonic_patterns", &[("ratio_tolerance", 0.6)]);
+    assert_rejected("harmonic_patterns", &[("min_prz_share", 1.5)]);
+    assert_rejected("harmonic_patterns", &[("pending_swings", 101.0)]);
+    assert_rejected("harmonic_patterns", &[("tolerance_pct", 2.0)]);
 }

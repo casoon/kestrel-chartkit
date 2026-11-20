@@ -65,6 +65,7 @@ pub mod overextension_risk;
 pub mod pair;
 pub mod pair_regression;
 pub mod params;
+pub mod pattern_events;
 pub mod pivot_divergence;
 pub mod pivot_sets;
 pub mod pivots_structure;

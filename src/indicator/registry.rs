@@ -377,6 +377,8 @@ fn native_source(canonical: &str) -> crate::model::Source {
 /// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
     "fvg_fill",
+    "chart_patterns",
+    "harmonic_patterns",
     "vwap_regime",
     "period_midpoint",
     "opening_range",
@@ -707,6 +709,8 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "vwap_regime",
     "swing_structure",
     "fvg_fill",
+    "chart_patterns",
+    "harmonic_patterns",
 ];
 
 #[cfg(test)]
@@ -738,10 +742,10 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 150);
-        assert_eq!(bars.len(), 150);
-        // Pair (4), transform (1) and intrabar (1) entries on top of the 150 bar indicators.
-        assert_eq!(catalog().len(), 156);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 152);
+        assert_eq!(bars.len(), 152);
+        // Pair (4), transform (1) and intrabar (1) entries on top of the 152 bar indicators.
+        assert_eq!(catalog().len(), 158);
         for (input, count) in [
             (IndicatorInput::Pair, 4),
             (IndicatorInput::Transform, 1),

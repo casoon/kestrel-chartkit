@@ -655,7 +655,7 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             ..DataRequirements::default()
         },
         "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure"
-        | "trendlines" => DataRequirements {
+        | "trendlines" | "chart_patterns" | "harmonic_patterns" => DataRequirements {
             session_sensitive: true,
             roll_sensitive: true,
             adjustment_sensitive: true,
@@ -1025,6 +1025,8 @@ mod tests {
             "pivots_structure",
             "pivot_sets",
             "swing_structure",
+            "chart_patterns",
+            "harmonic_patterns",
         ] {
             assert_eq!(
                 data_requirements(name),

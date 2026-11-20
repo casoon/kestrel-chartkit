@@ -4,14 +4,13 @@
 //! Built on [`super::zigzag_advanced::ZigZagNode`] sequences like [`super::chart_patterns`], and
 //! for the same reason: the swing definition is the input, not something to re-derive per module.
 //!
-//! # Module API, not a catalog entry
+//! # Batch scan and catalog entry
 //!
 //! [`HarmonicDetector`] scans a finished node list and returns candidates with their PRZ zone and
 //! lifecycle; the swing definition is the caller's input. The module holds no bar formula: the
-//! ratios are a table, and the only bar read is the one whose close moves a candidate's state. A
-//! per-bar catalog entry needs a definition of what one event is when candidates appear, change
-//! state and expire, and an independent reference for every row of the ratio table; it is not
-//! built yet.
+//! ratios are a table, and the only bar read is the one whose close moves a candidate's state.
+//! The causal per-bar counterpart is the `harmonic_patterns` catalog entry, which feeds the
+//! detector the ZigZag nodes as they confirm.
 //!
 //! # The patterns do not differ in shape
 //!

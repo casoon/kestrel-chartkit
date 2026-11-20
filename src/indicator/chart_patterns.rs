@@ -10,16 +10,15 @@
 //! a deterministic approximation of how these patterns are described in TA literature, not a claim
 //! that every instance found is a "real" tradable pattern.
 //!
-//! # Module API, not a catalog entry
+//! # Batch scan and catalog entry
 //!
-//! The detectors scan a finished node list and return a ranked set of candidates (lines, node
-//! sets, lifecycle state), several at once and overlapping; the swing definition is the caller's
-//! input (`reduce`, `project_to_timeframe`), not re-derived here. The module holds no bar formula:
-//! the only bar it reads is the one whose close moves a candidate's state. The causal per-bar
-//! counterparts are catalog entries: `double_pattern` (double top and bottom) and `trendlines`
-//! (the auto-fitted lines). A per-bar entry for the remaining kinds needs a definition of what one
-//! event is when candidates appear, change state and are evicted, and an independent reference for
-//! every geometry; it is not built yet.
+//! [`ChartPatternDetector::scan`] takes a finished node list and returns a ranked set of
+//! candidates (lines, node sets, lifecycle state), several at once and overlapping; the swing
+//! definition is the caller's input (`reduce`, `project_to_timeframe`), not re-derived here. The
+//! module holds no bar formula: the only bar it reads is the one whose close moves a candidate's
+//! state. The causal per-bar counterparts are catalog entries: `chart_patterns` (every kind but
+//! the trendlines, over ZigZag nodes as they confirm), `double_pattern` (double top and bottom
+//! from pivots) and `trendlines` (the auto-fitted lines).
 //!
 //! # Complete is not confirmed
 //!
@@ -101,7 +100,7 @@ impl ChartPatternKind {
     /// Whether this kind resolves downward — a top rather than a bottom.
     ///
     /// Only meaningful for the reversal family; the others carry their direction in their lines.
-    fn is_top(self) -> bool {
+    pub(crate) fn is_top(self) -> bool {
         matches!(
             self,
             ChartPatternKind::DoubleTop
@@ -337,13 +336,7 @@ impl ChartPatternDetector {
     /// (`upper_line` set) and the line through the lows (`lower_line` set) describe different
     /// boundaries and never evict each other.
     pub fn scan(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
-        let mut candidates = Vec::new();
-        candidates.extend(self.scan_triangles_and_wedges(nodes));
-        candidates.extend(self.scan_reversal_one_two_three(nodes));
-        candidates.extend(self.scan_wolfe_waves(nodes));
-        candidates.extend(self.scan_double_extremes(nodes));
-        candidates.extend(self.scan_triple_extremes(nodes));
-        candidates.extend(self.scan_head_and_shoulders(nodes));
+        let mut candidates = self.scan_unranked(nodes);
         if let Some(trendline) = self.auto_trendline(nodes, true) {
             candidates.push(trendline);
         }
@@ -351,6 +344,20 @@ impl ChartPatternDetector {
             candidates.push(trendline);
         }
         self.evict_overlaps(candidates)
+    }
+
+    /// Every geometric match of the window-based kinds (everything but the auto-trendlines), one
+    /// candidate per window and kind, before overlap eviction. [`Self::scan`] ranks and evicts
+    /// these; the `chart_patterns` catalog entry follows each of them on its own.
+    pub(crate) fn scan_unranked(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut candidates = Vec::new();
+        candidates.extend(self.scan_triangles_and_wedges(nodes));
+        candidates.extend(self.scan_reversal_one_two_three(nodes));
+        candidates.extend(self.scan_wolfe_waves(nodes));
+        candidates.extend(self.scan_double_extremes(nodes));
+        candidates.extend(self.scan_triple_extremes(nodes));
+        candidates.extend(self.scan_head_and_shoulders(nodes));
+        candidates
     }
 
     /// Evicts overlapping candidates *within the same pattern kind* only (sliding-window

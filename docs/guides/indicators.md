@@ -51,8 +51,8 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
-`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 156
-entries (150 of kind `Bars`); `catalog_of(kind)` lists one kind; the
+`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 158
+entries (152 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
 Behind the catalog, every indicator has one definition
@@ -108,7 +108,7 @@ description names them.
 | Volume                         | `obv`, `vwap`, `anchored_vwap`, `cmf`, `mfi`, `volume_profile`, `cvd` |
 | Trend                          | `ichimoku`, `alligator`, `efficiency`, `zscore`                     |
 | Composite scores               | `trend_quality`, `buy_sell_pressure`, `volatility_regime`, `multi_factor` |
-| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `trendlines`, `double_pattern`, `bottom_formation` |
+| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `trendlines`, `double_pattern`, `bottom_formation`, `chart_patterns`, `harmonic_patterns` |
 | Divergence                     | `pivot_divergence`, `oscillator_pivot_divergence`                   |
 
 Print the full list with `catalog()`. The [indicator reference](../../reference/indicators/) lists

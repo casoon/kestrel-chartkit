@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 150 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 152 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1753,6 +1753,44 @@ Fair value gaps followed as zones until a later bar trades back into them: the n
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `max_zones` | 20 | whole number 1 – 1000 | newest open zones that are kept |
+
+### `chart_patterns`
+
+Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-14), level, invalidation, target, fit, active, confirmed
+
+[See it in the showcase](../../../showcase/chart_patterns/)
+
+**Output** unit Unitless, range not declared · **warmup** 7 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `depth` | 3 | whole number 1 – 10000 | bars on each side of a swing pivot |
+| `backstep` | 2 | whole number 0 – 10000 | bars between a confirmed swing and the next pivot that may confirm |
+| `deviation_mode` | `percent` | `percent`, `atr_multiple` (f64 map: 0 – 1) | unit of the swing deviation: percent of price or multiples of the ATR |
+| `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move that confirms a swing, in the unit of deviation_mode |
+| `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR of the ZigZag |
+| `tolerance_pct` | 2 | 0.001 – 50 | percent within which two swing prices count as one level |
+| `flat_pct` | 1.5 | 0 – 100 | percent of the opening gap a boundary may move and still count as flat |
+| `pending_swings` | 2 | whole number 1 – 100 | swings confirmed behind a pattern's last anchor after which an unconfirmed pattern is dropped |
+
+### `harmonic_patterns`
+
+Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from ZigZag swings as they confirm, one event per structure on the close out of its potential reversal zone. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<name> and bear_<name>; extras pattern (table row 1-6), prz_low, prz_high, d, invalidation, active, confirmed
+
+[See it in the showcase](../../../showcase/harmonic_patterns/)
+
+**Output** unit Unitless, range not declared · **warmup** 7 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `depth` | 3 | whole number 1 – 10000 | bars on each side of a swing pivot |
+| `backstep` | 2 | whole number 0 – 10000 | bars between a confirmed swing and the next pivot that may confirm |
+| `deviation_mode` | `percent` | `percent`, `atr_multiple` (f64 map: 0 – 1) | unit of the swing deviation: percent of price or multiples of the ATR |
+| `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move that confirms a swing, in the unit of deviation_mode |
+| `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR of the ZigZag |
+| `ratio_tolerance` | 0.03 | 0 – 0.5 | absolute widening of every ratio interval of the pattern table |
+| `min_prz_share` | 0.005 | 0 – 1 | minimum half-width of the reversal zone as a share of the XA leg |
+| `pending_swings` | 2 | whole number 1 – 100 | swings confirmed behind a pattern's last anchor after which an unconfirmed pattern is dropped |
 
 ## Composite read-outs, part 1
 
