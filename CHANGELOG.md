@@ -20,6 +20,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Indicators:** the Pearson correlation sums (covariance and both variance sums) are one kernel, `kernels::pearson_sums`, behind `stats::correlation`, the pair correlation indicator and cross-asset correlations, and the correlation of closes with their bar index in the trend-persistence read-out (which now divides by `sqrt(var_x * var_y)` like the others, a difference in the last places). Catalog outputs are unchanged.
 - **Indicators:** the percent rank is one kernel, `kernels::rank_weight`, with the tie rule (`AtOrBelow` or `Half`) as its parameter. The smoother-side rank, `stats::percent_rank`, Exhaustion, Rank Channel, Connors RSI and the activity and price read-outs count through it. Catalog outputs are unchanged.
 - **Indicators:** the mapping from an averaged up and down move to the 0..100 index (RSI from gain and loss, MFI from positive and negative flow) is one kernel, `kernels::up_down_index`, with the value for "neither side moved" as its parameter. RSI, StochRSI, MFI and the composites that carry their own RSI or MFI call it; the RSI targets of the cheat sheet average with the Wilder smoother (a difference in the last places). Catalog outputs are unchanged.
+- **Indicators:** the Choppiness formula is one kernel, `kernels::choppiness`, with the clamp to `0..=100` as its parameter: the indicator and Coil Release publish it clamped, the regime read-out raw. Catalog outputs are unchanged.
 
 ## [0.42.0] - 2026-11-17
 

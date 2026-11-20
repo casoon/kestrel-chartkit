@@ -43,7 +43,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::kernels::{efficiency_ratio, true_range};
+use super::kernels::{choppiness, efficiency_ratio, true_range};
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -243,7 +243,7 @@ impl CoilRelease {
         }
         let rng = hi - lo;
         Some(if rng > 0.0 {
-            (100.0 * (sum / rng).log10() / (n as f64).log10()).clamp(0.0, 100.0)
+            choppiness(sum, rng, n, true)
         } else {
             0.0
         })

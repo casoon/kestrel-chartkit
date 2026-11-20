@@ -113,7 +113,9 @@ fn choppiness(bars: &[Bar], n: usize) -> Option<f64> {
     if range <= 0.0 || tr_sum <= 0.0 {
         return None;
     }
-    Some(100.0 * (tr_sum / range).log10() / (n as f64).log10())
+    Some(crate::indicator::kernels::choppiness(
+        tr_sum, range, n, false,
+    ))
 }
 
 #[cfg(test)]

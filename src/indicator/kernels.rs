@@ -142,6 +142,20 @@ pub(crate) fn up_down_index(up: f64, down: f64, no_move: f64) -> f64 {
     }
 }
 
+/// Choppiness Index from the summed true ranges and the overall high-low range of the same
+/// `len` bars: `100 * log10(sum_tr / range) / log10(len)`. High values mean the bars overlap
+/// (chop), low values that they line up (trend). `clamped` limits the result to `0..=100`, as the
+/// indicator publishes it; the regime read-out takes the raw value. Choosing a floor for a
+/// zero range, or declining to rank one, stays with the caller.
+pub(crate) fn choppiness(sum_tr: f64, range: f64, len: usize, clamped: bool) -> f64 {
+    let chop = 100.0 * (sum_tr / range).log10() / (len as f64).log10();
+    if clamped {
+        chop.clamp(0.0, 100.0)
+    } else {
+        chop
+    }
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]

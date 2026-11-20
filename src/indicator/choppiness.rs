@@ -1,4 +1,4 @@
-use super::kernels::true_range;
+use super::kernels::{choppiness, true_range};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
@@ -66,11 +66,12 @@ impl Indicator for ChoppinessIndexEngine {
         let min_l = self.bars.iter().map(|b| b.low).fold(f64::MAX, f64::min);
         let range = (max_h - min_l).max(1e-8);
 
-        let n_f64 = self.period as f64;
-        let chop = 100.0 * (sum_tr / range).log10() / n_f64.log10();
-        let chop_clamped = chop.clamp(0.0, 100.0);
-
-        Some(IndicatorOutput::new(chop_clamped))
+        Some(IndicatorOutput::new(choppiness(
+            sum_tr,
+            range,
+            self.period,
+            true,
+        )))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
