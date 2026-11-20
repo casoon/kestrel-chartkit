@@ -43,7 +43,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::kernels::{choppiness, efficiency_ratio, true_range};
+use super::kernels::{choppiness, efficiency_ratio, fractal_dimension, true_range, FractalMethod};
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -211,20 +211,9 @@ impl CoilRelease {
     }
 
     fn fractal_dim(&self) -> Option<f64> {
-        let n = self.cfg.len;
-        let half = (n / 2).max(2);
-        let (h1, l1) = self.range(0, half)?;
-        let (h2, l2) = self.range(half, half)?;
-        let (h3, l3) = self.range(0, n)?;
-        let r1 = (h1 - l1) / half as f64;
-        let r2 = (h2 - l2) / half as f64;
-        let r3 = (h3 - l3) / n as f64;
-        let d = if r1 + r2 > 0.0 && r3 > 0.0 {
-            ((r1 + r2).ln() - r3.ln()) / 2f64.ln()
-        } else {
-            1.5
-        };
-        Some(d.clamp(1.0, 2.0))
+        fractal_dimension(FractalMethod::Halves, self.cfg.len, |k| {
+            self.at(k).map(|r| (r.high, r.low, r.close))
+        })
     }
 
     fn efficiency(&self) -> Option<f64> {

@@ -156,6 +156,81 @@ pub(crate) fn choppiness(sum_tr: f64, range: f64, len: usize, clamped: bool) -> 
     }
 }
 
+/// The two published ways to estimate a fractal dimension from the bars of a window of `n`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FractalMethod {
+    /// Ehlers' halving estimate (the one behind FRAMA): with `half = max(n / 2, 2)`, the high-low
+    /// range of the newest `half` bars (`r1`), of the `half` bars before them (`r2`) and of the
+    /// whole window of `n` bars (`r3`), each divided by its bar count;
+    /// `D = (ln(r1 + r2) - ln(r3)) / ln 2`, clamped to `1..=2`. Reads `n` bars.
+    Halves,
+    /// Path over range: `D = 1 + ln(path / range) / ln n`, the path being the summed absolute
+    /// close-to-close moves of `n` steps and the range the high-low range of the same `n + 1`
+    /// bars (the length of the path a straight line would not need, in the manner of Katz's
+    /// estimate). Not clamped. Reads `n + 1` bars.
+    Path,
+}
+
+impl FractalMethod {
+    /// Bars a window of `n` has to hold.
+    pub(crate) fn bars_needed(self, n: usize) -> usize {
+        match self {
+            Self::Halves => n.max(2 * (n / 2).max(2)),
+            Self::Path => n + 1,
+        }
+    }
+}
+
+/// Fractal dimension of the newest bars (`bar_at(k)` is the `(high, low, close)` of the bar `k`
+/// bars back, `0` the newest), in the measure `method` names. `1.5` when the range or the path is
+/// not positive; `None` when the window is not yet complete.
+pub(crate) fn fractal_dimension(
+    method: FractalMethod,
+    n: usize,
+    bar_at: impl Fn(usize) -> Option<(f64, f64, f64)>,
+) -> Option<f64> {
+    let range = |from: usize, count: usize| -> Option<(f64, f64)> {
+        let mut hi = f64::NEG_INFINITY;
+        let mut lo = f64::INFINITY;
+        for k in from..from + count {
+            let (high, low, _) = bar_at(k)?;
+            hi = hi.max(high);
+            lo = lo.min(low);
+        }
+        Some((hi, lo))
+    };
+    match method {
+        FractalMethod::Halves => {
+            let half = (n / 2).max(2);
+            let (h1, l1) = range(0, half)?;
+            let (h2, l2) = range(half, half)?;
+            let (h3, l3) = range(0, n)?;
+            let r1 = (h1 - l1) / half as f64;
+            let r2 = (h2 - l2) / half as f64;
+            let r3 = (h3 - l3) / n as f64;
+            let d = if r1 + r2 > 0.0 && r3 > 0.0 {
+                ((r1 + r2).ln() - r3.ln()) / 2f64.ln()
+            } else {
+                1.5
+            };
+            Some(d.clamp(1.0, 2.0))
+        }
+        FractalMethod::Path => {
+            let (high, low) = range(0, n + 1)?;
+            let range_hl = high - low;
+            let mut path = 0.0;
+            for k in (1..=n).rev() {
+                path += (bar_at(k - 1)?.2 - bar_at(k)?.2).abs();
+            }
+            Some(if range_hl > 0.0 && path > 0.0 {
+                (path / range_hl).ln() / (n as f64).ln() + 1.0
+            } else {
+                1.5
+            })
+        }
+    }
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]

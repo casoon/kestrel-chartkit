@@ -22,4 +22,5 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::efficiency::EFFICIENCY_DEFINITION,
     &crate::indicator::cusum::CUSUM_DEFINITION,
     &crate::indicator::volatility_regime::VOLATILITY_REGIME_DEFINITION,
+    &crate::indicator::fractal_dimension::FRACTAL_DIMENSION_DEFINITION,
 ];

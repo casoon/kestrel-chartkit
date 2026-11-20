@@ -125,6 +125,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("extended_volume_profile", IndicatorUnit::Price),
     ("fisher_transform", IndicatorUnit::Ratio),
     ("flow_exhaustion", IndicatorUnit::Ratio),
+    ("fractal_dimension", IndicatorUnit::Unitless),
     ("gap", IndicatorUnit::Unitless),
     ("garman_klass", IndicatorUnit::Ratio),
     ("hires_volume_flow", IndicatorUnit::Volume),

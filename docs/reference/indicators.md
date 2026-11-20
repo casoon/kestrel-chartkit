@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 140 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 141 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1042,6 +1042,19 @@ Volatility Regime & Squeeze Detector
 | `period` | 20 | whole number 1 – 10000 | bars in the Bollinger and Keltner sets |
 | `bb_mult` | 2 | 0.01 – 100 | standard deviations of the Bollinger band |
 | `kc_mult` | 1.5 | 0.01 – 100 | ATR multiple of the Keltner channel |
+
+### `fractal_dimension`
+
+Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped)
+
+[See it in the showcase](../../../showcase/fractal_dimension/)
+
+**Output** unit Unitless, range not declared · **warmup** 30 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 30 | whole number 4 – 10000 | bars of the window (`halves`: the window; `path`: the number of close-to-close steps, one more bar) |
+| `method` | `halves` | `halves`, `path` (f64 map: 0 – 1) | `halves`: ln of the two half-window ranges against the whole one over ln 2; `path`: 1 + ln(path / range) / ln(period) |
 
 ## Volume
 

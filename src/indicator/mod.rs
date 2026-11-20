@@ -37,6 +37,7 @@ pub(crate) mod exhaustion;
 pub mod fisher_transform;
 pub mod flow_exhaustion;
 pub mod force_index;
+pub mod fractal_dimension;
 pub mod gap;
 pub mod harmonics;
 pub(crate) mod kernels;

@@ -128,6 +128,7 @@ is complete.
 |---|---|
 | alligator | ✅ |
 | efficiency | ✅ |
+| fractal_dimension | ❌ |
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |
@@ -199,6 +200,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/144 verified** — the same 144 names `catalog()` returns: 101 indicators (the first
+**Total: 133/145 verified** — the same 145 names `catalog()` returns: 102 indicators (the first
 five groups), 4 composite scores, 35 structure/pattern detectors and 4 entries of other input
 kinds.

@@ -87,7 +87,7 @@ pub struct TrendPersistenceReading {
     pub drag: TrendPersistenceSensor,
 }
 
-use crate::indicator::kernels::pearson_sums;
+use crate::indicator::kernels::{fractal_dimension, pearson_sums, FractalMethod};
 use crate::indicator::smoothing::Ema as SeededEma;
 
 fn normalize(x: f64, lo: f64, hi: f64) -> f64 {
@@ -125,18 +125,11 @@ fn sub_scores_at(bars: &[Bar], idx: usize) -> SubScores {
 
     let er_score = efficiency_ratio(&bars[..=idx], LEN).unwrap_or(0.0) * 100.0;
 
-    let highest_high = window
-        .iter()
-        .map(|b| b.high)
-        .fold(f64::NEG_INFINITY, f64::max);
-    let lowest_low = window.iter().map(|b| b.low).fold(f64::INFINITY, f64::min);
-    let range_hl = highest_high - lowest_low;
-    let path_length: f64 = closes.windows(2).map(|w| (w[1] - w[0]).abs()).sum();
-    let fdi_raw = if range_hl > 0.0 && path_length > 0.0 {
-        (path_length / range_hl).ln() / (LEN as f64).ln() + 1.0
-    } else {
-        1.5
-    };
+    let fdi_raw = fractal_dimension(FractalMethod::Path, LEN, |k| {
+        let bar = window.get(window.len().checked_sub(1 + k)?)?;
+        Some((bar.high, bar.low, bar.close))
+    })
+    .expect("the window holds LEN + 1 bars");
     let fdi_score = (1.0 - normalize(fdi_raw, FDI_TREND_ANCHOR, FDI_RANGE_ANCHOR)) * 100.0;
 
     SubScores {

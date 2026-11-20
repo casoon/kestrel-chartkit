@@ -14,6 +14,7 @@ mod composites_b;
 mod moving_averages;
 mod oscillators;
 mod pilot;
+mod readouts;
 mod structure;
 mod volatility;
 mod volume;
@@ -91,6 +92,7 @@ const FAMILIES: &[(&str, &[Coverage], &[&str])] = &[
     ("volatility", volatility::COVERAGE, volatility::PENDING),
     ("volume", volume::COVERAGE, volume::PENDING),
     ("structure", structure::COVERAGE, structure::PENDING),
+    ("readouts", readouts::COVERAGE, readouts::PENDING),
     (
         "composites_a",
         composites_a::COVERAGE,
