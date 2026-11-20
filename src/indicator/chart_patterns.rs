@@ -707,8 +707,19 @@ impl ChartPatternDetector {
         out
     }
 
-    /// A Wolfe Wave: 5 alternating points where line(1-3) and line(2-4) are roughly parallel and
-    /// point 5 pierces the line(1-3) extension.
+    /// A Wolfe Wave (after Bill Wolfe): 5 alternating points, so 1, 3 and 5 share one type. With
+    /// 1, 3, 5 lows (bullish; mirrored for highs, bearish):
+    ///
+    /// 1. point 3 lies below point 1;
+    /// 2. point 4 lies above point 1 and below point 2 (it re-enters the 1-2 range);
+    /// 3. lines 1-3 and 2-4 converge, `slope(2-4) < slope(1-3)` (bearish: `>`), compared by the
+    ///    sign of the difference only;
+    /// 4. point 5 lies below the 1-3 line projected to its timestamp (bearish: above).
+    ///
+    /// `confidence` is the convergence, `1 - gap(5) / gap(1)` clamped to `0..=1`, where the gap is
+    /// the distance of line 2-4 from line 1-3 at the timestamp of point 1 and of point 5.
+    /// `tolerance_pct` plays no part in this rule. The upper line is 1-3 for highs and 2-4 for
+    /// lows, the lower line the other one.
     fn scan_wolfe_waves(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
         let mut out = Vec::new();
         for window in nodes.windows(5) {
@@ -717,34 +728,33 @@ impl ChartPatternDetector {
                 continue;
             }
             let (n1, n2, n3, n4, n5) = (&window[0], &window[1], &window[2], &window[3], &window[4]);
+            // Bullish when 1, 3, 5 are lows; every comparison below flips with `sign`.
+            let sign = if n1.is_high { -1.0 } else { 1.0 };
+
+            if sign * (n3.price - n1.price) >= 0.0 {
+                continue;
+            }
+            if !(sign * (n4.price - n1.price) > 0.0 && sign * (n4.price - n2.price) < 0.0) {
+                continue;
+            }
 
             let line13 = TrendLine::from_nodes(n1, n3);
             let line24 = TrendLine::from_nodes(n2, n4);
-
-            let scale = (n1.price.abs() + n3.price.abs()).max(1e-9);
-            let slope_diff = (line13.slope() - line24.slope()).abs() / scale;
-            let parallel_tol = self.tolerance_pct / 100.0 * 5.0;
-            if slope_diff > parallel_tol {
+            if sign * (line24.slope() - line13.slope()) >= 0.0 {
+                continue;
+            }
+            if sign * (n5.price - line13.value_at(n5.timestamp)) >= 0.0 {
                 continue;
             }
 
-            let projected13_at5 = line13.value_at(n5.timestamp);
-            let pierces = if n1.is_high {
-                // 1,3,5 are lows (bullish Wolfe): point 5 must undercut the 1-3 extension.
-                !n5.is_high && n5.price < projected13_at5
-            } else {
-                n5.is_high && n5.price > projected13_at5
-            };
-            if !pierces {
-                continue;
-            }
-
-            let confidence = (1.0 - slope_diff / parallel_tol.max(1e-9)).clamp(0.0, 1.0);
+            let gap1 = sign * (line24.value_at(n1.timestamp) - line13.value_at(n1.timestamp));
+            let gap5 = sign * (line24.value_at(n5.timestamp) - line13.value_at(n5.timestamp));
+            let confidence = (1.0 - gap5 / gap1.max(1e-9)).clamp(0.0, 1.0);
             out.push(ChartPatternCandidate {
                 kind: ChartPatternKind::WolfeWave,
                 nodes: window.to_vec(),
-                upper_line: Some(if n1.is_high { line24 } else { line13 }),
-                lower_line: Some(if n1.is_high { line13 } else { line24 }),
+                upper_line: Some(if n1.is_high { line13 } else { line24 }),
+                lower_line: Some(if n1.is_high { line24 } else { line13 }),
                 state: PatternState::Forming,
                 confidence,
             });
@@ -813,6 +823,64 @@ mod tests {
         let b = node(100, 200.0, true);
         let line = TrendLine::from_nodes(&a, &b);
         assert!((line.value_at(50) - 150.0).abs() < 1e-9);
+    }
+
+    /// Bullish Wolfe nodes: lows 100 / 96 / 88 at 0 / 20 / 40, highs 112 / 106 at 10 / 30. Line
+    /// 1-3 falls 0.2 per tick (92 at 40), line 2-4 falls 0.3 (converging).
+    fn wolfe(sign: f64, p: [f64; 5]) -> Vec<ZigZagNode> {
+        (0..5)
+            .map(|i| node(i as i64 * 10, sign * p[i], (i % 2 == 0) == (sign < 0.0)))
+            .collect()
+    }
+
+    fn has_wolfe(nodes: &[ZigZagNode]) -> bool {
+        ChartPatternDetector::new(2.0)
+            .scan(nodes)
+            .iter()
+            .any(|c| c.kind == ChartPatternKind::WolfeWave)
+    }
+
+    #[test]
+    fn test_detects_wolfe_wave_in_both_directions() {
+        let bull = wolfe(1.0, [100.0, 112.0, 96.0, 106.0, 88.0]);
+        let found = ChartPatternDetector::new(2.0).scan(&bull);
+        let w = found
+            .iter()
+            .find(|c| c.kind == ChartPatternKind::WolfeWave)
+            .expect("a bullish Wolfe wave");
+        assert!((w.lower_line.unwrap().value_at(40) - 92.0).abs() < 1e-9);
+        assert!((w.upper_line.unwrap().value_at(30) - 106.0).abs() < 1e-9);
+        // gap(1) = 115 - 100 = 15 (line 2-4 at 0 is 115), gap(5) = 103 - 92 = 11: 1 - 11/15.
+        assert!((w.confidence - 4.0 / 15.0).abs() < 1e-9);
+
+        let bear = wolfe(-1.0, [100.0, 112.0, 96.0, 106.0, 88.0]);
+        let found = ChartPatternDetector::new(2.0).scan(&bear);
+        let w = found
+            .iter()
+            .find(|c| c.kind == ChartPatternKind::WolfeWave)
+            .expect("a bearish Wolfe wave");
+        assert!((w.upper_line.unwrap().value_at(40) + 92.0).abs() < 1e-9);
+        assert!((w.lower_line.unwrap().value_at(30) + 106.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_wolfe_wave_near_misses_each_break_one_rule() {
+        let misses: [(&str, [f64; 5]); 4] = [
+            // 3 not below 1.
+            ("point 3", [100.0, 112.0, 101.0, 106.0, 88.0]),
+            // 4 below 1 (outside the 1-2 range).
+            ("point 4", [100.0, 112.0, 96.0, 99.0, 88.0]),
+            // 2-4 parallel to 1-3 (both fall 0.2), not converging.
+            ("parallel", [100.0, 112.0, 96.0, 108.0, 88.0]),
+            // 5 at 93 stays inside the 1-3 line (92).
+            ("point 5", [100.0, 112.0, 96.0, 106.0, 93.0]),
+        ];
+        assert!(has_wolfe(&wolfe(1.0, [100.0, 112.0, 96.0, 106.0, 88.0])));
+        for sign in [1.0, -1.0] {
+            for (rule, p) in misses {
+                assert!(!has_wolfe(&wolfe(sign, p)), "{rule} sign {sign}");
+            }
+        }
     }
 
     #[test]

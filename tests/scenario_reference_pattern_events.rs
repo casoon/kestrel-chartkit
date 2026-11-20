@@ -173,6 +173,24 @@ const ONE_TWO_THREE: Waypoints = &[
     (50, 90.0),
     (60, 100.0),
 ];
+/// Lows 100 / 96 / 88 (bars 10, 30, 50) and highs 112 / 106 (bars 20, 40). The Wolfe rules: 96 is
+/// below 100; 106 is inside the 1-2 range 100..112; line 1-3 falls 0.2 per bar and line 2-4 falls
+/// 0.3, so they converge; line 1-3 is at 92 on bar 50 and point 5 at 88 undercuts it. Point 5 is
+/// confirmed with the next swing, three bars after the waypoint 60, on bar 63; the first close
+/// after it (bar 51, 89.2) is above point 5 and below the 1-4 line there (100 + 0.2 * 41 =
+/// 108.2), so the rule confirms at once and the event, raised on bar 63, carries the target of
+/// bar 51. The first three nodes (100, 112, 96) are a bearish 1-2-3 as well: node 3 is confirmed
+/// on bar 43, and the first close under 96 is bar 46 (106 - 1.8 * 6 = 95.2).
+const WOLFE_WAVE: Waypoints = &[
+    (0, 110.0),
+    (10, 100.0),
+    (20, 112.0),
+    (30, 96.0),
+    (40, 106.0),
+    (50, 88.0),
+    (60, 100.0),
+    (70, 98.0),
+];
 /// Falling highs 120 / 115 over rising lows 100 / 104: the upper boundary (111.25 on bar 45) is
 /// crossed on bar 45, the last low is confirmed on bar 53.
 const TRIANGLE: Waypoints = &[
@@ -341,6 +359,24 @@ fn one_two_three_confirms_on_the_first_close_beyond_the_third_node() {
 }
 
 #[test]
+fn wolfe_wave_confirms_with_point_five_and_projects_the_one_four_line() {
+    let steps = run(CHART, &[], &bars(WOLFE_WAVE));
+    expect(
+        &steps,
+        &[
+            (46, &["bear_one_two_three"]),
+            (53, &["bear_falling_wedge"]),
+            (63, &["bull_wolfe_wave"]),
+        ],
+    );
+    assert_eq!(extra(&steps, 63, "pattern"), 8.0);
+    assert_eq!(extra(&steps, 63, "invalidation"), 88.0);
+    assert!(close(extra(&steps, 63, "target"), 108.2));
+    let step = steps.iter().find(|s| s.bar == 63).unwrap();
+    assert_eq!(step.output.value, 1.0);
+}
+
+#[test]
 fn symmetrical_triangle_breaks_out_on_either_side() {
     let up = run(CHART, &[], &bars(TRIANGLE));
     expect(&up, &[(53, &["bull_triangle"])]);
@@ -458,9 +494,18 @@ fn an_instance_the_rule_invalidates_raises_nothing() {
         (80, 110.0),
     ];
     let steps = run(CHART, &[], &bars(series));
+    // The bearish Wolfe wave over the highs 120 / 120.5 / 125 (bars 10, 30, 50) and the lows
+    // 105 / 108 (bars 20, 40): 120.5 is above 120; 108 is inside the 1-2 range 105..120; line 1-3
+    // rises 0.025 per bar and line 2-4 0.15, so they converge; line 1-3 is at 121 on bar 50 and
+    // point 5 at 125 overshoots it. Point 5 is confirmed with the next swing (the low 99 on bar
+    // 70), on bar 73.
     expect(
         &steps,
-        &[(48, &["bull_one_two_three"]), (53, &["bull_rising_wedge"])],
+        &[
+            (48, &["bull_one_two_three"]),
+            (53, &["bull_rising_wedge"]),
+            (73, &["bear_wolfe_wave"]),
+        ],
     );
     let active = |bar: usize| steps.iter().find(|s| s.bar == bar).unwrap().output.extra["active"];
     assert_eq!(active(43), 2.0);
@@ -671,6 +716,7 @@ fn the_mirror_image_of_every_chart_scenario_gives_the_mirrored_events() {
         HEAD_AND_SHOULDERS,
         INVERSE_HEAD_AND_SHOULDERS,
         ONE_TWO_THREE,
+        WOLFE_WAVE,
         TRIANGLE,
         TRIANGLE_DOWN,
         ASCENDING_TRIANGLE,

@@ -302,8 +302,7 @@ through), `invalidation` (the pattern's extreme, the 1-2-3's second node, the fa
 `prz_low`, `prz_high` and `d`; with several instances on one bar these describe the first.
 `extra["active"]` counts the instances followed, `extra["confirmed"]` those confirmed on the bar.
 The auto-fitted trendlines of the batch detector are the `trendlines` entry's. The Wolfe wave of
-`ChartPatternDetector` currently matches no input (its piercing test reads point 5 against the
-type of point 1, which an alternating window never differs in), so `wolfe_wave` raises no alert yet.
+`ChartPatternDetector` follows Bill Wolfe's rules: five alternating nodes where, for points 1, 3, 5 as lows (`bull_wolfe_wave`), point 3 is below point 1, point 4 is above point 1 and below point 2, line 1-3 and line 2-4 converge, and point 5 undercuts the 1-3 line projected to its time; for highs the mirror image (`bear_wolfe_wave`). `fit` is the convergence, `1 - gap(5) / gap(1)`; `tolerance_pct` plays no part.
 
 ### bottom_formation
 
