@@ -97,7 +97,7 @@ for bar in &bars {
     </div>
     <span slot="caption">
       A fictitious share with invented prices. kestrel-chartkit computes every value when this site
-      is built, chartlet draws it.
+      is built; the chart is drawn with <a class="inline-link" href="https://casoon.github.io/chartlet/">chartlet</a>.
     </span>
   </Hero>
 
@@ -275,6 +275,10 @@ for bar in &bars {
 </Base>
 
 <style>
+  .inline-link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
   .hero-chart {
     min-width: 0;
   }
