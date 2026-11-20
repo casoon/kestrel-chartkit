@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::VecDeque;
@@ -45,12 +46,7 @@ impl Indicator for ChoppinessIndexEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let tr = match self.prev_close {
-            Some(prev_c) => (bar.high - bar.low)
-                .max((bar.high - prev_c).abs())
-                .max((bar.low - prev_c).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
 
         self.tr_sum_window.push_back(tr);

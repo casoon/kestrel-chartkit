@@ -61,6 +61,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_character.py`.
 
+use super::kernels::{true_range, true_range_hl};
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -296,9 +297,7 @@ impl LegCharacter {
             };
             let dd = dir * delta;
             let dbody = (dir * (cur.close - cur.open)).max(0.0);
-            let tr = (cur.high - cur.low)
-                .max((cur.high - prev.close).abs())
-                .max((cur.low - prev.close).abs());
+            let tr = true_range_hl(cur.high, cur.low, Some(prev.close));
             path += tr;
             let ov = (cur.high.min(prev.high) - cur.low.max(prev.low)).max(0.0);
             overlap += safe_div(ov, range.min(prange), 0.0);
@@ -506,12 +505,7 @@ impl Indicator for LegCharacter {
         let c = self.cfg.clone();
         let t = self.bars;
         self.bars += 1;
-        let tr = match self.rows.back() {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.rows.back().map(|p| p.close));
         let atr = self.atr.update(tr);
         let ma = self.ma.update(bar.close).expect("first-sample seed");
         self.rows.push_back(Row {

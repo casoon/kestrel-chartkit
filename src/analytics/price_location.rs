@@ -21,15 +21,13 @@
 
 use std::collections::VecDeque;
 
+use crate::indicator::kernels::true_range_hl;
 use crate::indicator::smoothing::{Ema, Sma};
 use crate::model::Bar;
 
 /// True range of a bar; `prev_close = None` on the first bar gives `high − low`.
 pub fn true_range(high: f64, low: f64, prev_close: Option<f64>) -> f64 {
-    match prev_close {
-        Some(pc) => (high - low).max((high - pc).abs()).max((low - pc).abs()),
-        None => high - low,
-    }
+    true_range_hl(high, low, prev_close)
 }
 
 /// Wilder ATR, pushed bar by bar (see the module table).

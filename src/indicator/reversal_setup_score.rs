@@ -71,6 +71,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/reversal_setup_score.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -271,12 +272,7 @@ impl Indicator for ReversalSetupScore {
         // Series.
         let ema20 = self.ema20.update(bar.close).expect("first-sample seed");
         let ema50 = self.ema50.update(bar.close).expect("first-sample seed");
-        let tr = match prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev_close);
         let atr = self.atr.update(tr);
         let rsi = prev_close.and_then(|pc| {
             let ch = bar.close - pc;

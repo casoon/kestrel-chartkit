@@ -33,6 +33,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/roc_context.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -171,12 +172,7 @@ impl Indicator for RocContext {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
         let c = self.cfg.clone();
-        let tr = match self.at(0) {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.at(0).map(|p| p.close));
         let atr = self.atr.update(tr);
         let line = self
             .roc(bar.close, c.roc_len)

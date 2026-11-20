@@ -39,6 +39,7 @@ pub mod flow_exhaustion;
 pub mod force_index;
 pub mod gap;
 pub mod harmonics;
+pub(crate) mod kernels;
 pub mod kst;
 pub mod leg_character;
 pub mod leg_conviction;

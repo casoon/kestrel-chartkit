@@ -17,6 +17,7 @@
 //! Scope: the signal core only — no clustering-based conviction mode, chart objects or
 //! multi-timeframe confluence.
 
+use super::kernels::true_range;
 use crate::model::Bar;
 use crate::series::Series;
 
@@ -165,12 +166,7 @@ impl Indicator for AdaptiveChandelierEngine {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
 
-        let tr = match self.prev_close {
-            None => bar.high - bar.low,
-            Some(prev_close) => (bar.high - bar.low)
-                .max((bar.high - prev_close).abs())
-                .max((bar.low - prev_close).abs()),
-        };
+        let tr = true_range(bar, self.prev_close);
         let atr_raw = self.tr_rma.update(tr);
         let atr_avg = self.atr_sma.update(atr_raw.unwrap_or(tr));
 

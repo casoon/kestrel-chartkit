@@ -3,6 +3,7 @@
 //! higher-timeframe projection — the capabilities [`super::zigzag::ZigZagEngine`]'s fixed-depth,
 //! percent-only pivot detector does not offer. Complements rather than replaces it.
 
+use super::kernels::true_range;
 use std::collections::VecDeque;
 
 use crate::model::Bar;
@@ -259,12 +260,7 @@ impl Indicator for AdvancedZigZagEngine {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
 
-        let tr = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
         let atr = self.atr.update(tr);
 

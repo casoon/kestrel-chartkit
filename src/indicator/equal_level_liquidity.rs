@@ -86,6 +86,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/equal_level_liquidity.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -330,12 +331,7 @@ impl Indicator for EqualLevelLiquidity {
         let t = self.bars;
         self.bars += 1;
         let prev = self.rows.back().cloned();
-        let tr = match &prev {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev.as_ref().map(|p| p.close));
         let atr = self.atr.update(tr);
         self.cum_volume += bar.volume;
         let volume_real = self.cum_volume > 0.0;

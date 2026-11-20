@@ -32,6 +32,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/sweep_reversal_score.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -156,12 +157,7 @@ impl Indicator for SweepReversalScore {
         let t = self.bars;
         self.bars += 1;
         let prev = self.rows.back().cloned();
-        let tr = match &prev {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev.as_ref().map(|p| p.close));
         let atr = self.atr.update(tr);
         let atr_base = atr.and_then(|a| self.atr_base.update(a));
         let rsi = prev.as_ref().and_then(|p| {

@@ -67,6 +67,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structural_flow.py`.
 
+use super::kernels::true_range_hl;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -419,10 +420,7 @@ impl Indicator for StructuralFlow {
         self.bars += 1;
         let (o, h, l, c) = (bar.open, bar.high, bar.low, bar.close);
         let prev_close = self.closes.back().copied();
-        let tr = match prev_close {
-            Some(pc) => (h - l).max((h - pc).abs()).max((l - pc).abs()),
-            None => h - l,
-        };
+        let tr = true_range_hl(h, l, prev_close);
         let atr = self.atr.update(tr).map(|a| a.max(1e-12));
         let change = prev_close.map(|pc| c - pc);
         push(&mut self.closes, c, HISTORY);

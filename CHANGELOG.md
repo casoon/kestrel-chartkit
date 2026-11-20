@@ -14,6 +14,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Pages:** the project site uses the current shared theme (0.16.1).
 - **Pages:** the start page shows a computed chart up front, the areas of the crate with their counts, chartlet and kestrel-loom as the two ways to draw, and how the results are checked against the independent reference.
 - **Indicators:** SMA, EMA, WMA, Wilder smoothing (RMA) and KAMA are each computed by one kernel in `indicator::smoothing`. `SmaEngine`, `WmaEngine` and `KamaEngine` wrap it instead of carrying a copy; the inline exponential averages of CCI, PPO, Keltner Channel, PMO, the price-average relation and the price-location read-out, the SMA of the cheat-sheet levels and the SMA20 of the regime classifier call it as well. Catalog outputs are unchanged.
+- **Indicators:** the shared formula kernels live in `indicator::kernels`. The true range is computed once there; about 35 indicators, the evaluation helpers and the analytics read-outs call it instead of carrying an inline copy. Catalog outputs are unchanged.
 
 ## [0.42.0] - 2026-11-17
 

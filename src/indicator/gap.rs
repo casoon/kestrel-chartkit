@@ -80,6 +80,7 @@
 //! and `gap_down` on the bar a gap forms, `gap_closed` on a bar that closes at least one.
 //! [`GapEngine::open_gaps`] and [`GapEngine::closed_gaps`] return the same gaps as [`Gap`] values.
 
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
@@ -274,12 +275,7 @@ impl Indicator for GapEngine {
             low: bar.low,
             close: bar.close,
         });
-        let true_range = match previous {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let true_range = true_range(bar, previous.map(|p| p.close));
         let atr_prev = self.atr_value;
         self.atr_value = self.atr.update(true_range);
         let (previous, atr_prev) = (previous?, atr_prev?);

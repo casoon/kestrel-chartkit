@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::indicator::smoothing::Rma;
@@ -229,12 +230,7 @@ impl Indicator for CandleClassificationEngine {
             self.closes.remove(0);
         }
 
-        let true_range = match self.prev_close {
-            Some(prev) => (bar.high - bar.low)
-                .max((bar.high - prev).abs())
-                .max((bar.low - prev).abs()),
-            None => bar.high - bar.low,
-        };
+        let true_range = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
         self.atr_value = self.atr.update(true_range);
 

@@ -42,6 +42,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/overextension_risk.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -307,12 +308,7 @@ impl Indicator for OverextensionRisk {
         self.alerts.clear();
         let c = self.cfg.clone();
         let prev_close = self.at(0).map(|r| r.close);
-        let tr = match prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev_close);
         let atr = self.atr.update(tr);
         let ema = self.ema.update(bar.close);
         self.closes.push_back(bar.close);

@@ -128,6 +128,7 @@
 //! A series that never has dispersion finds no climax, so a range can only be set by the width
 //! fallback with an open bias; with the defaults it runs to Phase C at most.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::clustering::RollingRobustThreshold;
@@ -1511,12 +1512,7 @@ impl Indicator for WyckoffStateMachine {
         self.index += 1;
 
         let prev_close = self.prev_close.replace(bar.close);
-        let tr = match prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev_close);
         let atr = self.atr.update(tr);
         let volume_band = self.volume_threshold.update(bar.volume);
 

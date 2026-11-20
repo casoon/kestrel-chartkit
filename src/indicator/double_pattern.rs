@@ -28,6 +28,7 @@
 //! for its natural stop, so a consumer that places stops there needs no second rule. `value` is
 //! `+1`/`-1` on a forming bar, `+2`/`-2` on a confirming bar, else `0`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -199,12 +200,7 @@ impl Indicator for DoublePattern {
         self.event = 0;
         self.index += 1;
 
-        let true_range = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let true_range = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
         let atr_now = self.atr.update(true_range);
 

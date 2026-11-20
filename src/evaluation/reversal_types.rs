@@ -32,6 +32,7 @@
 //! Golden reference: `reference/kestrel_reference/fixtures/reversal_types.py`.
 
 use crate::indicator::adx::Adx;
+use crate::indicator::kernels::true_range;
 use crate::indicator::smoothing::{Ema, Rma};
 use crate::indicator::wavetrend::WaveTrendEngine;
 use crate::indicator::Indicator;
@@ -140,14 +141,7 @@ pub fn classify_reversals(bars: &[Bar], cfg: &ReversalTypeConfig) -> Vec<Reversa
     for (i, b) in bars.iter().enumerate() {
         wt1.push(wt.on_bar(b).map(|o| o.extra["wt1"]));
         adx.push(adx_ind.on_bar(b).map(|o| o.value));
-        let tr = if i == 0 {
-            b.high - b.low
-        } else {
-            let pc = bars[i - 1].close;
-            (b.high - b.low)
-                .max((b.high - pc).abs())
-                .max((b.low - pc).abs())
-        };
+        let tr = true_range(b, i.checked_sub(1).map(|j| bars[j].close));
         atr.push(atr_rma.update(tr));
         ema.push(ema_f.update(b.close).unwrap());
     }

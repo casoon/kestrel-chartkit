@@ -39,6 +39,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/market_state_chain.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -192,12 +193,7 @@ impl Indicator for MarketStateChain {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
         let c = self.cfg.clone();
-        let tr = match self.at(0) {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.at(0).map(|p| p.close));
         let atr = self.atr.update(tr);
         let atr_ext = atr.and_then(|a| self.atr_window.push(a));
         let ema = self.ema.update(bar.close).unwrap();

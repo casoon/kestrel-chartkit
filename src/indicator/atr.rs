@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
@@ -195,12 +196,7 @@ impl Indicator for Atr {
         self.alerts = AtrAlerts::default();
         self.bars_seen += 1;
 
-        let tr = match self.prev_close {
-            None => bar.high - bar.low,
-            Some(prev_close) => (bar.high - bar.low)
-                .max((bar.high - prev_close).abs())
-                .max((bar.low - prev_close).abs()),
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
 
         let atr_raw = self.tr_average.update(tr)?;

@@ -12,6 +12,7 @@
 //! when both hold (crossed stops) the direction is kept
 //! ```
 
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::model::Bar;
@@ -92,12 +93,7 @@ impl Indicator for ChandelierExitEngine {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
 
-        let tr = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.prev_close);
 
         self.highs.push(bar.high);
         self.lows.push(bar.low);

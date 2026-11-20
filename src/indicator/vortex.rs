@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
@@ -59,9 +60,7 @@ impl Indicator for VortexEngine {
 
         let vm_plus = (bar.high - prev.low).abs();
         let vm_minus = (bar.low - prev.high).abs();
-        let tr = (bar.high - bar.low)
-            .max((bar.high - prev.close).abs())
-            .max((bar.low - prev.close).abs());
+        let tr = true_range(bar, Some(prev.close));
 
         self.vm_plus_window.push_back(vm_plus);
         self.vm_minus_window.push_back(vm_minus);

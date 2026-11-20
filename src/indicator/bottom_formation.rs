@@ -32,6 +32,7 @@
 //! 1 attempt … 4 confirmed) on every bar. `value` is `+n`/`-n` for the stage a bottom/top
 //! reached on this bar (bottom first), else `0`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -201,12 +202,7 @@ impl Machine {
         self.count += 1;
 
         // ATR 14, Wilder, seeded with the mean of the first 14 true ranges.
-        let tr = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
         let n = LEN as f64;
         self.atr = match self.atr {

@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::indicator::smoothing::Ema;
@@ -44,13 +45,7 @@ impl Indicator for TrueRangeEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let tr = if let Some(prev) = self.prev_close {
-            (bar.high - bar.low)
-                .max((bar.high - prev).abs())
-                .max((bar.low - prev).abs())
-        } else {
-            bar.high - bar.low
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
 
         Some(IndicatorOutput::new(tr))
@@ -116,13 +111,7 @@ impl Indicator for KeltnerChannelEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let tr = if let Some(prev) = self.prev_close {
-            (bar.high - bar.low)
-                .max((bar.high - prev).abs())
-                .max((bar.low - prev).abs())
-        } else {
-            bar.high - bar.low
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
 
         self.closes.push_back(bar.close);

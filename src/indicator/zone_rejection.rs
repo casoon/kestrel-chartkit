@@ -22,6 +22,7 @@
 //! event bar (the low for bull, the high for bear) — the natural stop level — and is present
 //! only on event bars. `value` is `+1`, `-1` or `0`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -136,12 +137,7 @@ impl Indicator for ZoneRejection {
         self.event = 0;
         self.strength = 0.0;
 
-        let true_range = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let true_range = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
         let atr_now = self.atr.update(true_range);
 

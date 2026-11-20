@@ -80,6 +80,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structure_zones.py`.
 
+use super::kernels::true_range_hl;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -389,10 +390,7 @@ impl Indicator for StructureZones {
         let prev_close = prev.map(|p| p.close);
         let (o, h, l, c, v) = (bar.open, bar.high, bar.low, bar.close, bar.volume);
 
-        let tr = match prev_close {
-            Some(pc) => (h - l).max((h - pc).abs()).max((l - pc).abs()),
-            None => h - l,
-        };
+        let tr = true_range_hl(h, l, prev_close);
         let atr = self.atr.update(tr);
         self.cum_volume += v;
         let real = self.cum_volume > 0.0;

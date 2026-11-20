@@ -46,6 +46,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/trend_break_risk.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -211,12 +212,7 @@ impl Indicator for TrendBreakRisk {
         self.alerts.clear();
         let c = self.cfg.clone();
         let prev = self.rows.back().copied();
-        let tr = match prev {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev.map(|p| p.close));
         let atr = self.atr.update(tr).map(|a| a.max(1e-12));
         let rsi = prev.and_then(|p| {
             let ch = bar.close - p.close;

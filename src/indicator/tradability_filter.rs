@@ -45,6 +45,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/tradability_filter.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -340,12 +341,7 @@ impl Indicator for TradabilityFilter {
         let c = self.cfg.clone();
         let q = c.quality_len;
         let prev = self.at(0).copied();
-        let tr = match prev {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev.map(|p| p.close));
         let atr = self.atr.update(tr);
         let atr_ratio = atr.map(|a| {
             let r = self.atr_ref.update(a).unwrap();

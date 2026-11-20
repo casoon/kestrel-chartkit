@@ -34,6 +34,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/smoothed_supertrend.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -152,12 +153,7 @@ impl Indicator for SmoothedSupertrend {
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.alerts.clear();
         let c = self.cfg.clone();
-        let tr = match self.prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.prev_close);
         let atr = self.atr.update(tr);
         let adx = self.adx.on_bar(bar).map(|o| o.value);
         let mut base = None;

@@ -38,6 +38,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/accumulation_phase.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -233,12 +234,7 @@ impl Indicator for AccumulationPhase {
         let t = self.bars;
         self.bars += 1;
         let prev = self.rows.back().copied();
-        let tr = match prev {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev.map(|p| p.close));
         let atr = self.atr.update(tr);
         let atr_avg = atr.and_then(|a| self.atr_avg.update(a));
         let rsi = prev.and_then(|p| {

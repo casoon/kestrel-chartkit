@@ -37,6 +37,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_conviction.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -212,12 +213,7 @@ impl Indicator for LegConviction {
         self.alerts.clear();
         let t = self.bars;
         self.bars += 1;
-        let tr = match self.rows.back() {
-            Some(p) => (bar.high - bar.low)
-                .max((bar.high - p.close).abs())
-                .max((bar.low - p.close).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, self.rows.back().map(|p| p.close));
         let atr = self.atr.update(tr);
         self.cum_volume += bar.volume;
         self.rows.push_back(bar.clone());

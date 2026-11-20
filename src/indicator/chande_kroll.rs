@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::model::Bar;
@@ -89,12 +90,7 @@ impl Indicator for ChandeKrollStop {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let tr = match self.prev_close {
-            None => bar.high - bar.low,
-            Some(prev_close) => (bar.high - bar.low)
-                .max((bar.high - prev_close).abs())
-                .max((bar.low - prev_close).abs()),
-        };
+        let tr = true_range(bar, self.prev_close);
         self.prev_close = Some(bar.close);
 
         let highest_high = self.high_window.push(bar.high).map(|(_, high)| high);

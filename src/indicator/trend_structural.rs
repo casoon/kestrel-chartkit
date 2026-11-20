@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
@@ -55,9 +56,7 @@ impl Indicator for DmiEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         if let Some(ref prev) = self.prev_bar {
-            let tr = (bar.high - bar.low)
-                .max((bar.high - prev.close).abs())
-                .max((bar.low - prev.close).abs());
+            let tr = true_range(bar, Some(prev.close));
             let up_move = bar.high - prev.high;
             let down_move = prev.low - bar.low;
 
@@ -419,13 +418,7 @@ impl Indicator for SupertrendEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let tr = if let Some(prev) = self.prev_close {
-            (bar.high - bar.low)
-                .max((bar.high - prev).abs())
-                .max((bar.low - prev).abs())
-        } else {
-            bar.high - bar.low
-        };
+        let tr = true_range(bar, self.prev_close);
 
         self.trs.push_back(tr);
         if self.trs.len() > self.period {

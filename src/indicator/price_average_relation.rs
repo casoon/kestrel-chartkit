@@ -45,6 +45,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/price_average_relation.py`.
 
+use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -549,12 +550,7 @@ impl Indicator for PriceAverageRelation {
         let t = self.bars;
         self.bars += 1;
         let prev_close = self.rows.back().map(|r| r.close);
-        let tr = match prev_close {
-            Some(pc) => (bar.high - bar.low)
-                .max((bar.high - pc).abs())
-                .max((bar.low - pc).abs()),
-            None => bar.high - bar.low,
-        };
+        let tr = true_range(bar, prev_close);
         let row = Row {
             open: bar.open,
             high: bar.high,

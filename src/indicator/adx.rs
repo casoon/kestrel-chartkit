@@ -1,3 +1,4 @@
+use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::model::Bar;
@@ -118,9 +119,7 @@ impl Indicator for Adx {
         } else {
             0.0
         };
-        let tr = (bar.high - bar.low)
-            .max((bar.high - prev_close).abs())
-            .max((bar.low - prev_close).abs());
+        let tr = true_range(bar, Some(prev_close));
 
         let (tr_avg, dm_plus_avg, dm_minus_avg) = match (
             self.tr_rma.update(tr),

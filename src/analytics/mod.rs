@@ -38,7 +38,7 @@ pub use trend_persistence::{
 /// three-term form, or high−low on the very first bar. Shared by the
 /// regime (Choppiness) and price (ATR) read-outs.
 fn bar_true_range(bar: &crate::Bar, prev_close: Option<f64>) -> f64 {
-    true_range(bar.high, bar.low, prev_close)
+    crate::indicator::kernels::true_range(bar, prev_close)
 }
 
 /// Kaufman Efficiency Ratio over the last `n` price changes (needs `n`+1
