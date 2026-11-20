@@ -1,7 +1,7 @@
 mod common;
 
 use kestrel_chartkit::indicator::lsma::LsmaEngine;
-use kestrel_chartkit::indicator::moving_averages::EmaEngine;
+use kestrel_chartkit::indicator::moving_averages::{EmaEngine, JmaEngine};
 use kestrel_chartkit::indicator::params::{ParamValue, TypedParams};
 use kestrel_chartkit::indicator::registry::{build_checked, build_typed, RegistryError};
 use kestrel_chartkit::indicator::smoothing::{Ema, EmaInit};
@@ -610,4 +610,176 @@ fn test_t3_registry_rejects_shape_factor_outside_its_range() {
     assert!(build_checked("t3", &HashMap::from([("v".to_string(), 1.5)])).is_err());
     assert!(build_checked("t3", &HashMap::from([("v".to_string(), -0.1)])).is_err());
     assert!(build_checked("t3", &HashMap::from([("v".to_string(), 1.0)])).is_ok());
+}
+
+// --- Smoother family: RMA, ALMA, JMA approximation, SuperSmoother ------------------------------
+
+/// Output values of a catalog indicator built by name over the shared `CLOSES`.
+fn catalog_values(name: &str, params: &[(&str, f64)]) -> Vec<f64> {
+    let params: HashMap<String, f64> = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+    let mut indicator = build_checked(name, &params).unwrap();
+    CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| indicator.on_bar(&Bar::new(i as i64, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .map(|o| o.value)
+        .collect()
+}
+
+#[test]
+fn test_golden_rma_reference_values() {
+    let values = catalog_values("rma", &[("period", 5.0)]);
+    assert_eq!(
+        values.len(),
+        CLOSES.len() - 4,
+        "RMA gibt ab der period-ten Kerze aus"
+    );
+    common::assert_close(
+        values[0],
+        expected("rma5_first"),
+        expected("ma_tolerance"),
+        "RMA(5) Seed",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("rma5_last"),
+        expected("ma_tolerance"),
+        "RMA(5)",
+    );
+}
+
+#[test]
+fn test_golden_alma_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    for (label, offset, sigma) in [
+        ("default", 0.85, 6.0),
+        ("oldest", 0.0, 2.0),
+        ("newest", 1.0, 6.0),
+    ] {
+        let values = catalog_values(
+            "alma",
+            &[("period", 5.0), ("offset", offset), ("sigma", sigma)],
+        );
+        assert_eq!(values.len(), CLOSES.len() - 4);
+        common::assert_close(
+            *values.last().unwrap(),
+            expected(&format!("alma5_{label}_last")),
+            tolerance,
+            &format!("ALMA(5, {offset}, {sigma})"),
+        );
+    }
+    // The registry defaults are the documented 0.85 / 6.
+    common::assert_close(
+        *catalog_values("alma", &[("period", 5.0)]).last().unwrap(),
+        expected("alma5_default_last"),
+        tolerance,
+        "ALMA(5) defaults",
+    );
+}
+
+#[test]
+fn test_golden_jma_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    let values = catalog_values("jma", &[("period", 5.0)]);
+    assert_eq!(
+        values.len(),
+        CLOSES.len(),
+        "JMA gibt ab der ersten Kerze aus"
+    );
+    common::assert_close(
+        values[0],
+        expected("jma5_first"),
+        tolerance,
+        "JMA(5) erster Wert",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("jma5_default_last"),
+        tolerance,
+        "JMA(5)",
+    );
+    for (label, phase, power) in [
+        ("lead", 100.0, 2.0),
+        ("lag", -100.0, 2.0),
+        ("power1", 0.0, 1.0),
+    ] {
+        let values = catalog_values(
+            "jma",
+            &[("period", 5.0), ("phase", phase), ("power", power)],
+        );
+        common::assert_close(
+            *values.last().unwrap(),
+            expected(&format!("jma5_{label}_last")),
+            tolerance,
+            &format!("JMA(5, phase {phase}, power {power})"),
+        );
+    }
+}
+
+/// A phase beyond 100 and a power below 1 are clamped by the type; the registry rejects them
+/// instead, so the clamp is reached through the type.
+#[test]
+fn test_golden_jma_clamps_phase_and_power() {
+    let mut jma = JmaEngine::new(5, 250.0, 0.5);
+    let last = CLOSES
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &c)| jma.on_bar(&Bar::new(i as i64, c, c + 0.5, c - 0.5, c, 1000.0)))
+        .last()
+        .unwrap()
+        .value;
+    common::assert_close(
+        last,
+        expected("jma5_clamped_last"),
+        expected("ma_tolerance"),
+        "JMA(5, phase 250, power 0.5)",
+    );
+}
+
+#[test]
+fn test_golden_super_smoother_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    let values = catalog_values("super_smoother", &[("period", 5.0)]);
+    assert_eq!(
+        values.len(),
+        CLOSES.len() - 4,
+        "SuperSmoother gibt ab der period-ten Kerze aus"
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("supersmoother_5_last"),
+        tolerance,
+        "SuperSmoother(5)",
+    );
+    let values = catalog_values("super_smoother", &[("period", 3.0)]);
+    common::assert_close(
+        values[0],
+        expected("supersmoother_3_first_published"),
+        tolerance,
+        "SuperSmoother(3) erster veröffentlichter Wert",
+    );
+}
+
+/// Each smoother resumes from a clean state after `reset`.
+#[test]
+fn test_smoother_family_reset_restarts_deterministically() {
+    for name in ["rma", "alma", "jma", "super_smoother"] {
+        let mut indicator = build_checked(name, &HashMap::new()).unwrap();
+        let run = |indicator: &mut Box<dyn Indicator>| -> Vec<Option<f64>> {
+            CLOSES
+                .iter()
+                .cycle()
+                .take(40)
+                .enumerate()
+                .map(|(i, &c)| {
+                    indicator
+                        .on_bar(&Bar::new(i as i64, c, c + 0.5, c - 0.5, c, 1000.0))
+                        .map(|o| o.value)
+                })
+                .collect()
+        };
+        let first = run(&mut indicator);
+        indicator.reset();
+        assert_eq!(first, run(&mut indicator), "{name}");
+    }
 }

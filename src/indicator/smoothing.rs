@@ -864,6 +864,18 @@ mod kind_tests {
         assert_eq!(names.len(), SmootherKind::ALL.len());
     }
 
+    /// Each kind is named like the catalog entry that computes it.
+    #[test]
+    fn every_kind_is_a_catalog_entry() {
+        let catalog: Vec<&str> = crate::indicator::registry::catalog()
+            .iter()
+            .map(|entry| entry.name)
+            .collect();
+        for kind in SmootherKind::ALL {
+            assert!(catalog.contains(&kind.name()), "{}", kind.name());
+        }
+    }
+
     /// The codes that were published before the list grew keep their meaning.
     #[test]
     fn the_first_codes_are_stable() {

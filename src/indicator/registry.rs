@@ -535,6 +535,10 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "hma",
     "dema",
     "kama",
+    "rma",
+    "alma",
+    "jma",
+    "super_smoother",
     "dmi",
     "aroon",
     "parabolic_sar",
@@ -640,8 +644,8 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 136);
-        assert_eq!(catalog().len(), 136);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 140);
+        assert_eq!(catalog().len(), 140);
     }
 
     #[test]

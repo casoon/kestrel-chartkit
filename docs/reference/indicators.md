@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 136 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 140 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -129,6 +129,58 @@ Kaufman's Adaptive Moving Average
 | `slow_period` | 30 | whole number 1 – 10000 | EMA length of the slowest smoothing (efficiency 0) |
 
 Requires `fast_period` to be smaller than `slow_period`.
+
+### `rma`
+
+Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the first period closes)
+
+[See it in the showcase](../../../showcase/rma/)
+
+**Output** unit Price, range not declared · **warmup** 14 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 14 | whole number 1 – 10000 | bars of the Wilder average |
+
+### `alma`
+
+Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes)
+
+[See it in the showcase](../../../showcase/alma/)
+
+**Output** unit Price, range not declared · **warmup** 9 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 9 | whole number 1 – 10000 | bars in the weighting window |
+| `offset` | 0.85 | 0 – 1 | position of the weight peak in the window, 0 oldest bar to 1 newest |
+| `sigma` | 6 | 0.1 – 100 | narrowness of the weight bell: its width is period / sigma |
+
+### `jma`
+
+An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values
+
+[See it in the showcase](../../../showcase/jma/)
+
+**Output** unit Price, range not declared · **warmup** 1 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 14 | whole number 1 – 10000 | length: the larger, the smoother and the later |
+| `phase` | 0 | -100 – 100 | -100 lags, 100 overshoots (the type clamps to this range) |
+| `power` | 2 | 1 – 10 | exponent of the smoothing factor (the type clamps it to at least 1) |
+
+### `super_smoother`
+
+Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter
+
+[See it in the showcase](../../../showcase/super_smoother/)
+
+**Output** unit Price, range not declared · **warmup** 10 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 10 | whole number 1 – 10000 | cutoff period of the filter in bars |
 
 ### `lsma`
 

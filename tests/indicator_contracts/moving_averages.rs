@@ -37,6 +37,10 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("dema"),
     Coverage::full("tema"),
     Coverage::full("kama"),
+    Coverage::full("rma"),
+    Coverage::full("alma"),
+    Coverage::full("jma"),
+    Coverage::full("super_smoother"),
     Coverage::full("lsma"),
     Coverage::full("mcginley"),
     Coverage::full("t3"),
@@ -187,6 +191,93 @@ fn kama_custom() {
 #[test]
 fn kama_flat() {
     assert_holds(&case("kama_flat", "kama", IndicatorUnit::Price));
+}
+
+#[test]
+fn rma_defaults() {
+    assert_holds(&case("rma_defaults", "rma", IndicatorUnit::Price));
+}
+
+#[test]
+fn rma_short() {
+    assert_holds(&case("rma_short", "rma", IndicatorUnit::Price));
+}
+
+#[test]
+fn rma_unit() {
+    assert_holds(&case("rma_unit", "rma", IndicatorUnit::Price));
+}
+
+#[test]
+fn alma_defaults() {
+    assert_holds(&case("alma_defaults", "alma", IndicatorUnit::Price));
+}
+
+#[test]
+fn alma_custom() {
+    assert_holds(&case("alma_custom", "alma", IndicatorUnit::Price));
+}
+
+#[test]
+fn alma_edges() {
+    assert_holds(&case("alma_edges", "alma", IndicatorUnit::Price));
+}
+
+#[test]
+fn alma_unit() {
+    assert_holds(&case("alma_unit", "alma", IndicatorUnit::Price));
+}
+
+#[test]
+fn jma_defaults() {
+    assert_holds(&case("jma_defaults", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn jma_lead() {
+    assert_holds(&case("jma_lead", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn jma_lag() {
+    assert_holds(&case("jma_lag", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn jma_power_one() {
+    assert_holds(&case("jma_power_one", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn jma_unit() {
+    assert_holds(&case("jma_unit", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn super_smoother_defaults() {
+    assert_holds(&case(
+        "super_smoother_defaults",
+        "super_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn super_smoother_short() {
+    assert_holds(&case(
+        "super_smoother_short",
+        "super_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn super_smoother_unit() {
+    assert_holds(&case(
+        "super_smoother_unit",
+        "super_smoother",
+        IndicatorUnit::Price,
+    ));
 }
 
 #[test]
@@ -477,6 +568,40 @@ fn kama_rejects_invalid_configuration() {
     assert_rejected("kama", &[("fast_period", 30.0), ("slow_period", 30.0)]);
     assert_rejected("kama", &[("fast_period", 10.0), ("slow_period", 5.0)]);
     assert_rejected("kama", &[("fast", 2.0)]);
+}
+
+#[test]
+fn rma_rejects_invalid_configuration() {
+    assert_rejected("rma", &[("period", 0.0)]);
+    assert_rejected("rma", &[("period", 2.5)]);
+    assert_rejected("rma", &[("period", 10001.0)]);
+    assert_rejected("rma", &[("len", 14.0)]);
+}
+
+#[test]
+fn alma_rejects_invalid_configuration() {
+    assert_rejected("alma", &[("period", 0.0)]);
+    assert_rejected("alma", &[("offset", -0.1)]);
+    assert_rejected("alma", &[("offset", 1.1)]);
+    assert_rejected("alma", &[("sigma", 0.0)]);
+    assert_rejected("alma", &[("sigma", f64::NAN)]);
+    assert_rejected("alma", &[("length", 9.0)]);
+}
+
+#[test]
+fn jma_rejects_invalid_configuration() {
+    assert_rejected("jma", &[("period", 0.0)]);
+    assert_rejected("jma", &[("phase", 100.5)]);
+    assert_rejected("jma", &[("phase", -101.0)]);
+    assert_rejected("jma", &[("power", 0.5)]);
+    assert_rejected("jma", &[("length", 7.0)]);
+}
+
+#[test]
+fn super_smoother_rejects_invalid_configuration() {
+    assert_rejected("super_smoother", &[("period", 0.0)]);
+    assert_rejected("super_smoother", &[("period", 10.5)]);
+    assert_rejected("super_smoother", &[("cutoff", 10.0)]);
 }
 
 #[test]

@@ -5,12 +5,16 @@ import math
 
 from ..fixture import provenance
 from ..smoothing import (
+    alma_window,
     ema_first_sample,
     ema_published,
     ema_sma_seed,
+    jma_approximation,
     least_squares,
     published,
+    rma,
     sma,
+    super_smoother,
     wma,
 )
 
@@ -56,6 +60,21 @@ HEADER = [
     "chained first-sample-seeded EMAs combined as c1 e6 + c2 e5 + c3 e4 + c4 e3 with c1 = -v^3,",
     "c2 = 3v^2 + 3v^3, c3 = -6v^2 - 3v - 3v^3, c4 = 1 + 3v + v^3 + 3v^2; published from the",
     "period-th bar on; v = 0.7, 0 and 1.",
+    "",
+    "Smoother family, over the 10-bar series above:",
+    "  RMA            Wilder: alpha = 1/period, seeded with the mean of the first period closes,",
+    "                 published from the period-th bar on (period 5).",
+    "  ALMA           Gaussian-weighted window (Legoux, Kouzis-Loukas): m = offset (N - 1),",
+    "                 s = N / sigma, weight exp(-(i - m)^2 / (2 s^2)) on the value i places after",
+    "                 the oldest; period 5 with offset 0.85 / sigma 6 (the defaults), offset 0 /",
+    "                 sigma 2 and offset 1 / sigma 6.",
+    "  JMA            the openly published approximation of the Jurik moving average (not the",
+    "                 product of Jurik Research): beta = 0.45 (N - 1) / (0.45 (N - 1) + 2),",
+    "                 alpha = beta^power, three recursions per close, the first value the close;",
+    "                 period 5 with phase 0 / power 2 (the defaults), phase 100, phase -100 and",
+    "                 power 1; a phase beyond 100 is clamped to 100, a power below 1 to 1.",
+    "  SuperSmoother  Ehlers' 2-pole low-pass from a zero state, period 5, over the same series;",
+    "                 the indicator publishes from the period-th bar (period 3: the third value).",
 ]
 
 CLOSES = [10.0, 11.0, 12.0, 11.0, 13.0, 14.0, 13.0, 15.0, 16.0, 15.0]
@@ -221,6 +240,17 @@ def derive():
     keys["t3_3_v07_last"] = t3[-1]
     keys["t3_3_v00_last"] = _t3(T3_CLOSES, 3, 0.0)[-1]
     keys["t3_3_v10_last"] = _t3(T3_CLOSES, 3, 1.0)[-1]
+
+    keys["rma5_last"] = rma(CLOSES, 5)[-1]
+    keys["rma5_first"] = rma(CLOSES, 5)[4]
+    for label, offset, sigma in (("default", 0.85, 6.0), ("oldest", 0.0, 2.0), ("newest", 1.0, 6.0)):
+        keys[f"alma5_{label}_last"] = alma_window(CLOSES[-5:], offset, sigma)
+    for label, phase, power in (("default", 0.0, 2.0), ("lead", 100.0, 2.0), ("lag", -100.0, 2.0),
+                                ("power1", 0.0, 1.0), ("clamped", 250.0, 0.5)):
+        keys[f"jma5_{label}_last"] = jma_approximation(CLOSES, 5, phase, power)[-1]
+    keys["jma5_first"] = jma_approximation(CLOSES, 5, 0.0, 2.0)[0]
+    keys["supersmoother_5_last"] = super_smoother(CLOSES, 5)[-1]
+    keys["supersmoother_3_first_published"] = super_smoother(CLOSES, 3)[2]
     return keys
 
 
@@ -237,6 +267,11 @@ SECTIONS = [
      ["output_count", "seed", "second", "last", "last_cmo", "last_alpha"]),
     ("t3_3", "Tillson T3 (package 28)",
      ["v07_output_count", "v07_first", "v07_last", "v00_last", "v10_last"]),
+    ("rma5", "RMA, period 5", ["last", "first"]),
+    ("alma5", "ALMA, period 5", ["default_last", "oldest_last", "newest_last"]),
+    ("jma5", "JMA approximation, period 5",
+     ["default_last", "lead_last", "lag_last", "power1_last", "clamped_last", "first"]),
+    ("supersmoother", "SuperSmoother", ["5_last", "3_first_published"]),
 ]
 
 

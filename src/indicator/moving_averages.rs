@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::indicator::smoothing::{Ema, EmaInit, Kama, Sma, Wma};
+use crate::indicator::smoothing::{Alma, Ema, EmaInit, Jma, Kama, Rma, Sma, SuperSmoother, Wma};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -424,6 +424,228 @@ impl Indicator for KamaEngine {
     }
 }
 
+/// Wilder's smoothed moving average (RMA) over the closing price.
+///
+/// `alpha = 1/period`, `RMA_t = RMA_{t-1} + (close_t - RMA_{t-1}) / period`, seeded with the mean
+/// of the first `period` closes (Wilder, *New Concepts in Technical Trading Systems*, 1978). It is
+/// the average inside Wilder's RSI, ATR and ADX; as an exponential average it reacts like an
+/// [`EmaEngine`] of length `2 * period - 1`.
+///
+/// First output: with the `period`-th bar. [`Indicator::convergence_period`] states when the seed
+/// no longer matters. [`Indicator::reset`] clears the seed window and the average.
+#[derive(Debug, Clone)]
+pub struct RmaEngine {
+    period: usize,
+    rma: Rma,
+}
+
+impl RmaEngine {
+    pub fn new(period: usize) -> Self {
+        let period = period.max(1);
+        Self {
+            period,
+            rma: Rma::new(period),
+        }
+    }
+}
+
+impl Indicator for RmaEngine {
+    fn name(&self) -> &str {
+        "rma"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.period
+    }
+
+    fn convergence_period(&self) -> usize {
+        self.period.max(super::settle_bars(&[self.period as f64]))
+    }
+
+    fn reset(&mut self) {
+        self.rma.reset();
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.rma.update(bar.close).map(IndicatorOutput::new)
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        Vec::new()
+    }
+}
+
+/// Arnaud Legoux Moving Average (ALMA) over the closing price.
+///
+/// A Gaussian-weighted average of the last `period` closes (Legoux and Kouzis-Loukas, 2009). With
+/// `m = offset * (period - 1)` and `s = period / sigma`, the close `i` bars after the oldest of
+/// the window gets the weight `w_i = exp(-(i - m)^2 / (2 s^2))`, and
+/// `ALMA_t = sum(w_i * close_i) / sum(w_i)`. `offset` in `0..=1` places the peak of the weights
+/// from the oldest (`0`) to the newest (`1`) bar of the window; `sigma` narrows the bell the
+/// larger it is. A finite window, so there is no start-up state.
+///
+/// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
+#[derive(Debug, Clone)]
+pub struct AlmaEngine {
+    period: usize,
+    alma: Alma,
+}
+
+impl AlmaEngine {
+    pub fn new(period: usize, offset: f64, sigma: f64) -> Self {
+        let period = period.max(1);
+        Self {
+            period,
+            alma: Alma::new(period, offset, sigma),
+        }
+    }
+}
+
+impl Indicator for AlmaEngine {
+    fn name(&self) -> &str {
+        "alma"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.period
+    }
+
+    fn reset(&mut self) {
+        self.alma.reset();
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.alma.update(bar.close).map(IndicatorOutput::new)
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        Vec::new()
+    }
+}
+
+/// An approximation of the Jurik moving average (JMA) over the closing price, following an openly
+/// published formula. It is not the product of Jurik Research: the original is not public, so
+/// this type reproduces its published shape, not its values.
+///
+/// With `beta = 0.45 (period - 1) / (0.45 (period - 1) + 2)`, `alpha = beta^power` and
+/// `p = phase / 100 + 1.5`, three stages run per close:
+///
+/// ```text
+/// e0 = (1 - alpha) close + alpha e0
+/// e1 = (close - e0) (1 - beta) + beta e1
+/// e2 = (e0 + p e1 - JMA) (1 - alpha)^2 + alpha^2 e2
+/// JMA = JMA + e2
+/// ```
+///
+/// `phase` is clamped to `-100..=100` (a negative phase lags, a positive one overshoots), `power`
+/// to at least `1`. The first value is the first close, with `e1 = e2 = 0`.
+///
+/// First output: with the first bar. [`Indicator::reset`] clears all stages.
+#[derive(Debug, Clone)]
+pub struct JmaEngine {
+    period: usize,
+    jma: Jma,
+}
+
+impl JmaEngine {
+    pub fn new(period: usize, phase: f64, power: f64) -> Self {
+        let period = period.max(1);
+        Self {
+            period,
+            jma: Jma::new(period, phase, power),
+        }
+    }
+}
+
+impl Indicator for JmaEngine {
+    fn name(&self) -> &str {
+        "jma"
+    }
+
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
+    /// Three exponential stages of time constant `1 / (1 - beta)` at most (reached at
+    /// `power = 1`), whatever the phase.
+    fn convergence_period(&self) -> usize {
+        let drift = 0.45 * (self.period - 1) as f64;
+        let tau = (drift + 2.0) / 2.0;
+        super::settle_bars(&[tau, tau, tau])
+    }
+
+    fn reset(&mut self) {
+        self.jma.reset();
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        Some(IndicatorOutput::new(self.jma.update(bar.close)))
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        Vec::new()
+    }
+}
+
+/// Ehlers' SuperSmoother over the closing price: a 2-pole Butterworth low-pass filter
+/// (Ehlers, *Cybernetic Analysis for Stocks and Futures*, 2004; *Cycle Analytics for Traders*,
+/// 2013).
+///
+/// With `a1 = exp(-1.414 pi / period)`, `c2 = 2 a1 cos(1.414 pi / period)`, `c3 = -a1^2` and
+/// `c1 = 1 - c2 - c3`: `SS_t = c1 (close_t + close_{t-1}) / 2 + c2 SS_{t-1} + c3 SS_{t-2}`, with
+/// the missing earlier terms of the first bars taken as `0`. That start from zero leaves a
+/// transient in the first values, so the average is published from the `period`-th bar and
+/// [`Indicator::convergence_period`] states when the transient has decayed.
+///
+/// [`Indicator::reset`] returns the filter to its zero state.
+#[derive(Debug, Clone)]
+pub struct SuperSmootherEngine {
+    period: usize,
+    ss: SuperSmoother,
+    count: usize,
+}
+
+impl SuperSmootherEngine {
+    pub fn new(period: usize) -> Self {
+        let period = period.max(1);
+        Self {
+            period,
+            ss: SuperSmoother::new(period),
+            count: 0,
+        }
+    }
+}
+
+impl Indicator for SuperSmootherEngine {
+    fn name(&self) -> &str {
+        "super_smoother"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.period
+    }
+
+    /// The transient decays like `exp(-1.414 pi n / period)`.
+    fn convergence_period(&self) -> usize {
+        self.period.max(super::settle_bars(&[self.period as f64]))
+    }
+
+    fn reset(&mut self) {
+        self.ss.reset();
+        self.count = 0;
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.count += 1;
+        let value = self.ss.update(bar.close);
+        (self.count >= self.period).then(|| IndicatorOutput::new(value))
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        Vec::new()
+    }
+}
+
 /// Registry definition of `sma` (plan 49).
 pub const SMA_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
@@ -535,4 +757,77 @@ pub const KAMA_DEFINITION: super::definition::IndicatorDefinition =
                 p.count("slow_period"),
             )))
         },
+    };
+
+/// Registry definition of `rma`.
+pub const RMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "rma",
+        aliases: &[],
+        description: "Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the first period closes)",
+        params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
+            .meaning("bars of the Wilder average")],
+        checks: &[],
+        build: |p| Ok(Box::new(RmaEngine::new(p.count("period")))),
+    };
+
+/// Registry definition of `alma`.
+pub const ALMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "alma",
+        aliases: &[],
+        description:
+            "Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes)",
+        params: &[
+            super::definition::ParamSpec::count("period", 9, 1, 10000)
+                .meaning("bars in the weighting window"),
+            super::definition::ParamSpec::number("offset", 0.85, 0.0, 1.0)
+                .meaning("position of the weight peak in the window, 0 oldest bar to 1 newest"),
+            super::definition::ParamSpec::number("sigma", 6.0, 0.1, 100.0)
+                .meaning("narrowness of the weight bell: its width is period / sigma"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(AlmaEngine::new(
+                p.count("period"),
+                p.number("offset"),
+                p.number("sigma"),
+            )))
+        },
+    };
+
+/// Registry definition of `jma`.
+pub const JMA_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "jma",
+        aliases: &[],
+        description: "An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values",
+        params: &[
+            super::definition::ParamSpec::count("period", 14, 1, 10000)
+                .meaning("length: the larger, the smoother and the later"),
+            super::definition::ParamSpec::number("phase", 0.0, -100.0, 100.0)
+                .meaning("-100 lags, 100 overshoots (the type clamps to this range)"),
+            super::definition::ParamSpec::number("power", 2.0, 1.0, 10.0)
+                .meaning("exponent of the smoothing factor (the type clamps it to at least 1)"),
+        ],
+        checks: &[],
+        build: |p| {
+            Ok(Box::new(JmaEngine::new(
+                p.count("period"),
+                p.number("phase"),
+                p.number("power"),
+            )))
+        },
+    };
+
+/// Registry definition of `super_smoother`.
+pub const SUPER_SMOOTHER_DEFINITION: super::definition::IndicatorDefinition =
+    super::definition::IndicatorDefinition {
+        name: "super_smoother",
+        aliases: &[],
+        description: "Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter",
+        params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
+            .meaning("cutoff period of the filter in bars")],
+        checks: &[],
+        build: |p| Ok(Box::new(SuperSmootherEngine::new(p.count("period")))),
     };

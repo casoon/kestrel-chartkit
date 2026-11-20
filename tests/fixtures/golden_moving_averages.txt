@@ -40,6 +40,21 @@
 # chained first-sample-seeded EMAs combined as c1 e6 + c2 e5 + c3 e4 + c4 e3 with c1 = -v^3,
 # c2 = 3v^2 + 3v^3, c3 = -6v^2 - 3v - 3v^3, c4 = 1 + 3v + v^3 + 3v^2; published from the
 # period-th bar on; v = 0.7, 0 and 1.
+#
+# Smoother family, over the 10-bar series above:
+#   RMA            Wilder: alpha = 1/period, seeded with the mean of the first period closes,
+#                  published from the period-th bar on (period 5).
+#   ALMA           Gaussian-weighted window (Legoux, Kouzis-Loukas): m = offset (N - 1),
+#                  s = N / sigma, weight exp(-(i - m)^2 / (2 s^2)) on the value i places after
+#                  the oldest; period 5 with offset 0.85 / sigma 6 (the defaults), offset 0 /
+#                  sigma 2 and offset 1 / sigma 6.
+#   JMA            the openly published approximation of the Jurik moving average (not the
+#                  product of Jurik Research): beta = 0.45 (N - 1) / (0.45 (N - 1) + 2),
+#                  alpha = beta^power, three recursions per close, the first value the close;
+#                  period 5 with phase 0 / power 2 (the defaults), phase 100, phase -100 and
+#                  power 1; a phase beyond 100 is clamped to 100, a power below 1 to 1.
+#   SuperSmoother  Ehlers' 2-pole low-pass from a zero state, period 5, over the same series;
+#                  the indicator publishes from the period-th bar (period 3: the third value).
 
 # base values, period 5, over the 10-bar series
 sma5_last=14.6
@@ -83,3 +98,24 @@ t3_3_v07_first=100.95681250000007
 t3_3_v07_last=109.014645576477
 t3_3_v00_last=107.53822326660156
 t3_3_v10_last=109.66966247558594
+
+# RMA, period 5
+rma5_last=13.693632
+rma5_first=11.4
+
+# ALMA, period 5
+alma5_default_last=15.446924478513496
+alma5_oldest_last=14.30889207163704
+alma5_newest_last=15.313173447424193
+
+# JMA approximation, period 5
+jma5_default_last=15.370743099235202
+jma5_lead_last=15.503984599927758
+jma5_lag_last=15.237501598542647
+jma5_power1_last=15.00476328851167
+jma5_clamped_last=15.54350422675199
+jma5_first=10.0
+
+# SuperSmoother
+supersmoother_5_last=15.516328333698166
+supersmoother_3_first_published=11.805722120688793

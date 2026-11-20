@@ -9,6 +9,13 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Indicator `rma`:** Wilder's smoothed moving average as a catalog entry (`RmaEngine`), the average inside RSI, ATR and ADX; `period` (default 14), published from the `period`-th bar.
+- **Indicator `alma`:** the Arnaud Legoux moving average as a catalog entry (`AlmaEngine`); `period` (default 9), `offset` (0.85), `sigma` (6).
+- **Indicator `jma`:** an approximation of the Jurik moving average as a catalog entry (`JmaEngine`), following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values. `period` (default 14), `phase` (-100..100), `power` (at least 1).
+- **Indicator `super_smoother`:** Ehlers' 2-pole SuperSmoother as a catalog entry (`SuperSmootherEngine`); `period` (default 10), published from the `period`-th bar because the filter starts from a zero state. The catalog now has 140 entries.
+
 ### Changed
 
 - **Pages:** the project site uses the current shared theme (0.16.1).

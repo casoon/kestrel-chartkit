@@ -29,7 +29,17 @@ from ..exact import bollinger as exact_bollinger
 from ..fixture import provenance, render_contract
 from ..indicators import keltner as keltner_last
 from ..indicators import true_ranges
-from ..smoothing import ema_first_sample, ema_published, least_squares, sma, wma
+from ..smoothing import (
+    alma_window,
+    ema_first_sample,
+    ema_published,
+    jma_approximation,
+    least_squares,
+    rma,
+    sma,
+    super_smoother,
+    wma,
+)
 from .contract_pilot import case_block as pilot_case_block
 from .contract_pilot import wave
 from .moving_averages import _dema, _hma, _kama, _mcginley, _t3, _tema, _vidya, _vwma
@@ -139,6 +149,27 @@ def dema_values(closes, period):
 
 def tema_values(closes, period):
     return aligned(len(closes), period - 1, _tema(closes, period))
+
+
+def rma_values(closes, period):
+    """Wilder average, alpha 1/period, seeded with the mean of the first `period` closes."""
+    return rma(closes, period)
+
+
+def alma_values(closes, period, offset, sigma):
+    """Gaussian-weighted average of the last `period` closes."""
+    return [None if i + 1 < period else alma_window(closes[i + 1 - period:i + 1], offset, sigma)
+            for i in range(len(closes))]
+
+
+def jma_values(closes, period, phase, power):
+    """The published approximation, one value per bar from the first close."""
+    return jma_approximation(closes, period, phase, power)
+
+
+def super_smoother_values(closes, period):
+    """The 2-pole filter from a zero state, published from the `period`-th bar."""
+    return aligned(len(closes), period - 1, super_smoother(closes, period)[period - 1:])
 
 
 def kama_values(closes, period, fast, slow):
@@ -627,6 +658,47 @@ def build_blocks():
     add(case_block("kama_flat", "KAMA(4, 2, 30): no movement -> ER 0, slow constant",
                    params(period=4, fast_period=2, slow_period=30), ohlc(FLAT_THEN_MOVE),
                    value_series(kama_values(FLAT_THEN_MOVE, 4, 2, 30))))
+
+    # RMA
+    add(case_block("rma_defaults", "RMA(14), the registry default, seeded with the SMA of the "
+                   "first 14 closes", {}, ohlc(LONG[:30]), value_series(rma_values(LONG[:30], 14))))
+    add(simple("rma_short", "RMA(4)", 4, SHORT, rma_values(SHORT, 4)))
+    add(simple("rma_unit", "RMA(1) is the close itself", 1, SHORT[:5], rma_values(SHORT[:5], 1)))
+
+    # ALMA
+    add(case_block("alma_defaults", "ALMA(9, 0.85, 6), the registry defaults", {}, ohlc(LONG[:25]),
+                   value_series(alma_values(LONG[:25], 9, 0.85, 6.0))))
+    add(case_block("alma_custom", "ALMA(5, 0.5, 3)", params(period=5, offset=0.5, sigma=3.0),
+                   ohlc(SHORT), value_series(alma_values(SHORT, 5, 0.5, 3.0))))
+    add(case_block("alma_edges", "ALMA(6, 0, 2): the weight peak on the oldest bar",
+                   params(period=6, offset=0.0, sigma=2.0), ohlc(SHORT),
+                   value_series(alma_values(SHORT, 6, 0.0, 2.0))))
+    add(case_block("alma_unit", "ALMA(1) is the close itself", params(period=1), ohlc(SHORT[:5]),
+                   value_series(alma_values(SHORT[:5], 1, 0.85, 6.0))))
+
+    # JMA approximation
+    add(case_block("jma_defaults", "JMA(14, phase 0, power 2), the registry defaults, from bar 1",
+                   {}, ohlc(LONG[:25]), value_series(jma_values(LONG[:25], 14, 0.0, 2.0))))
+    add(case_block("jma_lead", "JMA(7, phase 100, power 2)",
+                   params(period=7, phase=100.0, power=2.0), ohlc(SHORT),
+                   value_series(jma_values(SHORT, 7, 100.0, 2.0))))
+    add(case_block("jma_lag", "JMA(7, phase -100, power 2)",
+                   params(period=7, phase=-100.0, power=2.0), ohlc(SHORT),
+                   value_series(jma_values(SHORT, 7, -100.0, 2.0))))
+    add(case_block("jma_power_one", "JMA(5, phase 0, power 1)",
+                   params(period=5, phase=0.0, power=1.0), ohlc(SHORT),
+                   value_series(jma_values(SHORT, 5, 0.0, 1.0))))
+    add(case_block("jma_unit", "JMA(1) is the close itself", params(period=1), ohlc(SHORT[:5]),
+                   value_series(jma_values(SHORT[:5], 1, 0.0, 2.0))))
+
+    # SuperSmoother
+    add(case_block("super_smoother_defaults", "SuperSmoother(10), the registry default, "
+                   "published from bar 10", {}, ohlc(LONG[:30]),
+                   value_series(super_smoother_values(LONG[:30], 10))))
+    add(simple("super_smoother_short", "SuperSmoother(3), published from bar 3", 3, SHORT,
+               super_smoother_values(SHORT, 3)))
+    add(simple("super_smoother_unit", "SuperSmoother(1): published from bar 1, the zero start "
+               "visible in the first values", 1, SHORT[:6], super_smoother_values(SHORT[:6], 1)))
 
     # LSMA
     add(case_block("lsma_defaults", "LSMA(25): endpoint, slope, intercept, R^2", params(period=25),

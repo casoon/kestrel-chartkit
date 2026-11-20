@@ -20,6 +20,10 @@ is complete.
 | hma | ✅ |
 | dema | ✅ |
 | kama | ✅ |
+| rma | ❌ |
+| alma | ❌ |
+| jma | ❌ |
+| super_smoother | ❌ |
 | tema | ✅ |
 | lsma | ✅ |
 | mcginley | ✅ |
@@ -192,5 +196,5 @@ part of the total below.
 
 ---
 
-**Total: 133/136 verified** — the same 136 names `catalog()` returns: 97 indicators (the first
+**Total: 133/140 verified** — the same 140 names `catalog()` returns: 101 indicators (the first
 five groups), 4 composite scores and 35 structure/pattern detectors.

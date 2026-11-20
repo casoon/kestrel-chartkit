@@ -1,5 +1,6 @@
 """Moving averages and exponential smoothing, one output per input."""
 
+import math
 from fractions import Fraction
 
 
@@ -92,4 +93,62 @@ def rma(values, period):
             continue
         level = sum(values[:period]) / period if level is None else level + (x - level) / period
         out.append(level)
+    return out
+
+
+def alma_window(window, offset, sigma):
+    """Arnaud Legoux moving average of one full window (Legoux and Kouzis-Loukas): with
+    m = offset (N - 1) and s = N / sigma, the value i places after the oldest gets the weight
+    exp(-(i - m)^2 / (2 s^2)); the result is the weight-normalised sum."""
+    n = len(window)
+    m = offset * (n - 1)
+    s = n / sigma
+    weights = [math.exp(-((i - m) ** 2) / (2.0 * s * s)) for i in range(n)]
+    return sum(w * x for w, x in zip(weights, window)) / sum(weights)
+
+
+def super_smoother(values, period):
+    """Ehlers' 2-pole SuperSmoother (Cycle Analytics for Traders, 2013):
+    a1 = exp(-1.414 pi / period), b1 = 2 a1 cos(1.414 pi / period), c2 = b1, c3 = -a1^2,
+    c1 = 1 - c2 - c3, and ss_t = c1 (x_t + x_(t-1)) / 2 + c2 ss_(t-1) + c3 ss_(t-2), the terms
+    before the first value being 0. One output per input, the first bars carrying that start."""
+    a1 = math.exp(-1.414 * math.pi / period)
+    b1 = 2.0 * a1 * math.cos(1.414 * math.pi / period)
+    c2, c3 = b1, -(a1 * a1)
+    c1 = 1.0 - c2 - c3
+    previous_x, s1, s2, out = 0.0, 0.0, 0.0, []
+    for x in values:
+        ss = c1 * (x + previous_x) / 2.0 + c2 * s1 + c3 * s2
+        previous_x, s2, s1 = x, s1, ss
+        out.append(ss)
+    return out
+
+
+def jma_approximation(values, period, phase, power):
+    """The openly published Jurik-style approximation (not the product of Jurik Research):
+    beta = 0.45 (N - 1) / (0.45 (N - 1) + 2), alpha = beta^power, p = phase / 100 + 1.5, with
+    phase clamped to -100..100 and power to at least 1, and per value
+      e0 = (1 - alpha) x + alpha e0
+      e1 = (x - e0) (1 - beta) + beta e1
+      e2 = (e0 + p e1 - jma) (1 - alpha)^2 + alpha^2 e2
+      jma = jma + e2
+    The first value is x itself, with e0 = x and e1 = e2 = 0. One output per input."""
+    phase = min(max(phase, -100.0), 100.0)
+    power = max(power, 1.0)
+    drift = 0.45 * (period - 1)
+    beta = drift / (drift + 2.0)
+    alpha = beta ** power
+    p = phase / 100.0 + 1.5
+    e0 = e1 = e2 = 0.0
+    jma, out = None, []
+    for x in values:
+        if jma is None:
+            e0, e1, e2, jma = x, 0.0, 0.0, x
+            out.append(x)
+            continue
+        e0 = (1.0 - alpha) * x + alpha * e0
+        e1 = (x - e0) * (1.0 - beta) + beta * e1
+        e2 = (e0 + p * e1 - jma) * (1.0 - alpha) ** 2 + alpha ** 2 * e2
+        jma = jma + e2
+        out.append(jma)
     return out
