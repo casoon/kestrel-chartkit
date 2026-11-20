@@ -82,7 +82,7 @@ fn candles(bars: &[Bar]) -> String {
         })
         .collect();
     format!(
-        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","data":[{}]}}"#,
+        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","candleStyle":"soft","data":[{}]}}"#,
         candles.join(",")
     )
 }
@@ -136,7 +136,7 @@ fn hero_chart() -> Result<String, Box<dyn Error>> {
         })
         .collect();
     let mut price = vec![format!(
-        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","data":[{}]}}"#,
+        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","candleStyle":"soft","data":[{}]}}"#,
         candles.join(",")
     )];
     price.push(line("EMA 20", &fast));
@@ -413,7 +413,7 @@ fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String
         })
         .collect();
     let mut price = vec![format!(
-        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","data":[{}]}}"#,
+        r#"{{"mark":"ohlc","name":"CASOON (fictitious)","candleStyle":"soft","data":[{}]}}"#,
         candles.join(",")
     )];
     let mut own: Vec<String> = Vec::new();
