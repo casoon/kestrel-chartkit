@@ -68,6 +68,7 @@ is complete.
 | overextension_risk | ✅ |
 | roc_context | ✅ |
 | rsi_cycle_stats | ✅ |
+| percent_rank | ❌ |
 
 ## Volatility
 
@@ -129,6 +130,8 @@ is complete.
 | alligator | ✅ |
 | efficiency | ✅ |
 | fractal_dimension | ❌ |
+| r_squared | ❌ |
+| cycle_length | ❌ |
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |
@@ -200,6 +203,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/145 verified** — the same 145 names `catalog()` returns: 102 indicators (the first
+**Total: 133/148 verified** — the same 148 names `catalog()` returns: 105 indicators (the first
 five groups), 4 composite scores, 35 structure/pattern detectors and 4 entries of other input
 kinds.

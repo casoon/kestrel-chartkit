@@ -205,7 +205,15 @@ pub fn check(case: &ContractCase) -> Vec<String> {
 
     if let Some(first) = case.expected.iter().position(|b| b.output.is_some()) {
         let warmup = indicator.warmup_period();
-        if warmup != first + 1 {
+        // An indicator whose first output depends on the data declares the earliest bar it can
+        // come (see `PATH_DEPENDENT_FIRST_OUTPUT`).
+        let path_dependent = super::PATH_DEPENDENT_FIRST_OUTPUT.contains(&case.indicator.as_str());
+        let breach = if path_dependent {
+            warmup > first + 1
+        } else {
+            warmup != first + 1
+        };
+        if breach {
             failures.push(format!(
                 "{context}: warmup_period expected {} (bar of the first output), actual {warmup}",
                 first + 1

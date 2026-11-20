@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 141 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 144 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -798,6 +798,18 @@ WaveTrend Oscillator (wt1, wt2)
 | `ob_level` | 60 | -100 – 100; threshold on the output scale | upper zone, alerts above it |
 | `os_level` | -60 | -100 – 100; threshold on the output scale | lower zone, alerts below it |
 
+### `percent_rank`
+
+Percent rank of the close among the previous period closes: the share, in percent, at or below the current close
+
+[See it in the showcase](../../../showcase/percent_rank/)
+
+**Output** unit Ratio, range 0 – 100 · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | previous closes the current one is ranked against |
+
 ## Volatility and trend strength
 
 ### `atr`
@@ -1055,6 +1067,31 @@ Fractal dimension of the price path over a trailing window, 1 for a straight lin
 |---|---|---|---|
 | `period` | 30 | whole number 4 – 10000 | bars of the window (`halves`: the window; `path`: the number of close-to-close steps, one more bar) |
 | `method` | `halves` | `halves`, `path` (f64 map: 0 – 1) | `halves`: ln of the two half-window ranges against the whole one over ln 2; `path`: 1 + ln(path / range) / ln(period) |
+
+### `r_squared`
+
+R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1
+
+[See it in the showcase](../../../showcase/r_squared/)
+
+**Output** unit Ratio, range 0 – 1 · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 2 – 10000 | closes the line is fitted to |
+
+### `cycle_length`
+
+Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); extra bars_since_crossing counts the swing in progress
+
+[See it in the showcase](../../../showcase/cycle_length/)
+
+**Output** unit Unitless, range 0 and above · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | bars of the simple average the close is detrended against |
+| `history` | 8 | whole number 1 – 10000 | completed swings the mean is taken over |
 
 ## Volume
 

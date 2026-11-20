@@ -10,6 +10,10 @@
 # the newest half bars, the half before and the newest n bars, each over its bar count;
 # D = (ln(r1 + r2) - ln r3) / ln 2 clamped to 1..2, 1.5 without range. `path`:
 # D = 1 + ln(path / range) / ln n over n close-to-close steps and the range of n + 1 bars.
+# r_squared: 1 - SS_res / SS_tot of the least-squares line through the last n closes, 0..1.
+# percent_rank: 100 * (previous n closes at or below the close) / n.
+# cycle_length: mean of the last `history` swing lengths between sign changes of
+# close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).
 
 # checkpoints
 meta_cp_count=15.0
@@ -113,5 +117,141 @@ fd_path_short_cp600=0.016964928307803495
 fd_path_short_cp640=-0.49811385104412365
 fd_path_short_cp680=0.8172316063604409
 fd_path_short_cp699=0.6772293961312372
+
+# r2_default
+r2_default_cp3_none=1.0
+r2_default_cp9_none=1.0
+r2_default_cp15_none=1.0
+r2_default_cp29=0.8226026826511326
+r2_default_cp30=0.8565585942740337
+r2_default_cp31=0.8902486557274509
+r2_default_cp60=0.7598983047404368
+r2_default_cp150=0.7837765389615257
+r2_default_cp260=0.8001087756903116
+r2_default_cp420=0.3490227284813906
+r2_default_cp520=0.8598289422965705
+r2_default_cp600=0.021867855577353157
+r2_default_cp640=0.7747724863723406
+r2_default_cp680=0.0021502411527398735
+r2_default_cp699=0.643477030764684
+
+# r2_short
+r2_short_cp3=1.0
+r2_short_cp9=1.0
+r2_short_cp15=1.0
+r2_short_cp29=1.0
+r2_short_cp30=1.0
+r2_short_cp31=1.0
+r2_short_cp60=1.0
+r2_short_cp150=1.0
+r2_short_cp260=1.0
+r2_short_cp420=1.0
+r2_short_cp520=1.0
+r2_short_cp600=1.0
+r2_short_cp640=1.0
+r2_short_cp680=1.0
+r2_short_cp699=1.0
+
+# r2_long
+r2_long_cp3_none=1.0
+r2_long_cp9_none=1.0
+r2_long_cp15_none=1.0
+r2_long_cp29_none=1.0
+r2_long_cp30_none=1.0
+r2_long_cp31_none=1.0
+r2_long_cp60=0.4526844573563892
+r2_long_cp150=0.06467966788743007
+r2_long_cp260=0.48741165449489265
+r2_long_cp420=0.7489469939528826
+r2_long_cp520=0.5392432617800978
+r2_long_cp600=0.5868649851344776
+r2_long_cp640=0.46575657629278633
+r2_long_cp680=0.6708071456091086
+r2_long_cp699=0.44974581166640815
+
+# pr_default
+pr_default_cp3_none=1.0
+pr_default_cp9_none=1.0
+pr_default_cp15_none=1.0
+pr_default_cp29=100.0
+pr_default_cp30=100.0
+pr_default_cp31=100.0
+pr_default_cp60=0.0
+pr_default_cp150=100.0
+pr_default_cp260=35.0
+pr_default_cp420=50.0
+pr_default_cp520=65.0
+pr_default_cp600=0.0
+pr_default_cp640=65.0
+pr_default_cp680=0.0
+pr_default_cp699=40.0
+
+# pr_one
+pr_one_cp3=100.0
+pr_one_cp9=100.0
+pr_one_cp15=0.0
+pr_one_cp29=100.0
+pr_one_cp30=100.0
+pr_one_cp31=100.0
+pr_one_cp60=0.0
+pr_one_cp150=100.0
+pr_one_cp260=0.0
+pr_one_cp420=0.0
+pr_one_cp520=0.0
+pr_one_cp600=0.0
+pr_one_cp640=100.0
+pr_one_cp680=0.0
+pr_one_cp699=0.0
+
+# pr_long
+pr_long_cp3_none=1.0
+pr_long_cp9_none=1.0
+pr_long_cp15_none=1.0
+pr_long_cp29_none=1.0
+pr_long_cp30_none=1.0
+pr_long_cp31_none=1.0
+pr_long_cp60_none=1.0
+pr_long_cp150=91.0
+pr_long_cp260=70.0
+pr_long_cp420=10.0
+pr_long_cp520=84.0
+pr_long_cp600=36.0
+pr_long_cp640=51.0
+pr_long_cp680=70.0
+pr_long_cp699=79.0
+
+# cl_default
+cl_default_cp3_none=1.0
+cl_default_cp9_none=1.0
+cl_default_cp15_none=1.0
+cl_default_cp29_none=1.0
+cl_default_cp30_none=1.0
+cl_default_cp31_none=1.0
+cl_default_cp60=10.333333333333334
+cl_default_cp150=15.25
+cl_default_cp260=17.125
+cl_default_cp420=22.0
+cl_default_cp520=26.5
+cl_default_cp600=26.625
+cl_default_cp640=24.75
+cl_default_cp680=29.125
+cl_default_cp699=24.375
+
+# cl_fast
+cl_fast_cp3_none=1.0
+cl_fast_cp9_none=1.0
+cl_fast_cp15=11.0
+cl_fast_cp29=7.5
+cl_fast_cp30=7.5
+cl_fast_cp31=7.5
+cl_fast_cp60=9.666666666666666
+cl_fast_cp150=9.666666666666666
+cl_fast_cp260=9.333333333333334
+cl_fast_cp420=8.666666666666666
+cl_fast_cp520=15.666666666666666
+cl_fast_cp600=9.666666666666666
+cl_fast_cp640=9.333333333333334
+cl_fast_cp680=11.0
+cl_fast_cp699=11.0
 
 readouts_tolerance=1e-09

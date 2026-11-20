@@ -25,17 +25,30 @@ HEADER = [
     "the newest half bars, the half before and the newest n bars, each over its bar count;",
     "D = (ln(r1 + r2) - ln r3) / ln 2 clamped to 1..2, 1.5 without range. `path`:",
     "D = 1 + ln(path / range) / ln n over n close-to-close steps and the range of n + 1 bars.",
+    "r_squared: 1 - SS_res / SS_tot of the least-squares line through the last n closes, 0..1.",
+    "percent_rank: 100 * (previous n closes at or below the close) / n.",
+    "cycle_length: mean of the last `history` swing lengths between sign changes of",
+    "close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).",
 ]
 
 
 def specs(bars):
     """(label, series of values) of every checked configuration."""
+    closes = [b[3] for b in bars]
     return [
         ("fd_halves_default", ro.fractal_dimension(bars, 30, "halves")),
         ("fd_halves_odd", ro.fractal_dimension(bars, 9, "halves")),
         ("fd_halves_min", ro.fractal_dimension(bars, 4, "halves")),
         ("fd_path_default", ro.fractal_dimension(bars, 30, "path")),
         ("fd_path_short", ro.fractal_dimension(bars, 5, "path")),
+        ("r2_default", ro.r_squared(closes, 20)),
+        ("r2_short", ro.r_squared(closes, 2)),
+        ("r2_long", ro.r_squared(closes, 60)),
+        ("pr_default", ro.percent_rank(closes, 20)),
+        ("pr_one", ro.percent_rank(closes, 1)),
+        ("pr_long", ro.percent_rank(closes, 100)),
+        ("cl_default", [None if v is None else v[0] for v in ro.cycle_length(closes, 20, 8)]),
+        ("cl_fast", [None if v is None else v[0] for v in ro.cycle_length(closes, 5, 3)]),
     ]
 
 

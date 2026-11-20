@@ -17,6 +17,9 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Indicator `super_smoother`:** Ehlers' 2-pole SuperSmoother as a catalog entry (`SuperSmootherEngine`); `period` (default 10), published from the `period`-th bar because the filter starts from a zero state. The catalog now has 140 entries.
 
 - **Indicator `fractal_dimension`:** the fractal dimension of the price path over a trailing window as a catalog entry (`FractalDimensionEngine`), 1 for a straight line and towards 2 for noise. `method` names the estimate: `halves` (Ehlers' halving estimate, clamped to 1..2) or `path` (1 + ln(path / range) / ln period, unclamped); `period` (default 30, at least 4). Coil Release and the trend-persistence read-out call the same kernel (`kernels::fractal_dimension`) with their own method, so their outputs are unchanged.
+- **Indicator `r_squared`:** the R-squared of a least-squares line through the last `period` closes as a catalog entry (`RSquaredEngine`, over `PredictabilityTracker`), 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1. `period` (default 20).
+- **Indicator `percent_rank`:** the share, in percent, of the previous `period` closes at or below the current close as a catalog entry (`PercentRankEngine`); `period` (default 20), first output with the `(period + 1)`-th bar.
+- **Indicator `cycle_length`:** the mean number of bars between the close's crossings of its simple average as a catalog entry (`CycleLengthEngine`, over `AdaptiveCycleTracker`), documented as a zero-crossing swing length and not as a spectral or Hilbert-transform cycle estimate; `period` (default 20), `history` (completed swings averaged, default 8); `extra["bars_since_crossing"]` counts the swing in progress. The first output comes with the first completed swing.
 
 ### Changed
 

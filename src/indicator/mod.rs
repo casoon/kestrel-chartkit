@@ -80,6 +80,7 @@ pub mod relative_strength;
 pub mod relative_volatility;
 pub mod reversal_setup_score;
 pub mod roc_context;
+pub mod rolling_measures;
 pub mod rsi;
 pub mod rsi_cycle_stats;
 pub mod rvat;

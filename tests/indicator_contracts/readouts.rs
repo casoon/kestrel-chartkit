@@ -17,7 +17,12 @@ fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
 /// their cases exist; a name in neither list fails the matrix.
 pub const PENDING: &[&str] = &[];
 
-pub const COVERAGE: &[Coverage] = &[Coverage::full("fractal_dimension")];
+pub const COVERAGE: &[Coverage] = &[
+    Coverage::full("fractal_dimension"),
+    Coverage::full("r_squared"),
+    Coverage::full("percent_rank"),
+    Coverage::full("cycle_length"),
+];
 
 // --- Fractal dimension -----------------------------------------------------------------------
 
@@ -109,4 +114,153 @@ fn fractal_dimension_rejects_invalid_configuration() {
     assert_rejected("fractal_dimension", &[("period", 10001.0)]);
     assert_rejected("fractal_dimension", &[("method", 2.0)]);
     assert_rejected("fractal_dimension", &[("len", 30.0)]);
+}
+
+// --- R squared ---------------------------------------------------------------
+
+#[test]
+fn r_squared_defaults() {
+    assert_holds(&case(
+        "r_squared_defaults",
+        "r_squared",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn r_squared_two() {
+    assert_holds(&case("r_squared_two", "r_squared", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn r_squared_line() {
+    assert_holds(&case("r_squared_line", "r_squared", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn r_squared_noise() {
+    assert_holds(&case("r_squared_noise", "r_squared", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn r_squared_flat() {
+    assert_holds(&case("r_squared_flat", "r_squared", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn r_squared_rejects_invalid_configuration() {
+    assert_rejected("r_squared", &[("period", 1.0)]);
+    assert_rejected("r_squared", &[("period", 10.5)]);
+    assert_rejected("r_squared", &[("period", 10001.0)]);
+    assert_rejected("r_squared", &[("len", 20.0)]);
+}
+
+// --- Percent rank ------------------------------------------------------------
+
+#[test]
+fn percent_rank_defaults() {
+    assert_holds(&case(
+        "percent_rank_defaults",
+        "percent_rank",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn percent_rank_short() {
+    assert_holds(&case(
+        "percent_rank_short",
+        "percent_rank",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn percent_rank_one() {
+    assert_holds(&case(
+        "percent_rank_one",
+        "percent_rank",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn percent_rank_ties() {
+    assert_holds(&case(
+        "percent_rank_ties",
+        "percent_rank",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn percent_rank_flat() {
+    assert_holds(&case(
+        "percent_rank_flat",
+        "percent_rank",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn percent_rank_rejects_invalid_configuration() {
+    assert_rejected("percent_rank", &[("period", 0.0)]);
+    assert_rejected("percent_rank", &[("period", 10.5)]);
+    assert_rejected("percent_rank", &[("period", 10001.0)]);
+    assert_rejected("percent_rank", &[("len", 20.0)]);
+}
+
+// --- Cycle length ------------------------------------------------------------
+
+#[test]
+fn cycle_length_defaults() {
+    assert_holds(&case(
+        "cycle_length_defaults",
+        "cycle_length",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn cycle_length_short() {
+    assert_holds(&case(
+        "cycle_length_short",
+        "cycle_length",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn cycle_length_blocks() {
+    assert_holds(&case(
+        "cycle_length_blocks",
+        "cycle_length",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn cycle_length_touch() {
+    assert_holds(&case(
+        "cycle_length_touch",
+        "cycle_length",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn cycle_length_flat() {
+    assert_holds(&case(
+        "cycle_length_flat",
+        "cycle_length",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn cycle_length_rejects_invalid_configuration() {
+    assert_rejected("cycle_length", &[("period", 0.0)]);
+    assert_rejected("cycle_length", &[("history", 0.0)]);
+    assert_rejected("cycle_length", &[("history", 2.5)]);
+    assert_rejected("cycle_length", &[("len", 20.0)]);
 }

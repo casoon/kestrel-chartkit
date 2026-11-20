@@ -31,4 +31,5 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::williams_r::WILLIAMS_R_DEFINITION,
     &crate::indicator::fisher_transform::FISHER_TRANSFORM_DEFINITION,
     &crate::indicator::wavetrend::WAVETREND_DEFINITION,
+    &crate::indicator::rolling_measures::PERCENT_RANK_DEFINITION,
 ];

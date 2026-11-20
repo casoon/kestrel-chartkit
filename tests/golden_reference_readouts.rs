@@ -72,3 +72,27 @@ fn test_golden_fractal_dimension() {
         &[("period", 5.0), ("method", 1.0)],
     );
 }
+
+#[test]
+fn test_golden_r_squared() {
+    check("r2_default", "r_squared", &[]);
+    check("r2_short", "r_squared", &[("period", 2.0)]);
+    check("r2_long", "r_squared", &[("period", 60.0)]);
+}
+
+#[test]
+fn test_golden_percent_rank() {
+    check("pr_default", "percent_rank", &[]);
+    check("pr_one", "percent_rank", &[("period", 1.0)]);
+    check("pr_long", "percent_rank", &[("period", 100.0)]);
+}
+
+#[test]
+fn test_golden_cycle_length() {
+    check("cl_default", "cycle_length", &[]);
+    check(
+        "cl_fast",
+        "cycle_length",
+        &[("period", 5.0), ("history", 3.0)],
+    );
+}

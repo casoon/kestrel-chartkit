@@ -117,6 +117,7 @@ pub fn output_range(name: &str) -> OutputRange {
         | "connors_rsi"
         | "efficiency"
         | "mfi"
+        | "percent_rank"
         | "relative_volatility"
         | "rsi"
         | "stoch_rsi"
@@ -132,6 +133,9 @@ pub fn output_range(name: &str) -> OutputRange {
             min: -100.0,
             max: 100.0,
         },
+
+        // Bestimmtheitsmaß: ein Anteil der erklärten Streuung.
+        "r_squared" => OutputRange::Bounded { min: 0.0, max: 1.0 },
 
         // Anteilsmaße mit Vorzeichen.
         "bop" | "cmf" => OutputRange::Bounded {
@@ -149,6 +153,7 @@ pub fn output_range(name: &str) -> OutputRange {
         // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
         "atr"
         | "cusum"
+        | "cycle_length"
         | "garman_klass"
         | "historical_volatility"
         | "mass_index"
@@ -685,6 +690,9 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "zscore",
     "multi_factor",
     "fractal_dimension",
+    "r_squared",
+    "percent_rank",
+    "cycle_length",
 ];
 
 #[cfg(test)]
@@ -716,10 +724,10 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 141);
-        assert_eq!(bars.len(), 141);
-        // Pair (2), transform (1) and intrabar (1) entries on top of the 141 bar indicators.
-        assert_eq!(catalog().len(), 145);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 144);
+        assert_eq!(bars.len(), 144);
+        // Pair (2), transform (1) and intrabar (1) entries on top of the 144 bar indicators.
+        assert_eq!(catalog().len(), 148);
         for (input, count) in [
             (IndicatorInput::Pair, 2),
             (IndicatorInput::Transform, 1),
