@@ -25,6 +25,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Indicator `period_midpoint`:** the midpoint of the last completed period as a catalog entry (`PeriodMidpointEngine`, over `PeriodMidpointTracker`), held until the next period completes; `unit` (second to month), `count` and `utc_offset_seconds` choose the period.
 - **Indicator `vwap_regime`:** the VWAP as a regime reading as a catalog entry (`VwapRegimeEngine`: the rolling `Vwap`, a Wilder ATR and `VwapRegimeTracker`): `value` is the distance of the close from the VWAP in ATRs, `extra` has `vwap`, `slope_atr`, `slope_state` (-2..2), `z_score`, `cross_frequency` and `price_persistence`. Needs real volume.
 - **Indicator `swing_structure`:** the statistical swing structure as a catalog entry (`SwingStructureIndicator`, feeding `SwingStructureEngine` a Wilder ATR of its own): `value` is the median correction over the median impulse leg, `extra` the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (also the `state` label). `SwingStructureEngine` itself is unchanged.
+- **Indicator `fvg_fill`:** the fair value gaps of `liquidity_fvg` followed as zones until a later bar trades back into them, as a catalog entry (`FvgFillEngine`, over `FvgZoneTracker`): `value` is the number of open zones, `extra` has `created`, `filled`, `open_bullish` and `open_bearish`; `max_zones` (default 20) bounds the open zones kept.
 
 ### Changed
 

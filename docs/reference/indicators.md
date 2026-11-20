@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 149 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 150 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1613,7 +1613,7 @@ Requires `min_distance` to be smaller than `max_distance`.
 
 ### `liquidity_pools`
 
-BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)
+BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also the `fvg_fill` entry for FVG-fill tracking and SmartMoneyStructureLinker for cross-detector confluence)
 
 [See it in the showcase](../../../showcase/liquidity_pools/)
 
@@ -1741,6 +1741,18 @@ Statistical swing structure: the median correction over the median impulse leg (
 | `right` | 5 | whole number 1 – 1000 | bars right of a swing pivot (the confirmation delay) |
 | `max_swings` | 50 | whole number 4 – 1000 | newest swing legs the medians are taken over (at least 4: two impulse and two correction legs) |
 | `atr_len` | 14 | whole number 1 – 10000 | Wilder ATR length the legs are measured in |
+
+### `fvg_fill`
+
+Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras
+
+[See it in the showcase](../../../showcase/fvg_fill/)
+
+**Output** unit Unitless, range not declared · **warmup** 1 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `max_zones` | 20 | whole number 1 – 1000 | newest open zones that are kept |
 
 ## Composite read-outs, part 1
 

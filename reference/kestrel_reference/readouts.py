@@ -379,3 +379,43 @@ def swing_structure(bars, left, right, max_swings, atr_len):
             reading[f"recent_correction_atr_{k}"] = value
         out.append((med_correction / med_impulse if med_impulse > 0.0 else 0.0, reading))
     return out
+
+
+def fvg_fill(bars, max_zones, step=900):
+    """Fair value gaps followed as zones; per bar (open zones, created, filled, open bullish,
+    open bearish).
+
+    From the third bar on: a bullish gap when the low of bar t lies above the high of bar t-2
+    (the zone runs from that high up to that low), else a bearish gap when the high of t lies
+    below the low of t-2 (the zone runs from the high of t up to the low of t-2). A zone is filled
+    by the first bar after its formation bar (a later timestamp) that trades back into it: a bullish
+    zone when the bar's low is at or below the zone's upper edge, a bearish zone when the bar's
+    high is at or above its lower edge. `created` is 1 (bullish), -1 (bearish) or 0, `filled` the
+    zones filled on this bar. Filled zones are dropped, and of the open ones only the newest
+    `max_zones` are kept; the open counts are those that remain.
+    """
+    zones = []  # [bullish, top, bottom, formed timestamp]
+    out = []
+    for i, bar in enumerate(bars):
+        ts, high, low = step * (i + 1), bar[1], bar[2]
+        created = 0.0
+        if i >= 2:
+            if low > bars[i - 2][1]:
+                created = 1.0
+                zones.append([True, low, bars[i - 2][1], ts])
+            elif high < bars[i - 2][2]:
+                created = -1.0
+                zones.append([False, bars[i - 2][2], high, ts])
+        filled = 0
+        for zone in zones:
+            if ts <= zone[3]:
+                continue
+            if (zone[0] and low <= zone[1]) or (not zone[0] and high >= zone[2]):
+                zone.append("filled")
+                filled += 1
+        zones = [z for z in zones if len(z) == 4][-max_zones:]
+        open_bullish = sum(1 for z in zones if z[0])
+        open_bearish = len(zones) - open_bullish
+        out.append((float(len(zones)), created, float(filled), float(open_bullish),
+                    float(open_bearish)))
+    return out

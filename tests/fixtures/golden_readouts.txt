@@ -19,6 +19,8 @@
 # bar that completed one; `none` before the first period completed.
 # vwap_regime: the distance of the close from the rolling VWAP in ATRs (value only).
 # swing_structure: median correction over median impulse leg, in ATRs (value only).
+# fvg_fill: fair value gaps followed as zones until a later bar trades back into them; the
+# number of open zones (value only), default 20 and 2 kept zones.
 # cycle_length: mean of the last `history` swing lengths between sign changes of
 # close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).
 
@@ -345,6 +347,40 @@ ss_small_cp600=1.9605588582922229
 ss_small_cp640=0.799929586254562
 ss_small_cp680=1.128502793048963
 ss_small_cp699=0.3387900824569458
+
+# fz_default
+fz_default_cp3=1.0
+fz_default_cp9=3.0
+fz_default_cp15=3.0
+fz_default_cp29=8.0
+fz_default_cp30=8.0
+fz_default_cp31=8.0
+fz_default_cp60=3.0
+fz_default_cp150=8.0
+fz_default_cp260=13.0
+fz_default_cp420=15.0
+fz_default_cp520=17.0
+fz_default_cp600=12.0
+fz_default_cp640=12.0
+fz_default_cp680=15.0
+fz_default_cp699=12.0
+
+# fz_small
+fz_small_cp3=1.0
+fz_small_cp9=2.0
+fz_small_cp15=2.0
+fz_small_cp29=2.0
+fz_small_cp30=2.0
+fz_small_cp31=2.0
+fz_small_cp60=0.0
+fz_small_cp150=2.0
+fz_small_cp260=2.0
+fz_small_cp420=2.0
+fz_small_cp520=1.0
+fz_small_cp600=0.0
+fz_small_cp640=0.0
+fz_small_cp680=2.0
+fz_small_cp699=0.0
 
 # cl_fast
 cl_fast_cp3_none=1.0

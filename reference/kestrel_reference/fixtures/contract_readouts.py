@@ -18,7 +18,7 @@ from .contract_pilot import case_block
 from . import price_location as pl_golden
 from .. import series as ps
 from .contract_moving_averages import vwap_expected
-from .contract_structure import candles, path, structure_wave
+from .contract_structure import candles, fvg_bars, fvg_touch_bars, path, structure_wave
 from .contract_volatility import SWING, SWING_SHORT, flat_bars, path_bars, swing_bars
 
 NAME = "contract_readouts"
@@ -154,6 +154,13 @@ def swing_case(left, right, max_swings, atr_len, bars):
     params = {"left": float(left), "right": float(right), "max_swings": float(max_swings),
               "atr_len": float(atr_len)}
     return params, bars, expected
+
+
+def fvg_case(max_zones, bars):
+    """Value: zones still open; extras: created, filled, open_bullish, open_bearish."""
+    expected = [((r[0], {"created": r[1], "filled": r[2], "open_bullish": r[3],
+                         "open_bearish": r[4]}), {}) for r in ro.fvg_fill(bars, max_zones)]
+    return {"max_zones": float(max_zones)}, bars, expected
 
 
 def zigzag(segments, start=100.0):
@@ -304,6 +311,13 @@ def build():
         case_block("opening_range_all_day", "opening_range, window of 1440 minutes: the range "
                    "keeps widening through the whole day", *opening_case((0, 0), (0, 0), 1440, 0,
                                                                          DAYS)),
+        case_block("fvg_fill_defaults", "fvg_fill, defaults (20 zones) over a quiet drift, a rally "
+                   "of bullish gaps, a drop of bearish gaps (which fills the bullish zones and "
+                   "opens bearish ones) and a quiet base", *defaults(fvg_case(20, fvg_bars()))),
+        case_block("fvg_fill_capped", "fvg_fill, only the newest 2 open zones kept, over the same "
+                   "bars", *fvg_case(2, fvg_bars())),
+        case_block("fvg_fill_touch", "fvg_fill over bars whose lows and highs only touch the "
+                   "bars two before them: no gap, no zone", *fvg_case(20, fvg_touch_bars())),
         case_block("vwap_regime_defaults", "vwap_regime, defaults (390, 20, 14, 20, 0.1, 0.3) over "
                    "130 wave bars: from bar 21 (the slope), mostly a flat VWAP slope",
                    *defaults(vwap_case(390, 20, 14, 20, 0.1, 0.3, WAVE_VOLUME))),

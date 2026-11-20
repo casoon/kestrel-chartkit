@@ -51,8 +51,8 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
-`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 153
-entries (149 of kind `Bars`); `catalog_of(kind)` lists one kind; the
+`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 154
+entries (150 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
 Behind the catalog, every indicator has one definition

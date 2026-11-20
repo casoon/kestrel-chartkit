@@ -27,6 +27,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("opening_range"),
     Coverage::full("vwap_regime"),
     Coverage::full("swing_structure"),
+    Coverage::full("fvg_fill"),
 ];
 
 // --- Fractal dimension -----------------------------------------------------------------------
@@ -576,4 +577,37 @@ fn swing_structure_rejects_invalid_configuration() {
     assert_rejected("swing_structure", &[("atr_len", 0.0)]);
     assert_rejected("swing_structure", &[("left", 2.5)]);
     assert_rejected("swing_structure", &[("len", 14.0)]);
+}
+
+// --- FVG fill --------------------------------------------------------------------------------
+
+#[test]
+fn fvg_fill_defaults() {
+    assert_holds(&case(
+        "fvg_fill_defaults",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn fvg_fill_capped() {
+    assert_holds(&case(
+        "fvg_fill_capped",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn fvg_fill_touch() {
+    assert_holds(&case("fvg_fill_touch", "fvg_fill", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn fvg_fill_rejects_invalid_configuration() {
+    assert_rejected("fvg_fill", &[("max_zones", 0.0)]);
+    assert_rejected("fvg_fill", &[("max_zones", 1001.0)]);
+    assert_rejected("fvg_fill", &[("max_zones", 2.5)]);
+    assert_rejected("fvg_fill", &[("lookback", 20.0)]);
 }

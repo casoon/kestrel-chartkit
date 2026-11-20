@@ -192,6 +192,7 @@ is complete.
 | period_midpoint | ❌ |
 | opening_range | ❌ |
 | swing_structure | ❌ |
+| fvg_fill | ❌ |
 
 ## Other Input Kinds
 
@@ -208,6 +209,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/153 verified** — the same 153 names `catalog()` returns: 107 indicators (the first
-five groups), 4 composite scores, 38 structure/pattern detectors and 4 entries of other input
+**Total: 133/154 verified** — the same 154 names `catalog()` returns: 107 indicators (the first
+five groups), 4 composite scores, 39 structure/pattern detectors and 4 entries of other input
 kinds.

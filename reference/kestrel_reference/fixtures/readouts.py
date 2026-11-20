@@ -36,6 +36,8 @@ HEADER = [
     "bar that completed one; `none` before the first period completed.",
     "vwap_regime: the distance of the close from the rolling VWAP in ATRs (value only).",
     "swing_structure: median correction over median impulse leg, in ATRs (value only).",
+    "fvg_fill: fair value gaps followed as zones until a later bar trades back into them; the",
+    "number of open zones (value only), default 20 and 2 kept zones.",
     "cycle_length: mean of the last `history` swing lengths between sign changes of",
     "close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).",
 ]
@@ -77,6 +79,8 @@ def specs(bars):
         ("vr_small", _vwap_regime(bars, 60, 5, 7, 10, 0.02, 0.10)),
         ("ss_default", _swing(bars, 5, 5, 50, 14)),
         ("ss_small", _swing(bars, 3, 3, 10, 7)),
+        ("fz_default", [r[0] for r in ro.fvg_fill(bars, 20)]),
+        ("fz_small", [r[0] for r in ro.fvg_fill(bars, 2)]),
         ("cl_fast", [None if v is None else v[0] for v in ro.cycle_length(closes, 5, 3)]),
     ]
 

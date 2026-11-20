@@ -13,6 +13,8 @@ use std::collections::VecDeque;
 
 use crate::model::Bar;
 
+use super::definition::{IndicatorDefinition, ParamSpec};
+use super::liquidity_fvg::LiquidityFvgEngine;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 // ---------------------------------------------------------------------------------------------
@@ -293,6 +295,14 @@ impl FvgZoneTracker {
         self.zones.clear();
     }
 
+    /// Drops the filled zones and keeps only the `max_open` newest unfilled ones.
+    pub(crate) fn prune(&mut self, max_open: usize) {
+        self.zones.retain(|zone| !zone.filled);
+        if self.zones.len() > max_open {
+            self.zones.drain(..self.zones.len() - max_open);
+        }
+    }
+
     /// Feeds a bar, marking any unfilled zone the bar traded back into as filled. Returns the
     /// zones newly filled this bar. Only bars after a zone's `formed_at` can fill it: the bar
     /// that completes the gap borders it by construction and is not a return into it.
@@ -318,6 +328,88 @@ impl FvgZoneTracker {
             .collect()
     }
 }
+
+/// The catalog entry `fvg_fill`: the fair value gaps of [`LiquidityFvgEngine`] (a gap is open
+/// between the high of bar t-2 and the low of bar t, bullish, or the reverse, bearish) followed as
+/// zones by an [`FvgZoneTracker`]. A zone is filled by the first later bar that trades back into
+/// it: a bullish zone when the low reaches its upper edge, a bearish zone when the high reaches
+/// its lower edge (the bar that forms a gap never fills it; later is decided by the bar
+/// timestamp, so timestamps have to increase). `value` is the number of zones still open after
+/// the bar; `extra` has `created` (1 bullish, -1 bearish, 0 none), `filled` (zones filled on this
+/// bar), `open_bullish` and `open_bearish`. Only the newest `max_zones` open zones are kept, and
+/// the counts are those that remain. There is an output on every bar. [`Indicator::reset`] starts over.
+pub struct FvgFillEngine {
+    max_zones: usize,
+    fvg: LiquidityFvgEngine,
+    tracker: FvgZoneTracker,
+}
+
+impl FvgFillEngine {
+    pub fn new(max_zones: usize) -> Self {
+        Self {
+            max_zones,
+            fvg: LiquidityFvgEngine::new(FVG_LOOKBACK),
+            tracker: FvgZoneTracker::new(),
+        }
+    }
+}
+
+/// The gap rule does not depend on the sweep lookback; any length that keeps three bars will do.
+const FVG_LOOKBACK: usize = 3;
+
+impl Indicator for FvgFillEngine {
+    fn name(&self) -> &str {
+        "fvg_fill"
+    }
+
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
+    fn reset(&mut self) {
+        self.fvg.reset();
+        self.tracker.reset();
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        let created = self.fvg.on_bar(bar)?.value;
+        if created != 0.0 {
+            let zone = self
+                .fvg
+                .zones()
+                .last()
+                .expect("a gap found on this bar is the newest zone");
+            self.tracker
+                .register(zone.is_bullish, zone.top, zone.bottom, bar.timestamp);
+        }
+        let filled = self.tracker.on_bar(bar).len();
+        self.tracker.prune(self.max_zones);
+        let open = self.tracker.zones().len();
+        let open_bullish = self.tracker.zones().iter().filter(|z| z.is_bullish).count();
+        let open_bearish = open - open_bullish;
+        let mut output = IndicatorOutput::new(open as f64);
+        for (key, value) in [
+            ("created", created),
+            ("filled", filled as f64),
+            ("open_bullish", open_bullish as f64),
+            ("open_bearish", open_bearish as f64),
+        ] {
+            output.extra.insert(key.to_string(), value);
+        }
+        Some(output)
+    }
+}
+
+/// Registry definition of `fvg_fill`.
+pub const FVG_FILL_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "fvg_fill",
+    aliases: &[],
+    description: "Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras",
+    params: &[ParamSpec::count("max_zones", 20, 1, 1000)
+        .meaning("newest open zones that are kept")],
+    checks: &[],
+    build: |p| Ok(Box::new(FvgFillEngine::new(p.count("max_zones")))),
+};
 
 // ---------------------------------------------------------------------------------------------
 // Cross-detector event linker
@@ -438,7 +530,7 @@ impl SmartMoneyStructureLinker {
 pub const LIQUIDITY_POOLS_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
     name: "liquidity_pools",
     aliases: &[],
-    description: "BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also FvgZoneTracker and SmartMoneyStructureLinker for FVG-fill tracking and cross-detector confluence)",
+    description: "BSL/SSL liquidity pools with explicit stop-hunt/breakout/reclaim classification (see also the `fvg_fill` entry for FVG-fill tracking and SmartMoneyStructureLinker for cross-detector confluence)",
     params: &[
         super::definition::ParamSpec::count("pivot_len", 5, 2, 10000).meaning("bars on each side of a pivot"),
         super::definition::ParamSpec::number("tolerance_pct", 0.2, 0.001, 100.0).meaning("distance, in percent, within which pivots join one pool"),

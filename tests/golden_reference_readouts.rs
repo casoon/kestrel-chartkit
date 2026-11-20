@@ -200,3 +200,9 @@ fn test_golden_swing_structure() {
         ],
     );
 }
+
+#[test]
+fn test_golden_fvg_fill() {
+    check("fz_default", "fvg_fill", &[]);
+    check("fz_small", "fvg_fill", &[("max_zones", 2.0)]);
+}
