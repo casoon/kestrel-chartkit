@@ -29,8 +29,8 @@ fn test_fit_matches_the_independent_newton_solution() {
             )
         };
         close(m.intercept, key("intercept"), "intercept");
-        for c in 0..k {
-            close(m.weights[c], key(&format!("w{c}")), &format!("w{c}"));
+        for (c, weight) in m.weights.iter().enumerate().take(k) {
+            close(*weight, key(&format!("w{c}")), &format!("w{c}"));
         }
         for (r, row) in x.iter().enumerate() {
             close(m.predict(row), key(&format!("p{r}")), &format!("p{r}"));

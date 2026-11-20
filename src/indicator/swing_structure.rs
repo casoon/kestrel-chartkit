@@ -233,14 +233,15 @@ impl SwingStructureEngine {
         let cand_low = self.bars[candidate_idx].1.low;
         let mut is_high = true;
         let mut is_low = true;
-        for i in (candidate_idx - self.left)..=(candidate_idx + self.right) {
-            if i == candidate_idx {
+        let window = &self.bars[candidate_idx - self.left..=candidate_idx + self.right];
+        for (offset, (_, bar)) in window.iter().enumerate() {
+            if offset == self.left {
                 continue;
             }
-            if self.bars[i].1.high >= cand_high {
+            if bar.high >= cand_high {
                 is_high = false;
             }
-            if self.bars[i].1.low <= cand_low {
+            if bar.low <= cand_low {
                 is_low = false;
             }
         }

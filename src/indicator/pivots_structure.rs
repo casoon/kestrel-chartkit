@@ -92,14 +92,15 @@ impl Indicator for PivotStructureEngine {
         let mut is_pivot_high = true;
         let mut is_pivot_low = true;
 
-        for i in (candidate_idx - self.left_bars)..=candidate_idx + self.right_bars {
-            if i == candidate_idx {
+        let window = &self.bars[candidate_idx - self.left_bars..=candidate_idx + self.right_bars];
+        for (offset, bar) in window.iter().enumerate() {
+            if offset == self.left_bars {
                 continue;
             }
-            if self.bars[i].high >= cand_high {
+            if bar.high >= cand_high {
                 is_pivot_high = false;
             }
-            if self.bars[i].low <= cand_low {
+            if bar.low <= cand_low {
                 is_pivot_low = false;
             }
         }

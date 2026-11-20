@@ -72,14 +72,15 @@ impl Indicator for MarketStructureBreaksEngine {
         let mut is_high = true;
         let mut is_low = true;
 
-        for i in (cand_idx - self.lookback)..=cand_idx + self.lookback {
-            if i == cand_idx {
+        let window = &self.bars[cand_idx - self.lookback..=cand_idx + self.lookback];
+        for (offset, bar) in window.iter().enumerate() {
+            if offset == self.lookback {
                 continue;
             }
-            if self.bars[i].high >= cand_high {
+            if bar.high >= cand_high {
                 is_high = false;
             }
-            if self.bars[i].low <= cand_low {
+            if bar.low <= cand_low {
                 is_low = false;
             }
         }
