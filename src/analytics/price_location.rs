@@ -4,7 +4,7 @@
 //!
 //! | field | definition |
 //! |---|---|
-//! | `atr` | Wilder ATR over `atr_len`: true range `TR = max(H − L, |H − C₋₁|, |L − C₋₁|)` (`H − L` on the first bar); the first value is the plain mean of the first `atr_len` true ranges, then `ATR = (ATR₋₁ · (n − 1) + TR) / n`. Price units. |
+//! | `atr` | Wilder ATR over `atr_len`: true range `TR = max(H − L, \|H − C₋₁\|, \|L − C₋₁\|)` (`H − L` on the first bar); the first value is the plain mean of the first `atr_len` true ranges, then `ATR = (ATR₋₁ · (n − 1) + TR) / n`. Price units. |
 //! | `ema` | EMA over `ema_len`, `α = 2 / (len + 1)`, seeded with the first close. |
 //! | `stretch` | `(close − ema) / atr` once at least `ema_len` bars were seen and `atr > 0`. |
 //! | `range_position` | close inside the high/low range of the last `range_len` bars (0 = low, 1 = high), 0.5 when that range is flat; from the `range_len`-th bar. |

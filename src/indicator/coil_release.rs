@@ -5,7 +5,7 @@
 //! |---|---|
 //! | complexity | close-to-close moves symbolised into five states in steps of `symbol_atr`·ATR(14); `100 · (0.7 · entropy/ln 5 + 0.3 · transition rate)` |
 //! | fractal dimension | box counting: `(ln(r1 + r2) − ln r3) / ln 2` from the ranges of the two half windows and the whole window, clamped to 1..2 |
-//! | efficiency | `100 · |net move| / path` |
+//! | efficiency | `100 · \|net move\| / path` |
 //! | chop | Choppiness Index over `chop_len` |
 //!
 //! `coil = 0.5 · complexity/100 + 0.3 · (fd − 1) + 0.2 · (1 − efficiency/100)`; the coil score
