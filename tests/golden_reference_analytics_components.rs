@@ -38,7 +38,7 @@ fn independent_trend_component_references() {
     let series: Vec<_> = bars.iter().filter_map(|b| sma.update(b.close)).collect();
     check("ramp_sma5_last", *series.last().unwrap());
     check("ramp_sma5_prior", series[series.len() - 6]);
-    let r = classify_trend_regime(&bars, 14, 20).unwrap();
+    let r = vote_regime(&bars, 14, 20).unwrap();
     check("ramp_chop", r.choppiness);
     check("ramp_er", r.efficiency);
     check("ramp_adx", r.adx);
@@ -103,7 +103,7 @@ fn shaped(step: f64, wick: f64) -> Vec<Bar> {
 #[test]
 fn independent_trend_components_off_the_ramp() {
     for (prefix, bars) in [("noisy", shaped(0.2, 0.3)), ("drift", shaped(0.05, 0.2))] {
-        let r = classify_trend_regime(&bars, 14, 20).unwrap();
+        let r = vote_regime(&bars, 14, 20).unwrap();
         check(&format!("{prefix}_adx"), r.adx);
         check(&format!("{prefix}_chop"), r.choppiness);
         check(&format!("{prefix}_efficiency"), r.efficiency);

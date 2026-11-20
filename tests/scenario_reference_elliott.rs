@@ -666,18 +666,18 @@ fn every_correction_falls_into_exactly_one_form() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The rule catalogue (`elliott::rule_catalog`) against the behaviour
+// The rule catalogue (`elliott::elliott_rule_catalog`) against the behaviour
 // ---------------------------------------------------------------------------------------------
 
 use kestrel_chartkit::indicator::elliott::{
-    rule_catalog, CheckEntry, CheckKind, SequenceErrorKind, StructureEntry, StructureKind,
+    elliott_rule_catalog, CheckEntry, CheckKind, SequenceErrorKind, StructureEntry, StructureKind,
     ThresholdRole, WaveVariant, BARRIER_LEVEL_TOLERANCE, EXPANDED_FLAT_B_MIN,
     EXPANDING_TRIANGLE_RETRACE_MAX, EXPANDING_TRIANGLE_RETRACE_MIN, EXTENDED_WAVE_MIN_RATIO,
     FLAT_B_MIN_RETRACE, FLAT_B_TYPICAL_MAX, ZIGZAG_B_TYPICAL_MAX,
 };
 
 fn structure(kind: StructureKind) -> &'static StructureEntry {
-    rule_catalog()
+    elliott_rule_catalog()
         .structures
         .iter()
         .find(|entry| entry.structure == kind)
@@ -1012,7 +1012,7 @@ fn catalogue_lists_what_the_validators_report() {
     }
 
     // The reverse: nothing in the catalogue that no sequence produced.
-    for entry in rule_catalog().structures {
+    for entry in elliott_rule_catalog().structures {
         let id = entry.structure.id();
         for listed in entry.variants {
             assert!(
@@ -1042,7 +1042,7 @@ fn catalogue_lists_what_the_validators_report() {
 /// distinct identifiers per structure, and thresholds that are the public constants.
 #[test]
 fn catalogue_is_complete_and_consistent() {
-    let catalog = rule_catalog();
+    let catalog = elliott_rule_catalog();
 
     let kinds: Vec<StructureKind> = catalog.structures.iter().map(|e| e.structure).collect();
     assert_eq!(
@@ -1192,7 +1192,7 @@ type Break = fn(&mut Vec<ZigZagNode>, usize);
 /// sequence that breaks two of them is refused with the one listed first).
 #[test]
 fn catalogue_states_the_pivot_sequence_conditions() {
-    let catalog = rule_catalog();
+    let catalog = elliott_rule_catalog();
     let order: Vec<SequenceErrorKind> = catalog
         .sequence_conditions
         .iter()
@@ -1329,7 +1329,7 @@ fn catalogue_thresholds_are_where_the_behaviour_turns() {
             .any(|x| x.rule == "expanding_triangle_b_retrace")
     };
 
-    for threshold in rule_catalog().thresholds {
+    for threshold in elliott_rule_catalog().thresholds {
         let found = match (threshold.constant, threshold.role) {
             ("FLAT_B_MIN_RETRACE", ThresholdRole::FormBoundary) => turning_point(0.5, 0.95, |r| {
                 correction(r, None).variant != CorrectionVariant::Zigzag

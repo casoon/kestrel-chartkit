@@ -27,13 +27,24 @@ pub use price_location::{
     price_location_series, true_range, wilder_atr_series, PriceLocation, PriceLocationConfig,
     PriceLocationEngine, WilderAtr,
 };
-pub use regime::{classify_regime as classify_trend_regime, RegimeReading, RegimeState};
+pub use regime::{vote_regime, RegimeReading, RegimeState};
 pub use seasonality::{monthly_seasonality, MonthStatistics, MonthlyReturn, SeasonalityReport};
 pub use trend::{trend_reading, MarketPhase, TrendDirection, TrendReading};
 pub use trend_persistence::{
     trend_persistence_reading, TrendPersistenceDirection, TrendPersistenceReading,
     TrendPersistenceSensor, TrendPersistenceState,
 };
+
+/// Former name of [`vote_regime`]; the name clashed with [`crate::regime::classify_regime`], which
+/// is a different classifier.
+#[deprecated(since = "0.43.0", note = "renamed to `vote_regime`")]
+pub fn classify_trend_regime(
+    bars: &[crate::Bar],
+    adx_len: usize,
+    window: usize,
+) -> Option<RegimeReading> {
+    vote_regime(bars, adx_len, window)
+}
 
 /// True range for a bar given the previous bar's close: the full
 /// three-term form, or high−low on the very first bar. Shared by the

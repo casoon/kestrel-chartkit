@@ -37,7 +37,7 @@ HEADER = [
     *provenance("analytics_components"),
     "",
     "Each value from the definition documented on its function:",
-    "  classify_trend_regime(bars, 14, 20)  adx: ADX(14, 14) fed from the first bar; chop:",
+    "  vote_regime(bars, 14, 20)  adx: ADX(14, 14) fed from the first bar; chop:",
     "        100 log10(sum TR / (highest high - lowest low)) / log10(20) over the last 20 bars,",
     "        the first TR against the close before them; efficiency: ratio over the last 21",
     "        closes; votes: adx >= 25, chop <= 38.2, efficiency >= 0.5.",

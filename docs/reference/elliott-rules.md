@@ -4,7 +4,7 @@ description: What the Elliott validators check, generated from the rule catalogu
 order: 4
 ---
 
-> **Generated.** This page is rendered from `indicator::elliott::rule_catalog()` by
+> **Generated.** This page is rendered from `indicator::elliott::elliott_rule_catalog()` by
 > `tests/structure_catalog_doc.rs`, so it always matches the code of this version. The same
 > catalogue is bound to the behaviour by tests: every identifier a validator reports is listed
 > here with its sentence, variants and assertion, every entry is reported by at least one test
@@ -134,7 +134,7 @@ The checks above are what is reported as a rule or a guideline. `identify_extend
 The conditions of the pivot sequence are steps that end the flow when they fail; the rules and guidelines are steps that each report on their own. `examples/elliott_check_flow.rs`, run with `cargo run --example elliott_check_flow`:
 
 ```rust
-use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckEntry};
+use kestrel_chartkit::indicator::elliott::{elliott_rule_catalog, CheckEntry};
 
 /// The variants a check can be reported for, or `all` for a structure without variants.
 fn applies_to(check: &CheckEntry) -> String {
@@ -146,7 +146,7 @@ fn applies_to(check: &CheckEntry) -> String {
 }
 
 fn main() {
-    let catalog = rule_catalog();
+    let catalog = elliott_rule_catalog();
     for entry in catalog.structures {
         let counts: Vec<String> = entry.node_counts.iter().map(usize::to_string).collect();
         println!(

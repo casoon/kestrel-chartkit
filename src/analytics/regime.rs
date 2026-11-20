@@ -1,5 +1,7 @@
 //! Three-measure trend/range vote (ADX, unbounded Choppiness, Kaufman efficiency).
-//! Distinct from the four-state market regime classifier: a flat efficiency window is unavailable.
+//! Distinct from the market regime classifier [`crate::regime::classify_regime`] (20-bar average
+//! slope with ADX and ATR, four states, used by the engine pipeline): a flat efficiency window is
+//! unavailable here.
 
 #[cfg(feature = "serde")]
 use serde::Serialize;
@@ -49,7 +51,7 @@ pub struct RegimeReading {
 ///
 /// They vote "trending" at `adx >= 25`, `choppiness <= 38.2` and `efficiency >= 0.5`; two or
 /// more votes make the state [`RegimeState::Trending`].
-pub fn classify_regime(bars: &[Bar], adx_len: usize, window: usize) -> Option<RegimeReading> {
+pub fn vote_regime(bars: &[Bar], adx_len: usize, window: usize) -> Option<RegimeReading> {
     if window < 2 || adx_len < 1 {
         return None;
     }
@@ -143,7 +145,7 @@ mod tests {
                 bar(c - 0.5, c + 0.2, c - 0.7, c)
             })
             .collect();
-        let r = classify_regime(&bars, 14, 20).expect("enough bars");
+        let r = vote_regime(&bars, 14, 20).expect("enough bars");
         assert!((r.efficiency - 1.0).abs() < 1e-9, "ramp ER should be 1");
         assert_eq!(r.state, RegimeState::Trending);
         assert!(r.trend_votes >= 2);
@@ -159,7 +161,7 @@ mod tests {
                 bar(c, c + 0.5, c - 0.5, c)
             })
             .collect();
-        let r = classify_regime(&bars, 14, 20).expect("enough bars");
+        let r = vote_regime(&bars, 14, 20).expect("enough bars");
         assert!(
             r.efficiency < 0.3,
             "zig-zag ER should be low: {}",
@@ -171,7 +173,7 @@ mod tests {
     #[test]
     fn insufficient_bars_is_none() {
         let bars: Vec<Bar> = (0..5).map(|_| bar(100.0, 101.0, 99.0, 100.0)).collect();
-        assert!(classify_regime(&bars, 14, 20).is_none());
+        assert!(vote_regime(&bars, 14, 20).is_none());
     }
 
     #[test]

@@ -13,7 +13,7 @@ the [composite scoring](../composite-scoring/). Most return `None` until the sli
 
 | Function                    | Returns                   | What it reads                                                                 |
 | --------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
-| `classify_trend_regime`     | `RegimeReading`           | Trending or ranging, by a vote of ADX, Choppiness and Kaufman efficiency      |
+| `vote_regime`     | `RegimeReading`           | Trending or ranging, by a vote of ADX, Choppiness and Kaufman efficiency      |
 | `trend_reading`             | `TrendReading`            | Slope of a smoothed close, combined with the regime vote into a five-step phase |
 | `price_summary`             | `PriceSummary`            | Change, window range, Wilder ATR, its percentile and an ATR stop distance     |
 | `trend_persistence_reading` | `TrendPersistenceReading` | How clean and durable the current trend is, 0 to 100                          |
@@ -24,7 +24,7 @@ the [composite scoring](../composite-scoring/). Most return `None` until the sli
 
 ### Regime vote
 
-`classify_trend_regime(bars, adx_len, window)` lets three measures vote "trending": ADX at or above
+`vote_regime(bars, adx_len, window)` lets three measures vote "trending": ADX at or above
 25, Choppiness at or below 38.2, efficiency ratio at or above 0.5. Two or more votes make the state
 `Trending`, otherwise `Ranging`; `trend_votes` keeps the count. This is a separate classifier from
 the four-state [`classify_regime`](../market-regime/) used by the composite scoring.

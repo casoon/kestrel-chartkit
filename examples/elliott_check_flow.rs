@@ -1,9 +1,9 @@
 //! The order in which an Elliott labeling is checked, as a flow per structure: the steps and
-//! their outcomes are read from `elliott::rule_catalog()`, nothing is written out by hand.
+//! their outcomes are read from `elliott::elliott_rule_catalog()`, nothing is written out by hand.
 //!
 //! `cargo run --example elliott_check_flow`
 
-use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckEntry};
+use kestrel_chartkit::indicator::elliott::{elliott_rule_catalog, CheckEntry};
 
 /// The variants a check can be reported for, or `all` for a structure without variants.
 fn applies_to(check: &CheckEntry) -> String {
@@ -15,7 +15,7 @@ fn applies_to(check: &CheckEntry) -> String {
 }
 
 fn main() {
-    let catalog = rule_catalog();
+    let catalog = elliott_rule_catalog();
     for entry in catalog.structures {
         let counts: Vec<String> = entry.node_counts.iter().map(usize::to_string).collect();
         println!(

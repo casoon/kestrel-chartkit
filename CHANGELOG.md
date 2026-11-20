@@ -49,6 +49,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Deprecated
 
+- **`analytics::classify_trend_regime`:** renamed to `analytics::vote_regime`; the name sounded like `regime::classify_regime`, which is a different classifier (20-bar average slope with ADX and ATR). Same arguments and result.
+- **`indicator::elliott::rule_catalog`:** renamed to `elliott_rule_catalog`; `rule_catalog` is also the name of the applicability rules (`kestrel_chartkit::rule_catalog`).
 - **`analytics::WilderAtr` and `analytics::wilder_atr_series`:** use the catalog indicator `atr` (percent of close; `extra["raw"]` is the price distance these return).
 - **`pair_catalog()`:** the pair indicators are entries of `catalog()`; `pair_catalog()` is a filter over it, and `catalog_of(IndicatorInput::Pair)` returns the same.
 

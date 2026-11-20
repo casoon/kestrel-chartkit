@@ -51,7 +51,7 @@
 //!
 //! # The rules as data
 //!
-//! [`rule_catalog`] returns what the validators check as a [`RuleCatalog`]: the conditions of the
+//! [`elliott_rule_catalog`] returns what the validators check as a [`RuleCatalog`]: the conditions of the
 //! pivot sequence in the order they are tested, per structure the node counts, variants, rules
 //! and guidelines with the identifiers and sentences reported, and the threshold constants with
 //! what each decides and where it comes from. A rule table or a flow of the checks can be
@@ -1371,7 +1371,7 @@ pub struct ThresholdEntry {
     pub convention: Option<&'static str>,
 }
 
-/// Everything the validators check, as data. See [`rule_catalog`].
+/// Everything the validators check, as data. See [`elliott_rule_catalog`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RuleCatalog {
     /// The conditions of the pivot sequence, in the order they are tested. Each is tested over
@@ -1908,11 +1908,11 @@ static CATALOG: RuleCatalog = RuleCatalog {
 /// asserted [`DiagonalKind`], which enters no check.
 ///
 /// ```
-/// use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckKind, StructureKind};
+/// use kestrel_chartkit::indicator::elliott::{elliott_rule_catalog, CheckKind, StructureKind};
 ///
 /// // The order of checking as a flow: the conditions of the pivot sequence, then the rules of
 /// // the structure, each a step with the outcome "violated" labelled by its identifier.
-/// let catalog = rule_catalog();
+/// let catalog = elliott_rule_catalog();
 /// let impulse = catalog
 ///     .structures
 ///     .iter()
@@ -1939,8 +1939,15 @@ static CATALOG: RuleCatalog = RuleCatalog {
 /// );
 /// assert!(impulse.rules.iter().all(|rule| rule.kind == CheckKind::Rule));
 /// ```
-pub fn rule_catalog() -> &'static RuleCatalog {
+pub fn elliott_rule_catalog() -> &'static RuleCatalog {
     &CATALOG
+}
+
+/// Former name of [`elliott_rule_catalog`]; the name clashed with
+/// [`crate::applicability::rule_catalog`], which lists other rules.
+#[deprecated(since = "0.43.0", note = "renamed to `elliott_rule_catalog`")]
+pub fn rule_catalog() -> &'static RuleCatalog {
+    elliott_rule_catalog()
 }
 
 #[cfg(test)]

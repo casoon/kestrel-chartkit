@@ -1,5 +1,5 @@
 //! `docs/reference/wyckoff-transitions.md` is generated from `wyckoff::transitions()` and
-//! `docs/reference/elliott-rules.md` from `elliott::rule_catalog()`, like the indicator
+//! `docs/reference/elliott-rules.md` from `elliott::elliott_rule_catalog()`, like the indicator
 //! reference from the indicator definitions, so the published tables cannot drift from the
 //! code. These tests render the pages and compare; after a change to a table, regenerate with
 //!
@@ -9,7 +9,7 @@
 
 use std::fmt::Write;
 
-use kestrel_chartkit::indicator::elliott::{rule_catalog, CheckEntry, WaveSubdivision};
+use kestrel_chartkit::indicator::elliott::{elliott_rule_catalog, CheckEntry, WaveSubdivision};
 use kestrel_chartkit::indicator::wyckoff::{transitions, WyckoffPhase, WyckoffRangeBias};
 
 const WYCKOFF_PATH: &str = concat!(
@@ -217,7 +217,7 @@ fn check_rows(out: &mut String, structure: &str, checks: &[CheckEntry]) {
 }
 
 fn render_elliott() -> String {
-    let catalog = rule_catalog();
+    let catalog = elliott_rule_catalog();
     let checks = || {
         catalog
             .structures
@@ -240,7 +240,7 @@ fn render_elliott() -> String {
     )
     .unwrap();
     out.push_str(
-        "> **Generated.** This page is rendered from `indicator::elliott::rule_catalog()` by\n\
+        "> **Generated.** This page is rendered from `indicator::elliott::elliott_rule_catalog()` by\n\
          > `tests/structure_catalog_doc.rs`, so it always matches the code of this version. The same\n\
          > catalogue is bound to the behaviour by tests: every identifier a validator reports is listed\n\
          > here with its sentence, variants and assertion, every entry is reported by at least one test\n\
