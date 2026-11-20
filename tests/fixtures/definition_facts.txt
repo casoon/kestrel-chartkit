@@ -298,6 +298,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"KAS"	canonical="kas"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "KELTNER"	canonical="keltner"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "KELTNER", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1066,6 +1070,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"kas"	canonical="kas"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "keltner"	canonical="keltner"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "keltner", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1555,6 +1563,7 @@ entry "lsma" Bars range=Unbounded
 entry "mcginley" Bars range=Unbounded
 entry "t3" Bars range=Unbounded
 entry "vidya" Bars range=Unbounded
+entry "kas" Bars range=Unbounded
 entry "alligator" Bars range=Unbounded
 entry "envelope" Bars range=Unbounded
 entry "vwap" Bars range=Unbounded

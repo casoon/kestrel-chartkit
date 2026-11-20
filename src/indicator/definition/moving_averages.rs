@@ -20,6 +20,7 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::mcginley::MCGINLEY_DEFINITION,
     &crate::indicator::t3::T3_DEFINITION,
     &crate::indicator::vidya::VIDYA_DEFINITION,
+    &crate::indicator::kas::KAS_DEFINITION,
     &crate::indicator::alligator::ALLIGATOR_DEFINITION,
     &crate::indicator::envelope::ENVELOPE_DEFINITION,
     &crate::indicator::vwap::VWAP_DEFINITION,

@@ -2,6 +2,7 @@
 //! contract of `Indicator::convergence_period` against a series started much earlier.
 
 use kestrel_chartkit::indicator::atr::Atr;
+use kestrel_chartkit::indicator::kas::Kas;
 use kestrel_chartkit::indicator::macd::Macd;
 use kestrel_chartkit::indicator::moving_averages::{JmaEngine, RmaEngine, SuperSmootherEngine};
 use kestrel_chartkit::indicator::rsi::Rsi;
@@ -168,6 +169,8 @@ fn convergence_period_bounds_the_startup_influence() {
     assert_converges("rma", || Box::new(RmaEngine::new(14)));
     assert_converges("jma", || Box::new(JmaEngine::new(14, 0.0, 2.0)));
     assert_converges("jma power 1", || Box::new(JmaEngine::new(14, 100.0, 1.0)));
+    assert_converges("kas", || Box::new(Kas::with_defaults()));
+    assert_converges("kas phase 2 adapt 2", || Box::new(Kas::new(14, 2.0, 2.0)));
     assert_converges("super_smoother", || Box::new(SuperSmootherEngine::new(10)));
 }
 

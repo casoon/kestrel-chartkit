@@ -10,6 +10,7 @@ from ..smoothing import (
     ema_published,
     ema_sma_seed,
     jma_approximation,
+    kestrel_adaptive_smoother,
     least_squares,
     published,
     rma,
@@ -73,6 +74,11 @@ HEADER = [
     "                 alpha = beta^power, three recursions per close, the first value the close;",
     "                 period 5 with phase 0 / power 2 (the defaults), phase 100, phase -100 and",
     "                 power 1; a phase beyond 100 is clamped to 100, a power below 1 to 1.",
+    "  KAS            Kestrel Adaptive Smoother: a cascade of three exponential stages whose common",
+    "                 gain follows a score of how directed and how unusual the recent movement is,",
+    "                 the first value the close; period 5 with phase 0.5 / adapt 1 (the defaults",
+    "                 but for the period), phase 0, phase 2, adapt 0 and adapt 2; period 1 is the",
+    "                 close itself.",
     "  SuperSmoother  Ehlers' 2-pole low-pass started from the price, period 5, over the same series;",
     "                 the indicator publishes from the period-th bar (period 3: the third value).",
 ]
@@ -249,6 +255,11 @@ def derive():
                                 ("power1", 0.0, 1.0), ("clamped", 250.0, 0.5)):
         keys[f"jma5_{label}_last"] = jma_approximation(CLOSES, 5, phase, power)[-1]
     keys["jma5_first"] = jma_approximation(CLOSES, 5, 0.0, 2.0)[0]
+    for label, phase, adapt in (("default", 0.5, 1.0), ("phase0", 0.0, 1.0), ("phase2", 2.0, 1.0),
+                                ("adapt0", 0.5, 0.0), ("adapt2", 0.5, 2.0)):
+        keys[f"kas5_{label}_last"] = kestrel_adaptive_smoother(CLOSES, 5, phase, adapt)[-1]
+    keys["kas5_first"] = kestrel_adaptive_smoother(CLOSES, 5, 0.5, 1.0)[0]
+    keys["kas1_last"] = kestrel_adaptive_smoother(CLOSES, 1, 0.5, 1.0)[-1]
     keys["supersmoother_5_last"] = super_smoother(CLOSES, 5)[-1]
     keys["supersmoother_3_first_published"] = super_smoother(CLOSES, 3)[2]
     return keys
@@ -271,6 +282,9 @@ SECTIONS = [
     ("alma5", "ALMA, period 5", ["default_last", "oldest_last", "newest_last"]),
     ("jma5", "JMA approximation, period 5",
      ["default_last", "lead_last", "lag_last", "power1_last", "clamped_last", "first"]),
+    ("kas5", "Kestrel Adaptive Smoother, period 5",
+     ["default_last", "phase0_last", "phase2_last", "adapt0_last", "adapt2_last", "first"]),
+    ("kas1", "Kestrel Adaptive Smoother, period 1: the close itself", ["last"]),
     ("supersmoother", "SuperSmoother", ["5_last", "3_first_published"]),
 ]
 

@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Indicator `kas`:** the Kestrel Adaptive Smoother as a catalog entry (`Kas`): a cascade of three exponential stages whose common gain follows a score of how directed and how unusual the recent movement is. `period` (default 20), `phase` (0..2, default 0.5: lead against overshoot, 0 cannot overshoot), `adapt` (0..2, default 1: 0 is a fixed filter); valid from the first bar. Marked as not yet accepted; formula, measurements and the candidates it was chosen from: [The adaptive smoother](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/). The catalog now has 159 entries.
+
 ## [0.43.0] - 2026-11-20
 
 ### Added

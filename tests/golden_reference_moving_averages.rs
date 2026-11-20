@@ -737,6 +737,63 @@ fn test_golden_jma_clamps_phase_and_power() {
 }
 
 #[test]
+fn test_golden_kas_reference_values() {
+    let tolerance = expected("ma_tolerance");
+    let values = catalog_values("kas", &[("period", 5.0)]);
+    assert_eq!(
+        values.len(),
+        CLOSES.len(),
+        "KAS gibt ab der ersten Kerze aus"
+    );
+    common::assert_close(
+        values[0],
+        expected("kas5_first"),
+        tolerance,
+        "KAS(5) erster Wert",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("kas5_default_last"),
+        tolerance,
+        "KAS(5)",
+    );
+    for (label, phase, adapt) in [
+        ("phase0", 0.0, 1.0),
+        ("phase2", 2.0, 1.0),
+        ("adapt0", 0.5, 0.0),
+        ("adapt2", 0.5, 2.0),
+    ] {
+        let values = catalog_values(
+            "kas",
+            &[("period", 5.0), ("phase", phase), ("adapt", adapt)],
+        );
+        common::assert_close(
+            *values.last().unwrap(),
+            expected(&format!("kas5_{label}_last")),
+            tolerance,
+            &format!("KAS(5, phase {phase}, adapt {adapt})"),
+        );
+    }
+}
+
+#[test]
+fn test_golden_kas_period_one_is_the_close() {
+    let values = catalog_values("kas", &[("period", 1.0)]);
+    common::assert_close(
+        *values.last().unwrap(),
+        expected("kas1_last"),
+        expected("ma_tolerance"),
+        "KAS(1)",
+    );
+    common::assert_close(
+        *values.last().unwrap(),
+        *CLOSES.last().unwrap(),
+        expected("ma_tolerance"),
+        "KAS(1) ist der Schlusskurs",
+    );
+}
+
+#[test]
 fn test_golden_super_smoother_reference_values() {
     let tolerance = expected("ma_tolerance");
     let values = catalog_values("super_smoother", &[("period", 5.0)]);
@@ -763,7 +820,7 @@ fn test_golden_super_smoother_reference_values() {
 /// Each smoother resumes from a clean state after `reset`.
 #[test]
 fn test_smoother_family_reset_restarts_deterministically() {
-    for name in ["rma", "alma", "jma", "super_smoother"] {
+    for name in ["rma", "alma", "jma", "kas", "super_smoother"] {
         let mut indicator = build_checked(name, &HashMap::new()).unwrap();
         let run = |indicator: &mut Box<dyn Indicator>| -> Vec<Option<f64>> {
             CLOSES

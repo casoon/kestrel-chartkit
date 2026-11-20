@@ -53,8 +53,8 @@ in `extra["raw"]`.
 `catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
 `default_params`, `input`, the `IndicatorInput` that says which builder builds it, and
 `verification`, whether the entry has passed its acceptance (`Verified`) or is still `Open` with
-the reason. It has 158
-entries (152 of kind `Bars`); `catalog_of(kind)` lists one kind; the
+the reason. It has 159
+entries (153 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
 Behind the catalog, every indicator has one definition

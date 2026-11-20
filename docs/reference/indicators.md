@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 158 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 159 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 133 of the 158 entries are verified, 25 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 133 of the 159 entries are verified, 26 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -32,6 +32,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
 | `vidya` | bars | verified |
+| `kas` | bars | **not yet verified:** acceptance against the measured criteria is pending |
 | `alligator` | bars | verified |
 | `envelope` | bars | verified |
 | `vwap` | bars | verified |
@@ -402,6 +403,22 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 |---|---|---|---|
 | `cmo_len` | 9 | whole number 1 – 10000 | bars over which the directionality (CMO) is measured |
 | `ema_len` | 12 | whole number 1 – 10000 | base exponential smoothing that the CMO scales |
+
+### `kas`
+
+Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move
+
+**Not yet verified:** acceptance against the measured criteria is pending.
+
+[See it in the showcase](../../../showcase/kas/)
+
+**Output** unit Price, range not declared · **warmup** 1 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | length: at phase 0 without adaptation the line lags a straight trend as much as an exponential average of this period |
+| `phase` | 0.5 | 0 – 2 | lead: 0 cannot overshoot, 2 follows a straight trend without lag and overshoots a step by a quarter |
+| `adapt` | 1 | 0 – 2 | strength of the adaptation: 0 is a fixed filter, higher values rest more and jump more |
 
 ### `alligator`
 
