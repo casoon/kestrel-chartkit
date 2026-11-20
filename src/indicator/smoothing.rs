@@ -727,13 +727,10 @@ impl Jma {
 /// Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter:
 /// `a1 = exp(-1.414 · π / len)`, `c2 = 2 · a1 · cos(1.414 · π / len)`, `c3 = -a1²`,
 /// `c1 = 1 - c2 - c3`, and `ss_t = c1 · (src_t + src_(t-1)) / 2 + c2 · ss_(t-1) + c3 · ss_(t-2)`.
-/// Valid from the first sample, with one of two starts:
-/// - [`SuperSmoother::new`]: the missing `src[1]`/`ss[1]`/`ss[2]` terms on the first bars
-///   default to `0`, producing a transient of the size of the price level rather than a `None`
-///   warmup. This is the start the smoother kinds ([`SmootherKind::build`]) use.
-/// - [`SuperSmoother::price_seeded`]: the first two outputs equal the first two inputs
-///   (`ss_0 = src_0`, `ss_1 = src_1`) and the recursion runs from the third sample, so the
-///   remaining start-up error scales with the price change of the first bars, not the level.
+/// Valid from the first sample, started from the price: the first two outputs equal the first two
+/// inputs (`ss_0 = src_0`, `ss_1 = src_1`) and the recursion runs from the third sample, so the
+/// remaining start-up error scales with the price change of the first bars, not with the price
+/// level. Every user ([`SmootherKind::build`], the catalog entry `super_smoother`) gets this start.
 #[derive(Debug, Clone)]
 pub struct SuperSmoother {
     c1: f64,
@@ -742,22 +739,11 @@ pub struct SuperSmoother {
     prev_src: f64,
     prev1: f64,
     prev2: f64,
-    price_seed: bool,
     count: usize,
 }
 
 impl SuperSmoother {
-    /// Starts from a zero state.
     pub fn new(len: usize) -> Self {
-        Self::with_seed(len, false)
-    }
-
-    /// Starts from the price: the first two outputs equal the first two inputs.
-    pub fn price_seeded(len: usize) -> Self {
-        Self::with_seed(len, true)
-    }
-
-    fn with_seed(len: usize, price_seed: bool) -> Self {
         let len = len.max(1) as f64;
         let a1 = (-1.414 * std::f64::consts::PI / len).exp();
         let b1 = 2.0 * a1 * (1.414 * std::f64::consts::PI / len).cos();
@@ -771,13 +757,12 @@ impl SuperSmoother {
             prev_src: 0.0,
             prev1: 0.0,
             prev2: 0.0,
-            price_seed,
             count: 0,
         }
     }
 
     pub fn update(&mut self, src: f64) -> f64 {
-        let ss = if self.price_seed && self.count < 2 {
+        let ss = if self.count < 2 {
             src
         } else {
             self.c1 * (src + self.prev_src) / 2.0 + self.c2 * self.prev1 + self.c3 * self.prev2
@@ -968,7 +953,7 @@ mod supersmoother_tests {
     use super::SuperSmoother;
 
     /// Reference values independently derived (Python, from the documented Ehlers 2-pole
-    /// Butterworth formula transcribed in `SuperSmoother::new`/`update`'s doc comments — not by
+    /// Butterworth formula (started from the price) transcribed in `SuperSmoother`'s doc comment — not by
     /// running this Rust code):
     /// ```python
     /// import math
@@ -977,12 +962,10 @@ mod supersmoother_tests {
     ///     b1 = 2 * a1 * math.cos(1.414 * math.pi / length)
     ///     c2, c3 = b1, -(a1 * a1)
     ///     c1 = 1 - c2 - c3
-    ///     prev_src = prev1 = prev2 = 0.0
     ///     out = []
-    ///     for src in prices:
-    ///         ss = c1 * (src + prev_src) / 2.0 + c2 * prev1 + c3 * prev2
-    ///         prev2, prev1, prev_src = prev1, ss, src
-    ///         out.append(ss)
+    ///     for t, src in enumerate(prices):
+    ///         out.append(src if t < 2 else
+    ///                    c1 * (src + prices[t - 1]) / 2.0 + c2 * out[t - 1] + c3 * out[t - 2])
     ///     return out
     /// ```
     #[test]
@@ -993,12 +976,12 @@ mod supersmoother_tests {
             .map(|value| ss.update(value))
             .collect();
         let expected = [
-            0.505_413_249_748_865_4,
-            1.536_919_267_057_587,
-            2.563_799_552_420_708,
-            3.563_269_185_823_832_3,
-            4.561_856_630_604_048,
-            5.561_826_276_936_932,
+            1.0,
+            2.0,
+            2.557_155_807_187_828_4,
+            3.539_036_368_535_787,
+            4.561_208_883_617_132,
+            5.563_053_641_624_119,
         ];
         for (actual, expected) in actual.iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
@@ -1006,12 +989,22 @@ mod supersmoother_tests {
     }
 
     #[test]
-    fn price_seed_starts_at_the_first_two_closes() {
-        let mut ss = SuperSmoother::price_seeded(3);
+    fn starts_at_the_first_two_closes() {
+        let mut ss = SuperSmoother::new(3);
         assert_eq!(ss.update(10_000.0), 10_000.0);
         assert_eq!(ss.update(10_010.0), 10_010.0);
         ss.reset();
         assert_eq!(ss.update(5.0), 5.0);
+    }
+
+    /// The smoother kind that consumers choose (`ma_kind`, `fast_kind`, ...) starts at the price
+    /// like the catalog entry.
+    #[test]
+    fn smoother_kind_build_starts_at_the_price() {
+        use super::SmootherKind;
+        let mut stage = SmootherKind::SuperSmoother.build(10);
+        assert_eq!(stage.update(10_000.0), Some(10_000.0));
+        assert_eq!(stage.update(10_010.0), Some(10_010.0));
     }
 
     #[test]

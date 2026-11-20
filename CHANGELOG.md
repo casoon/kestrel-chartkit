@@ -14,7 +14,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Indicator `rma`:** Wilder's smoothed moving average as a catalog entry (`RmaEngine`), the average inside RSI, ATR and ADX; `period` (default 14), published from the `period`-th bar.
 - **Indicator `alma`:** the Arnaud Legoux moving average as a catalog entry (`AlmaEngine`); `period` (default 9), `offset` (0.85), `sigma` (6).
 - **Indicator `jma`:** an approximation of the Jurik moving average as a catalog entry (`JmaEngine`), following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values. `period` (default 14), `phase` (-100..100), `power` (at least 1).
-- **Indicator `super_smoother`:** Ehlers' 2-pole SuperSmoother as a catalog entry (`SuperSmootherEngine`); `period` (default 10), started from the price (the first two outputs equal the first two closes), published from the `period`-th bar. The smoother kinds (`SmootherKind::SuperSmoother`) keep the zero start (`SuperSmoother::new`); the price start is `SuperSmoother::price_seeded`. The catalog now has 140 entries.
+- **Indicator `super_smoother`:** Ehlers' 2-pole SuperSmoother as a catalog entry (`SuperSmootherEngine`); `period` (default 10), started from the price (the first two outputs equal the first two closes), published from the `period`-th bar. The catalog now has 140 entries.
 
 - **Indicator `fractal_dimension`:** the fractal dimension of the price path over a trailing window as a catalog entry (`FractalDimensionEngine`), 1 for a straight line and towards 2 for noise. `method` names the estimate: `halves` (Ehlers' halving estimate, clamped to 1..2) or `path` (1 + ln(path / range) / ln period, unclamped); `period` (default 30, at least 4). Coil Release and the trend-persistence read-out call the same kernel (`kernels::fractal_dimension`) with their own method, so their outputs are unchanged.
 - **Indicator `r_squared`:** the R-squared of a least-squares line through the last `period` closes as a catalog entry (`RSquaredEngine`, over `PredictabilityTracker`), 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1. `period` (default 20).
@@ -66,6 +66,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Fixed
 
+- **SuperSmoother:** the `SuperSmoother` choice of the smoother parameter (`ma_kind`, `fast_kind`, `slow_kind`, `SmootherKind::SuperSmoother`) now starts at the price level in every indicator that offers it, instead of from zero (first published values ~1.5 % off the price at period 10).
 - **Chart patterns:** the Wolfe wave of `ChartPatternDetector` never matched (point 5 was tested against the wrong side). It now follows Bill Wolfe's rules: point 3 beyond point 1, point 4 inside the 1-2 range, converging lines 1-3 and 2-4, point 5 beyond the projected 1-3 line; `fit` is the convergence and `tolerance_pct` no longer applies.
 
 ## [0.42.0] - 2026-11-17

@@ -612,7 +612,7 @@ impl SuperSmootherEngine {
         let period = period.max(1);
         Self {
             period,
-            ss: SuperSmoother::price_seeded(period),
+            ss: SuperSmoother::new(period),
             count: 0,
         }
     }
@@ -629,7 +629,7 @@ impl Indicator for SuperSmootherEngine {
 
     /// The start-up error (the price change of the first bars, not the price level) decays like
     /// `exp(-1.414 pi n / period)`; `20 * period` bars, the shared bound, leave it far below
-    /// `1e-3` of that change, so the bound of the zero start still holds.
+    /// `1e-3` of that change.
     fn convergence_period(&self) -> usize {
         self.period.max(super::settle_bars(&[self.period as f64]))
     }
