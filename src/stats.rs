@@ -1,6 +1,6 @@
 //! Rolling statistics primitives for streaming series calculations.
 
-use crate::indicator::kernels::pearson_sums;
+use crate::indicator::kernels::{pearson_sums, rank_weight, RankTies};
 
 /// Returns the sum of all finite values in `slice`.
 pub fn rolling_sum(slice: &[f64]) -> f64 {
@@ -79,8 +79,8 @@ pub fn percent_rank(slice: &[f64], val: f64) -> f64 {
     if finite.is_empty() || !val.is_finite() {
         return 0.0;
     }
-    let count_below = finite.iter().filter(|&&v| v <= val).count();
-    (count_below as f64 / finite.len() as f64) * 100.0
+    let weight = rank_weight(finite.iter().copied(), val, RankTies::AtOrBelow);
+    (weight / finite.len() as f64) * 100.0
 }
 
 /// Computes Pearson correlation from finite, positionally aligned pairs.

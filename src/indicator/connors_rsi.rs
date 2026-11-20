@@ -1,3 +1,4 @@
+use super::kernels::{rank_weight, RankTies};
 use super::rsi::Rsi;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
@@ -112,16 +113,8 @@ impl Indicator for ConnorsRsiEngine {
             0.0
         };
         let rank = (self.roc_history.len() == self.rank_len).then(|| {
-            let below = self.roc_history.iter().fold(0.0, |acc, &r| {
-                acc + if r < roc {
-                    1.0
-                } else if r == roc {
-                    0.5
-                } else {
-                    0.0
-                }
-            });
-            100.0 * below / self.rank_len as f64
+            let weight = rank_weight(self.roc_history.iter().copied(), roc, RankTies::Half);
+            100.0 * weight / self.rank_len as f64
         });
         self.roc_history.push_back(roc);
         if self.roc_history.len() > self.rank_len {

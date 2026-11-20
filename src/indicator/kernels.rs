@@ -98,6 +98,34 @@ pub(crate) fn pearson(x: &[f64], y: &[f64]) -> Option<f64> {
     Some((sums.cov / denom).clamp(-1.0, 1.0))
 }
 
+/// How values equal to the ranked one count in [`rank_weight`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RankTies {
+    /// Values `<=` the ranked one count fully (the percentile rank "at or below").
+    AtOrBelow,
+    /// Equal values count half (mid-rank), so a value and its negation rank symmetrically.
+    Half,
+}
+
+/// Weighted number of `values` that lie below `current`, with ties counted by `ties`. Callers
+/// divide by their own window size and scale to a fraction or a percentage; only the counting is
+/// shared. Values that are NaN are never counted.
+pub(crate) fn rank_weight(values: impl Iterator<Item = f64>, current: f64, ties: RankTies) -> f64 {
+    let mut less = 0usize;
+    let mut equal = 0usize;
+    for v in values {
+        if v < current {
+            less += 1;
+        } else if v == current {
+            equal += 1;
+        }
+    }
+    match ties {
+        RankTies::AtOrBelow => (less + equal) as f64,
+        RankTies::Half => less as f64 + 0.5 * equal as f64,
+    }
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]

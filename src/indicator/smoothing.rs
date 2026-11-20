@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::kernels::efficiency_ratio;
+use super::kernels::{efficiency_ratio, rank_weight, RankTies};
 
 /// How an [`Ema`] produces its first value.
 ///
@@ -309,13 +309,12 @@ impl PercentRank {
             return None;
         }
         let cur = v?;
-        let mut count = 0usize;
-        for p in self.window.iter().take(self.n) {
-            if (*p)? <= cur {
-                count += 1;
-            }
+        if self.window.iter().take(self.n).any(|p| p.is_none()) {
+            return None;
         }
-        Some(100.0 * count as f64 / self.n as f64)
+        let previous = self.window.iter().take(self.n).flatten().copied();
+        let weight = rank_weight(previous, cur, RankTies::AtOrBelow);
+        Some(100.0 * weight / self.n as f64)
     }
 }
 

@@ -24,6 +24,7 @@
 
 use std::collections::VecDeque;
 
+use super::kernels::{rank_weight, RankTies};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -97,9 +98,8 @@ impl<I: Indicator> Indicator for RankChannel<I> {
             return Some(out);
         }
         if self.history.len() == self.lookback {
-            let below = self.history.iter().filter(|h| **h < v).count();
-            let equal = self.history.iter().filter(|h| **h == v).count();
-            let rank = 100.0 * (below as f64 + 0.5 * equal as f64) / self.lookback as f64;
+            let weight = rank_weight(self.history.iter().copied(), v, RankTies::Half);
+            let rank = 100.0 * weight / self.lookback as f64;
             out.extra.insert("rank".to_string(), rank);
             if let Some(prev) = self.prev_rank {
                 if rank <= self.low && prev > self.low {

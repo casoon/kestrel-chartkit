@@ -3,6 +3,7 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
+use crate::indicator::kernels::{rank_weight, RankTies};
 use crate::Bar;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -61,8 +62,8 @@ fn volume_percentile_of_last(bars: &[Bar], window: usize) -> Option<f64> {
         return None;
     }
     let last = series.last()?.volume;
-    let below = series.iter().filter(|b| b.volume <= last).count();
-    Some(below as f64 / series.len() as f64)
+    let weight = rank_weight(series.iter().map(|b| b.volume), last, RankTies::AtOrBelow);
+    Some(weight / series.len() as f64)
 }
 
 #[cfg(test)]

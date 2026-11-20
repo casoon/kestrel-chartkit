@@ -4,7 +4,7 @@
 use serde::Serialize;
 
 use crate::indicator::atr::TrueRangeSmoothing;
-use crate::indicator::kernels::AtrKernel;
+use crate::indicator::kernels::{rank_weight, AtrKernel, RankTies};
 use crate::Bar;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -100,8 +100,7 @@ fn percentile_of_last(series: &[f64]) -> f64 {
     let Some(&last) = series.last() else {
         return 0.0;
     };
-    let below = series.iter().filter(|&&v| v <= last).count();
-    below as f64 / series.len() as f64
+    rank_weight(series.iter().copied(), last, RankTies::AtOrBelow) / series.len() as f64
 }
 
 #[cfg(test)]

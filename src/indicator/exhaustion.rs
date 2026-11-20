@@ -17,6 +17,8 @@
 
 use std::collections::VecDeque;
 
+use super::kernels::{rank_weight, RankTies};
+
 /// Default history for the percentile rank.
 pub const DEFAULT_LOOKBACK: usize = 200;
 /// Default percentile that counts as extreme.
@@ -85,8 +87,8 @@ impl Exhaustion {
         // Percentile rank of the current value among the previous `lookback` values:
         // the share of previous values less than or equal to it.
         let rank = (self.values.len() == self.lookback).then(|| {
-            let below = self.values.iter().filter(|v| **v <= value).count();
-            100.0 * below as f64 / self.lookback as f64
+            let weight = rank_weight(self.values.iter().copied(), value, RankTies::AtOrBelow);
+            100.0 * weight / self.lookback as f64
         });
         let previous_high = self.highs.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let previous_low = self.lows.iter().cloned().fold(f64::INFINITY, f64::min);
