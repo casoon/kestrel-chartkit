@@ -10,6 +10,17 @@
 //! a deterministic approximation of how these patterns are described in TA literature, not a claim
 //! that every instance found is a "real" tradable pattern.
 //!
+//! # Module API, not a catalog entry
+//!
+//! The detectors scan a finished node list and return a ranked set of candidates (lines, node
+//! sets, lifecycle state), several at once and overlapping; the swing definition is the caller's
+//! input (`reduce`, `project_to_timeframe`), not re-derived here. The module holds no bar formula:
+//! the only bar it reads is the one whose close moves a candidate's state. The causal per-bar
+//! counterparts are catalog entries: `double_pattern` (double top and bottom) and `trendlines`
+//! (the auto-fitted lines). A per-bar entry for the remaining kinds needs a definition of what one
+//! event is when candidates appear, change state and are evicted, and an independent reference for
+//! every geometry; it is not built yet.
+//!
 //! # Complete is not confirmed
 //!
 //! Two roughly equal highs are not a double top. They become one when the trough between them

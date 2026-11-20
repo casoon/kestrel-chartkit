@@ -9,6 +9,14 @@
 //! Fibonacci-clean the retracements are — a rule checker and quality scorer, not a wave counter
 //! that discovers labelings on its own.
 //!
+//! # Module API, not a catalog entry
+//!
+//! The validators are batch checks over a labeling somebody supplies; they read no bar and hold no
+//! per-bar state, so there is no value per bar to stream. They contain no bar formula: the ratios
+//! are documented rule thresholds (see the rules as data below) and the pivots come from the
+//! caller's swing definition. That keeps them outside `catalog()`; `applicability` knows them as the method
+//! `elliott`.
+//!
 //! # The pivot sequence every validator requires
 //!
 //! A labeling is a sequence of pivots, and the validators only evaluate what is one:
