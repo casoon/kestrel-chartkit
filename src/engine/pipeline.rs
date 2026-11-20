@@ -13,13 +13,18 @@ use super::market_state::{
 use super::structural_stop::StructuralTrailingStop;
 use super::vwap_regime::{VwapRegimeOutput, VwapRegimeTracker};
 
+/// ATR als Rohwert in Preiseinheiten aus dem ATR-Prozentwert (`100 * ATR / close`) der Bar.
+fn atr_raw_from_percent(atr_percent: f64, close: f64) -> f64 {
+    (atr_percent / 100.0) * close
+}
+
 /// M2.1: Rechnet ATR-Output (%-Wert) in Rohwert um und speist ihn in `SwingStructureEngine` ein.
 pub fn update_swing_structure(
     engine: &mut SwingStructureEngine,
     bar: &Bar,
     atr_output: &IndicatorOutput,
 ) -> Option<SwingStructureOutput> {
-    let atr_raw = (atr_output.value / 100.0) * bar.close;
+    let atr_raw = atr_raw_from_percent(atr_output.value, bar.close);
     engine.update(bar, atr_raw)
 }
 
@@ -48,7 +53,7 @@ pub fn build_market_context_from_profile(
         .unwrap_or(0.05);
     let node = classify_volume_node(density, 0.10, 0.02);
 
-    let atr_raw = (atr_val / 100.0) * bar.close;
+    let atr_raw = atr_raw_from_percent(atr_val, bar.close);
 
     build_market_context(
         regime,
@@ -219,7 +224,7 @@ pub fn build_free_space_from_profile(
         .copied()
         .unwrap_or(0.05);
 
-    let atr_raw = (atr_val / 100.0) * bar_close;
+    let atr_raw = atr_raw_from_percent(atr_val, bar_close);
 
     let lvn_width_atr = if atr_raw > 0.0 {
         lvn_width / atr_raw
@@ -257,19 +262,13 @@ pub fn update_vwap_regime(
     // keinen z-Wert (Tracker setzt ihn bei `sigma <= 0` auf 0).
     let sigma = vwap_output.extra.get("sigma").copied().unwrap_or(0.0);
 
-    let atr_raw = (atr_val / 100.0) * bar_close;
+    let atr_raw = atr_raw_from_percent(atr_val, bar_close);
 
-    let slope_atr = if atr_raw > 0.0 {
-        slope_raw / atr_raw
-    } else {
-        0.0
-    };
-
-    tracker.update(
+    tracker.update_with_slope(
         diff,
         atr_raw,
         sigma,
-        slope_atr,
+        slope_raw,
         flat_threshold,
         strong_threshold,
     )

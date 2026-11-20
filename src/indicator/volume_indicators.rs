@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
+use crate::indicator::kernels::close_location_value;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -276,12 +277,7 @@ impl Indicator for CmfEngine {
         if !bar.volume.is_finite() {
             return None;
         }
-        let high_low = bar.high - bar.low;
-        let mfm = if high_low > 1e-8 {
-            ((bar.close - bar.low) - (bar.high - bar.close)) / high_low
-        } else {
-            0.0
-        };
+        let mfm = close_location_value(bar.high, bar.low, bar.close, 1e-8).unwrap_or(0.0);
         let mfv = mfm * bar.volume;
 
         self.mf_volumes.push_back(mfv);
@@ -370,12 +366,7 @@ impl Indicator for AccDistEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        let high_low = bar.high - bar.low;
-        let mfm = if high_low > 1e-8 {
-            ((bar.close - bar.low) - (bar.high - bar.close)) / high_low
-        } else {
-            0.0
-        };
+        let mfm = close_location_value(bar.high, bar.low, bar.close, 1e-8).unwrap_or(0.0);
         let mfv = mfm * bar.volume;
         self.cum_ad += mfv;
 

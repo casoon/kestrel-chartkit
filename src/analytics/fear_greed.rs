@@ -8,6 +8,7 @@ use super::{
     FearGaugeReading, FearGaugeState, PriceSummary, RegimeReading, RegimeState,
     TrendPersistenceReading,
 };
+use crate::indicator::kernels::close_location_value;
 use crate::Bar;
 
 const FLOW_WINDOW: usize = 34;
@@ -147,11 +148,10 @@ fn flow_component(bars: &[Bar]) -> Option<f64> {
     let mut weighted = 0.0;
     let mut weight_sum = 0.0;
     for bar in window {
-        let span = bar.high - bar.low;
-        if span <= 0.0 {
+        let Some(clv) = close_location_value(bar.high, bar.low, bar.close, 0.0) else {
             continue;
-        }
-        let clv = (((bar.close - bar.low) - (bar.high - bar.close)) / span).clamp(-1.0, 1.0);
+        };
+        let clv = clv.clamp(-1.0, 1.0);
         let weight = if use_volume { bar.volume.max(0.0) } else { 1.0 };
         if weight == 0.0 {
             continue;

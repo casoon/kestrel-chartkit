@@ -1,3 +1,5 @@
+use super::kernels::floor_pivots;
+use super::price_levels::FIBONACCI_RATIOS;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use crate::timeframe::{Timeframe, TimeframeError};
@@ -143,25 +145,32 @@ impl Indicator for PivotSetsEngine {
 
         match self.pivot_type {
             PivotSetType::Classic => {
-                p = (h + l + c) / 3.0;
-                extra.insert("p".to_string(), p);
-                extra.insert("r1".to_string(), 2.0 * p - l);
-                extra.insert("s1".to_string(), 2.0 * p - h);
-                extra.insert("r2".to_string(), p + (h - l));
-                extra.insert("s2".to_string(), p - (h - l));
-                extra.insert("r3".to_string(), h + 2.0 * (p - l));
-                extra.insert("s3".to_string(), l - 2.0 * (h - p));
+                let f = floor_pivots(h, l, c);
+                p = f.p;
+                extra.insert("p".to_string(), f.p);
+                extra.insert("r1".to_string(), f.r1);
+                extra.insert("s1".to_string(), f.s1);
+                extra.insert("r2".to_string(), f.r2);
+                extra.insert("s2".to_string(), f.s2);
+                extra.insert("r3".to_string(), f.r3);
+                extra.insert("s3".to_string(), f.s3);
             }
             PivotSetType::Fibonacci => {
                 p = (h + l + c) / 3.0;
                 let range = h - l;
                 extra.insert("p".to_string(), p);
-                extra.insert("r1".to_string(), p + 0.382 * range);
-                extra.insert("s1".to_string(), p - 0.382 * range);
-                extra.insert("r2".to_string(), p + 0.618 * range);
-                extra.insert("s2".to_string(), p - 0.618 * range);
-                extra.insert("r3".to_string(), p + 1.000 * range);
-                extra.insert("s3".to_string(), p - 1.000 * range);
+                // The ratios of the shared table: 0.382, 0.618 and 1.0.
+                let (f1, f2, f3) = (
+                    FIBONACCI_RATIOS[1],
+                    FIBONACCI_RATIOS[3],
+                    FIBONACCI_RATIOS[5],
+                );
+                extra.insert("r1".to_string(), p + f1 * range);
+                extra.insert("s1".to_string(), p - f1 * range);
+                extra.insert("r2".to_string(), p + f2 * range);
+                extra.insert("s2".to_string(), p - f2 * range);
+                extra.insert("r3".to_string(), p + f3 * range);
+                extra.insert("s3".to_string(), p - f3 * range);
             }
             PivotSetType::Camarilla => {
                 p = (h + l + c) / 3.0;

@@ -5,7 +5,7 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
-use crate::indicator::kernels::true_range;
+use crate::indicator::kernels::{spike_band, true_range, vix_fix_pair, InverseBase};
 use crate::indicator::smoothing::sma_of_last;
 use crate::Bar;
 
@@ -48,8 +48,10 @@ pub struct FearGaugeReading {
 /// and its spike band (`WVF_LEN + BAND_LEN - 1`).
 ///
 /// With `hc`/`lc` the highest/lowest close of the 22 bars ending at bar `i`,
-/// `wvf_i = 100 · (hc - low_i) / hc` and `bwvf_i = 100 · (high_i - lc) / lc` (0 for a zero
-/// extreme). A gauge spikes when its current value reaches `mean + 2 · sd` of its last 20
+/// `wvf_i = 100 · (hc - low_i) / hc` and `bwvf_i = 100 · (high_i - lc) / lc` (0 for a
+/// non-positive extreme). `wvf` is the VIX Fix of the `vix_fix` indicator and the band is its
+/// spike band, both from the shared kernels; `bwvf` divides by the lowest close, where that
+/// indicator's inverse divides by the high (the log-price mirror), so `bwvf` reads larger. A gauge spikes when its current value reaches `mean + 2 · sd` of its last 20
 /// values, `sd` the population standard deviation; a fear spike takes precedence over a
 /// complacency spike.
 ///
@@ -76,8 +78,8 @@ pub fn fear_gauge_reading(bars: &[Bar]) -> Option<FearGaugeReading> {
 
     let wvf = *wvf_band.last().expect("band window is non-empty");
     let bwvf = *bwvf_band.last().expect("band window is non-empty");
-    let bull_active = wvf >= spike_band(&wvf_band);
-    let bear_active = bwvf >= spike_band(&bwvf_band);
+    let bull_active = wvf >= band_of(&wvf_band);
+    let bear_active = bwvf >= band_of(&bwvf_band);
 
     // Stall/absorption: WVF surged over `STALL_LEN` bars but price barely
     // moved — likely a thin wick, not genuine fear. Needs `STALL_LEN` bars
@@ -121,25 +123,15 @@ fn wvf_at(bars: &[Bar], i: usize) -> (f64, f64) {
         .map(|b| b.close)
         .fold(f64::NEG_INFINITY, f64::max);
     let lc = window.iter().map(|b| b.close).fold(f64::INFINITY, f64::min);
-    let wvf = if hc != 0.0 {
-        (hc - bars[i].low) / hc * 100.0
-    } else {
-        0.0
-    };
-    let bwvf = if lc != 0.0 {
-        (bars[i].high - lc) / lc * 100.0
-    } else {
-        0.0
-    };
+    let (wvf, bwvf) = vix_fix_pair(bars[i].high, bars[i].low, hc, lc, InverseBase::LowestClose);
     (wvf, bwvf)
 }
 
 /// `mean(x, BAND_LEN) + BAND_MULT * stdev(x, BAND_LEN)`, with the population (biased) standard
-/// deviation.
-fn spike_band(values: &[f64]) -> f64 {
+/// deviation — the band of the `vix_fix` indicator, from the same kernel.
+fn band_of(values: &[f64]) -> f64 {
     let mean = values.iter().sum::<f64>() / values.len() as f64;
-    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
-    mean + BAND_MULT * variance.sqrt()
+    spike_band(values, mean, BAND_MULT)
 }
 
 /// A plain trailing-average true range ending at bar `end`, deliberately not a

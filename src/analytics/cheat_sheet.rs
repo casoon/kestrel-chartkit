@@ -4,6 +4,8 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
+use crate::indicator::kernels::floor_pivots;
+use crate::indicator::price_levels::FIBONACCI_RATIOS;
 use crate::indicator::smoothing::Rma;
 use crate::Bar;
 
@@ -215,51 +217,28 @@ fn touches(bars: &[Bar], level: f64, tolerance: f64) -> usize {
 }
 
 fn add_pivots(levels: &mut Vec<CheatSheetLevel>, last: f64, high: f64, low: f64) {
-    let pivot = (high + low + last) / 3.0;
-    add_level(
-        levels,
-        CheatSheetLevelKind::Pivot,
-        "Pivot",
-        pivot,
-        last,
-        0.8,
-    );
-    add_level(
-        levels,
-        CheatSheetLevelKind::Pivot,
-        "Pivot S1",
-        2.0 * pivot - high,
-        last,
-        0.65,
-    );
-    add_level(
-        levels,
-        CheatSheetLevelKind::Pivot,
-        "Pivot R1",
-        2.0 * pivot - low,
-        last,
-        0.65,
-    );
-    add_level(
-        levels,
-        CheatSheetLevelKind::Pivot,
-        "Pivot S2",
-        pivot - (high - low),
-        last,
-        0.45,
-    );
-    add_level(
-        levels,
-        CheatSheetLevelKind::Pivot,
-        "Pivot R2",
-        pivot + (high - low),
-        last,
-        0.45,
-    );
+    let f = floor_pivots(high, low, last);
+    for (label, price, strength) in [
+        ("Pivot", f.p, 0.8),
+        ("Pivot S1", f.s1, 0.65),
+        ("Pivot R1", f.r1, 0.65),
+        ("Pivot S2", f.s2, 0.45),
+        ("Pivot R2", f.r2, 0.45),
+    ] {
+        add_level(
+            levels,
+            CheatSheetLevelKind::Pivot,
+            label,
+            price,
+            last,
+            strength,
+        );
+    }
 }
 
 fn add_fibonacci(levels: &mut Vec<CheatSheetLevel>, last: f64, high: f64, low: f64) {
-    for ratio in [0.236, 0.382, 0.5, 0.618, 0.786] {
+    // The retracement ratios of the shared table (0.236 .. 0.786); the rest are extensions.
+    for ratio in &FIBONACCI_RATIOS[..5] {
         let price = high - (high - low) * ratio;
         add_level(
             levels,

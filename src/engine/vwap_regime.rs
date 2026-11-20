@@ -73,6 +73,29 @@ impl VwapRegimeTracker {
         self.diffs.clear();
     }
 
+    /// [`Self::update`] from the raw VWAP slope per bar: `slope_atr = slope / atr`, `0` for an ATR
+    /// of zero. The one place that turns a price slope into ATRs, for the catalog entry and for
+    /// [`crate::engine::pipeline::update_vwap_regime`] alike.
+    pub(crate) fn update_with_slope(
+        &mut self,
+        price_minus_vwap: f64,
+        atr: f64,
+        sigma: f64,
+        slope: f64,
+        flat_threshold: f64,
+        strong_threshold: f64,
+    ) -> VwapRegimeOutput {
+        let slope_atr = if atr > 0.0 { slope / atr } else { 0.0 };
+        self.update(
+            price_minus_vwap,
+            atr,
+            sigma,
+            slope_atr,
+            flat_threshold,
+            strong_threshold,
+        )
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn update(
         &mut self,
@@ -192,11 +215,11 @@ impl Indicator for VwapRegimeEngine {
         let vwap = self.vwap.on_bar(bar)?;
         let slope = vwap.extra.get("slope").copied()?;
         let atr = atr?;
-        let reading = self.tracker.update(
+        let reading = self.tracker.update_with_slope(
             bar.close - vwap.value,
             atr,
             vwap.extra.get("sigma").copied().unwrap_or(0.0),
-            if atr > 0.0 { slope / atr } else { 0.0 },
+            slope,
             self.flat_threshold,
             self.strong_threshold,
         );

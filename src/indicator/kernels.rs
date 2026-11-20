@@ -44,6 +44,11 @@ pub(crate) fn path_and_net(closes: impl Iterator<Item = f64>) -> Option<(f64, f6
 /// Kaufman's efficiency ratio of a run of closes: `|net move| / path length`, `1` for a straight
 /// run and near `0` for much travel without progress. `None` when the path is not positive (nothing
 /// moved) or fewer than two closes are given; each caller chooses its own value for that case.
+///
+/// One deliberate variant stays outside this kernel: `price_average_relation` reads the path as
+/// `SMA(|close - close_prev|, n) * n` from its own row history, clamps the ratio to `0..=1` and
+/// gives a zero path the value `0`. It agrees with this ratio mathematically, not bit for bit, and
+/// its published values are pinned, so it keeps its own form.
 pub(crate) fn efficiency_ratio(closes: impl Iterator<Item = f64>) -> Option<f64> {
     let (net, path) = path_and_net(closes)?;
     (path > 0.0).then(|| net / path)
@@ -153,6 +158,92 @@ pub(crate) fn choppiness(sum_tr: f64, range: f64, len: usize, clamped: bool) -> 
         chop.clamp(0.0, 100.0)
     } else {
         chop
+    }
+}
+
+/// Close location value of a bar: `((close - low) - (high - close)) / (high - low)`, `-1` with the
+/// close at the low, `+1` at the high. `None` for a bar whose range is not above `min_range`
+/// (`0.0` for "no range at all", `1e-8` for the volume indicators, which then read the bar as
+/// `0`); the caller decides what a bar without a location counts as. Not clamped.
+///
+/// The share form `(close - low) / (high - low)` of the volume-split indicators is the same
+/// quantity on `0..=1`, `(clv + 1) / 2`; it is written out there because the two agree
+/// mathematically, not bit for bit, and their published values are pinned.
+pub(crate) fn close_location_value(high: f64, low: f64, close: f64, min_range: f64) -> Option<f64> {
+    let range = high - low;
+    (range > min_range).then(|| ((close - low) - (high - close)) / range)
+}
+
+/// What the inverse VIX Fix divides by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InverseBase {
+    /// The bar's high: the exact mirror of the VIX Fix in log price (`p' = C / p` turns `inverse`
+    /// into the VIX Fix of the original series). The `vix_fix` indicator.
+    High,
+    /// The lowest close of the window: the plain percentage rise of the high above it, the form
+    /// the fear-gauge read-out publishes (not the mirror; it reads larger than `High`).
+    LowestClose,
+}
+
+/// The Williams VIX Fix pair of one bar: `(wvf, inverse)` with
+/// `wvf = 100 * (highest_close - low) / highest_close` and
+/// `inverse = 100 * (high - lowest_close) / base`, `base` as `inverse_base` says. The highest and
+/// lowest close are taken over the same lookback window. A non-positive divisor reads `0`.
+pub(crate) fn vix_fix_pair(
+    high: f64,
+    low: f64,
+    highest_close: f64,
+    lowest_close: f64,
+    inverse_base: InverseBase,
+) -> (f64, f64) {
+    let wvf = if highest_close > 0.0 {
+        ((highest_close - low) / highest_close) * 100.0
+    } else {
+        0.0
+    };
+    let base = match inverse_base {
+        InverseBase::High => high,
+        InverseBase::LowestClose => lowest_close,
+    };
+    let inverse = if base > 0.0 {
+        ((high - lowest_close) / base) * 100.0
+    } else {
+        0.0
+    };
+    (wvf, inverse)
+}
+
+/// Upper spike band of a window of values: `mean + mult * sd`, `sd` the population deviation of
+/// `window` around `mean` (the caller's mean of that same window, rolling or direct).
+pub(crate) fn spike_band(window: &[f64], mean: f64, mult: f64) -> f64 {
+    let variance = window.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / window.len() as f64;
+    mean + mult * variance.sqrt()
+}
+
+/// Floor-trader pivot of a period from its high `h`, low `l` and close `c`:
+/// `p = (h + l + c) / 3`, `r1 = 2p - l`, `s1 = 2p - h`, `r2 = p + (h - l)`, `s2 = p - (h - l)`,
+/// `r3 = h + 2 (p - l)`, `s3 = l - 2 (h - p)`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct FloorPivots {
+    pub p: f64,
+    pub r1: f64,
+    pub s1: f64,
+    pub r2: f64,
+    pub s2: f64,
+    pub r3: f64,
+    pub s3: f64,
+}
+
+pub(crate) fn floor_pivots(h: f64, l: f64, c: f64) -> FloorPivots {
+    let p = (h + l + c) / 3.0;
+    FloorPivots {
+        p,
+        r1: 2.0 * p - l,
+        s1: 2.0 * p - h,
+        r2: p + (h - l),
+        s2: p - (h - l),
+        r3: h + 2.0 * (p - l),
+        s3: l - 2.0 * (h - p),
     }
 }
 

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::indicator::kernels::{spike_band, vix_fix_pair, InverseBase};
 use crate::indicator::smoothing::{ExtremeWindow, Sma};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
@@ -30,12 +31,6 @@ pub struct WilliamsVixFix {
     inv_window: Vec<f64>,
     inv_sma: Sma,
     alerts: Vec<IndicatorAlert>,
-}
-
-/// `mean + mult * sd` of `window` (population deviation around `mean`).
-fn band(window: &[f64], mean: f64, mult: f64) -> f64 {
-    let variance = window.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / window.len() as f64;
-    mean + mult * variance.sqrt()
 }
 
 impl WilliamsVixFix {
@@ -82,16 +77,13 @@ impl Indicator for WilliamsVixFix {
             .unwrap_or((bar.close, bar.close));
         self.alerts.clear();
 
-        let wvf = if highest_close > 0.0 {
-            ((highest_close - bar.low) / highest_close) * 100.0
-        } else {
-            0.0
-        };
-        let inverse = if bar.high > 0.0 {
-            ((bar.high - lowest_close) / bar.high) * 100.0
-        } else {
-            0.0
-        };
+        let (wvf, inverse) = vix_fix_pair(
+            bar.high,
+            bar.low,
+            highest_close,
+            lowest_close,
+            InverseBase::High,
+        );
 
         let sma_val = self.sma.update(wvf);
         let inv_sma = self.inv_sma.update(inverse);
@@ -109,8 +101,8 @@ impl Indicator for WilliamsVixFix {
             return None;
         }
 
-        let upper_band = band(&self.wvf_window, mean, self.mult);
-        let inverse_band = band(&self.inv_window, inv_mean, self.mult);
+        let upper_band = spike_band(&self.wvf_window, mean, self.mult);
+        let inverse_band = spike_band(&self.inv_window, inv_mean, self.mult);
 
         if wvf >= upper_band {
             self.alerts.push(IndicatorAlert::new(

@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::indicator::kernels::pearson;
+use crate::indicator::kernels::{pearson, pearson_sums, PearsonSums};
 
 #[cfg(feature = "serde")]
 use serde::Serialize;
@@ -287,24 +287,21 @@ pub fn compute_rolling_beta(
         return None;
     }
 
+    if asset_returns
+        .iter()
+        .chain(benchmark_returns)
+        .any(|r| !r.is_finite())
+    {
+        return None;
+    }
     let n = asset_returns.len() as f64;
     let mean_a = asset_returns.iter().sum::<f64>() / n;
     let mean_b = benchmark_returns.iter().sum::<f64>() / n;
-
-    let mut cov = 0.0f64;
-    let mut var_b = 0.0f64;
-    let mut var_a = 0.0f64;
-
-    for (&ra, &rb) in asset_returns.iter().zip(benchmark_returns) {
-        if !ra.is_finite() || !rb.is_finite() {
-            return None;
-        }
-        let da = ra - mean_a;
-        let db = rb - mean_b;
-        cov += da * db;
-        var_a += da * da;
-        var_b += db * db;
-    }
+    let PearsonSums {
+        cov,
+        var_x: var_a,
+        var_y: var_b,
+    } = pearson_sums(asset_returns, benchmark_returns);
 
     if var_b <= 1e-14 {
         // Benchmark is flat; beta is undefined
@@ -448,22 +445,13 @@ pub fn compute_pair_spread(prices_a: &[f64], prices_b: &[f64]) -> Option<PairSpr
         return None;
     }
 
-    let n = prices_a.len() as f64;
-    let mean_a = prices_a.iter().sum::<f64>() / n;
-    let mean_b = prices_b.iter().sum::<f64>() / n;
-
-    let mut cov = 0.0f64;
-    let mut var_b = 0.0f64;
-
-    for (&pa, &pb) in prices_a.iter().zip(prices_b) {
-        if !pa.is_finite() || !pb.is_finite() {
-            return None;
-        }
-        let da = pa - mean_a;
-        let db = pb - mean_b;
-        cov += da * db;
-        var_b += db * db;
+    if prices_a.iter().chain(prices_b).any(|p| !p.is_finite()) {
+        return None;
     }
+    let n = prices_a.len() as f64;
+    let PearsonSums {
+        cov, var_y: var_b, ..
+    } = pearson_sums(prices_a, prices_b);
 
     if var_b <= 1e-14 {
         return None;
