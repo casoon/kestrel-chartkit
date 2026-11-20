@@ -254,29 +254,6 @@ impl SeriesEvents {
     }
 }
 
-/// Unbounded streaming cumulative sum, independent of a `Series` lookback capacity.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct CumulativeSum {
-    value: f64,
-}
-
-impl CumulativeSum {
-    pub fn update(&mut self, value: f64) -> f64 {
-        if value.is_finite() {
-            self.value += value;
-        }
-        self.value
-    }
-
-    pub fn value(&self) -> f64 {
-        self.value
-    }
-
-    pub fn reset(&mut self) {
-        self.value = 0.0;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,13 +301,5 @@ mod tests {
         }
         assert_eq!(SeriesEvents::value_when(&condition, &source, 0), Some(&30));
         assert_eq!(SeriesEvents::value_when(&condition, &source, 1), Some(&10));
-    }
-
-    #[test]
-    fn cumulative_sum_survives_a_small_lookback_capacity() {
-        let mut cumulative = CumulativeSum::default();
-        assert_eq!(cumulative.update(1.0), 1.0);
-        assert_eq!(cumulative.update(2.0), 3.0);
-        assert_eq!(cumulative.update(3.0), 6.0);
     }
 }

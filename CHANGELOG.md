@@ -54,6 +54,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Removed
 
+- **Series (BREAKING):** `series::CumulativeSum` and its crate-root re-export are removed; nothing in the crate or its consumers used it and it has no catalog entry.
 - **Internal building blocks (BREAKING):** what computes a value per bar is a catalog entry or crate-internal. `Exhaustion` (module `indicator::exhaustion`), `SlopeDivergence`, `ExtremeWindow`, `RollingRobustThreshold` and `RobustBand` are now `pub(crate)`; `SmootherChain`, `HysteresisBand`, `HysteresisLevel` and `PriceLevelAggregator` (with its error type) are removed, none was used outside the crate.
 
 ### Deprecated

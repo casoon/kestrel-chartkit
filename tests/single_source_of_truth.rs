@@ -155,10 +155,7 @@ const MODULE_APIS: &[(&str, &str)] = &[
 /// Public streaming types that are neither built by a catalog definition nor a module API, found
 /// by the scan and not decided yet: each is a candidate for a catalog entry or for `pub(crate)`.
 /// The test fails when this list and the findings differ, so an entry leaves it with its decision.
-const OPEN_DECISIONS: &[(&str, &str)] = &[(
-    "CumulativeSum",
-    "public running sum re-exported at the crate root; no catalog counterpart and no use inside the crate",
-)];
+const OPEN_DECISIONS: &[(&str, &str)] = &[];
 
 /// Method names by which a type is fed a stream.
 fn is_stream_method(name: &str) -> bool {

@@ -195,7 +195,7 @@ pub use scenario::{ScenarioStateMachine, ScenarioStatus, StageConfig};
 pub use scoring::{
     aggregate_subscores, aggregate_subscores_with_instrument, score_indicator, WeightPreset,
 };
-pub use series::{CumulativeSum, Series, SeriesEvents};
+pub use series::{Series, SeriesEvents};
 pub use session::{SessionConfig, SessionConfigError, SessionTracker};
 pub use signal::{CompositeSignal, PermissionGrade, SignalDirection, SubScore};
 pub use stats::{
