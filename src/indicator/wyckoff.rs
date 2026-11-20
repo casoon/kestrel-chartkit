@@ -128,12 +128,12 @@
 //! A series that never has dispersion finds no climax, so a range can only be set by the width
 //! fallback with an open bias; with the defaults it runs to Phase C at most.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::clustering::RollingRobustThreshold;
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

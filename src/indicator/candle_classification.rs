@@ -1,6 +1,6 @@
-use super::kernels::true_range;
 use std::collections::HashMap;
 
+use super::kernels::true_range;
 use crate::indicator::smoothing::Rma;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;

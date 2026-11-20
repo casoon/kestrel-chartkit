@@ -28,11 +28,11 @@
 //! for its natural stop, so a consumer that places stops there needs no second rule. `value` is
 //! `+1`/`-1` on a forming bar, `+2`/`-2` on a confirming bar, else `0`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

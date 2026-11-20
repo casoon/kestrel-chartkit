@@ -49,16 +49,7 @@ fn efficiency_ratio(bars: &[crate::Bar], n: usize) -> Option<f64> {
     if bars.len() < n + 1 {
         return None;
     }
-    let closes = &bars[bars.len() - n - 1..];
-    let net = (closes[closes.len() - 1].close - closes[0].close).abs();
-    let mut volatility = 0.0;
-    for pair in closes.windows(2) {
-        volatility += (pair[1].close - pair[0].close).abs();
-    }
-    if volatility <= 0.0 {
-        return None;
-    }
-    Some(net / volatility)
+    crate::indicator::kernels::efficiency_ratio(bars[bars.len() - n - 1..].iter().map(|b| b.close))
 }
 
 mod position;

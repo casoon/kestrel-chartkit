@@ -12,12 +12,12 @@
 //! when both hold (crossed stops) the direction is kept
 //! ```
 
-use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::model::Bar;
 use crate::series::Series;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

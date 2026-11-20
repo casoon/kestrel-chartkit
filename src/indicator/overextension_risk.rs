@@ -42,12 +42,12 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/overextension_risk.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
 use super::adx::Adx;
+use super::kernels::true_range;
 use super::smoothing::{Ema, Rma, Sma};
 use super::wavetrend::WaveTrendEngine;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};

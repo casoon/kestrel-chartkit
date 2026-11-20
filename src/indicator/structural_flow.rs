@@ -67,11 +67,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structural_flow.py`.
 
-use super::kernels::true_range_hl;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range_hl;
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

@@ -3,12 +3,12 @@
 //! higher-timeframe projection — the capabilities [`super::zigzag::ZigZagEngine`]'s fixed-depth,
 //! percent-only pivot detector does not offer. Complements rather than replaces it.
 
-use super::kernels::true_range;
 use std::collections::VecDeque;
 
 use crate::model::Bar;
 use crate::timeframe::Timeframe;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

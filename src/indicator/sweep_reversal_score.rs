@@ -32,11 +32,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/sweep_reversal_score.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::{Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

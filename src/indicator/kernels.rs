@@ -21,6 +21,34 @@ pub(crate) fn true_range(bar: &Bar, prev_close: Option<f64>) -> f64 {
     true_range_hl(bar.high, bar.low, prev_close)
 }
 
+/// Net move and path length of a run of closes, in the order they are given (oldest first or
+/// newest first): `(|last - first|, sum |c_i - c_{i-1}|)`. The path sums in iteration order, so a
+/// caller keeps its own rounding by choosing the direction. `None` for fewer than two closes.
+pub(crate) fn path_and_net(closes: impl Iterator<Item = f64>) -> Option<(f64, f64)> {
+    let mut first = 0.0;
+    let mut prev = 0.0;
+    let mut path = 0.0;
+    let mut count = 0usize;
+    for c in closes {
+        if count == 0 {
+            first = c;
+        } else {
+            path += (c - prev).abs();
+        }
+        prev = c;
+        count += 1;
+    }
+    (count >= 2).then(|| ((prev - first).abs(), path))
+}
+
+/// Kaufman's efficiency ratio of a run of closes: `|net move| / path length`, `1` for a straight
+/// run and near `0` for much travel without progress. `None` when the path is not positive (nothing
+/// moved) or fewer than two closes are given; each caller chooses its own value for that case.
+pub(crate) fn efficiency_ratio(closes: impl Iterator<Item = f64>) -> Option<f64> {
+    let (net, path) = path_and_net(closes)?;
+    (path > 0.0).then(|| net / path)
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]

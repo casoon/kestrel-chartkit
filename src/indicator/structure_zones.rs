@@ -80,11 +80,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structure_zones.py`.
 
-use super::kernels::true_range_hl;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::{efficiency_ratio, true_range_hl};
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -487,15 +487,7 @@ impl Indicator for StructureZones {
         let evr_falling = nz_evr(0) < nz_evr(1) && nz_evr(1) < nz_evr(2) && nz_evr(2) < nz_evr(3);
         let absorption = real && evr_falling && rel_vol > 1.2;
         let er = if t >= 10 {
-            let path: f64 = (0..10)
-                .map(|k| (self.at(k).unwrap().close - self.at(k + 1).unwrap().close).abs())
-                .sum();
-            let net = (c - self.at(10).unwrap().close).abs();
-            if path > 0.0 {
-                net / path
-            } else {
-                0.0
-            }
+            efficiency_ratio((0..=10).map(|k| self.at(k).unwrap().close)).unwrap_or(0.0)
         } else {
             0.0
         };

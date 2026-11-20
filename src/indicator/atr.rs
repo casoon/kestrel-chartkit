@@ -1,4 +1,3 @@
-use super::kernels::AtrKernel;
 use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
@@ -6,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Bar;
 
+use super::kernels::AtrKernel;
 use super::smoothing::{crossed_over, crossed_under, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

@@ -39,11 +39,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/coil_release.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::{efficiency_ratio, true_range};
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -229,17 +229,9 @@ impl CoilRelease {
 
     fn efficiency(&self) -> Option<f64> {
         let n = self.cfg.len;
-        let old = self.at(n - 1)?.close;
-        let mut path = 0.0;
-        for i in 0..n - 1 {
-            path += (self.at(i)?.close - self.at(i + 1)?.close).abs();
-        }
-        let direct = (self.at(0)?.close - old).abs();
-        Some(if path > 0.0 {
-            (direct / path * 100.0).clamp(0.0, 100.0)
-        } else {
-            0.0
-        })
+        self.at(n - 1)?;
+        let er = efficiency_ratio((0..n).map(|k| self.at(k).unwrap().close));
+        Some(er.map_or(0.0, |er| (er * 100.0).clamp(0.0, 100.0)))
     }
 
     fn chop(&self) -> Option<f64> {

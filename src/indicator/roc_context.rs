@@ -33,11 +33,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/roc_context.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::{crossed_over, crossed_under, Rma, Smoother, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

@@ -80,7 +80,6 @@
 //! and `gap_down` on the bar a gap forms, `gap_closed` on a bar that closes at least one.
 //! [`GapEngine::open_gaps`] and [`GapEngine::closed_gaps`] return the same gaps as [`Gap`] values.
 
-use super::kernels::true_range;
 use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
@@ -88,6 +87,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

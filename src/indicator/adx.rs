@@ -1,8 +1,8 @@
-use super::kernels::true_range;
 use std::collections::HashMap;
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::{crossed_over, crossed_under, Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

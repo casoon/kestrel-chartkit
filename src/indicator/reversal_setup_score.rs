@@ -71,11 +71,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/reversal_setup_score.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::{efficiency_ratio, true_range};
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -420,7 +420,7 @@ impl Indicator for ReversalSetupScore {
         let e0 = eff_ema?;
         let falling =
             (1..=3).all(|k| matches!(self.at(k).and_then(|r| r.eff_ema), Some(p) if e0 < p));
-        let close10 = self.at(10)?.close;
+        self.at(10)?;
 
         let c = bar.close;
         let p2e = if atr > 0.0 { (c - ema20) / atr } else { 0.0 };
@@ -437,14 +437,7 @@ impl Indicator for ReversalSetupScore {
         } else {
             1.0
         };
-        let path: f64 = (0..10)
-            .map(|k| (self.at(k).unwrap().close - self.at(k + 1).unwrap().close).abs())
-            .sum();
-        let er = if path > 0.0 {
-            (c - close10).abs() / path
-        } else {
-            0.0
-        };
+        let er = efficiency_ratio((0..=10).map(|k| self.at(k).unwrap().close)).unwrap_or(0.0);
         let trend_up = ema20 > ema50 && er > 0.35;
         let trend_dn = ema20 < ema50 && er > 0.35;
         let is_range = er <= 0.35;

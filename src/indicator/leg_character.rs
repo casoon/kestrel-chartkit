@@ -61,11 +61,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_character.py`.
 
-use super::kernels::{true_range, true_range_hl};
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::{true_range, true_range_hl};
 use super::smoothing::{Ema, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

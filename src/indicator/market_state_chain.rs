@@ -39,12 +39,12 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/market_state_chain.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
 use super::adx::Adx;
+use super::kernels::{efficiency_ratio, true_range};
 use super::smoothing::{Ema, ExtremeWindow, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -259,16 +259,8 @@ impl Indicator for MarketStateChain {
         } else {
             50.0
         };
-        let mut path = 0.0;
-        for i in 0..c.eff_len - 1 {
-            path += (self.at(i).unwrap().close - self.at(i + 1).unwrap().close).abs();
-        }
-        let direct = (bar.close - self.at(c.eff_len - 1).unwrap().close).abs();
-        let eff = if path > 0.0 {
-            (direct / path * 100.0).clamp(0.0, 100.0)
-        } else {
-            0.0
-        };
+        let eff = efficiency_ratio((0..c.eff_len).map(|k| self.at(k).unwrap().close))
+            .map_or(0.0, |er| (er * 100.0).clamp(0.0, 100.0));
         let up = bar.close > ema && slope > c.slope_th;
         let dn = bar.close < ema && slope < -c.slope_th;
         let high_trend = adx > c.trend_th && eff > c.eff_th;

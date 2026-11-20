@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::kernels::efficiency_ratio;
+
 /// How an [`Ema`] produces its first value.
 ///
 /// The recurrence `alpha * src + (1 - alpha) * prev` with `alpha = 2/(len+1)` is the same in both
@@ -746,16 +748,7 @@ impl Kama {
             return None;
         }
 
-        let change = (self.window.back().unwrap() - self.window.front().unwrap()).abs();
-        let mut volatility = 0.0f64;
-        for pair in self.window.iter().collect::<Vec<_>>().windows(2) {
-            volatility += (*pair[1] - *pair[0]).abs();
-        }
-        let er = if volatility > 0.0 {
-            change / volatility
-        } else {
-            0.0
-        };
+        let er = efficiency_ratio(self.window.iter().copied()).unwrap_or(0.0);
 
         let fast_sc = 2.0 / (self.fast_period as f64 + 1.0);
         let slow_sc = 2.0 / (self.slow_period as f64 + 1.0);

@@ -80,12 +80,12 @@
 //! negated, highs and lows exchanged) give the mirrored output: support for resistance, every
 //! price negated.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
 use super::chart_patterns::TrendLine;
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode, ZigZagNode};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};

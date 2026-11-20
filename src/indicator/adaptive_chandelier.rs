@@ -17,10 +17,10 @@
 //! Scope: the signal core only — no clustering-based conviction mode, chart objects or
 //! multi-timeframe confluence.
 
-use super::kernels::true_range;
 use crate::model::Bar;
 use crate::series::Series;
 
+use super::kernels::true_range;
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

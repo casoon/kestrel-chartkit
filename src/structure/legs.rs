@@ -317,12 +317,7 @@ pub fn path_efficiency(points: &[f64]) -> Option<f64> {
     if points.len() < 2 {
         return None;
     }
-    let path: f64 = points.windows(2).map(|p| (p[1] - p[0]).abs()).sum();
-    Some(if path > 0.0 {
-        (points[points.len() - 1] - points[0]).abs() / path
-    } else {
-        0.0
-    })
+    Some(crate::indicator::kernels::efficiency_ratio(points.iter().copied()).unwrap_or(0.0))
 }
 
 /// Share of pullbacks that overlap, for a run in direction `up` starting at `anchor` and passing

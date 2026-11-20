@@ -32,11 +32,11 @@
 //! 1 attempt … 4 confirmed) on every bar. `value` is `+n`/`-n` for the stage a bottom/top
 //! reached on this bar (bottom first), else `0`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::rsi::Rsi;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

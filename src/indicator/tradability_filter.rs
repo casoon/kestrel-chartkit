@@ -45,12 +45,12 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/tradability_filter.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
 use super::adx::Adx;
+use super::kernels::{path_and_net, true_range};
 use super::smoothing::{Ema, PercentRank, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -276,12 +276,9 @@ impl TradabilityFilter {
 
     /// Efficiency ratio over `len` bars ending now.
     fn efficiency(&self, len: usize) -> Option<f64> {
-        let old = self.at(len)?.close;
-        let mut travel = 0.0;
-        for k in (0..len).rev() {
-            travel += (self.at(k)?.close - self.at(k + 1)?.close).abs();
-        }
-        Some(sdiv((self.at(0)?.close - old).abs(), travel, 0.0))
+        self.at(len)?;
+        let (net, travel) = path_and_net((0..=len).rev().map(|k| self.at(k).unwrap().close))?;
+        Some(sdiv(net, travel, 0.0))
     }
 
     /// Highest high and lowest low of `n` bars ending `from` bars back.

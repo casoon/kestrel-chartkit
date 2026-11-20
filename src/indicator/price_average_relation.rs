@@ -45,11 +45,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/price_average_relation.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::{Ema, Rma, Smoother, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

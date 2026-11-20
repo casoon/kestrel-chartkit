@@ -22,11 +22,11 @@
 //! event bar (the low for bull, the high for bear) — the natural stop level — and is present
 //! only on event bars. `value` is `+1`, `-1` or `0`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 

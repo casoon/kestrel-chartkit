@@ -1,6 +1,6 @@
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
+use super::kernels::true_range;
 use crate::indicator::smoothing::Ema;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;

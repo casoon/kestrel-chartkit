@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::indicator::kernels::efficiency_ratio;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -53,17 +54,7 @@ impl Indicator for LegEfficiencyEngine {
             return None;
         }
 
-        let change = (self.closes[self.closes.len() - 1] - self.closes[0]).abs();
-        let mut volatility = 0.0f64;
-        for i in 1..self.closes.len() {
-            volatility += (self.closes[i] - self.closes[i - 1]).abs();
-        }
-
-        let er = if volatility > 0.0 {
-            change / volatility
-        } else {
-            0.0
-        };
+        let er = efficiency_ratio(self.closes.iter().copied()).unwrap_or(0.0);
 
         if er >= 0.65 {
             self.alerts.push(IndicatorAlert::new(

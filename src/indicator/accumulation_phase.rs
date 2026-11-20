@@ -38,11 +38,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/accumulation_phase.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::{efficiency_ratio, true_range};
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -324,11 +324,8 @@ impl Indicator for AccumulationPhase {
         } else {
             1.0
         };
-        let net = (bar.close - back.close).abs();
-        let path: f64 = (0..lb)
-            .map(|k| (self.at(k).unwrap().close - self.at(k + 1).unwrap().close).abs())
-            .sum();
-        let efficiency = if path > 0.0 { net / path } else { 1.0 };
+        let efficiency =
+            efficiency_ratio((0..=lb).map(|k| self.at(k).unwrap().close)).unwrap_or(1.0);
         let candle_ratio = if range_avg > 0.0 {
             (bar.high - bar.low) / range_avg
         } else {

@@ -37,11 +37,11 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/flow_exhaustion.py`.
 
-use super::kernels::true_range;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::true_range;
 use super::smoothing::{crossed_over, crossed_under, Jma, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
