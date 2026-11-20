@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::indicator::smoothing::{Ema, EmaInit};
+use crate::indicator::smoothing::{Ema, EmaInit, Kama, Sma, Wma};
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -12,7 +12,7 @@ use crate::model::Bar;
 /// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct SmaEngine {
     period: usize,
-    closes: VecDeque<f64>,
+    sma: Sma,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -20,7 +20,7 @@ impl SmaEngine {
     pub fn new(period: usize) -> Self {
         Self {
             period,
-            closes: VecDeque::new(),
+            sma: Sma::new(period),
             alerts: Vec::new(),
         }
     }
@@ -36,23 +36,13 @@ impl Indicator for SmaEngine {
     }
 
     fn reset(&mut self) {
-        self.closes.clear();
+        self.sma.reset();
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        self.closes.push_back(bar.close);
-        if self.closes.len() > self.period {
-            self.closes.pop_front();
-        }
-
         self.alerts.clear();
-        if self.closes.len() < self.period {
-            return None;
-        }
-
-        let sma = self.closes.iter().sum::<f64>() / self.period as f64;
-        Some(IndicatorOutput::new(sma))
+        self.sma.update(bar.close).map(IndicatorOutput::new)
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -140,7 +130,7 @@ impl Indicator for EmaEngine {
 /// First output: with the `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct WmaEngine {
     period: usize,
-    closes: VecDeque<f64>,
+    wma: Wma,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -148,7 +138,7 @@ impl WmaEngine {
     pub fn new(period: usize) -> Self {
         Self {
             period,
-            closes: VecDeque::new(),
+            wma: Wma::new(period),
             alerts: Vec::new(),
         }
     }
@@ -164,35 +154,13 @@ impl Indicator for WmaEngine {
     }
 
     fn reset(&mut self) {
-        self.closes.clear();
+        self.wma.reset();
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        self.closes.push_back(bar.close);
-        if self.closes.len() > self.period {
-            self.closes.pop_front();
-        }
-
         self.alerts.clear();
-        if self.closes.len() < self.period {
-            return None;
-        }
-
-        let mut weight_sum = 0.0f64;
-        let mut weighted_val = 0.0f64;
-        for (i, &val) in self.closes.iter().enumerate() {
-            let w = (i + 1) as f64;
-            weighted_val += val * w;
-            weight_sum += w;
-        }
-
-        let wma = if weight_sum > 0.0 {
-            weighted_val / weight_sum
-        } else {
-            bar.close
-        };
-        Some(IndicatorOutput::new(wma))
+        self.wma.update(bar.close).map(IndicatorOutput::new)
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -418,10 +386,7 @@ impl Indicator for DemaEngine {
 /// average.
 pub struct KamaEngine {
     period: usize,
-    fast_period: usize,
-    slow_period: usize,
-    closes: VecDeque<f64>,
-    current_kama: Option<f64>,
+    kama: Kama,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -429,10 +394,7 @@ impl KamaEngine {
     pub fn new(period: usize, fast_period: usize, slow_period: usize) -> Self {
         Self {
             period,
-            fast_period,
-            slow_period,
-            closes: VecDeque::new(),
-            current_kama: None,
+            kama: Kama::new(period, fast_period, slow_period),
             alerts: Vec::new(),
         }
     }
@@ -448,45 +410,13 @@ impl Indicator for KamaEngine {
     }
 
     fn reset(&mut self) {
-        self.closes.clear();
-        self.current_kama = None;
+        self.kama.reset();
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        self.closes.push_back(bar.close);
-        if self.closes.len() > self.period + 1 {
-            self.closes.pop_front();
-        }
-
         self.alerts.clear();
-        if self.closes.len() < self.period + 1 {
-            return None;
-        }
-
-        let change = (self.closes.back().unwrap() - self.closes.front().unwrap()).abs();
-        let mut volatility = 0.0f64;
-        for pair in self.closes.iter().collect::<Vec<_>>().windows(2) {
-            volatility += (*pair[1] - *pair[0]).abs();
-        }
-
-        let er = if volatility > 0.0 {
-            change / volatility
-        } else {
-            0.0
-        };
-
-        let fast_sc = 2.0 / (self.fast_period as f64 + 1.0);
-        let slow_sc = 2.0 / (self.slow_period as f64 + 1.0);
-        let sc = (er * (fast_sc - slow_sc) + slow_sc).powi(2);
-
-        let kama = match self.current_kama {
-            Some(prev) => prev + sc * (bar.close - prev),
-            None => bar.close,
-        };
-        self.current_kama = Some(kama);
-
-        Some(IndicatorOutput::new(kama))
+        self.kama.update(bar.close).map(IndicatorOutput::new)
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
