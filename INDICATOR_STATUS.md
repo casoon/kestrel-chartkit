@@ -7,7 +7,8 @@ been verified (✅) or is still open (❌). Only the verification status — not
 verified against or how (details for that are maintained internally under `plan/`).
 
 For every new indicator, add it here as ❌ by default and only flip it to ✅ once verification
-is complete.
+is complete. The mark must match the `verification` of the entry's definition
+(`Verification::Verified` for ✅, `Verification::Open` with a reason for ❌); a test checks it.
 
 ## Moving Averages & Core Oscillators
 

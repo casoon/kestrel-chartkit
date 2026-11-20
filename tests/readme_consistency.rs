@@ -12,6 +12,7 @@
 
 use std::collections::HashSet;
 
+use kestrel_chartkit::indicator::definition::Verification;
 use kestrel_chartkit::indicator::registry::catalog;
 
 const README: &str = include_str!("../README.md");
@@ -175,6 +176,40 @@ fn indicator_status_fuehrt_jeden_katalogeintrag_genau_einmal() {
         assert!(
             known.contains(name),
             "INDICATOR_STATUS.md führt `{name}`, das der Katalog nicht kennt"
+        );
+    }
+}
+
+#[test]
+fn indicator_status_marks_stimmen_mit_der_verification_der_definition() {
+    // The mark of a row (✅ or ❌) is the `verification` of the entry's definition; it is declared
+    // there and this file only shows it. Flipping one without the other fails here.
+    let marks: std::collections::HashMap<&str, &str> = STATUS
+        .lines()
+        .filter_map(|line| {
+            let mut cells = line.trim().strip_prefix('|')?.split('|').map(str::trim);
+            let (name, mark) = (cells.next()?, cells.next()?);
+            matches!(mark, "✅" | "❌").then_some((name, mark))
+        })
+        .collect();
+
+    for entry in catalog() {
+        let expected = match entry.verification {
+            Verification::Verified => "✅",
+            Verification::Open(reason) => {
+                assert!(
+                    !reason.is_empty(),
+                    "`{}`: Open without a reason",
+                    entry.name
+                );
+                "❌"
+            }
+        };
+        assert_eq!(
+            marks.get(entry.name).copied(),
+            Some(expected),
+            "`{}`: INDICATOR_STATUS.md und verification der Definition widersprechen sich",
+            entry.name
         );
     }
 }
