@@ -93,6 +93,8 @@ pub type PairIndicatorDefinition = InputDefinition<dyn PairIndicator>;
 const DEFINITIONS: &[&PairIndicatorDefinition] = &[
     &super::correlation::CORRELATION_DEFINITION,
     &super::relative_strength::RELATIVE_STRENGTH_DEFINITION,
+    &super::pair_regression::ROLLING_BETA_DEFINITION,
+    &super::pair_regression::PAIR_SPREAD_DEFINITION,
 ];
 
 /// Every two-series indicator definition.
@@ -277,7 +279,12 @@ mod tests {
         let pairs = catalog_of(IndicatorInput::Pair);
         assert_eq!(
             pairs.iter().map(|e| e.name).collect::<Vec<_>>(),
-            ["correlation", "relative_strength"]
+            [
+                "correlation",
+                "relative_strength",
+                "rolling_beta",
+                "pair_spread"
+            ]
         );
         let all = catalog();
         for entry in &pairs {

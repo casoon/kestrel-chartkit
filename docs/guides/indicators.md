@@ -51,7 +51,7 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
-`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 154
+`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 156
 entries (150 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
@@ -158,6 +158,8 @@ The two series are paired on their timestamps, by the rule `align_closes` uses:
 | ------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
 | `relative_strength` | `alpha_pct`: return of the series minus return of the reference over `len` bars, in percentage points | `ratio` (close / reference close), `own_perf_pct`, `bench_perf_pct`, `alpha_pct` |
 | `correlation`       | Pearson correlation of the last `len` pairs of simple returns, −1 to 1 | —                                                     |
+| `rolling_beta`      | beta of the last `len` pairs of simple returns against the reference | `alpha`, `correlation`, `r_squared`                   |
+| `pair_spread`       | z-score of the latest spread `close − hedge_ratio · reference close` over the last `len` paired closes | `hedge_ratio`, `spread`, `mean_spread`, `std_spread` |
 
 Equal timestamps do not make two series comparable. `check_pair_applicability` names the two
 cases the declared series properties show: different price adjustment (a dividend or split stands

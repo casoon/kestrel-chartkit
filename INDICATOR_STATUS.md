@@ -204,11 +204,13 @@ intrabar (`build_intrabar_checked`).
 |---|---|
 | correlation | ❌ |
 | relative_strength | ❌ |
+| rolling_beta | ❌ |
+| pair_spread | ❌ |
 | heikin_ashi | ❌ |
 | intrabar_cvd | ❌ |
 
 ---
 
-**Total: 133/154 verified** — the same 154 names `catalog()` returns: 107 indicators (the first
-five groups), 4 composite scores, 39 structure/pattern detectors and 4 entries of other input
+**Total: 133/156 verified** — the same 156 names `catalog()` returns: 107 indicators (the first
+five groups), 4 composite scores, 39 structure/pattern detectors and 6 entries of other input
 kinds.

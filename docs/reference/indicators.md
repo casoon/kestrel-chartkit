@@ -2166,6 +2166,26 @@ Return difference and price ratio of a series against a reference series
 |---|---|---|---|
 | `len` | 20 | whole number 1 – 10000 | bars between the two closes of each return |
 
+#### `rolling_beta`
+
+Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared
+
+**Output** unit Ratio, range not declared · **warmup** 61 paired bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `len` | 60 | whole number 3 – 10000 | return pairs in the rolling window |
+
+#### `pair_spread`
+
+Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation
+
+**Output** unit Ratio, range open, centred on 0 · **warmup** 60 paired bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `len` | 60 | whole number 3 – 10000 | paired closes in the rolling window |
+
 ### Candle transform
 
 `IndicatorInput::Transform`, built with `build_transform_checked`: one bar in, one derived candle out, with no warmup. The unit describes the candle's prices.

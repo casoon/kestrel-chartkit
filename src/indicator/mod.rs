@@ -63,6 +63,7 @@ pub mod order_block;
 pub mod other_input;
 pub mod overextension_risk;
 pub mod pair;
+pub mod pair_regression;
 pub mod params;
 pub mod pivot_divergence;
 pub mod pivot_sets;

@@ -740,10 +740,10 @@ mod tests {
 
         assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 150);
         assert_eq!(bars.len(), 150);
-        // Pair (2), transform (1) and intrabar (1) entries on top of the 150 bar indicators.
-        assert_eq!(catalog().len(), 154);
+        // Pair (4), transform (1) and intrabar (1) entries on top of the 150 bar indicators.
+        assert_eq!(catalog().len(), 156);
         for (input, count) in [
-            (IndicatorInput::Pair, 2),
+            (IndicatorInput::Pair, 4),
             (IndicatorInput::Transform, 1),
             (IndicatorInput::Intrabar, 1),
         ] {

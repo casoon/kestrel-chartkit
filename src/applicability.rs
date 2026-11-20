@@ -708,15 +708,18 @@ pub fn pair_rule_catalog() -> [RuleDescription; 2] {
 /// [`IndicatorInput::Pair`](crate::indicator::registry::IndicatorInput::Pair)), by its name or
 /// alias (case-insensitive); every other name gets the default.
 ///
-/// `relative_strength` and `correlation` set both: each compares the returns of two close series
-/// bar by bar (and `relative_strength` their ratio), so an adjustment applied to one series only
-/// and bars that do not cover the same span both enter the result.
+/// `relative_strength`, `correlation`, `rolling_beta` and `pair_spread` set both: each compares
+/// the returns (or, for `pair_spread`, the closes) of two series bar by bar (and
+/// `relative_strength` their ratio), so an adjustment applied to one series only and bars that do
+/// not cover the same span both enter the result.
 pub fn pair_requirements(name: &str) -> PairRequirements {
     match crate::indicator::pair::pair_definition(name).map(|d| d.name) {
-        Some("relative_strength" | "correlation") => PairRequirements {
-            same_price_adjustment: true,
-            same_session: true,
-        },
+        Some("relative_strength" | "correlation" | "rolling_beta" | "pair_spread") => {
+            PairRequirements {
+                same_price_adjustment: true,
+                same_session: true,
+            }
+        }
         _ => PairRequirements::default(),
     }
 }
