@@ -87,6 +87,7 @@ pub struct TrendPersistenceReading {
     pub drag: TrendPersistenceSensor,
 }
 
+use crate::indicator::kernels::pearson_sums;
 use crate::indicator::smoothing::Ema as SeededEma;
 
 fn normalize(x: f64, lo: f64, hi: f64) -> f64 {
@@ -98,24 +99,12 @@ fn normalize(x: f64, lo: f64, hi: f64) -> f64 {
 
 /// Pearson correlation between `closes` and its own bar index (0..len).
 fn correlation_with_index(closes: &[f64]) -> f64 {
-    let n = closes.len() as f64;
-    let mean_y = (n - 1.0) / 2.0; // mean of 0..n-1
-    let mean_x = closes.iter().sum::<f64>() / n;
-
-    let mut cov = 0.0;
-    let mut var_x = 0.0;
-    let mut var_y = 0.0;
-    for (i, &x) in closes.iter().enumerate() {
-        let dx = x - mean_x;
-        let dy = i as f64 - mean_y;
-        cov += dx * dy;
-        var_x += dx * dx;
-        var_y += dy * dy;
-    }
-    if var_x <= 0.0 || var_y <= 0.0 {
+    let index: Vec<f64> = (0..closes.len()).map(|i| i as f64).collect();
+    let sums = pearson_sums(closes, &index);
+    if sums.var_x <= 0.0 || sums.var_y <= 0.0 {
         return 0.0;
     }
-    cov / (var_x.sqrt() * var_y.sqrt())
+    sums.cov / sums.denominator()
 }
 
 struct SubScores {

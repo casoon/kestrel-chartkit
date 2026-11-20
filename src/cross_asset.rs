@@ -3,6 +3,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::indicator::kernels::pearson;
+
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
@@ -256,29 +258,6 @@ fn pair_correlation(
         rb.drain(0..start);
     }
     pearson(&ra, &rb)
-}
-
-/// Pearson correlation of two equally long samples, clamped to `-1..=1`; `None` when one of them
-/// does not vary.
-pub(crate) fn pearson(x: &[f64], y: &[f64]) -> Option<f64> {
-    let n = x.len() as f64;
-    let mean_x = x.iter().sum::<f64>() / n;
-    let mean_y = y.iter().sum::<f64>() / n;
-    let mut cov = 0.0;
-    let mut var_x = 0.0;
-    let mut var_y = 0.0;
-    for (xi, yi) in x.iter().zip(y) {
-        let dx = xi - mean_x;
-        let dy = yi - mean_y;
-        cov += dx * dy;
-        var_x += dx * dx;
-        var_y += dy * dy;
-    }
-    let denom = (var_x * var_y).sqrt();
-    if denom <= 0.0 {
-        return None; // a flat series has no defined correlation
-    }
-    Some((cov / denom).clamp(-1.0, 1.0))
 }
 
 /// Evaluated rolling beta, alpha, and regression fit of an asset against a benchmark series.

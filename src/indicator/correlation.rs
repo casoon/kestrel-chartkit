@@ -75,7 +75,7 @@ impl PairIndicator for CorrelationEngine {
             return None;
         }
         let (own, other): (Vec<f64>, Vec<f64>) = self.returns.iter().copied().unzip();
-        crate::cross_asset::pearson(&own, &other).map(IndicatorOutput::new)
+        super::kernels::pearson(&own, &other).map(IndicatorOutput::new)
     }
 }
 

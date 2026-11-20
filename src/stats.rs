@@ -1,5 +1,7 @@
 //! Rolling statistics primitives for streaming series calculations.
 
+use crate::indicator::kernels::pearson_sums;
+
 /// Returns the sum of all finite values in `slice`.
 pub fn rolling_sum(slice: &[f64]) -> f64 {
     slice.iter().copied().filter(|v| v.is_finite()).sum()
@@ -108,17 +110,10 @@ pub fn correlation(left: &[f64], right: &[f64]) -> Option<f64> {
         .into_iter()
         .map(|(x, y)| (x / scale_x, y / scale_y))
         .collect();
-    let count = pairs.len() as f64;
-    let mean_x = pairs.iter().map(|(x, _)| x).sum::<f64>() / count;
-    let mean_y = pairs.iter().map(|(_, y)| y).sum::<f64>() / count;
-    let covariance = pairs
-        .iter()
-        .map(|(x, y)| (x - mean_x) * (y - mean_y))
-        .sum::<f64>();
-    let variance_x = pairs.iter().map(|(x, _)| (x - mean_x).powi(2)).sum::<f64>();
-    let variance_y = pairs.iter().map(|(_, y)| (y - mean_y).powi(2)).sum::<f64>();
-    let denominator = (variance_x * variance_y).sqrt();
-    (denominator > 0.0 && denominator.is_finite()).then_some(covariance / denominator)
+    let (xs, ys): (Vec<f64>, Vec<f64>) = pairs.into_iter().unzip();
+    let sums = pearson_sums(&xs, &ys);
+    let denominator = sums.denominator();
+    (denominator > 0.0 && denominator.is_finite()).then_some(sums.cov / denominator)
 }
 
 /// Result of a linear regression fit over a data slice.

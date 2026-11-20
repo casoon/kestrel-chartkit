@@ -49,6 +49,55 @@ pub(crate) fn efficiency_ratio(closes: impl Iterator<Item = f64>) -> Option<f64>
     (path > 0.0).then(|| net / path)
 }
 
+/// Centred sums of two equally long samples: the covariance sum and both variance sums
+/// (`sum (x - mean_x)(y - mean_y)`, `sum (x - mean_x)^2`, `sum (y - mean_y)^2`), accumulated in
+/// sample order. The Pearson correlation is `cov / sqrt(var_x * var_y)`; what counts as "not
+/// defined" (flat series, non-finite denominator) and whether the result is clamped is the
+/// caller's policy.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PearsonSums {
+    pub(crate) cov: f64,
+    pub(crate) var_x: f64,
+    pub(crate) var_y: f64,
+}
+
+impl PearsonSums {
+    /// `sqrt(var_x * var_y)`.
+    pub(crate) fn denominator(&self) -> f64 {
+        (self.var_x * self.var_y).sqrt()
+    }
+}
+
+pub(crate) fn pearson_sums(x: &[f64], y: &[f64]) -> PearsonSums {
+    let n = x.len() as f64;
+    let mean_x = x.iter().sum::<f64>() / n;
+    let mean_y = y.iter().sum::<f64>() / n;
+    let mut sums = PearsonSums {
+        cov: 0.0,
+        var_x: 0.0,
+        var_y: 0.0,
+    };
+    for (xi, yi) in x.iter().zip(y) {
+        let dx = xi - mean_x;
+        let dy = yi - mean_y;
+        sums.cov += dx * dy;
+        sums.var_x += dx * dx;
+        sums.var_y += dy * dy;
+    }
+    sums
+}
+
+/// Pearson correlation of two equally long samples, clamped to `-1..=1`; `None` when one of them
+/// does not vary.
+pub(crate) fn pearson(x: &[f64], y: &[f64]) -> Option<f64> {
+    let sums = pearson_sums(x, y);
+    let denom = sums.denominator();
+    if denom <= 0.0 {
+        return None; // a flat series has no defined correlation
+    }
+    Some((sums.cov / denom).clamp(-1.0, 1.0))
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]
