@@ -22,4 +22,5 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::nvi_pvi::NVI_DEFINITION,
     &crate::indicator::nvi_pvi::PVI_DEFINITION,
     &crate::indicator::chaikin_osc::CHAIKIN_OSCILLATOR_DEFINITION,
+    &crate::engine::vwap_regime::VWAP_REGIME_DEFINITION,
 ];

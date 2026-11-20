@@ -1,6 +1,9 @@
 use crate::model::{Bar, SeriesCapabilities};
 
-use super::kernels::PivotRule;
+use super::atr::TrueRangeSmoothing;
+use super::definition::{IndicatorDefinition, ParamSpec};
+use super::kernels::{AtrKernel, PivotRule};
+use super::{Indicator, IndicatorOutput};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -256,6 +259,108 @@ impl SwingStructureEngine {
         }
     }
 }
+
+/// The catalog entry `swing_structure`: [`SwingStructureEngine`] fed with a Wilder ATR (raw, price
+/// units) of `atr_len` bars, as an [`Indicator`]. `value` is `correction_impulse_ratio`; `extra`
+/// holds `median_impulse_atr`, `median_correction_atr`, `current_retracement_atr`,
+/// `entry_zone_reached` (0 or 1), `remaining_potential_atr`, `required_stop_atr`, `potential_crv`,
+/// `last_impulse_velocity_atr`, `recent_correction_atr_1` .. `_3` (newest first, as many as
+/// exist) and `trend_quality` (1 strengthening, 0 stable, -1 weakening; also the `state` label).
+///
+/// Pivots are only detected from the first bar that has an ATR, so the first output needs the ATR
+/// plus four confirmed pivots with two impulse and two correction legs: it depends on the data,
+/// and `warmup_period` is the earliest bar. [`Indicator::reset`] starts over.
+pub struct SwingStructureIndicator {
+    left: usize,
+    right: usize,
+    atr_len: usize,
+    engine: SwingStructureEngine,
+    atr: AtrKernel,
+}
+
+impl SwingStructureIndicator {
+    pub fn new(left: usize, right: usize, max_swings: usize, atr_len: usize) -> Self {
+        Self {
+            left,
+            right,
+            atr_len,
+            engine: SwingStructureEngine::new(left, right, max_swings),
+            atr: AtrKernel::new(TrueRangeSmoothing::Rma, atr_len),
+        }
+    }
+}
+
+impl Indicator for SwingStructureIndicator {
+    fn name(&self) -> &str {
+        "swing_structure"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.atr_len.max(self.left + self.right + 1)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+        self.atr = AtrKernel::new(TrueRangeSmoothing::Rma, self.atr_len);
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        // Without an ATR the engine still takes the bar into its history but detects nothing.
+        let atr = self.atr.push(bar).unwrap_or(0.0);
+        let out = self.engine.update(bar, atr)?;
+        let (code, label) = match out.trend_quality {
+            TrendQuality::Strengthening => (1.0, "strengthening"),
+            TrendQuality::Stable => (0.0, "stable"),
+            TrendQuality::Weakening => (-1.0, "weakening"),
+        };
+        let mut output = IndicatorOutput::new(out.correction_impulse_ratio).with_state(label);
+        for (key, value) in [
+            ("median_impulse_atr", out.median_impulse_atr),
+            ("median_correction_atr", out.median_correction_atr),
+            ("current_retracement_atr", out.current_retracement_atr),
+            (
+                "entry_zone_reached",
+                f64::from(u8::from(out.entry_zone_reached)),
+            ),
+            ("remaining_potential_atr", out.remaining_potential_atr),
+            ("required_stop_atr", out.required_stop_atr),
+            ("potential_crv", out.potential_crv),
+            ("last_impulse_velocity_atr", out.last_impulse_velocity_atr),
+            ("trend_quality", code),
+        ] {
+            output.extra.insert(key.to_string(), value);
+        }
+        for (i, correction) in out.recent_corrections_atr.iter().enumerate() {
+            output
+                .extra
+                .insert(format!("recent_correction_atr_{}", i + 1), *correction);
+        }
+        Some(output)
+    }
+}
+
+/// Registry definition of `swing_structure`.
+pub const SWING_STRUCTURE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "swing_structure",
+    aliases: &[],
+    description: "Statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras",
+    params: &[
+        ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a swing pivot"),
+        ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a swing pivot (the confirmation delay)"),
+        ParamSpec::count("max_swings", 50, 4, 1000)
+            .meaning("newest swing legs the medians are taken over (at least 4: two impulse and two correction legs)"),
+        ParamSpec::count("atr_len", 14, 1, 10000).meaning("Wilder ATR length the legs are measured in"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(SwingStructureIndicator::new(
+            p.count("left"),
+            p.count("right"),
+            p.count("max_swings"),
+            p.count("atr_len"),
+        )))
+    },
+};
 
 fn median(values: &[f64]) -> f64 {
     if values.is_empty() {

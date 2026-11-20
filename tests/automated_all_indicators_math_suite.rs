@@ -234,8 +234,13 @@ fn automated_test_6_all_indicators_high_volume_stream_stress() {
             }
         }
 
+        let wanted = if common::SPARSE_OUTPUT.contains(&entry.name) {
+            0
+        } else {
+            1500
+        };
         assert!(
-            generated_count > 1500,
+            generated_count > wanted,
             "Indicator '{}' failed to generate outputs over {} bars stream (only produced {})",
             entry.name,
             bars.len(),

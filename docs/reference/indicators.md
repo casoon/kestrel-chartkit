@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 147 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 149 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1314,6 +1314,25 @@ Chaikin Oscillator
 
 Requires `fast_len` to be smaller than `slow_len`.
 
+### `vwap_regime`
+
+VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume
+
+[See it in the showcase](../../../showcase/vwap_regime/)
+
+**Output** unit Unitless, range not declared · **warmup** 21 bars · needs real volume
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `window` | 390 | whole number 1 – 10000 | bars of the rolling VWAP |
+| `slope_lookback` | 20 | whole number 1 – 10000 | bars back for the VWAP slope |
+| `atr_len` | 14 | whole number 1 – 10000 | Wilder ATR length the distances are measured in |
+| `regime_window` | 20 | whole number 1 – 10000 | bars over which crossings of the VWAP and the share on one side are counted |
+| `flat_threshold` | 0.1 | 0 – 1000 | slope in ATRs per bar from which the VWAP counts as moderately rising or falling |
+| `strong_threshold` | 0.3 | 0 – 1000 | slope in ATRs per bar from which the VWAP counts as strongly rising or falling |
+
+Requires `flat_threshold` to be smaller than `strong_threshold`.
+
 ## Market structure and patterns
 
 ### `order_block` · alias `ob`
@@ -1707,6 +1726,21 @@ Midpoint (high + low) / 2 of the last completed period of count units, held unti
 | `unit` | `hour` | `second`, `minute`, `hour`, `day`, `week`, `month` (f64 map: 0 – 5) | unit of the period |
 | `count` | 1 | whole number 1 – 10000 | units per period |
 | `utc_offset_seconds` | 0 | -86399 – 86399 | fixed local-time offset from UTC in whole seconds the periods are cut in (a fraction is cut off) |
+
+### `swing_structure`
+
+Statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras
+
+[See it in the showcase](../../../showcase/swing_structure/)
+
+**Output** unit Unitless, range not declared · **warmup** 14 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `left` | 5 | whole number 1 – 1000 | bars left of a swing pivot |
+| `right` | 5 | whole number 1 – 1000 | bars right of a swing pivot (the confirmation delay) |
+| `max_swings` | 50 | whole number 4 – 1000 | newest swing legs the medians are taken over (at least 4: two impulse and two correction legs) |
+| `atr_len` | 14 | whole number 1 – 10000 | Wilder ATR length the legs are measured in |
 
 ## Composite read-outs, part 1
 

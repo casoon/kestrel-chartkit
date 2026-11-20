@@ -223,3 +223,159 @@ def opening_range(bars, start_hour, start_minute, end_hour, end_minute, orb_minu
         else:
             out.append((high - low, high, low, 1.0 if in_window else 0.0, 1.0 if new else 0.0))
     return out
+
+
+def _classify_slope(slope_atr, flat, strong):
+    if slope_atr >= strong:
+        return 2.0
+    if slope_atr >= flat:
+        return 1.0
+    if slope_atr <= -strong:
+        return -2.0
+    if slope_atr <= -flat:
+        return -1.0
+    return 0.0
+
+
+def vwap_regime(rows, closes, atr, regime_window, flat, strong):
+    """VWAP regime reading per bar.
+
+    `rows[i]` is None (no VWAP: no volume in the window) or (vwap, sigma, slope), the slope None
+    until it exists; `atr[i]` the Wilder ATR or None. A bar needs a VWAP, its slope and an ATR to
+    be read; other bars do not enter the window. diff = close - vwap; the window holds the last
+    `regime_window` diffs. Reading: distance_atr = diff / atr and slope_atr = slope / atr (0 for
+    an ATR of 0), z_score = diff / sigma (0 for sigma <= 0), slope_state the code -2..2 of
+    slope_atr against `flat` and `strong`, cross_frequency = (number of neighbouring diffs of
+    which exactly one is >= 0) / window length, price_persistence = (diffs on the larger side of
+    0, a diff of 0 counting as above) / window length. Returns None or the tuple
+    (distance_atr, vwap, slope_atr, slope_state, z_score, cross_frequency, price_persistence).
+    """
+    out, diffs = [], []
+    for i, row in enumerate(rows):
+        if row is None or row[2] is None or atr[i] is None:
+            out.append(None)
+            continue
+        vwap, sigma, slope = row
+        diff = closes[i] - vwap
+        diffs = (diffs + [diff])[-regime_window:]
+        n = len(diffs)
+        crosses = sum(1 for a, b in zip(diffs, diffs[1:]) if (a >= 0.0) != (b >= 0.0))
+        above = sum(1 for d in diffs if d >= 0.0)
+        slope_atr = slope / atr[i] if atr[i] > 0.0 else 0.0
+        out.append((diff / atr[i] if atr[i] > 0.0 else 0.0, vwap, slope_atr,
+                    _classify_slope(slope_atr, flat, strong),
+                    diff / sigma if sigma > 0.0 else 0.0, crosses / n,
+                    max(above, n - above) / n))
+    return out
+
+
+def _wilder_atr(bars, n):
+    """Wilder ATR per bar, None before bar n: the mean of the first n true ranges, then
+    (ATR * (n - 1) + TR) / n. The true range of the first bar is high - low."""
+    out, atr, seed = [], None, []
+    for i, b in enumerate(bars):
+        if i == 0:
+            tr = b[1] - b[2]
+        else:
+            pc = bars[i - 1][3]
+            tr = max(b[1] - b[2], abs(b[1] - pc), abs(b[2] - pc))
+        if atr is None:
+            seed.append(tr)
+            if len(seed) == n:
+                atr = sum(seed) / n
+        else:
+            atr = (atr * (n - 1) + tr) / n
+        out.append(atr)
+    return out
+
+
+def _median(values):
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2 == 0:
+        return (ordered[mid - 1] + ordered[mid]) / 2.0
+    return ordered[mid]
+
+
+def swing_structure(bars, left, right, max_swings, atr_len):
+    """Statistical swing structure per bar: None or a dict of the reading.
+
+    A bar is a pivot high (low) when its high (low) is strictly above (below) the highs (lows)
+    of the `left` bars before and `right` bars after it; it is known `right` bars later, and only
+    bars that have a Wilder ATR of `atr_len` > 0 look for one. A bar that is both pivots counts
+    the high first. Only the newest `2 * max_swings + 4` pivots are kept. The legs between
+    neighbouring pivots are |price change| / ATR (the ATR of the current bar) with direction and
+    span in bars (at least 1); only the newest `max_swings` legs count. With at least 4 pivots:
+    trend up when the last two pivot highs and the last two pivot lows both rose, down when both
+    fell, else the direction of the last leg. Impulses are the legs along the trend, corrections
+    the others; two of each are needed. median_* are the medians (mean of the middle two for an
+    even count), correction_impulse_ratio = median_correction / median_impulse (0 for a median
+    impulse of 0). recent_corrections are the newest three corrections, newest first;
+    trend_quality compares the newest of them with the oldest of them (needs two): smaller is
+    strengthening (1), larger weakening (-1), equal or fewer than two stable (0). The
+    retracement is |close - last pivot price| / ATR; entry_zone_reached when it is at least
+    0.8 * median_correction; remaining_potential = max(median_impulse - retracement, 0);
+    required_stop = max(median_correction, 0.1); potential_crv = remaining_potential /
+    required_stop; last_impulse_velocity = size / span of the newest impulse leg.
+    """
+    atr_series = _wilder_atr(bars, atr_len)
+    out = []
+    pivots = []  # (bar index, price, is_high)
+    for t, bar in enumerate(bars):
+        atr = atr_series[t] or 0.0
+        if atr <= 0.0:
+            out.append(None)
+            continue
+        c = t - right
+        if c - left >= 0:
+            window = bars[c - left:c + right + 1]
+            others = [b for k, b in enumerate(window) if k != left]
+            if all(bars[c][1] > b[1] for b in others):
+                pivots.append((c, bars[c][1], True))
+            if all(bars[c][2] < b[2] for b in others):
+                pivots.append((c, bars[c][2], False))
+            pivots = pivots[-(max_swings * 2 + 4):]
+        if len(pivots) < 4:
+            out.append(None)
+            continue
+        legs = []
+        for (ia, pa, _), (ib, pb, _) in zip(pivots, pivots[1:]):
+            legs.append((abs(pb - pa) / atr, pb > pa, max(ib - ia, 1)))
+        legs = legs[-max_swings:]
+        highs = [p for _, p, h in pivots if h]
+        lows = [p for _, p, h in pivots if not h]
+        rising = len(highs) >= 2 and len(lows) >= 2 and highs[-1] > highs[-2] and lows[-1] > lows[-2]
+        falling = len(highs) >= 2 and len(lows) >= 2 and highs[-1] < highs[-2] and lows[-1] < lows[-2]
+        trend_up = rising or (not falling and (legs[-1][1] if legs else True))
+        impulses = [(size, span) for size, up, span in legs if up == trend_up]
+        corrections = [size for size, up, _ in legs if up != trend_up]
+        if len(impulses) < 2 or len(corrections) < 2:
+            out.append(None)
+            continue
+        med_impulse = _median([size for size, _ in impulses])
+        med_correction = _median(corrections)
+        recent = corrections[::-1][:3]
+        if len(recent) >= 2 and recent[0] < recent[-1]:
+            quality = 1.0
+        elif len(recent) >= 2 and recent[0] > recent[-1]:
+            quality = -1.0
+        else:
+            quality = 0.0
+        retracement = abs(bar[3] - pivots[-1][1]) / atr
+        required_stop = max(med_correction, 0.1)
+        remaining = max(med_impulse - retracement, 0.0)
+        reading = {
+            "median_impulse_atr": med_impulse,
+            "median_correction_atr": med_correction,
+            "current_retracement_atr": retracement,
+            "entry_zone_reached": 1.0 if retracement >= med_correction * 0.8 else 0.0,
+            "remaining_potential_atr": remaining,
+            "required_stop_atr": required_stop,
+            "potential_crv": remaining / required_stop,
+            "last_impulse_velocity_atr": impulses[-1][0] / impulses[-1][1],
+            "trend_quality": quality,
+        }
+        for k, value in enumerate(recent, start=1):
+            reading[f"recent_correction_atr_{k}"] = value
+        out.append((med_correction / med_impulse if med_impulse > 0.0 else 0.0, reading))
+    return out

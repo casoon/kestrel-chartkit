@@ -168,3 +168,35 @@ fn test_golden_period_midpoint_calendar_periods() {
         ],
     );
 }
+
+#[test]
+fn test_golden_vwap_regime() {
+    check("vr_default", "vwap_regime", &[]);
+    check(
+        "vr_small",
+        "vwap_regime",
+        &[
+            ("window", 60.0),
+            ("slope_lookback", 5.0),
+            ("atr_len", 7.0),
+            ("regime_window", 10.0),
+            ("flat_threshold", 0.02),
+            ("strong_threshold", 0.10),
+        ],
+    );
+}
+
+#[test]
+fn test_golden_swing_structure() {
+    check("ss_default", "swing_structure", &[]);
+    check(
+        "ss_small",
+        "swing_structure",
+        &[
+            ("left", 3.0),
+            ("right", 3.0),
+            ("max_swings", 10.0),
+            ("atr_len", 7.0),
+        ],
+    );
+}

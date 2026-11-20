@@ -17,6 +17,8 @@
 # period_midpoint: scenarios over daily bars with explicit timestamps (pmscn_*): bar i has
 # ts, high, low; out<i> is the held midpoint of the last completed period, new<i> 1 on the
 # bar that completed one; `none` before the first period completed.
+# vwap_regime: the distance of the close from the rolling VWAP in ATRs (value only).
+# swing_structure: median correction over median impulse leg, in ATRs (value only).
 # cycle_length: mean of the last `history` swing lengths between sign changes of
 # close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).
 
@@ -275,6 +277,74 @@ pl_small_cp600=-0.1520959068623689
 pl_small_cp640=0.003646898973473823
 pl_small_cp680=-1.4338569464829733
 pl_small_cp699=-0.4575532825660165
+
+# vr_default
+vr_default_cp3_none=1.0
+vr_default_cp9_none=1.0
+vr_default_cp15_none=1.0
+vr_default_cp29=6.1991168515930255
+vr_default_cp30=6.369994418911258
+vr_default_cp31=6.470930734375826
+vr_default_cp60=-1.2550308907665362
+vr_default_cp150=6.635955146639752
+vr_default_cp260=9.345379346641916
+vr_default_cp420=-4.269611068980701
+vr_default_cp520=-4.002346611508184
+vr_default_cp600=-7.697034757467601
+vr_default_cp640=-6.247031704817302
+vr_default_cp680=-3.131416281856578
+vr_default_cp699=0.3741242857817407
+
+# vr_small
+vr_small_cp3_none=1.0
+vr_small_cp9=2.3474559513138282
+vr_small_cp15=2.076044980295919
+vr_small_cp29=6.125808793948156
+vr_small_cp30=6.480477373560532
+vr_small_cp31=6.784561117498147
+vr_small_cp60=-1.4545793810660603
+vr_small_cp150=1.755081250408244
+vr_small_cp260=0.4829306527059465
+vr_small_cp420=-5.954596391078562
+vr_small_cp520=5.097749179869026
+vr_small_cp600=0.7487149347288009
+vr_small_cp640=-0.023903292962592176
+vr_small_cp680=-0.8575317431371915
+vr_small_cp699=1.0696064466585837
+
+# ss_default
+ss_default_cp3_none=1.0
+ss_default_cp9_none=1.0
+ss_default_cp15_none=1.0
+ss_default_cp29_none=1.0
+ss_default_cp30_none=1.0
+ss_default_cp31_none=1.0
+ss_default_cp60=0.3929923001739341
+ss_default_cp150=1.5322905639636881
+ss_default_cp260=1.67228777819093
+ss_default_cp420=1.5590781121992443
+ss_default_cp520=1.1015940285116048
+ss_default_cp600=1.0286518940951663
+ss_default_cp640=0.8126326149747701
+ss_default_cp680=1.0583494483570868
+ss_default_cp699=0.9448675024608699
+
+# ss_small
+ss_small_cp3_none=1.0
+ss_small_cp9_none=1.0
+ss_small_cp15_none=1.0
+ss_small_cp29_none=1.0
+ss_small_cp30_none=1.0
+ss_small_cp31_none=1.0
+ss_small_cp60=0.3929923001739341
+ss_small_cp150=0.7607161668188213
+ss_small_cp260=1.563768872728363
+ss_small_cp420=0.3033788225094047
+ss_small_cp520=1.5589312702722913
+ss_small_cp600=1.9605588582922229
+ss_small_cp640=0.799929586254562
+ss_small_cp680=1.128502793048963
+ss_small_cp699=0.3387900824569458
 
 # cl_fast
 cl_fast_cp3_none=1.0

@@ -9,6 +9,7 @@ from .. import readouts as ro
 from .. import series as ps
 from ..fixture import provenance
 from . import price_location as pl
+from .contract_readouts import vwap_rows
 
 NAME = "golden_readouts"
 
@@ -33,9 +34,23 @@ HEADER = [
     "period_midpoint: scenarios over daily bars with explicit timestamps (pmscn_*): bar i has",
     "ts, high, low; out<i> is the held midpoint of the last completed period, new<i> 1 on the",
     "bar that completed one; `none` before the first period completed.",
+    "vwap_regime: the distance of the close from the rolling VWAP in ATRs (value only).",
+    "swing_structure: median correction over median impulse leg, in ATRs (value only).",
     "cycle_length: mean of the last `history` swing lengths between sign changes of",
     "close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).",
 ]
+
+
+def _vwap_regime(bars, window, lookback, atr_len, regime_window, flat, strong):
+    atr = ro._wilder_atr([b[:4] for b in bars], atr_len)
+    readings = ro.vwap_regime(vwap_rows(bars, window, lookback), [b[3] for b in bars], atr,
+                              regime_window, flat, strong)
+    return [None if r is None else r[0] for r in readings]
+
+
+def _swing(bars, left, right, max_swings, atr_len):
+    return [None if r is None else r[0]
+            for r in ro.swing_structure([b[:4] for b in bars], left, right, max_swings, atr_len)]
 
 
 def specs(bars):
@@ -58,6 +73,10 @@ def specs(bars):
                         for r in pl.compute(bars, pl.DEFAULT)]),
         ("pl_small", [None if r["stretch"] is None else r["stretch"]
                       for r in pl.compute(bars, pl.SMALL)]),
+        ("vr_default", _vwap_regime(bars, 390, 20, 14, 20, 0.1, 0.3)),
+        ("vr_small", _vwap_regime(bars, 60, 5, 7, 10, 0.02, 0.10)),
+        ("ss_default", _swing(bars, 5, 5, 50, 14)),
+        ("ss_small", _swing(bars, 3, 3, 10, 7)),
         ("cl_fast", [None if v is None else v[0] for v in ro.cycle_length(closes, 5, 3)]),
     ]
 

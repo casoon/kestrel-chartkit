@@ -17,6 +17,8 @@ from .. import readouts as ro
 from .contract_pilot import case_block
 from . import price_location as pl_golden
 from .. import series as ps
+from .contract_moving_averages import vwap_expected
+from .contract_structure import candles, path, structure_wave
 from .contract_volatility import SWING, SWING_SHORT, flat_bars, path_bars, swing_bars
 
 NAME = "contract_readouts"
@@ -108,6 +110,56 @@ def opening_case(start, end, orb, offset, bars):
     return params, bars, expected
 
 
+def vwap_rows(bars, window, lookback):
+    """Per bar None or (VWAP, sigma, slope or None) of the rolling VWAP (the contract of `vwap`)."""
+    return [None if v[0] is None else (v[0][0], v[0][1]["sigma"], v[0][1].get("slope"))
+            for v in vwap_expected(bars, window, lookback)]
+
+
+def vwap_case(window, lookback, atr_len, regime_window, flat, strong, bars):
+    """Value: distance of the close from the VWAP in ATRs; extras as documented on the type."""
+    rows = vwap_rows(bars, window, lookback)
+    closes = [b[3] for b in bars]
+    atr = ro._wilder_atr([b[:4] for b in bars], atr_len)
+    readings = ro.vwap_regime(rows, closes, atr, regime_window, flat, strong)
+    expected = []
+    for r in readings:
+        if r is None:
+            expected.append((None, {}))
+            continue
+        expected.append(((r[0], {"vwap": r[1], "slope_atr": r[2], "slope_state": r[3],
+                                 "z_score": r[4], "cross_frequency": r[5],
+                                 "price_persistence": r[6]}), {}))
+    _margin(readings, flat, strong)
+    params = {"window": float(window), "slope_lookback": float(lookback),
+              "atr_len": float(atr_len), "regime_window": float(regime_window),
+              "flat_threshold": flat, "strong_threshold": strong}
+    return params, bars, expected
+
+
+def _margin(readings, flat, strong):
+    """No slope sits within a relative 1e-7 of a threshold: both implementations agree on the
+    state."""
+    for r in readings:
+        if r is None:
+            continue
+        for threshold in (flat, strong):
+            assert abs(abs(r[2]) - threshold) > 1e-7 * max(1.0, threshold), "slope on a threshold"
+
+
+def swing_case(left, right, max_swings, atr_len, bars):
+    """Value: correction / impulse ratio; extras as documented on the type."""
+    expected = [(None, {}) if r is None else ((r[0], r[1]), {})
+                for r in ro.swing_structure(bars, left, right, max_swings, atr_len)]
+    params = {"left": float(left), "right": float(right), "max_swings": float(max_swings),
+              "atr_len": float(atr_len)}
+    return params, bars, expected
+
+
+def zigzag(segments, start=100.0):
+    return candles(path(start, segments))
+
+
 UNITS = ["second", "minute", "hour", "day", "week", "month"]
 DAYS = swing_bars(250)
 WEEK = swing_bars(420, phase=3.0)
@@ -116,6 +168,21 @@ SMALL_LOCATION = {"atr_len": 5, "ema_len": 8, "range_len": 12, "sma_len": 30, "s
                   "vol_window": 25, "vol_warmup": 40}
 MINIMAL_LOCATION = {"atr_len": 1, "ema_len": 1, "range_len": 1, "sma_len": 1, "slope_bars": 1,
                     "vol_window": 1, "vol_warmup": 1}
+
+WAVE_VOLUME = ps.wave_series(130)
+# The first six bars carry no volume: the VWAP exists from bar 7.
+NO_VOLUME_START = [b[:4] + (0.0,) if i < 6 else b for i, b in enumerate(ps.wave_series(60))]
+VWAP_THRESHOLDS = (0.02, 0.10)
+
+# A rise whose corrections shrink (strengthening), one whose corrections grow (weakening), their
+# mirror images, and a staircase with the corrections of constant size.
+STRENGTHENING = zigzag([(1.0, 12), (-0.5, 8), (1.0, 12), (-0.5, 6), (1.0, 12), (-0.5, 4),
+                        (1.0, 12), (-0.5, 3), (1.0, 12), (-0.5, 2)])
+WEAKENING = zigzag([(1.0, 12), (-0.5, 2), (1.0, 12), (-0.5, 4), (1.0, 12), (-0.5, 6), (1.0, 12),
+                    (-0.5, 8), (1.0, 12), (-0.5, 10)])
+FALLING = zigzag([(-1.0, 12), (0.5, 8), (-1.0, 12), (0.5, 6), (-1.0, 12), (0.5, 4), (-1.0, 12),
+                  (0.5, 3), (-1.0, 12), (0.5, 2)], 200.0)
+STAIRCASE = zigzag([(1.0, 8), (-0.5, 6)] * 6, 100.0)
 
 # A straight climb (D near 1 under `halves`, exactly the path = net move under `path`) and zig-zag
 # noise (D towards 2).
@@ -237,5 +304,34 @@ def build():
         case_block("opening_range_all_day", "opening_range, window of 1440 minutes: the range "
                    "keeps widening through the whole day", *opening_case((0, 0), (0, 0), 1440, 0,
                                                                          DAYS)),
+        case_block("vwap_regime_defaults", "vwap_regime, defaults (390, 20, 14, 20, 0.1, 0.3) over "
+                   "130 wave bars: from bar 21 (the slope), mostly a flat VWAP slope",
+                   *defaults(vwap_case(390, 20, 14, 20, 0.1, 0.3, WAVE_VOLUME))),
+        case_block("vwap_regime_small", "vwap_regime, window 30, slope over 5 bars, ATR 5, regime "
+                   "window 8, thresholds 0.02 / 0.10 over 130 wave bars: every slope state",
+                   *vwap_case(30, 5, 5, 8, *VWAP_THRESHOLDS, WAVE_VOLUME)),
+        case_block("vwap_regime_no_volume", "vwap_regime over 60 wave bars whose first six carry "
+                   "no volume: no VWAP before bar 7", *vwap_case(20, 3, 4, 6, *VWAP_THRESHOLDS,
+                                                                 NO_VOLUME_START)),
+        case_block("vwap_regime_flat", "vwap_regime over bars without range and a constant "
+                   "close: the ATR is 0, distance and slope read 0", *vwap_case(
+                       5, 2, 3, 4, 0.02, 0.10, flat_bars(14, 100.0, 0.0))),
+        case_block("swing_structure_defaults", "swing_structure, defaults (5, 5, 50, 14) over the "
+                   "staircase of five rising, six falling and three rising swings: every turn "
+                   "a pivot", *defaults(swing_case(5, 5, 50, 14, structure_wave()))),
+        case_block("swing_structure_strengthening", "swing_structure (2, 2, 50, 5) over a rise "
+                   "whose corrections shrink: strengthening", *swing_case(2, 2, 50, 5,
+                                                                          STRENGTHENING)),
+        case_block("swing_structure_weakening", "swing_structure (2, 2, 50, 5) over a rise whose "
+                   "corrections grow: weakening", *swing_case(2, 2, 50, 5, WEAKENING)),
+        case_block("swing_structure_falling", "swing_structure (2, 2, 50, 5) over a fall whose "
+                   "corrections shrink: the trend is down, the rises are the corrections",
+                   *swing_case(2, 2, 50, 5, FALLING)),
+        case_block("swing_structure_capped", "swing_structure (2, 2, 4, 5) over a staircase: only "
+                   "the newest four legs count, the pivot list is cut to twelve",
+                   *swing_case(2, 2, 4, 5, STAIRCASE)),
+        case_block("swing_structure_flat", "swing_structure over bars without range: the ATR is "
+                   "0, nothing is detected, no output", *swing_case(2, 2, 50, 3,
+                                                                    flat_bars(30, 100.0, 0.0))),
     ]
     return header, blocks

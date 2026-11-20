@@ -8,9 +8,8 @@
 //! The lookup is a standalone function rather than a field on
 //! [`crate::indicator::registry::IndicatorCatalogEntry`], for the same reason
 //! [`crate::applicability::data_requirements`] is: not every indicator is a catalog entry.
-//! `elliott`, `swing_structure` and `relative_strength` are kept out of the single-bar registry
-//! by their call signatures, and a function can grow to cover them without a signature change on
-//! those engines — a struct field cannot. It also keeps the addition non-breaking:
+//! `elliott` is kept out of the single-bar registry by its call signature, and a function can
+//! grow to cover it without a signature change on that engine — a struct field cannot. It also keeps the addition non-breaking:
 //! `IndicatorCatalogEntry` has public fields and no `#[non_exhaustive]`, so a fourth field would
 //! break every caller that builds one by struct literal.
 
@@ -197,6 +196,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("super_smoother", IndicatorUnit::Price),
     ("supertrend", IndicatorUnit::Price),
     ("sweep_reversal_score", IndicatorUnit::Unitless),
+    ("swing_structure", IndicatorUnit::Unitless),
     ("t3", IndicatorUnit::Price),
     ("tema", IndicatorUnit::Price),
     ("tradability_filter", IndicatorUnit::Ratio),
@@ -217,6 +217,7 @@ const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
     ("volume_profile", IndicatorUnit::Price),
     ("vortex", IndicatorUnit::Ratio),
     ("vwap", IndicatorUnit::Price),
+    ("vwap_regime", IndicatorUnit::Unitless),
     ("vwma", IndicatorUnit::Price),
     ("wavetrend", IndicatorUnit::Ratio),
     ("wavetrend_divergence", IndicatorUnit::Unitless),

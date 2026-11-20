@@ -376,6 +376,7 @@ fn native_source(canonical: &str) -> crate::model::Source {
 /// every catalog entry that reads more than one bar field: a test feeds each remaining entry a
 /// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "vwap_regime",
     "period_midpoint",
     "opening_range",
     "price_location",
@@ -540,12 +541,11 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
     })
 }
 
-// Note: `indicator::swing_structure::SwingStructureEngine` and
-// `indicator::relative_strength::RelativeStrengthEngine` are intentionally not registered in the
-// single-bar `build(name, params)` registry. `SwingStructureEngine` requires raw ATR injected per
-// bar (`update(bar, atr)`) and is exported from `kestrel_chartkit::indicator` for explicit use.
-// `RelativeStrengthEngine` requires dual-series input (`update(own_bar, bench_bar)`) and is built
-// by name through the two-series registry, `super::pair::build_pair_checked`.
+// Note: `indicator::relative_strength::RelativeStrengthEngine` requires dual-series input
+// (`update(own_bar, bench_bar)`) and is built by name through the two-series registry,
+// `super::pair::build_pair_checked`. `indicator::swing_structure::SwingStructureEngine` takes the
+// raw ATR per bar (`update(bar, atr)`); its catalog entry `swing_structure` feeds it a Wilder ATR
+// of its own.
 
 /// Finding 04: every canonical indicator name `build_checked` can construct, kept as an explicit
 /// list (rather than derived from the match arms at runtime) so `catalog()` is checked against a
@@ -703,6 +703,8 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "price_location",
     "opening_range",
     "period_midpoint",
+    "vwap_regime",
+    "swing_structure",
 ];
 
 #[cfg(test)]
@@ -734,10 +736,10 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 147);
-        assert_eq!(bars.len(), 147);
-        // Pair (2), transform (1) and intrabar (1) entries on top of the 147 bar indicators.
-        assert_eq!(catalog().len(), 151);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 149);
+        assert_eq!(bars.len(), 149);
+        // Pair (2), transform (1) and intrabar (1) entries on top of the 149 bar indicators.
+        assert_eq!(catalog().len(), 153);
         for (input, count) in [
             (IndicatorInput::Pair, 2),
             (IndicatorInput::Transform, 1),

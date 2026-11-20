@@ -28,4 +28,5 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::analytics::price_location::PRICE_LOCATION_DEFINITION,
     &crate::session::OPENING_RANGE_DEFINITION,
     &crate::indicator::price_levels::PERIOD_MIDPOINT_DEFINITION,
+    &crate::indicator::swing_structure::SWING_STRUCTURE_DEFINITION,
 ];

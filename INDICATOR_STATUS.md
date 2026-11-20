@@ -122,6 +122,7 @@ is complete.
 | rvat | ✅ |
 | rvol | ✅ |
 | volume | ✅ |
+| vwap_regime | ❌ |
 
 ## Trend
 
@@ -190,6 +191,7 @@ is complete.
 | market_state_chain | ✅ |
 | period_midpoint | ❌ |
 | opening_range | ❌ |
+| swing_structure | ❌ |
 
 ## Other Input Kinds
 
@@ -206,6 +208,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/151 verified** — the same 151 names `catalog()` returns: 106 indicators (the first
-five groups), 4 composite scores, 37 structure/pattern detectors and 4 entries of other input
+**Total: 133/153 verified** — the same 153 names `catalog()` returns: 107 indicators (the first
+five groups), 4 composite scores, 38 structure/pattern detectors and 4 entries of other input
 kinds.

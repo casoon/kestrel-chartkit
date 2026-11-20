@@ -25,6 +25,8 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("price_location"),
     Coverage::full("period_midpoint"),
     Coverage::full("opening_range"),
+    Coverage::full("vwap_regime"),
+    Coverage::full("swing_structure"),
 ];
 
 // --- Fractal dimension -----------------------------------------------------------------------
@@ -455,4 +457,123 @@ fn opening_range_rejects_invalid_configuration() {
     assert_rejected("opening_range", &[("orb_duration_mins", 1441.0)]);
     assert_rejected("opening_range", &[("utc_offset_seconds", -86400.0)]);
     assert_rejected("opening_range", &[("duration", 30.0)]);
+}
+
+// --- VWAP regime -------------------------------------------------------------
+
+#[test]
+fn vwap_regime_defaults() {
+    assert_holds(&case(
+        "vwap_regime_defaults",
+        "vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_small() {
+    assert_holds(&case(
+        "vwap_regime_small",
+        "vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_no_volume() {
+    assert_holds(&case(
+        "vwap_regime_no_volume",
+        "vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_flat() {
+    assert_holds(&case(
+        "vwap_regime_flat",
+        "vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_rejects_invalid_configuration() {
+    assert_rejected("vwap_regime", &[("window", 0.0)]);
+    assert_rejected("vwap_regime", &[("slope_lookback", 0.0)]);
+    assert_rejected("vwap_regime", &[("atr_len", 2.5)]);
+    assert_rejected("vwap_regime", &[("regime_window", 0.0)]);
+    assert_rejected("vwap_regime", &[("flat_threshold", -0.1)]);
+    // The flat threshold lies below the strong one.
+    assert_rejected(
+        "vwap_regime",
+        &[("flat_threshold", 0.3), ("strong_threshold", 0.3)],
+    );
+    assert_rejected("vwap_regime", &[("len", 14.0)]);
+}
+
+// --- Swing structure ---------------------------------------------------------
+
+#[test]
+fn swing_structure_defaults() {
+    assert_holds(&case(
+        "swing_structure_defaults",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_strengthening() {
+    assert_holds(&case(
+        "swing_structure_strengthening",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_weakening() {
+    assert_holds(&case(
+        "swing_structure_weakening",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_falling() {
+    assert_holds(&case(
+        "swing_structure_falling",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_capped() {
+    assert_holds(&case(
+        "swing_structure_capped",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_flat() {
+    assert_holds(&case(
+        "swing_structure_flat",
+        "swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_rejects_invalid_configuration() {
+    assert_rejected("swing_structure", &[("left", 0.0)]);
+    assert_rejected("swing_structure", &[("right", 0.0)]);
+    assert_rejected("swing_structure", &[("max_swings", 3.0)]);
+    assert_rejected("swing_structure", &[("atr_len", 0.0)]);
+    assert_rejected("swing_structure", &[("left", 2.5)]);
+    assert_rejected("swing_structure", &[("len", 14.0)]);
 }

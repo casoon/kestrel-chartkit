@@ -580,12 +580,12 @@ pub fn check_applicability(
 /// indicator it builds.
 ///
 /// This is a separate lookup rather than a field on
-/// [`crate::indicator::registry::IndicatorCatalogEntry`] because two indicators that need
-/// requirements here (`elliott`, `swing_structure`) are not catalog/registry entries at all —
-/// they are excluded from the single-bar registry due to their call signature (see the note above
-/// `CANONICAL_INDICATOR_NAMES` in `src/indicator/registry.rs`). A standalone function is the only
-/// way to give catalog and non-catalog indicators one shared source of truth without forcing a
-/// signature change on those two engines.
+/// [`crate::indicator::registry::IndicatorCatalogEntry`] because `elliott`, which needs requirements
+/// here, is not a catalog/registry entry at all — it is excluded from the single-bar registry due
+/// to its call signature (see the note above `CANONICAL_INDICATOR_NAMES` in
+/// `src/indicator/registry.rs`). A standalone function is the only way to give catalog and
+/// non-catalog indicators one shared source of truth without forcing a signature change on that
+/// engine.
 ///
 /// `needs_real_volume` follows the actual inputs: it is set for every indicator whose formula
 /// always consumes the bar volume (volume and money-flow measures, volume-weighted averages and
@@ -624,7 +624,7 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             roll_sensitive: true,
             ..DataRequirements::default()
         },
-        "vwap" | "anchored_vwap" | "rvat" => DataRequirements {
+        "vwap" | "anchored_vwap" | "rvat" | "vwap_regime" => DataRequirements {
             needs_real_volume: true,
             session_sensitive: true,
             ..DataRequirements::default()

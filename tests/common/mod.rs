@@ -14,6 +14,9 @@ pub mod contract;
 ///   volume average then gate the output).
 /// - `cycle_length`: waits for the first completed swing, which depends on the data.
 /// - `period_midpoint`: waits for the first completed period, which depends on the timestamps.
+/// - `vwap_regime`: waits for the VWAP slope and the ATR, and a bar without volume delays the
+///   VWAP.
+/// - `swing_structure`: waits for four confirmed pivots and two impulse and two correction legs.
 /// - `opening_range`: waits for the first bar of a session inside its opening window, which
 ///   depends on the timestamps.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
@@ -22,7 +25,14 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "cycle_length",
     "period_midpoint",
     "opening_range",
+    "vwap_regime",
+    "swing_structure",
 ];
+
+/// Indicators that publish only while the data holds a confirmed structure, so how many bars have
+/// an output depends on the series: `swing_structure` needs strict pivots, and the tied peaks of
+/// the sine series (two bars of equal high) leave most of them out.
+pub const SPARSE_OUTPUT: &[&str] = &["swing_structure"];
 
 /// Generiert eine Flachpreis-Serie mit konstantem Preis und Volumen.
 pub fn generate_flat_bars(count: usize, price: f64, volume: f64) -> Vec<Bar> {
