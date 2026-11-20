@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 152 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 158 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -10,6 +10,169 @@ order: 2
 > and outputs can still change fundamentally between versions.
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
+
+**Verification.** 133 of the 158 entries are verified, 25 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+
+| Entry | Input | Status |
+|---|---|---|
+| `sma` | bars | verified |
+| `anchored_vwap` | bars | verified |
+| `ema` | bars | verified |
+| `wma` | bars | verified |
+| `vwma` | bars | verified |
+| `hma` | bars | verified |
+| `dema` | bars | verified |
+| `tema` | bars | verified |
+| `kama` | bars | verified |
+| `rma` | bars | **not yet verified:** no independent second implementation yet |
+| `alma` | bars | **not yet verified:** no independent second implementation yet |
+| `jma` | bars | **not yet verified:** no independent second implementation yet |
+| `super_smoother` | bars | **not yet verified:** no independent second implementation yet |
+| `lsma` | bars | verified |
+| `mcginley` | bars | verified |
+| `t3` | bars | verified |
+| `vidya` | bars | verified |
+| `alligator` | bars | verified |
+| `envelope` | bars | verified |
+| `vwap` | bars | verified |
+| `trend_relationship` | bars | verified |
+| `ichimoku` | bars | verified |
+| `supertrend` | bars | verified |
+| `parabolic_sar` | bars | verified |
+| `donchian` | bars | verified |
+| `keltner` | bars | verified |
+| `bollinger` | bars | verified |
+| `twap` | bars | verified |
+| `midas` | bars | verified |
+| `macd` | bars | verified |
+| `pmo` | bars | verified |
+| `smi` | bars | verified |
+| `rci` | bars | verified |
+| `trix` | bars | verified |
+| `tsi` | bars | verified |
+| `stochastic` | bars | verified |
+| `roc` | bars | verified |
+| `ultimate_oscillator` | bars | verified |
+| `awesome_oscillator` | bars | verified |
+| `ppo` | bars | verified |
+| `cmo` | bars | verified |
+| `elder_ray` | bars | verified |
+| `connors_rsi` | bars | verified |
+| `coppock` | bars | verified |
+| `dpo` | bars | verified |
+| `kst` | bars | verified |
+| `rvi` | bars | verified |
+| `bop` | bars | verified |
+| `bbtrend` | bars | verified |
+| `zscore` | bars | verified |
+| `rsi` | bars | verified |
+| `stoch_rsi` | bars | verified |
+| `cci` | bars | verified |
+| `mfi` | bars | verified |
+| `williams_r` | bars | verified |
+| `fisher_transform` | bars | verified |
+| `wavetrend` | bars | verified |
+| `percent_rank` | bars | **not yet verified:** no independent second implementation yet |
+| `atr` | bars | verified |
+| `adx` | bars | verified |
+| `dmi` | bars | verified |
+| `aroon` | bars | verified |
+| `vortex` | bars | verified |
+| `choppiness` | bars | verified |
+| `relative_volatility` | bars | verified |
+| `ulcer_index` | bars | verified |
+| `true_range` | bars | verified |
+| `historical_volatility` | bars | verified |
+| `garman_klass` | bars | verified |
+| `mass_index` | bars | verified |
+| `chande_kroll` | bars | verified |
+| `chandelier_exit` | bars | verified |
+| `adaptive_chandelier` | bars | verified |
+| `vix_fix` | bars | verified |
+| `efficiency` | bars | verified |
+| `cusum` | bars | verified |
+| `volatility_regime` | bars | verified |
+| `fractal_dimension` | bars | **not yet verified:** no independent second implementation yet |
+| `r_squared` | bars | **not yet verified:** no independent second implementation yet |
+| `cycle_length` | bars | **not yet verified:** no independent second implementation yet |
+| `pvt` | bars | verified |
+| `efi` | bars | verified |
+| `rvat` | bars | verified |
+| `hires_volume_flow` | bars | verified |
+| `extended_volume_profile` | bars | verified |
+| `persistent_volume_profile` | bars | verified |
+| `volume_profile` | bars | verified |
+| `money_flow_profile` | bars | verified |
+| `volume` | bars | verified |
+| `rvol` | bars | verified |
+| `obv` | bars | verified |
+| `cmf` | bars | verified |
+| `acc_dist` | bars | verified |
+| `cvd` | bars | verified |
+| `klinger` | bars | verified |
+| `eom` | bars | verified |
+| `nvi` | bars | verified |
+| `pvi` | bars | verified |
+| `chaikin_oscillator` | bars | verified |
+| `vwap_regime` | bars | **not yet verified:** no independent second implementation yet |
+| `order_block` | bars | verified |
+| `liquidity_fvg` | bars | verified |
+| `gap` | bars | **not yet verified:** verification not completed |
+| `point_and_figure` | bars | **not yet verified:** verification not completed |
+| `market_structure_breaks` | bars | verified |
+| `pivots_structure` | bars | verified |
+| `candle_classification` | bars | verified |
+| `zigzag` | bars | verified |
+| `pivot_sets` | bars | verified |
+| `bos_choch` | bars | verified |
+| `liquidity_sweeps` | bars | verified |
+| `zone_rejection` | bars | verified |
+| `double_pattern` | bars | verified |
+| `bottom_formation` | bars | verified |
+| `pivot_divergence` | bars | verified |
+| `oscillator_pivot_divergence` | bars | verified |
+| `wavetrend_divergence` | bars | verified |
+| `stoch_rsi_divergence` | bars | verified |
+| `liquidity_pools` | bars | verified |
+| `wyckoff` | bars | verified |
+| `zigzag_advanced` | bars | verified |
+| `trendlines` | bars | **not yet verified:** verification not completed |
+| `price_location` | bars | **not yet verified:** no independent second implementation yet |
+| `opening_range` | bars | **not yet verified:** no independent second implementation yet |
+| `period_midpoint` | bars | **not yet verified:** no independent second implementation yet |
+| `swing_structure` | bars | **not yet verified:** no independent second implementation yet |
+| `fvg_fill` | bars | **not yet verified:** no independent second implementation yet |
+| `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
+| `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
+| `flow_exhaustion` | bars | verified |
+| `overextension_risk` | bars | verified |
+| `smoothed_supertrend` | bars | verified |
+| `coil_release` | bars | verified |
+| `compression_zones` | bars | verified |
+| `roc_context` | bars | verified |
+| `tradability_filter` | bars | verified |
+| `reaction_speed` | bars | verified |
+| `market_state_chain` | bars | verified |
+| `rsi_cycle_stats` | bars | verified |
+| `price_average_relation` | bars | verified |
+| `leg_conviction` | bars | verified |
+| `trend_break_risk` | bars | verified |
+| `sweep_reversal_score` | bars | verified |
+| `equal_level_liquidity` | bars | verified |
+| `leg_character` | bars | verified |
+| `accumulation_phase` | bars | verified |
+| `reversal_setup_score` | bars | verified |
+| `structure_zones` | bars | verified |
+| `structural_flow` | bars | verified |
+| `trend_quality` | bars | verified |
+| `buy_sell_pressure` | bars | verified |
+| `multi_factor` | bars | verified |
+| `correlation` | two series | **not yet verified:** no independent second implementation yet |
+| `relative_strength` | two series | **not yet verified:** no independent second implementation yet |
+| `rolling_beta` | two series | **not yet verified:** no independent second implementation yet |
+| `pair_spread` | two series | **not yet verified:** no independent second implementation yet |
+| `heikin_ashi` | candle transform | **not yet verified:** no independent second implementation yet |
+| `intrabar_cvd` | intrabar | **not yet verified:** no independent second implementation yet |
 
 ## Moving averages, bands and trend lines
 
@@ -134,6 +297,8 @@ Requires `fast_period` to be smaller than `slow_period`.
 
 Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the first period closes)
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/rma/)
 
 **Output** unit Price, range not declared · **warmup** 14 bars
@@ -145,6 +310,8 @@ Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the 
 ### `alma`
 
 Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes)
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/alma/)
 
@@ -160,6 +327,8 @@ Arnaud Legoux Moving Average (Gaussian-weighted average of the last period close
 
 An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/jma/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
@@ -173,6 +342,8 @@ An approximation of the Jurik moving average, following an openly published form
 ### `super_smoother`
 
 Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/super_smoother/)
 
@@ -802,6 +973,8 @@ WaveTrend Oscillator (wt1, wt2)
 
 Percent rank of the close among the previous period closes: the share, in percent, at or below the current close
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/percent_rank/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 21 bars
@@ -1059,6 +1232,8 @@ Volatility Regime & Squeeze Detector
 
 Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped)
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/fractal_dimension/)
 
 **Output** unit Unitless, range not declared · **warmup** 30 bars
@@ -1072,6 +1247,8 @@ Fractal dimension of the price path over a trailing window, 1 for a straight lin
 
 R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/r_squared/)
 
 **Output** unit Ratio, range 0 – 1 · **warmup** 20 bars
@@ -1083,6 +1260,8 @@ R-squared of a least-squares line through the last period closes, 1 for a clean 
 ### `cycle_length`
 
 Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); extra bars_since_crossing counts the swing in progress
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/cycle_length/)
 
@@ -1318,6 +1497,8 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/vwap_regime/)
 
 **Output** unit Unitless, range not declared · **warmup** 21 bars · needs real volume
@@ -1364,6 +1545,8 @@ Fair value gap (imbalance) detection
 
 Price gap between consecutive bars: the open beyond the previous bar's range or close, size in ATR of the previous bar, every open gap with its filled fraction, closing as an event
 
+**Not yet verified:** verification not completed.
+
 [See it in the showcase](../../../showcase/gap/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
@@ -1378,6 +1561,8 @@ Price gap between consecutive bars: the open beyond the previous bar's range or 
 ### `point_and_figure` · alias `pnf`
 
 Point-and-figure chart: columns of X and O from a box size and a reversal in boxes; the current column with its number, direction and boxes on every bar
+
+**Not yet verified:** verification not completed.
 
 [See it in the showcase](../../../showcase/point_and_figure/)
 
@@ -1665,6 +1850,8 @@ ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (d
 
 Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width); alerts bear_support_line_break, bull_resistance_line_break
 
+**Not yet verified:** verification not completed.
+
 [See it in the showcase](../../../showcase/trendlines/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
@@ -1681,6 +1868,8 @@ Trendlines through confirmed zigzag_advanced nodes: a support line through the l
 ### `price_location`
 
 Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/price_location/)
 
@@ -1700,6 +1889,8 @@ Where the close stands against its own recent history: the stretch (close - EMA)
 
 Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/opening_range/)
 
 **Output** unit Unitless, range 0 and above · **warmup** 1 bars
@@ -1717,6 +1908,8 @@ Opening range of a recurring session: the width of the high-low range of its fir
 
 Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to Mondays (week) and to the calendar (month: multiples of count from January)
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/period_midpoint/)
 
 **Output** unit Price, range not declared · **warmup** 2 bars
@@ -1730,6 +1923,8 @@ Midpoint (high + low) / 2 of the last completed period of count units, held unti
 ### `swing_structure`
 
 Statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/swing_structure/)
 
@@ -1746,6 +1941,8 @@ Statistical swing structure: the median correction over the median impulse leg (
 
 Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras
 
+**Not yet verified:** no independent second implementation yet.
+
 [See it in the showcase](../../../showcase/fvg_fill/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
@@ -1757,6 +1954,8 @@ Fair value gaps followed as zones until a later bar trades back into them: the n
 ### `chart_patterns`
 
 Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-14), level, invalidation, target, fit, active, confirmed
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/chart_patterns/)
 
@@ -1776,6 +1975,8 @@ Chart patterns from ZigZag swings as they confirm, one event per pattern instanc
 ### `harmonic_patterns`
 
 Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from ZigZag swings as they confirm, one event per structure on the close out of its potential reversal zone. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<name> and bear_<name>; extras pattern (table row 1-6), prz_low, prz_high, d, invalidation, active, confirmed
+
+**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/harmonic_patterns/)
 
@@ -2188,6 +2389,8 @@ These are entries of `catalog()` whose `input` is not `Bars`; `build_checked` an
 
 Rolling Pearson correlation of the simple returns of two close series
 
+**Not yet verified:** no independent second implementation yet.
+
 **Output** unit Ratio, range -1 – 1 · **warmup** 21 paired bars
 
 | Parameter | Default | Accepted | Meaning |
@@ -2197,6 +2400,8 @@ Rolling Pearson correlation of the simple returns of two close series
 #### `relative_strength`
 
 Return difference and price ratio of a series against a reference series
+
+**Not yet verified:** no independent second implementation yet.
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 21 paired bars
 
@@ -2208,6 +2413,8 @@ Return difference and price ratio of a series against a reference series
 
 Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared
 
+**Not yet verified:** no independent second implementation yet.
+
 **Output** unit Ratio, range not declared · **warmup** 61 paired bars
 
 | Parameter | Default | Accepted | Meaning |
@@ -2217,6 +2424,8 @@ Rolling beta of the simple returns of a close series against a reference series,
 #### `pair_spread`
 
 Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation
+
+**Not yet verified:** no independent second implementation yet.
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 60 paired bars
 
@@ -2232,6 +2441,8 @@ Residual z-score of the spread between a close series and a reference series, wi
 
 Heikin-Ashi candles: averaged open, high, low and close derived from observed bars
 
+**Not yet verified:** no independent second implementation yet.
+
 **Output** unit Price, range not declared
 
 ### Intrabar
@@ -2241,6 +2452,8 @@ Heikin-Ashi candles: averaged open, high, low and close derived from observed ba
 #### `intrabar_cvd`
 
 Cumulative volume delta booked from lower-timeframe bars inside each parent bar
+
+**Not yet verified:** no independent second implementation yet.
 
 **Output** unit Volume, range not declared
 

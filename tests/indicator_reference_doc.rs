@@ -10,10 +10,14 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use kestrel_chartkit::applicability::data_requirements;
-use kestrel_chartkit::indicator::definition::{families, Check, ParamKind, ParamSpec};
+use kestrel_chartkit::indicator::definition::{
+    families, Check, ParamKind, ParamSpec, Verification,
+};
 use kestrel_chartkit::indicator::other_input::{intrabar_definitions, transform_definitions};
 use kestrel_chartkit::indicator::pair::{build_pair_checked, pair_definitions};
-use kestrel_chartkit::indicator::registry::{build_checked, output_range, OutputRange};
+use kestrel_chartkit::indicator::registry::{
+    build_checked, catalog, output_range, IndicatorInput, OutputRange,
+};
 use kestrel_chartkit::output_unit;
 
 const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/reference/indicators.md");
@@ -94,12 +98,63 @@ fn cell(text: &str) -> String {
     text.replace('|', "\\|")
 }
 
-fn render() -> String {
-    let mut out = String::new();
-    let total: usize = families().map(|(_, list)| list.len()).sum();
+/// The verification of the catalog entry `name`.
+fn verification(name: &str) -> Verification {
+    catalog()
+        .into_iter()
+        .find(|e| e.name == name)
+        .unwrap_or_else(|| panic!("`{name}` is not in catalog()"))
+        .verification
+}
+
+/// The line under the description of an entry that has not passed its acceptance yet.
+fn open_notice(out: &mut String, name: &str) {
+    if let Verification::Open(reason) = verification(name) {
+        writeln!(out, "**Not yet verified:** {reason}.\n").unwrap();
+    }
+}
+
+/// One table over every entry of `catalog()`: where it is described and whether it is verified.
+fn overview(out: &mut String) {
+    let entries = catalog();
+    let open = entries
+        .iter()
+        .filter(|e| !e.verification.is_verified())
+        .count();
     writeln!(
         out,
-        "---\ntitle: Indicator reference\ndescription: All {total} indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.\norder: 2\n---\n"
+        "**Verification.** {} of the {} entries are verified, {open} are not yet. A verified \
+         entry has passed its acceptance: its expected values come from a derivation \
+         independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and \
+         is covered by the contract tests, but has not passed that acceptance; its entry below \
+         says why.\n",
+        entries.len() - open,
+        entries.len()
+    )
+    .unwrap();
+    out.push_str("| Entry | Input | Status |\n|---|---|---|\n");
+    for entry in &entries {
+        let input = match entry.input {
+            IndicatorInput::Bars => "bars",
+            IndicatorInput::Pair => "two series",
+            IndicatorInput::Transform => "candle transform",
+            IndicatorInput::Intrabar => "intrabar",
+        };
+        let status = match entry.verification {
+            Verification::Verified => "verified".to_string(),
+            Verification::Open(reason) => format!("**not yet verified:** {}", cell(reason)),
+        };
+        writeln!(out, "| `{}` | {input} | {status} |", entry.name).unwrap();
+    }
+    out.push('\n');
+}
+
+fn render() -> String {
+    let mut out = String::new();
+    let all = catalog().len();
+    writeln!(
+        out,
+        "---\ntitle: Indicator reference\ndescription: All {all} entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.\norder: 2\n---\n"
     )
     .unwrap();
     out.push_str(
@@ -117,6 +172,7 @@ fn render() -> String {
          result is only meaningful with traded volume. The [showcase](../../../showcase/) draws \
          every indicator with its defaults on synthetic bars of a fictitious CASOON share.\n\n",
     );
+    overview(&mut out);
     for (family, list) in families() {
         writeln!(out, "## {family}\n").unwrap();
         for definition in list {
@@ -135,6 +191,7 @@ fn render() -> String {
             };
             writeln!(out, "### `{}`{aliases}\n", definition.name).unwrap();
             writeln!(out, "{}\n", definition.description).unwrap();
+            open_notice(&mut out, definition.name);
             // The showcase draws the indicator on the demo series (examples/site_showcase.rs).
             writeln!(
                 out,
@@ -207,6 +264,7 @@ fn other_inputs(out: &mut String) {
     for definition in pair_definitions() {
         writeln!(out, "#### `{}`\n", definition.name).unwrap();
         writeln!(out, "{}\n", definition.description).unwrap();
+        open_notice(out, definition.name);
         let warmup = build_pair_checked(definition.name, &HashMap::new())
             .map(|i| i.warmup_period().to_string())
             .unwrap_or_else(|e| format!("({e})"));
@@ -228,6 +286,7 @@ fn other_inputs(out: &mut String) {
     for definition in transform_definitions() {
         writeln!(out, "#### `{}`\n", definition.name).unwrap();
         writeln!(out, "{}\n", definition.description).unwrap();
+        open_notice(out, definition.name);
         writeln!(
             out,
             "**Output** unit {:?}, range {}\n",
@@ -248,6 +307,7 @@ fn other_inputs(out: &mut String) {
     for definition in intrabar_definitions() {
         writeln!(out, "#### `{}`\n", definition.name).unwrap();
         writeln!(out, "{}\n", definition.description).unwrap();
+        open_notice(out, definition.name);
         writeln!(
             out,
             "**Output** unit {:?}, range {}\n",
