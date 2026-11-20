@@ -180,6 +180,11 @@ pub const RVAT_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bar spacing in seconds; only declares the warmup"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .non_negative()
+            .needs_real_volume()
+            .session_sensitive(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RelativeVolumeAtTime::new(
                 p.count("days"),
                 p.number("day_start_offset") as i64,

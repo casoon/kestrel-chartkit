@@ -54,6 +54,10 @@ pub const BOP_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars in the SMA of the per-bar power")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(-1.0, 1.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(BalanceOfPowerEngine::new(p.count("period")))),
     };
 

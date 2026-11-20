@@ -251,6 +251,8 @@ pub const PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinition = 
         lower: "min_distance",
         upper: "max_distance",
     }],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| build_from_definition(p, PivotDivergence::new),
 };
 
@@ -272,6 +274,8 @@ pub const OSCILLATOR_PIVOT_DIVERGENCE_DEFINITION: super::definition::IndicatorDe
         lower: "min_distance",
         upper: "max_distance",
     }],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| build_from_definition(p, PivotDivergence::oscillator_pivots),
 };
 
@@ -292,6 +296,8 @@ pub const WAVETREND_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinitio
         lower: "min_distance",
         upper: "max_distance",
     }],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(PivotDivergence::oscillator_pivots(
             DivergenceOscillator::WaveTrend,
@@ -321,6 +327,8 @@ pub const STOCH_RSI_DIVERGENCE_DEFINITION: super::definition::IndicatorDefinitio
         lower: "min_distance",
         upper: "max_distance",
     }],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(PivotDivergence::oscillator_pivots(
             DivergenceOscillator::StochRsi,

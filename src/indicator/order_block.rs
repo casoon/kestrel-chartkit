@@ -212,6 +212,8 @@ pub const ORDER_BLOCK_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("minimum displacement candle range, in ATR"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(OrderBlockEngine::new(
                 p.count("atr_len"),

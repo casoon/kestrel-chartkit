@@ -209,6 +209,8 @@ pub const RELATIVE_VOLATILITY_DEFINITION: super::definition::IndicatorDefinition
             super::definition::ParamSpec::count("smooth_len", 14, 1, 10000).meaning("bars in the smoothing of the up and down deviations"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0).range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let variant = match p.choice("variant") {
                 "high_low" => RelativeVolatilityVariant::HighLow,

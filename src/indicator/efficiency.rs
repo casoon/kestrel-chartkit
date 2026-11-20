@@ -94,5 +94,7 @@ pub const EFFICIENCY_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("len", 14, 1, 10000)
             .meaning("bars between the two closes compared with the path travelled")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(LegEfficiencyEngine::new(p.count("len")))),
     };

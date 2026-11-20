@@ -111,6 +111,8 @@ pub const RVI_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
             .meaning("bars summed in numerator and denominator")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RviEngine::new(p.count("period")))),
     };
 

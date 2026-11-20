@@ -268,6 +268,10 @@ pub const PRICE_LOCATION_DEFINITION: IndicatorDefinition = IndicatorDefinition {
             .meaning("first bar that reports a volatility tercile"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless().centered(0.0).range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         Ok(Box::new(PriceLocationIndicator::new(PriceLocationConfig {
             atr_len: p.count("atr_len"),

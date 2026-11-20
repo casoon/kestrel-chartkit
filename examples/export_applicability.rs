@@ -16,12 +16,12 @@
 use kestrel_chartkit::applicability::{
     data_requirements, method_rule_catalog, rule_catalog, DataRequirements,
 };
-use kestrel_chartkit::indicator::registry::CANONICAL_INDICATOR_NAMES;
+use kestrel_chartkit::indicator::registry::canonical_indicator_names;
 
-/// Two indicators are standalone modules, never wired into the single-bar registry/catalog (see
-/// the note above `CANONICAL_INDICATOR_NAMES` in `src/indicator/registry.rs`), so they are not in
-/// that list but still need their `DataRequirements` exported.
-const NON_CATALOG_NAMES: &[&str] = &["elliott", "swing_structure"];
+/// `elliott` is a module API, not a catalog entry (see
+/// `kestrel_chartkit::indicator::definition::module_api_definitions`), so it is not in the list of
+/// canonical names but still needs its `DataRequirements` exported.
+const NON_CATALOG_NAMES: &[&str] = &["elliott"];
 
 fn indicator_json(name: &str, requirements: &DataRequirements) -> String {
     format!(
@@ -40,10 +40,10 @@ fn indicator_json(name: &str, requirements: &DataRequirements) -> String {
 }
 
 fn main() {
-    let indicators: Vec<String> = CANONICAL_INDICATOR_NAMES
-        .iter()
-        .chain(NON_CATALOG_NAMES)
-        .map(|&name| indicator_json(name, &data_requirements(name)))
+    let indicators: Vec<String> = canonical_indicator_names()
+        .into_iter()
+        .chain(NON_CATALOG_NAMES.iter().copied())
+        .map(|name| indicator_json(name, &data_requirements(name)))
         .collect();
 
     let rules: Vec<String> = rule_catalog()

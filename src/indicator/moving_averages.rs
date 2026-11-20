@@ -656,6 +656,8 @@ pub const SMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(SmaEngine::new(p.count("period")))),
     };
 
@@ -671,6 +673,8 @@ pub const EMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let init = match p.choice("init") {
                 "sma" => EmaInit::Sma,
@@ -690,6 +694,8 @@ pub const WMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(WmaEngine::new(p.count("period")))),
     };
 
@@ -703,6 +709,8 @@ pub const VWMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(VwmaEngine::new(p.count("period")))),
     };
 
@@ -716,6 +724,8 @@ pub const HMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(HmaEngine::new(p.count("period")))),
     };
 
@@ -729,6 +739,8 @@ pub const DEMA_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning("bars averaged")
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(DemaEngine::new(p.count("period")))),
     };
 
@@ -750,6 +762,8 @@ pub const KAMA_DEFINITION: super::definition::IndicatorDefinition =
             lower: "fast_period",
             upper: "slow_period",
         }],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(KamaEngine::new(
                 p.count("period"),
@@ -768,6 +782,10 @@ pub const RMA_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars of the Wilder average")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| Ok(Box::new(RmaEngine::new(p.count("period")))),
     };
 
@@ -787,6 +805,10 @@ pub const ALMA_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("narrowness of the weight bell: its width is period / sigma"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| {
             Ok(Box::new(AlmaEngine::new(
                 p.count("period"),
@@ -811,6 +833,10 @@ pub const JMA_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("exponent of the smoothing factor (the type clamps it to at least 1)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| {
             Ok(Box::new(JmaEngine::new(
                 p.count("period"),
@@ -829,5 +855,9 @@ pub const SUPER_SMOOTHER_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
             .meaning("cutoff period of the filter in bars")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| Ok(Box::new(SuperSmootherEngine::new(p.count("period")))),
     };

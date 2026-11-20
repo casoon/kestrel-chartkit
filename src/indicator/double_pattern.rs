@@ -341,6 +341,8 @@ pub const DOUBLE_PATTERN_DEFINITION: super::definition::IndicatorDefinition = su
         super::definition::ParamSpec::count("max_wait", 50, 1, 100000).meaning("bars after forming within which the neckline must break"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(DoublePattern::new(
             p.count("pivot_len"),

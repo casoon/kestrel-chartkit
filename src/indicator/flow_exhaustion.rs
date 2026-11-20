@@ -533,6 +533,8 @@ pub const FLOW_EXHAUSTION_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("react_bars", 10, 2, 100).meaning("bars after a divergence until its final score"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().needs_real_volume().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let pivot_len = p.count("pivot_len");
             Ok(Box::new(FlowExhaustion::new(FlowExhaustionConfig {

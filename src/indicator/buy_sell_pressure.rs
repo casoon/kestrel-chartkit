@@ -86,6 +86,8 @@ pub const BUY_SELL_PRESSURE_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars in the EMA of the raw pressure")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(BuySellPressureEstimator::new(p.count("period")))),
     };
 

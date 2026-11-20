@@ -1054,6 +1054,8 @@ pub const REVERSAL_SETUP_SCORE_DEFINITION: super::definition::IndicatorDefinitio
 
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |_p| {
             Ok(Box::new(ReversalSetupScore::new()))
         },

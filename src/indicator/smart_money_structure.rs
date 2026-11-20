@@ -408,6 +408,10 @@ pub const FVG_FILL_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     params: &[ParamSpec::count("max_zones", 20, 1, 1000)
         .meaning("newest open zones that are kept")],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| Ok(Box::new(FvgFillEngine::new(p.count("max_zones")))),
 };
 
@@ -536,6 +540,8 @@ pub const LIQUIDITY_POOLS_DEFINITION: super::definition::IndicatorDefinition = s
         super::definition::ParamSpec::number("tolerance_pct", 0.2, 0.001, 100.0).meaning("distance, in percent, within which pivots join one pool"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| Ok(Box::new(LiquidityPoolEngine::new(p.count("pivot_len"), p.number("tolerance_pct")))),
 };
 

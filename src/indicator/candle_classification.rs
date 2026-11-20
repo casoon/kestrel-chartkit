@@ -1132,6 +1132,8 @@ pub const CANDLE_CLASSIFICATION_DEFINITION: super::definition::IndicatorDefiniti
                 .meaning("close move over the lookback, in ATR, that counts as a trend"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(CandleClassificationEngine::with_config(
                 CandleClassificationConfig {

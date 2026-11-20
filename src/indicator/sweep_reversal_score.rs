@@ -272,6 +272,8 @@ pub const SWEEP_REVERSAL_SCORE_DEFINITION: super::definition::IndicatorDefinitio
             super::definition::ParamSpec::count("cooldown", 5, 0, 500).meaning("bars after a signal before the next one"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = SweepReversalScoreConfig {
                 swing_len: p.count("swing_len"),

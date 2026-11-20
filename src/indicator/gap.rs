@@ -380,6 +380,10 @@ pub const GAP_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars after its own on which a gap is followed; a gap still open then is dropped"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .structure_method(crate::applicability::StructureMethod::PriceGaps)
+            .range_dependent(),
+        verification: super::definition::Verification::Open("verification not completed"),
         build: |p| {
             Ok(Box::new(GapEngine::new(GapParams {
                 reference: match p.choice("reference") {

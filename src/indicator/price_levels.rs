@@ -241,6 +241,10 @@ pub const PERIOD_MIDPOINT_DEFINITION: IndicatorDefinition = IndicatorDefinition 
             .meaning("fixed local-time offset from UTC in whole seconds the periods are cut in (a fraction is cut off)"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::price().range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         let count = p.count("count") as u32;
         let period_tf = match p.choice("unit") {

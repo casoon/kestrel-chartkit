@@ -335,6 +335,11 @@ pub const EXTENDED_VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefini
                 .meaning("price bins across the window's range"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .needs_real_volume()
+            .roll_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ExtendedVolumeProfileEngine::new(p.count("lookback"), p.count("num_bins")))),
     };
 

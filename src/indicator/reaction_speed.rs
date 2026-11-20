@@ -364,6 +364,8 @@ pub const REACTION_SPEED_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("atr_move", 1.6, 0.1, 20.0).meaning("move in ATRs that validates the reaction"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ReactionSpeed::new(ReactionSpeedConfig {
                 atr_len: p.count("atr_len"),

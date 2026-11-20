@@ -649,6 +649,8 @@ pub const OVEREXTENSION_RISK_DEFINITION: super::definition::IndicatorDefinition 
             super::definition::ParamSpec::count("structure_len", 80, 2, 2000).meaning("bars the structure extremes are taken from"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(OverextensionRisk::new(OverextensionRiskConfig {
                 w_stretch: p.number("w_stretch"),

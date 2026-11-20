@@ -593,6 +593,14 @@ pub const CHART_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinition {
             .meaning("percent of the opening gap a boundary may move and still count as flat"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless()
+        .session_sensitive()
+        .roll_sensitive()
+        .adjustment_sensitive()
+        .range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         Ok(Box::new(ChartPatternsEngine::new(
             p.count("depth"),
@@ -618,6 +626,14 @@ pub const HARMONIC_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinitio
             .meaning("minimum half-width of the reversal zone as a share of the XA leg"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless()
+        .session_sensitive()
+        .roll_sensitive()
+        .adjustment_sensitive()
+        .range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         Ok(Box::new(HarmonicPatternsEngine::new(
             p.count("depth"),

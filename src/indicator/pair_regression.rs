@@ -1,9 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 
-use super::definition::{ParamSpec, ResolvedParams};
+use super::definition::{IndicatorFacts, ParamSpec, ResolvedParams, Verification};
 use super::pair::{PairIndicator, PairIndicatorDefinition};
-use super::registry::{OutputRange, RegistryError};
-use super::unit::IndicatorUnit;
+use super::registry::RegistryError;
 use super::IndicatorOutput;
 use crate::cross_asset::{compute_pair_spread, compute_rolling_beta};
 use crate::model::Bar;
@@ -92,8 +91,8 @@ pub const ROLLING_BETA_DEFINITION: PairIndicatorDefinition = PairIndicatorDefini
     description: "Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared",
     params: &[ParamSpec::count("len", 60, 3, 10000).meaning("return pairs in the rolling window")],
     checks: &[],
-    unit: IndicatorUnit::Ratio,
-    output_range: OutputRange::Unbounded,
+    facts: IndicatorFacts::ratio().same_adjustment_and_session(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_rolling_beta,
 };
 
@@ -171,8 +170,10 @@ pub const PAIR_SPREAD_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinit
     description: "Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation",
     params: &[ParamSpec::count("len", 60, 3, 10000).meaning("paired closes in the rolling window")],
     checks: &[],
-    unit: IndicatorUnit::Ratio,
-    output_range: OutputRange::Centered { center: 0.0 },
+    facts: IndicatorFacts::ratio()
+        .centered(0.0)
+        .same_adjustment_and_session(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_pair_spread,
 };
 

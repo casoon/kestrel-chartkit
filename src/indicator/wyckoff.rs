@@ -1618,6 +1618,11 @@ pub const WYCKOFF_DEFINITION: super::definition::IndicatorDefinition = super::de
         super::definition::ParamSpec::number("abandon_atr", 1.0, 0.0, 1000.0).meaning("a close this far outside the range, in ATR, abandons it in Phases A to C"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless()
+        .needs_real_volume()
+        .structure_method(crate::applicability::StructureMethod::WyckoffRange)
+        .range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(WyckoffStateMachine::with_params(WyckoffParams {
             range_lookback: p.count("range_lookback"),

@@ -89,6 +89,8 @@ pub const LSMA_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 25, 2, 10000)
             .meaning("bars in the regression window")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(LsmaEngine::new(p.count("period")))),
     };
 

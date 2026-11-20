@@ -3,10 +3,9 @@ use std::fmt;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::definition::{ParamSpec, ResolvedParams};
+use super::definition::{IndicatorFacts, ParamSpec, ResolvedParams, Verification};
 use super::other_input::{IntrabarDefinition, IntrabarIndicator};
-use super::registry::{OutputRange, RegistryError};
-use super::unit::IndicatorUnit;
+use super::registry::RegistryError;
 use crate::intrabar::IntrabarGroup;
 use crate::model::Bar;
 
@@ -307,8 +306,8 @@ pub const INTRABAR_CVD_DEFINITION: IntrabarDefinition = IntrabarDefinition {
         .meaning("how a child bar that closes where it opened or where the previous child closed is booked"),
     ],
     checks: &[],
-    unit: IndicatorUnit::Volume,
-    output_range: OutputRange::Unbounded,
+    facts: IndicatorFacts::volume().needs_real_volume(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_intrabar_cvd,
 };
 

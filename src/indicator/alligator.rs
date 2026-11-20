@@ -115,6 +115,8 @@ pub const ALLIGATOR_DEFINITION: super::definition::IndicatorDefinition =
         description: "Williams Alligator (Jaw, Teeth, Lips)",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().native_hl2(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(AlligatorEngine::new())),
     };
 

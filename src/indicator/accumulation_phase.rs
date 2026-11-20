@@ -535,6 +535,8 @@ pub const ACCUMULATION_PHASE_DEFINITION: super::definition::IndicatorDefinition 
             super::definition::ParamSpec::number("atr_compress", 0.8, 0.3, 5.0).meaning("ATR against its average below which volatility compresses"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = AccumulationPhaseConfig {
                 atr_len: p.count("atr_len"),

@@ -87,6 +87,10 @@ pub const FRACTAL_DIMENSION_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("`halves`: ln of the two half-window ranges against the whole one over ln 2; `path`: 1 + ln(path / range) / ln(period)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| {
             Ok(Box::new(FractalDimensionEngine::new(
                 p.count("period"),

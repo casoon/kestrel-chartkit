@@ -244,6 +244,12 @@ pub const PIVOT_SETS_DEFINITION: super::definition::IndicatorDefinition =
         )
         .meaning("which pivot formula the levels follow")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .session_sensitive()
+            .roll_sensitive()
+            .adjustment_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let pivot_type = match p.choice("pivot_type") {
                 "fibonacci" => PivotSetType::Fibonacci,

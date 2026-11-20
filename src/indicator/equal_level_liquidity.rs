@@ -656,6 +656,8 @@ pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefiniti
             super::definition::ParamSpec::count("list_min_touches", 2, 1, 20).meaning("pivots a level needs to be listed in the output"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = EqualLevelLiquidityConfig {
                 pivot_len: p.count("pivot_len"),

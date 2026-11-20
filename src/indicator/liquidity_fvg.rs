@@ -205,6 +205,8 @@ pub const LIQUIDITY_FVG_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars kept for gap and sweep detection"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(LiquidityFvgEngine::new(p.count("lookback")))),
     };
 

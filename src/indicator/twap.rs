@@ -189,6 +189,8 @@ pub const TWAP_DEFINITION: super::definition::IndicatorDefinition = super::defin
             .meaning("the anchor for anchor=manual_timestamp"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::price(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let weighting = match p.choice("weighting") {
             "by_duration" => TwapWeighting::ByDuration,

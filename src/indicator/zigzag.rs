@@ -186,6 +186,12 @@ pub const ZIGZAG_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("minimum price move, in percent, that starts a new leg"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .session_sensitive()
+            .roll_sensitive()
+            .adjustment_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ZigZagEngine::new(
                 p.count("depth"),

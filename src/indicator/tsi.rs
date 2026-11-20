@@ -290,6 +290,8 @@ pub const TSI_DEFINITION: super::definition::IndicatorDefinition =
             lower: "short_len",
             upper: "long_len",
         }],
+        facts: super::definition::IndicatorFacts::ratio().bounded(-100.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(Tsi::new(
                 p.count("long_len"),

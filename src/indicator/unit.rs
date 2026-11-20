@@ -5,13 +5,10 @@
 //! catalog did not say it, so every consumer rebuilt the knowledge by hand and every new
 //! indicator silently inherited whatever the consumer's fallback was.
 //!
-//! The lookup is a standalone function rather than a field on
-//! [`crate::indicator::registry::IndicatorCatalogEntry`], for the same reason
-//! [`crate::applicability::data_requirements`] is: not every indicator is a catalog entry.
-//! `elliott` is kept out of the single-bar registry by its call signature, and a function can
-//! grow to cover it without a signature change on that engine — a struct field cannot. It also keeps the addition non-breaking:
-//! `IndicatorCatalogEntry` has public fields and no `#[non_exhaustive]`, so a fourth field would
-//! break every caller that builds one by struct literal.
+//! The unit is declared once, in the entry's definition
+//! ([`IndicatorFacts::unit`](crate::indicator::definition::IndicatorFacts)), which has no default
+//! for it: a new entry must decide its unit instead of inheriting one. [`output_unit`] answers
+//! by name from there.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -63,220 +60,32 @@ pub enum IndicatorUnit {
 /// `trend_relationship` are not.
 pub fn output_unit(name: &str) -> IndicatorUnit {
     let lowered = name.to_lowercase();
-    OUTPUT_UNITS
-        .iter()
-        .find(|(candidate, _)| *candidate == lowered)
-        .map(|(_, unit)| *unit)
+    super::definition::definitions()
+        .find(|d| d.name == lowered)
+        .map(|d| d.facts.unit)
         .or_else(|| super::other_input::declared_unit_range(&lowered).map(|(unit, _)| unit))
         .unwrap_or(IndicatorUnit::Unitless)
 }
 
-/// Every canonical indicator name with the unit of its primary output.
-///
-/// Kept as an explicit table rather than a `match` with a catch-all so that
-/// `every_canonical_indicator_declares_its_unit` can prove the two lists agree in both
-/// directions. A new indicator therefore fails the test until someone decides its unit, instead
-/// of silently defaulting — which is exactly how nine price-unit indicators added between 0.2.0
-/// and 0.12.0 ended up misplaced in consumers.
-const OUTPUT_UNITS: &[(&str, IndicatorUnit)] = &[
-    ("acc_dist", IndicatorUnit::Volume),
-    ("accumulation_phase", IndicatorUnit::Unitless),
-    ("adaptive_chandelier", IndicatorUnit::Price),
-    ("adx", IndicatorUnit::Ratio),
-    ("alligator", IndicatorUnit::Price),
-    ("alma", IndicatorUnit::Price),
-    ("anchored_vwap", IndicatorUnit::Price),
-    ("aroon", IndicatorUnit::Ratio),
-    ("atr", IndicatorUnit::Ratio),
-    ("awesome_oscillator", IndicatorUnit::Unitless),
-    ("bbtrend", IndicatorUnit::Ratio),
-    ("bollinger", IndicatorUnit::Price),
-    ("bop", IndicatorUnit::Ratio),
-    ("bos_choch", IndicatorUnit::Unitless),
-    ("bottom_formation", IndicatorUnit::Unitless),
-    ("buy_sell_pressure", IndicatorUnit::Unitless),
-    ("candle_classification", IndicatorUnit::Unitless),
-    ("cci", IndicatorUnit::Ratio),
-    ("chaikin_oscillator", IndicatorUnit::Volume),
-    ("chande_kroll", IndicatorUnit::Price),
-    ("chandelier_exit", IndicatorUnit::Price),
-    ("chart_patterns", IndicatorUnit::Unitless),
-    ("choppiness", IndicatorUnit::Ratio),
-    ("cmf", IndicatorUnit::Ratio),
-    ("cmo", IndicatorUnit::Ratio),
-    ("coil_release", IndicatorUnit::Ratio),
-    ("compression_zones", IndicatorUnit::Ratio),
-    ("connors_rsi", IndicatorUnit::Ratio),
-    ("coppock", IndicatorUnit::Ratio),
-    ("cusum", IndicatorUnit::Unitless),
-    ("cvd", IndicatorUnit::Volume),
-    ("cycle_length", IndicatorUnit::Unitless),
-    ("dema", IndicatorUnit::Price),
-    ("dmi", IndicatorUnit::Ratio),
-    ("donchian", IndicatorUnit::Price),
-    ("double_pattern", IndicatorUnit::Unitless),
-    ("dpo", IndicatorUnit::Unitless),
-    ("efficiency", IndicatorUnit::Ratio),
-    ("efi", IndicatorUnit::Unitless),
-    ("elder_ray", IndicatorUnit::Unitless),
-    ("ema", IndicatorUnit::Price),
-    ("envelope", IndicatorUnit::Price),
-    ("eom", IndicatorUnit::Unitless),
-    ("equal_level_liquidity", IndicatorUnit::Unitless),
-    ("extended_volume_profile", IndicatorUnit::Price),
-    ("fisher_transform", IndicatorUnit::Ratio),
-    ("flow_exhaustion", IndicatorUnit::Ratio),
-    ("fractal_dimension", IndicatorUnit::Unitless),
-    ("fvg_fill", IndicatorUnit::Unitless),
-    ("gap", IndicatorUnit::Unitless),
-    ("garman_klass", IndicatorUnit::Ratio),
-    ("harmonic_patterns", IndicatorUnit::Unitless),
-    ("hires_volume_flow", IndicatorUnit::Volume),
-    ("historical_volatility", IndicatorUnit::Ratio),
-    ("hma", IndicatorUnit::Price),
-    ("ichimoku", IndicatorUnit::Price),
-    ("jma", IndicatorUnit::Price),
-    ("kama", IndicatorUnit::Price),
-    ("keltner", IndicatorUnit::Price),
-    ("klinger", IndicatorUnit::Volume),
-    ("kst", IndicatorUnit::Ratio),
-    ("leg_character", IndicatorUnit::Ratio),
-    ("leg_conviction", IndicatorUnit::Ratio),
-    ("liquidity_fvg", IndicatorUnit::Unitless),
-    ("liquidity_pools", IndicatorUnit::Unitless),
-    ("liquidity_sweeps", IndicatorUnit::Unitless),
-    ("lsma", IndicatorUnit::Price),
-    ("macd", IndicatorUnit::Unitless),
-    ("market_state_chain", IndicatorUnit::Ratio),
-    ("market_structure_breaks", IndicatorUnit::Unitless),
-    ("mass_index", IndicatorUnit::Ratio),
-    ("mcginley", IndicatorUnit::Price),
-    ("mfi", IndicatorUnit::Ratio),
-    ("midas", IndicatorUnit::Price),
-    ("money_flow_profile", IndicatorUnit::Price),
-    ("multi_factor", IndicatorUnit::Ratio),
-    ("nvi", IndicatorUnit::Unitless),
-    ("obv", IndicatorUnit::Volume),
-    ("opening_range", IndicatorUnit::Unitless),
-    ("order_block", IndicatorUnit::Unitless),
-    ("oscillator_pivot_divergence", IndicatorUnit::Unitless),
-    ("overextension_risk", IndicatorUnit::Ratio),
-    ("parabolic_sar", IndicatorUnit::Price),
-    ("percent_rank", IndicatorUnit::Ratio),
-    ("period_midpoint", IndicatorUnit::Price),
-    ("persistent_volume_profile", IndicatorUnit::Price),
-    ("pivot_divergence", IndicatorUnit::Unitless),
-    ("pivot_sets", IndicatorUnit::Price),
-    ("pivots_structure", IndicatorUnit::Unitless),
-    ("pmo", IndicatorUnit::Ratio),
-    ("point_and_figure", IndicatorUnit::Unitless),
-    ("ppo", IndicatorUnit::Ratio),
-    ("price_average_relation", IndicatorUnit::Unitless),
-    ("price_location", IndicatorUnit::Unitless),
-    ("pvi", IndicatorUnit::Unitless),
-    ("pvt", IndicatorUnit::Volume),
-    ("r_squared", IndicatorUnit::Ratio),
-    ("rci", IndicatorUnit::Ratio),
-    ("reaction_speed", IndicatorUnit::Ratio),
-    ("relative_volatility", IndicatorUnit::Ratio),
-    ("reversal_setup_score", IndicatorUnit::Unitless),
-    ("rma", IndicatorUnit::Price),
-    ("roc", IndicatorUnit::Ratio),
-    ("roc_context", IndicatorUnit::Ratio),
-    ("rsi", IndicatorUnit::Ratio),
-    ("rsi_cycle_stats", IndicatorUnit::Ratio),
-    ("rvat", IndicatorUnit::Ratio),
-    ("rvi", IndicatorUnit::Ratio),
-    ("rvol", IndicatorUnit::Ratio),
-    ("sma", IndicatorUnit::Price),
-    ("smi", IndicatorUnit::Ratio),
-    ("smoothed_supertrend", IndicatorUnit::Price),
-    ("stoch_rsi", IndicatorUnit::Ratio),
-    ("stoch_rsi_divergence", IndicatorUnit::Unitless),
-    ("stochastic", IndicatorUnit::Ratio),
-    ("structural_flow", IndicatorUnit::Unitless),
-    ("structure_zones", IndicatorUnit::Unitless),
-    ("super_smoother", IndicatorUnit::Price),
-    ("supertrend", IndicatorUnit::Price),
-    ("sweep_reversal_score", IndicatorUnit::Unitless),
-    ("swing_structure", IndicatorUnit::Unitless),
-    ("t3", IndicatorUnit::Price),
-    ("tema", IndicatorUnit::Price),
-    ("tradability_filter", IndicatorUnit::Ratio),
-    ("trend_break_risk", IndicatorUnit::Ratio),
-    ("trend_quality", IndicatorUnit::Unitless),
-    ("trend_relationship", IndicatorUnit::Unitless),
-    ("trendlines", IndicatorUnit::Unitless),
-    ("trix", IndicatorUnit::Ratio),
-    ("true_range", IndicatorUnit::Unitless),
-    ("tsi", IndicatorUnit::Ratio),
-    ("twap", IndicatorUnit::Price),
-    ("ulcer_index", IndicatorUnit::Ratio),
-    ("ultimate_oscillator", IndicatorUnit::Ratio),
-    ("vidya", IndicatorUnit::Price),
-    ("vix_fix", IndicatorUnit::Ratio),
-    ("volatility_regime", IndicatorUnit::Unitless),
-    ("volume", IndicatorUnit::Volume),
-    ("volume_profile", IndicatorUnit::Price),
-    ("vortex", IndicatorUnit::Ratio),
-    ("vwap", IndicatorUnit::Price),
-    ("vwap_regime", IndicatorUnit::Unitless),
-    ("vwma", IndicatorUnit::Price),
-    ("wavetrend", IndicatorUnit::Ratio),
-    ("wavetrend_divergence", IndicatorUnit::Unitless),
-    ("williams_r", IndicatorUnit::Ratio),
-    ("wma", IndicatorUnit::Price),
-    ("wyckoff", IndicatorUnit::Unitless),
-    ("zigzag", IndicatorUnit::Price),
-    ("zigzag_advanced", IndicatorUnit::Price),
-    ("zone_rejection", IndicatorUnit::Unitless),
-    ("zscore", IndicatorUnit::Ratio),
-    // The selected oscillator — RSI is a ratio, WaveTrend and CCI are not; the conservative
-    // Wie `pivot_divergence`: der gewählte Oszillator.
-    // answer covers all five.
-];
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::indicator::registry::{build_checked, CANONICAL_INDICATOR_NAMES};
+    use crate::indicator::registry::build_checked;
     use crate::model::Bar;
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
-    /// The reason this is a table and not a `match` with a catch-all: a new indicator must not be
-    /// able to inherit a default. Whoever adds it to the registry decides its unit here, or this
-    /// test fails.
+    /// Every `Bars` entry carries its unit in its definition (the constructor takes it, there is
+    /// no default), and `output_unit` answers it by canonical name.
     #[test]
     fn every_canonical_indicator_declares_its_unit() {
-        let declared: HashSet<&str> = OUTPUT_UNITS.iter().map(|(name, _)| *name).collect();
-        let canonical: HashSet<&str> = CANONICAL_INDICATOR_NAMES.iter().copied().collect();
-
-        let undeclared: Vec<&&str> = canonical.difference(&declared).collect();
-        assert!(
-            undeclared.is_empty(),
-            "buildable but no declared output unit — they would silently fall back to Unitless \
-             and be drawn in their own pane: {undeclared:?}"
-        );
-
-        let stale: Vec<&&str> = declared.difference(&canonical).collect();
-        assert!(
-            stale.is_empty(),
-            "declared here but not a canonical indicator name: {stale:?}"
-        );
-
-        assert_eq!(
-            OUTPUT_UNITS.len(),
-            declared.len(),
-            "duplicate name in OUTPUT_UNITS — the first entry would win silently"
-        );
-    }
-
-    #[test]
-    fn the_table_is_sorted_so_additions_land_in_one_obvious_place() {
-        let names: Vec<&str> = OUTPUT_UNITS.iter().map(|(name, _)| *name).collect();
-        let mut sorted = names.clone();
-        sorted.sort_unstable();
-        assert_eq!(names, sorted, "keep OUTPUT_UNITS in alphabetical order");
+        for definition in crate::indicator::definition::definitions() {
+            assert_eq!(
+                output_unit(definition.name),
+                definition.facts.unit,
+                "{}",
+                definition.name
+            );
+        }
     }
 
     #[test]
@@ -372,7 +181,8 @@ mod tests {
         let mut not_price_after_all = Vec::new();
         let mut price_in_disguise = Vec::new();
 
-        for (name, unit) in OUTPUT_UNITS {
+        for definition in crate::indicator::definition::definitions() {
+            let (name, unit) = (&definition.name, &definition.facts.unit);
             let series = series_in_band(name, &bars, band);
             // `rvat` needs a session history no synthetic run provides and stays silent.
             if series.is_empty() {

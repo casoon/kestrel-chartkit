@@ -310,6 +310,11 @@ pub const VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("price bins across the window's range"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .needs_real_volume()
+            .roll_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(VolumeProfileEngine::new(
                 p.count("lookback"),

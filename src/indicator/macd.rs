@@ -170,6 +170,8 @@ pub const MACD_DEFINITION: super::definition::IndicatorDefinition =
             lower: "fast_len",
             upper: "slow_len",
         }],
+        facts: super::definition::IndicatorFacts::unitless().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(Macd::new(
                 p.count("fast_len"),

@@ -436,6 +436,12 @@ pub const ZIGZAG_ADVANCED_DEFINITION: super::definition::IndicatorDefinition = s
         super::definition::ParamSpec::count("atr_len", 14, 1, 10000).meaning("bars in the ATR"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::price()
+        .session_sensitive()
+        .roll_sensitive()
+        .adjustment_sensitive()
+        .range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let value = p.number("deviation_pct");
         let deviation = match p.choice("deviation_mode") {

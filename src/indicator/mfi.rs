@@ -260,6 +260,11 @@ pub const MFI_DEFINITION: super::definition::IndicatorDefinition = super::defini
             lower: "oversold",
             upper: "overbought",
         }],
+    facts: super::definition::IndicatorFacts::ratio()
+        .bounded(0.0, 100.0)
+        .needs_real_volume()
+        .native_hlc3(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(Mfi::new(
             p.count("mfi_len"),

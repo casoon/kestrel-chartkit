@@ -243,6 +243,10 @@ pub const ADX_DEFINITION: super::definition::IndicatorDefinition =
                 .threshold(),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(0.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(Adx::new(
                 p.count("di_len"),

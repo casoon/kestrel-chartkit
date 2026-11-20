@@ -188,6 +188,8 @@ pub const TREND_RELATIONSHIP_DEFINITION: super::definition::IndicatorDefinition 
             lower: "fast_len",
             upper: "slow_len",
         }],
+        facts: super::definition::IndicatorFacts::unitless(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let kind = |name| SmootherKind::from_name(p.choice(name)).unwrap_or_default();
             Ok(Box::new(AdaptiveTrendRelationship::new(

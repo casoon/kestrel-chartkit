@@ -188,6 +188,10 @@ pub const WAVETREND_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("lower zone, alerts below it"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .centered(0.0)
+            .native_hlc3(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(WaveTrendEngine::new(
                 p.count("n1"),

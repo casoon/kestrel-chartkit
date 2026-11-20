@@ -156,6 +156,8 @@ pub const VOLATILITY_REGIME_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("ATR multiple of the Keltner channel"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(VolatilityRegimeDetector::new(
                 p.count("period"),

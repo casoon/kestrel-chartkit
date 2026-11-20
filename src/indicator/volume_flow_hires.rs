@@ -221,6 +221,8 @@ pub const HIRES_VOLUME_FLOW_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the rolling volume threshold for absorption"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume().needs_real_volume().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(HiResVolumeFlowEngine::new(p.count("window_len")))),
     };
 

@@ -137,5 +137,7 @@ pub const TRIX_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the EMA of the TRIX line (signal)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(Trix::new(p.count("len"), p.count("signal_len")))),
     };

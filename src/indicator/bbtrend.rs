@@ -108,6 +108,8 @@ pub const BBTREND_DEFINITION: super::definition::IndicatorDefinition = super::de
                 upper: "long_len",
             },
         ],
+    facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let variance = match p.choice("variance") {
             "sample" => VarianceConvention::Sample,

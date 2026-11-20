@@ -79,6 +79,8 @@ pub const TEMA_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("length of each of the three chained EMAs")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(TemaEngine::new(p.count("period")))),
     };
 

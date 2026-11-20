@@ -87,6 +87,10 @@ pub const CHOPPINESS_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
             .meaning("bars whose true ranges are compared with their overall range")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(0.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ChoppinessIndexEngine::new(p.count("period")))),
     };
 

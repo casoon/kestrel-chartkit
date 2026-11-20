@@ -369,6 +369,8 @@ pub const ADAPTIVE_CHANDELIER_DEFINITION: super::definition::IndicatorDefinition
             super::definition::ParamSpec::number("warn_dist_atr", 0.75, 0.0, 100.0).meaning("distance from the stop, in ATRs, below which the risk state is warning"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             // `use_close_extremes`/`simple_adaptive` fixed to their documented defaults
             // (true/false), as in the f64-only registry entry.

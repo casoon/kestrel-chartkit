@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use super::definition::{ParamSpec, ResolvedParams};
+use super::definition::{IndicatorFacts, ParamSpec, ResolvedParams, Verification};
 use super::pair::{PairIndicator, PairIndicatorDefinition};
-use super::registry::{OutputRange, RegistryError};
-use super::unit::IndicatorUnit;
+use super::registry::RegistryError;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -164,8 +163,10 @@ pub const RELATIVE_STRENGTH_DEFINITION: PairIndicatorDefinition = PairIndicatorD
         ParamSpec::count("len", 20, 1, 10000).meaning("bars between the two closes of each return")
     ],
     checks: &[],
-    unit: IndicatorUnit::Ratio,
-    output_range: OutputRange::Centered { center: 0.0 },
+    facts: IndicatorFacts::ratio()
+        .centered(0.0)
+        .same_adjustment_and_session(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_relative_strength,
 };
 

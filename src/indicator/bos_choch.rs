@@ -166,6 +166,8 @@ pub const BOS_CHOCH_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars on each side of a pivot"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(BosChochEngine::new(p.count("pivot_len")))),
     };
 

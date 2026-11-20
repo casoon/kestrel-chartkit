@@ -141,6 +141,10 @@ pub const POINT_AND_FIGURE_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("prices that build the chart: the close, or high and low read in the direction of the column first"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .structure_method(crate::applicability::StructureMethod::PointAndFigure)
+            .range_dependent(),
+        verification: super::definition::Verification::Open("verification not completed"),
         build: |p| {
             Ok(Box::new(PointAndFigureEngine::new(
                 p.number("box_size"),

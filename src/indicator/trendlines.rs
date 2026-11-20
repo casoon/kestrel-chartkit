@@ -479,6 +479,12 @@ pub const TRENDLINES_DEFINITION: super::definition::IndicatorDefinition = super:
             .meaning("distance from a line, in ATR, within which a node or a bar touches it and beyond which a node pierces it"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless()
+        .session_sensitive()
+        .roll_sensitive()
+        .adjustment_sensitive()
+        .range_dependent(),
+    verification: super::definition::Verification::Open("verification not completed"),
     build: |p| {
         let value = p.number("deviation_pct");
         let deviation = match p.choice("deviation_mode") {

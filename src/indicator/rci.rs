@@ -116,5 +116,7 @@ pub const RCI_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("len", 9, 2, 10000)
             .meaning("bars ranked against time")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(-100.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RciEngine::new(p.count("len")))),
     };

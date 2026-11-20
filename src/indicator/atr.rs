@@ -265,6 +265,8 @@ pub const ATR_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the Wilder average of the percentage (signal)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().non_negative().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let smoothing = SmootherKind::from_name(p.choice("smoothing"))
                 .and_then(TrueRangeSmoothing::from_kind)

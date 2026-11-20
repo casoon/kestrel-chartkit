@@ -145,6 +145,8 @@ pub const CONNORS_RSI_DEFINITION: super::definition::IndicatorDefinition =
             ),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ConnorsRsiEngine::new(
                 p.count("rsi_len"),

@@ -266,6 +266,11 @@ pub const ANCHORED_VWAP_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("outer band, in standard deviations"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .needs_real_volume()
+            .session_sensitive()
+            .native_hlc3(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let anchor = match p.choice("anchor_kind") {
                 "day" => VwapAnchorKind::Day,

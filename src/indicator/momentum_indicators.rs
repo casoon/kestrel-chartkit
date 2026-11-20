@@ -561,6 +561,10 @@ pub const STOCHASTIC_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the SMA of %K (%D)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(0.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(StochasticEngine::new(
                 p.count("k_period"),
@@ -577,6 +581,8 @@ pub const ROC_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 12, 1, 10000)
             .meaning("bars back to the compared close")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RocEngine::new(p.count("period")))),
     };
 
@@ -603,6 +609,10 @@ pub const ULTIMATE_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition
                 upper: "period3",
             },
         ],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(0.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(UltimateOscillatorEngine::new(
                 p.count("period1"),
@@ -627,6 +637,10 @@ pub const AWESOME_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition 
             lower: "fast_period",
             upper: "slow_period",
         }],
+        facts: super::definition::IndicatorFacts::unitless()
+            .centered(0.0)
+            .native_hl2(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(AwesomeOscillatorEngine::new(
                 p.count("fast_period"),
@@ -652,6 +666,8 @@ pub const PPO_DEFINITION: super::definition::IndicatorDefinition =
             lower: "fast_period",
             upper: "slow_period",
         }],
+        facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(PpoEngine::new(
                 p.count("fast_period"),
@@ -669,6 +685,8 @@ pub const CMO_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("changes of the close summed")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(-100.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(CmoEngine::new(p.count("period")))),
     };
 
@@ -680,5 +698,9 @@ pub const ELDER_RAY_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 13, 1, 10000)
             .meaning("bars in the EMA of the close")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .centered(0.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ElderRayEngine::new(p.count("period")))),
     };

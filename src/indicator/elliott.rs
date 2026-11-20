@@ -70,8 +70,18 @@ use std::fmt;
 use crate::model::SeriesCapabilities;
 use crate::stats::rolling_median;
 
+use super::definition::{IndicatorFacts, ModuleApiDefinition};
 use super::price_levels::{swing_fibonacci_levels, PriceLevel};
 use super::zigzag_advanced::ZigZagNode;
+use crate::applicability::StructureMethod;
+
+/// What [`crate::applicability::data_requirements`] answers for `elliott`: the rules compare leg
+/// lengths and swing levels, so the series property rules of [`StructureMethod::ElliottWaves`]
+/// apply instead of the generic session, roll and adjustment flags.
+pub const ELLIOTT_API: ModuleApiDefinition = ModuleApiDefinition {
+    name: "elliott",
+    facts: IndicatorFacts::unitless().structure_method(StructureMethod::ElliottWaves),
+};
 
 /// A rule violation found while validating a labeling. `rule` is a stable identifier, `detail`
 /// the sentence that goes with it.

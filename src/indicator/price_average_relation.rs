@@ -1002,6 +1002,8 @@ pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinit
             super::definition::ParamSpec::count("turn_lookback", 30, 5, 150).meaning("bars a turn looks back for that level"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let ma_kind = MA_KINDS[p.count("ma_kind")];
             Ok(Box::new(PriceAverageRelation::new(PriceAverageRelationConfig {

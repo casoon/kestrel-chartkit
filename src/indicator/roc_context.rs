@@ -363,6 +363,8 @@ pub const ROC_CONTEXT_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("stall_len", 5, 1, 200).meaning("bars a stall is measured over"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let ma_kind = MA_KINDS[p.count("ma_kind")];
             Ok(Box::new(RocContext::new(RocContextConfig {

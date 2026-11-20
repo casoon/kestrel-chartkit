@@ -74,6 +74,8 @@ pub const ZSCORE_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 2, 10000)
             .meaning("closes in the mean and population standard deviation")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ZScoreEngine::new(p.count("period")))),
     };
 

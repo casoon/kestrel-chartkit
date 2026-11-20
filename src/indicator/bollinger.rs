@@ -204,6 +204,8 @@ pub const BOLLINGER_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("band distance from the basis, in standard deviations"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let variance = match p.choice("variance") {
                 "sample" => VarianceConvention::Sample,

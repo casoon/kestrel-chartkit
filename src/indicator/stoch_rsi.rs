@@ -315,6 +315,8 @@ pub const STOCH_RSI_DEFINITION: super::definition::IndicatorDefinition =
             lower: "oversold",
             upper: "overbought",
         }],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(StochRsi::new(
                 p.count("rsi_len"),

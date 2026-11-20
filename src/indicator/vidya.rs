@@ -91,5 +91,7 @@ pub const VIDYA_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("base exponential smoothing that the CMO scales"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(Vidya::new(p.count("cmo_len"), p.count("ema_len")))),
     };

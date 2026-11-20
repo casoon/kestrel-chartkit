@@ -533,6 +533,8 @@ pub const BOTTOM_FORMATION_DEFINITION: super::definition::IndicatorDefinition = 
         super::definition::ParamSpec::number("retest_atr", 0.5, 0.0, 100.0).meaning("distance to the intermediate high, in ATR, that counts as a retest"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(BottomFormation::new(
             p.count("pivot_len"),

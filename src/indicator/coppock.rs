@@ -85,6 +85,8 @@ pub const COPPOCK_DEFINITION: super::definition::IndicatorDefinition =
         description: "Coppock Curve",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(CoppockCurveEngine::new())),
     };
 

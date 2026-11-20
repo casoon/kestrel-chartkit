@@ -160,6 +160,8 @@ pub const SMI_DEFINITION: super::definition::IndicatorDefinition = super::defini
             super::definition::ParamSpec::count("signal_len", 3, 1, 10000).meaning("bars in the EMA of the SMI line (signal)"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::ratio().centered(0.0).range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(StochasticMomentumIndex::new(
             p.count("len"),

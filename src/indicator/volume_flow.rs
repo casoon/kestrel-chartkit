@@ -218,6 +218,10 @@ pub const CVD_DEFINITION: super::definition::IndicatorDefinition =
                       nicht aus klassifizierten Abschlüssen)",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume()
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(CvdEngine::new())),
     };
 
@@ -238,6 +242,11 @@ pub const KLINGER_DEFINITION: super::definition::IndicatorDefinition =
             lower: "fast_len",
             upper: "slow_len",
         }],
+        facts: super::definition::IndicatorFacts::volume()
+            .centered(0.0)
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(KlingerVolumeForceEngine::new(
                 p.count("fast_len"),

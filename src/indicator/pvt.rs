@@ -73,5 +73,7 @@ pub const PVT_DEFINITION: super::definition::IndicatorDefinition =
             "Price Volume Trend (volume weighted by the relative price change, accumulated)",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume().needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(PriceVolumeTrend::new())),
     };

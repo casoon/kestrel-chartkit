@@ -663,6 +663,8 @@ pub const LEG_CHARACTER_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("change_buffer", 5.0, 0.0, 25.0).meaning("points below its threshold a class is kept (hysteresis)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = LegCharacterConfig {
                 pivot_left: p.count("pivot_left"),

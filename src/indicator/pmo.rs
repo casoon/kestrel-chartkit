@@ -128,6 +128,8 @@ pub const PMO_DEFINITION: super::definition::IndicatorDefinition = super::defini
             super::definition::ParamSpec::count("signal_len", 10, 1, 10000).meaning("bars in the EMA of the PMO line (signal)"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::ratio().centered(0.0),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(PriceMomentumOscillator::new(
             p.count("length_1"),

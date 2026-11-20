@@ -325,6 +325,8 @@ pub const FISHER_TRANSFORM_DEFINITION: super::definition::IndicatorDefinition = 
             lower: "oversold",
             upper: "overbought",
         }],
+    facts: super::definition::IndicatorFacts::ratio().centered(0.0).native_hl2(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(FisherTransform::new(
             p.count("fish_len"),

@@ -146,6 +146,8 @@ pub const NVI_DEFINITION: super::definition::IndicatorDefinition =
         description: "Negative Volume Index",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(NviEngine::new())),
     };
 
@@ -156,6 +158,8 @@ pub const PVI_DEFINITION: super::definition::IndicatorDefinition =
         description: "Positive Volume Index",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(PviEngine::new())),
     };
 

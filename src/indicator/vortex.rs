@@ -103,6 +103,10 @@ pub const VORTEX_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars summed for the vortex movements and the true range")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .non_negative()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(VortexEngine::new(p.count("period")))),
     };
 

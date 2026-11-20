@@ -780,6 +780,8 @@ pub const TRADABILITY_FILTER_DEFINITION: super::definition::IndicatorDefinition 
             super::definition::ParamSpec::count("confirm_bars", 2, 1, 10).meaning("bars a candidate state must hold before it is entered"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(TradabilityFilter::new(TradabilityFilterConfig {
                 quality_len: p.count("quality_len"),

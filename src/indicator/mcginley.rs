@@ -72,6 +72,8 @@ pub const MCGINLEY_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("nominal length of the dynamic average")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(McGinleyDynamicEngine::new(p.count("period")))),
     };
 

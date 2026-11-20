@@ -607,6 +607,10 @@ pub const DMI_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars in the Wilder smoothing of the directional movement")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(-100.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(DmiEngine::new(p.count("period")))),
     };
 
@@ -618,6 +622,10 @@ pub const AROON_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars searched for the latest high and low")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(-100.0, 100.0)
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(AroonEngine::new(p.count("period")))),
     };
 
@@ -633,6 +641,8 @@ pub const PARABOLIC_SAR_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("cap of the acceleration factor"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let (step, max_step) = (p.number("step"), p.number("max_step"));
             if step > max_step {
@@ -657,6 +667,8 @@ pub const SUPERTREND_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("band distance from hl2, in ATRs"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(SupertrendEngine::new(
                 p.count("period"),
@@ -688,6 +700,8 @@ pub const ICHIMOKU_DEFINITION: super::definition::IndicatorDefinition =
                 upper: "senkou_b_p",
             },
         ],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(IchimokuEngine::new(
                 p.count("tenkan_p"),

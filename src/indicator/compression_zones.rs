@@ -500,6 +500,8 @@ pub const COMPRESSION_ZONES_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("watch_bars", 20, 1, 200).meaning("bars after the zone a breakout still alerts"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(CompressionZones::new(CompressionZonesConfig {
                 lookback: p.count("lookback"),

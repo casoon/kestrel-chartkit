@@ -473,6 +473,8 @@ pub const RSI_DEFINITION: super::definition::IndicatorDefinition = super::defini
             lower: "oversold",
             upper: "overbought",
         }],
+    facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let smoothing = match p.choice("smoothing") {
             "wilder" => RsiSmoothing::Wilder,

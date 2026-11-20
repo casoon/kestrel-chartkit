@@ -279,6 +279,12 @@ pub const OPENING_RANGE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
             .meaning("fixed local-time offset from UTC in whole seconds (a fraction is cut off)"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless()
+        .non_negative()
+        .range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         let config = SessionConfig {
             start_hour: p.count("start_hour") as u8,

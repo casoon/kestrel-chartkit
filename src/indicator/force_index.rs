@@ -102,5 +102,10 @@ pub const EFI_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("ema_len", 13, 1, 10000)
             .meaning("bars in the EMA of the raw force")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .centered(0.0)
+            .needs_real_volume()
+            .source_fixed_to_close(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ElderForceIndex::new(p.count("ema_len")))),
     };

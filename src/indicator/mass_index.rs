@@ -83,6 +83,10 @@ pub const MASS_INDEX_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 25, 1, 10000)
             .meaning("number of EMA ratios summed")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .non_negative()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(MassIndexEngine::new(p.count("period")))),
     };
 

@@ -231,6 +231,8 @@ pub const MIDAS_DEFINITION: super::definition::IndicatorDefinition = super::defi
             .meaning("bars after an extreme until the curve counts as exhausted"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::price().needs_real_volume(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let mode = match p.choice("mode") {
             "bottomfinder" => MidasMode::Bottomfinder,

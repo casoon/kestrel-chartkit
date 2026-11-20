@@ -441,6 +441,8 @@ pub const MARKET_STATE_CHAIN_DEFINITION: super::definition::IndicatorDefinition 
             super::definition::ParamSpec::number("bias_margin", 8.0, 0.0, 100.0).meaning("probability lead that turns the bias, in percent"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(MarketStateChain::new(MarketStateChainConfig {
                 ema_len: p.count("ema_len"),

@@ -494,6 +494,8 @@ pub const COIL_RELEASE_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("chop_veto", 61.8, 30.0, 80.0).meaning("choppiness above which no alert fires"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(CoilRelease::new(CoilReleaseConfig {
                 len: p.count("len"),

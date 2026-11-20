@@ -150,5 +150,7 @@ pub const ULCER_INDEX_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("len", 14, 1, 10000)
             .meaning("bars in the running high and in the mean of the squared drawdowns")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().non_negative(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(UlcerIndexEngine::new(p.count("len")))),
     };

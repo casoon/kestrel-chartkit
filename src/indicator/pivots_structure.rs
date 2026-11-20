@@ -182,6 +182,12 @@ pub const PIVOTS_STRUCTURE_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("pivots in the rolling structure score"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .session_sensitive()
+            .roll_sensitive()
+            .adjustment_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(PivotStructureEngine::new(
                 p.count("left_bars"),

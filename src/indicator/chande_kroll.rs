@@ -146,5 +146,7 @@ pub const CHANDE_KROLL_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("mult", 3.0, 0.01, 100.0).meaning("ATR multiple between the window extreme and the preliminary stop"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(ChandeKrollStop::new(p.count("atr_len"), p.count("stop_len"), p.number("mult")))),
     };

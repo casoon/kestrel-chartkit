@@ -1,9 +1,8 @@
 use std::collections::VecDeque;
 
-use super::definition::{ParamSpec, ResolvedParams};
+use super::definition::{IndicatorFacts, ParamSpec, ResolvedParams, Verification};
 use super::pair::{PairIndicator, PairIndicatorDefinition};
-use super::registry::{OutputRange, RegistryError};
-use super::unit::IndicatorUnit;
+use super::registry::RegistryError;
 use super::IndicatorOutput;
 use crate::model::Bar;
 
@@ -85,11 +84,10 @@ pub const CORRELATION_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinit
     description: "Rolling Pearson correlation of the simple returns of two close series",
     params: &[ParamSpec::count("len", 20, 3, 10000).meaning("return pairs in the rolling window")],
     checks: &[],
-    unit: IndicatorUnit::Ratio,
-    output_range: OutputRange::Bounded {
-        min: -1.0,
-        max: 1.0,
-    },
+    facts: IndicatorFacts::ratio()
+        .bounded(-1.0, 1.0)
+        .same_adjustment_and_session(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_correlation,
 };
 

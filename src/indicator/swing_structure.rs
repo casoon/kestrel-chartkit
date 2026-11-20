@@ -352,6 +352,14 @@ pub const SWING_STRUCTURE_DEFINITION: IndicatorDefinition = IndicatorDefinition 
         ParamSpec::count("atr_len", 14, 1, 10000).meaning("Wilder ATR length the legs are measured in"),
     ],
     checks: &[],
+    facts: crate::indicator::definition::IndicatorFacts::unitless()
+        .session_sensitive()
+        .roll_sensitive()
+        .adjustment_sensitive()
+        .range_dependent(),
+    verification: crate::indicator::definition::Verification::Open(
+        "no independent second implementation yet",
+    ),
     build: |p| {
         Ok(Box::new(SwingStructureIndicator::new(
             p.count("left"),

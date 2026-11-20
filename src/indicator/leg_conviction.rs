@@ -305,6 +305,8 @@ pub const LEG_CONVICTION_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("w_volume", 0.2, 0.0, 1.0).meaning("weight of the volume gradient (0 without real volume)"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = LegConvictionConfig {
                 pivot_left: p.count("pivot_left"),

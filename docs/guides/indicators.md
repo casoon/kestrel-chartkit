@@ -51,7 +51,9 @@ in `extra["raw"]`.
 ## The registry
 
 `catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
-`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 158
+`default_params`, `input`, the `IndicatorInput` that says which builder builds it, and
+`verification`, whether the entry has passed its acceptance (`Verified`) or is still `Open` with
+the reason. It has 158
 entries (152 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
@@ -60,6 +62,15 @@ Behind the catalog, every indicator has one definition
 default, accepted range and meaning, the relations between parameters, and how it is built.
 `definition::families()` returns them grouped by family, for a parameter form or a picker that
 should not hard-code what the crate already knows.
+
+The definition is also the one place for everything else that is true of the entry:
+its `facts` (the unit and range of the output, how a requested price `source` is handled, what the
+calculation needs from the series and, for two-series entries, from the pair) and its
+`verification`. `output_unit`, `output_range`, `data_requirements` and `pair_requirements` read
+them from there; no list by name exists next to the definitions. A new entry therefore states its
+unit (the constructor `IndicatorFacts::price()`, `ratio()`, `volume()` or `unitless()` has no
+default), starts `Verification::Open` with the reason, and needs a row in `INDICATOR_STATUS.md`; a
+test holds the row's mark against the definition.
 
 `output_unit(name)` says what the indicator's `value` is quoted in — `Price`, `Ratio`, `Volume`
 or `Unitless`. A charting consumer needs this to decide where the result belongs: `Price` means a

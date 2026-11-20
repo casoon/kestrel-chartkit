@@ -477,6 +477,8 @@ pub const TREND_BREAK_RISK_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::count("smooth_len", 3, 1, 100).meaning("bars in the EMA of the raw risk"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             let cfg = TrendBreakRiskConfig {
                 bias_len: p.count("bias_len"),

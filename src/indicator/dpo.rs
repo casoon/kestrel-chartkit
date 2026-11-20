@@ -67,6 +67,8 @@ pub const DPO_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 21, 2, 10000)
             .meaning("bars in the SMA; the SMA is taken period/2 + 1 bars back")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().centered(0.0),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(DpoEngine::new(p.count("period")))),
     };
 

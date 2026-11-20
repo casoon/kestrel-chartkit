@@ -72,6 +72,8 @@ pub const ENVELOPE_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("band distance from the basis, in percent"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(EnvelopeEngine::new(
                 p.count("period"),

@@ -388,6 +388,10 @@ pub const VOLUME_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars in the volume average"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume()
+            .non_negative()
+            .needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(VolumeEngine::new(p.count("ma_period")))),
     };
 
@@ -399,6 +403,10 @@ pub const RVOL_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("bars in the volume average compared against")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .non_negative()
+            .needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RvolEngine::new(p.count("period")))),
     };
 
@@ -409,6 +417,8 @@ pub const OBV_DEFINITION: super::definition::IndicatorDefinition =
         description: "On-Balance Volume",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume().needs_real_volume(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(ObvEngine::new())),
     };
 
@@ -420,6 +430,11 @@ pub const CMF_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("bars summed for money flow and volume")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .bounded(-1.0, 1.0)
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(CmfEngine::new(p.count("period")))),
     };
 
@@ -430,5 +445,9 @@ pub const ACC_DIST_DEFINITION: super::definition::IndicatorDefinition =
         description: "Accumulation / Distribution Line",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::volume()
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(AccDistEngine::new())),
     };

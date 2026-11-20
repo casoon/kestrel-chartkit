@@ -451,6 +451,8 @@ pub const RSI_CYCLE_STATS_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("max_ci", 40.0, 1.0, 100.0).meaning("widest Wilson interval an opportunity allows, in percent"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(RsiCycleStats::new(RsiCycleStatsConfig {
                 rsi_len: p.count("rsi_len"),

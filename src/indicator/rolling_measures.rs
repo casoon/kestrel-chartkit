@@ -56,6 +56,10 @@ pub const R_SQUARED_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 2, 10000)
             .meaning("closes the line is fitted to")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 1.0),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| Ok(Box::new(RSquaredEngine::new(p.count("period")))),
     };
 
@@ -105,6 +109,10 @@ pub const PERCENT_RANK_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("previous closes the current one is ranked against")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| Ok(Box::new(PercentRankEngine::new(p.count("period")))),
     };
 
@@ -177,6 +185,10 @@ pub const CYCLE_LENGTH_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("completed swings the mean is taken over"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().non_negative(),
+        verification: super::definition::Verification::Open(
+            "no independent second implementation yet",
+        ),
         build: |p| {
             Ok(Box::new(CycleLengthEngine::new(
                 p.count("period"),

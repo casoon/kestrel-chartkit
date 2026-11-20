@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::definition::SourceHandling;
 pub use super::params::{ParamValue, TypedParams};
 use super::Indicator;
 
@@ -54,6 +55,8 @@ pub struct IndicatorCatalogEntry {
     pub default_params: HashMap<String, f64>,
     /// What the entry reads per step, and so which builder builds it.
     pub input: IndicatorInput,
+    /// Whether the entry has passed its acceptance; from its definition.
+    pub verification: super::definition::Verification,
 }
 
 /// Everything that computes per bar, each entry from its definition (plan 49 and 141): first the
@@ -98,82 +101,19 @@ pub enum OutputRange {
 
 /// Der Wertebereich der Ausgabe von `name`.
 ///
-/// Deklariert wird nur, was sich aus der Konstruktion des Indikators ergibt. Der Rest bleibt
-/// [`OutputRange::Unbounded`] — eine Deklaration auf Verdacht wäre schlechter als keine, weil ein
-/// Konsument sie für bare Münze nimmt. `tests/output_range_invariants.rs` prüft jede Angabe hier
-/// gegen tatsächliche Läufe, damit sie nicht still veralten kann.
+/// Deklariert wird nur, was sich aus der Konstruktion des Indikators ergibt, und zwar in dessen
+/// Definition ([`IndicatorFacts::output_range`](super::definition::IndicatorFacts)). Der Rest
+/// bleibt [`OutputRange::Unbounded`] — eine Deklaration auf Verdacht wäre schlechter als keine,
+/// weil ein Konsument sie für bare Münze nimmt. `tests/output_range_invariants.rs` prüft jede
+/// Angabe gegen tatsächliche Läufe, damit sie nicht still veralten kann.
 pub fn output_range(name: &str) -> OutputRange {
-    // Auf 0..100 normierte Anteilsmaße. `williams_r` gehört hierher und nicht nach -100..0: die
-    // Implementierung rechnet `100 * (close - lowest_low) / range`, also in der aufsteigenden
-    // Konvention — was auch die Voreinstellungen `oversold: 20` / `overbought: 80` erklärt.
-    const PROZENT: OutputRange = OutputRange::Bounded {
-        min: 0.0,
-        max: 100.0,
-    };
-
-    match name {
-        "adx"
-        | "choppiness"
-        | "connors_rsi"
-        | "efficiency"
-        | "mfi"
-        | "percent_rank"
-        | "relative_volatility"
-        | "rsi"
-        | "stoch_rsi"
-        | "stochastic"
-        | "ultimate_oscillator"
-        | "williams_r" => PROZENT,
-
-        // Auf -100..100 normierte Differenzmaße. `dmi` gehört hierher und nicht zu den
-        // Prozentmaßen: seine Hauptreihe ist `plus_di - minus_di`, die Differenz zweier
-        // 0..100-Werte — die einzelnen DI liegen als Nebenreihen darin. `aroon` ebenso: die
-        // Hauptreihe ist der Oszillator `up - down`, nicht eine der beiden Linien.
-        "aroon" | "cmo" | "dmi" | "rci" | "tsi" => OutputRange::Bounded {
-            min: -100.0,
-            max: 100.0,
-        },
-
-        // Um null schwankend, in ATR gemessen.
-        "price_location" => OutputRange::Centered { center: 0.0 },
-
-        // Bestimmtheitsmaß: ein Anteil der erklärten Streuung.
-        "r_squared" => OutputRange::Bounded { min: 0.0, max: 1.0 },
-
-        // Anteilsmaße mit Vorzeichen.
-        "bop" | "cmf" => OutputRange::Bounded {
-            min: -1.0,
-            max: 1.0,
-        },
-
-        // Um null schwankend und unbegrenzt: Differenzen, Abweichungen, Transformationen.
-        "awesome_oscillator" | "cci" | "chaikin_oscillator" | "coppock" | "dpo" | "efi"
-        | "elder_ray" | "eom" | "fisher_transform" | "klinger" | "kst" | "macd" | "ppo" | "roc"
-        | "bbtrend" | "pmo" | "smi" | "trix" | "wavetrend" | "zscore" => {
-            OutputRange::Centered { center: 0.0 }
-        }
-
-        // Spannen, Mengen und Verhältnisse — nie negativ, nach oben offen.
-        "atr"
-        | "cusum"
-        | "cycle_length"
-        | "garman_klass"
-        | "historical_volatility"
-        | "mass_index"
-        | "opening_range"
-        | "rvat"
-        | "rvol"
-        | "true_range"
-        | "ulcer_index"
-        | "vix_fix"
-        | "volume"
-        | "vortex" => OutputRange::NonNegative,
-
-        // An entry of another input kind declares its range in its definition.
-        _ => {
-            super::other_input::declared_unit_range(name).map_or(OutputRange::Unbounded, |(_, r)| r)
-        }
-    }
+    // One-series indicators are found by their canonical name only; an entry of another input
+    // kind also by alias.
+    super::definition::definitions()
+        .find(|d| d.name == name)
+        .map(|d| d.facts.output_range)
+        .or_else(|| super::other_input::declared_unit_range(name).map(|(_, range)| range))
+        .unwrap_or(OutputRange::Unbounded)
 }
 
 /// Die Parameter von `name`, die eine Schwelle im Wertebereich der Ausgabe bezeichnen.
@@ -351,131 +291,6 @@ pub fn canonical_name(name: &str) -> String {
     super::definition::definition(name).map_or_else(|| name.to_lowercase(), |d| d.name.to_string())
 }
 
-/// The price an indicator reads natively when it reduces a bar to one scalar, by canonical name.
-///
-/// Most read the close. These read a derived price instead: `hlc3` for CCI, MFI, VWAP, anchored
-/// VWAP and WaveTrend, `hl2` for the Fisher Transform, the Awesome Oscillator and the Alligator.
-/// [`build_typed`] compares a requested `source` against this, not against `Close`: an explicit
-/// `Source::Close` on CCI must switch it to the close, not leave it on its native `hlc3`.
-fn native_source(canonical: &str) -> crate::model::Source {
-    use crate::model::Source;
-    match canonical {
-        "cci" | "mfi" | "vwap" | "anchored_vwap" | "wavetrend" => Source::Hlc3,
-        "fisher_transform" | "awesome_oscillator" | "alligator" => Source::Hl2,
-        _ => Source::Close,
-    }
-}
-
-/// Indicators known to depend on the genuine OHLC range (true range, high/low pivots, volume-at-
-/// price, market-structure detection, ...), for which [`super::source_mapped::SourceMapped`]
-/// would silently collapse `high == low == open == close` to the selected source and degenerate
-/// their math. `build_typed` rejects a non-`Close` `source` for these rather than silently
-/// applying it; an explicit `Close` builds them unchanged (their native input is the whole bar).
-///
-/// Canonical names only — aliases are resolved through [`canonical_name`] first. The list covers
-/// every catalog entry that reads more than one bar field: a test feeds each remaining entry a
-/// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
-const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
-    "fvg_fill",
-    "chart_patterns",
-    "harmonic_patterns",
-    "vwap_regime",
-    "period_midpoint",
-    "opening_range",
-    "price_location",
-    "fractal_dimension",
-    "market_state_chain",
-    "reaction_speed",
-    "tradability_filter",
-    "compression_zones",
-    "coil_release",
-    "smoothed_supertrend",
-    "overextension_risk",
-    "flow_exhaustion",
-    "atr",
-    "zone_rejection",
-    "relative_volatility",
-    "smi",
-    "chande_kroll",
-    "true_range",
-    "adx",
-    "dmi",
-    "chandelier_exit",
-    "adaptive_chandelier",
-    "wyckoff",
-    "volume_profile",
-    "money_flow_profile",
-    "extended_volume_profile",
-    "persistent_volume_profile",
-    "pivots_structure",
-    "pivot_sets",
-    "zigzag",
-    "zigzag_advanced",
-    "trendlines",
-    "liquidity_pools",
-    "liquidity_sweeps",
-    "double_pattern",
-    "bottom_formation",
-    "price_average_relation",
-    "leg_conviction",
-    "trend_break_risk",
-    "sweep_reversal_score",
-    "equal_level_liquidity",
-    "leg_character",
-    "accumulation_phase",
-    "reversal_setup_score",
-    "structure_zones",
-    "structural_flow",
-    "pivot_divergence",
-    // Its own definition since plan 49; until then an alias of `pivot_divergence` and covered
-    // by its entry.
-    "oscillator_pivot_divergence",
-    "wavetrend_divergence",
-    "stoch_rsi_divergence",
-    "liquidity_fvg",
-    "gap",
-    "point_and_figure",
-    "order_block",
-    "bos_choch",
-    "market_structure_breaks",
-    "vix_fix",
-    "keltner",
-    "donchian",
-    "vortex",
-    "choppiness",
-    "mass_index",
-    "supertrend",
-    "parabolic_sar",
-    "ichimoku",
-    "aroon",
-    "garman_klass",
-    "hires_volume_flow",
-    "cvd",
-    "klinger",
-    "volatility_regime",
-    "swing_structure",
-    "bop",
-    "stochastic",
-    "rvi",
-    "williams_r",
-    "ultimate_oscillator",
-    "elder_ray",
-    "eom",
-    "cmf",
-    "acc_dist",
-    "chaikin_oscillator",
-    "candle_classification",
-    "buy_sell_pressure",
-    "trend_quality",
-    "multi_factor",
-];
-
-/// Indicators whose price source is fixed by an explicit decision rather than by their math:
-/// `SourceMapped` would compute a differently-defined series under the same name. `efi` weighs a
-/// close-to-close change by the bar's volume; pairing that volume with a derived price (hlc3,
-/// ohlc4, ...) needs its own documented contract before it is offered.
-const SOURCE_FIXED_INDICATORS: &[&str] = &["efi"];
-
 /// Builds an indicator from typed parameters (see [`ParamValue`]), validated against its
 /// definition like [`build_checked`]. Numeric values (`Float`, `Int`, `Bool`, `Timestamp`) count
 /// as numbers; choices take `Enum` names. `source` maps the bar to another price through
@@ -501,28 +316,31 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
         }
     };
 
-    let canonical = canonical_name(name);
+    // How the source is handled is declared in the definition, see [`SourceHandling`].
+    let handling = definition.facts.source;
     if let Some(s) = source {
-        if s != crate::model::Source::Close && SOURCE_FIXED_INDICATORS.contains(&canonical.as_str())
-        {
-            return Err(RegistryError::IncompatibleParameter {
-                parameter: "source".to_string(),
-                indicator: name.to_string(),
-                reason: "price source is fixed to the close by contract; another source would \
-                         redefine the series under the same name"
-                    .to_string(),
-            });
-        }
-
-        if s != crate::model::Source::Close
-            && RANGE_DEPENDENT_INDICATORS.contains(&canonical.as_str())
-        {
-            return Err(RegistryError::IncompatibleParameter {
-                parameter: "source".to_string(),
-                indicator: name.to_string(),
-                reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero"
-                    .to_string(),
-            });
+        if s != crate::model::Source::Close {
+            match handling {
+                SourceHandling::FixedToClose => {
+                    return Err(RegistryError::IncompatibleParameter {
+                        parameter: "source".to_string(),
+                        indicator: name.to_string(),
+                        reason: "price source is fixed to the close by contract; another source \
+                                 would redefine the series under the same name"
+                            .to_string(),
+                    });
+                }
+                SourceHandling::RangeDependent => {
+                    return Err(RegistryError::IncompatibleParameter {
+                        parameter: "source".to_string(),
+                        indicator: name.to_string(),
+                        reason: "range/OHLC-dependent indicator; SourceMapped would collapse its \
+                                 true range to zero"
+                            .to_string(),
+                    });
+                }
+                SourceHandling::Mapped(_) => {}
+            }
         }
     }
 
@@ -535,9 +353,9 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
     // Wrapped whenever the requested source differs from what the indicator reads natively —
     // for a close-native indicator that is any non-`Close` source, for CCI (`hlc3`) an explicit
     // `Close` as well. Range-dependent indicators only get here with `Close` (see above), which
-    // is their `native_source`, so they are never wrapped.
+    // is their native source, so they are never wrapped.
     Ok(match source {
-        Some(s) if s != native_source(&canonical) => {
+        Some(s) if s != handling.native() => {
             Box::new(super::source_mapped::SourceMapped::new(built, s))
         }
         _ => built,
@@ -550,168 +368,12 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 // raw ATR per bar (`update(bar, atr)`); its catalog entry `swing_structure` feeds it a Wilder ATR
 // of its own.
 
-/// Finding 04: every canonical indicator name `build_checked` can construct, kept as an explicit
-/// list (rather than derived from the match arms at runtime) so `catalog()` is checked against a
-/// concrete, reviewable contract instead of only a minimum count. Aliases (e.g. "vp", "ob", "wvf")
-/// are deliberately excluded: they must remain buildable but are not separate catalog entries.
-///
-/// Public (not `#[cfg(test)]`-gated) so tooling outside this crate's test suite — e.g.
-/// `examples/export_applicability.rs` — can iterate the same canonical name list rather than
-/// maintaining a second one.
-pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
-    "rsi",
-    "macd",
-    "bollinger",
-    "adx",
-    "stoch_rsi",
-    "cci",
-    "mfi",
-    "atr",
-    "chande_kroll",
-    "efi",
-    "trix",
-    "vidya",
-    "t3",
-    "ulcer_index",
-    "rci",
-    "smi",
-    "rvat",
-    "bbtrend",
-    "relative_volatility",
-    "twap",
-    "pvt",
-    "pmo",
-    "chandelier_exit",
-    "adaptive_chandelier",
-    "midas",
-    "trend_relationship",
-    "williams_r",
-    "tsi",
-    "fisher_transform",
-    "order_block",
-    "liquidity_fvg",
-    "gap",
-    "point_and_figure",
-    "market_structure_breaks",
-    "pivots_structure",
-    "volume_profile",
-    "money_flow_profile",
-    "extended_volume_profile",
-    "persistent_volume_profile",
-    "vwap",
-    "vix_fix",
-    "candle_classification",
-    "efficiency",
-    "cusum",
-    "volume",
-    "rvol",
-    "obv",
-    "cmf",
-    "acc_dist",
-    "true_range",
-    "keltner",
-    "donchian",
-    "historical_volatility",
-    "garman_klass",
-    "sma",
-    "ema",
-    "wma",
-    "vwma",
-    "hma",
-    "dema",
-    "kama",
-    "rma",
-    "alma",
-    "jma",
-    "super_smoother",
-    "dmi",
-    "aroon",
-    "parabolic_sar",
-    "supertrend",
-    "ichimoku",
-    "stochastic",
-    "roc",
-    "ultimate_oscillator",
-    "awesome_oscillator",
-    "ppo",
-    "wavetrend",
-    "cmo",
-    "elder_ray",
-    "anchored_vwap",
-    "cvd",
-    "hires_volume_flow",
-    "klinger",
-    "zigzag",
-    "zigzag_advanced",
-    "trendlines",
-    "pivot_sets",
-    "tema",
-    "lsma",
-    "mcginley",
-    "envelope",
-    "choppiness",
-    "vortex",
-    "alligator",
-    "connors_rsi",
-    "coppock",
-    "dpo",
-    "kst",
-    "mass_index",
-    "rvi",
-    "bop",
-    "eom",
-    "nvi",
-    "pvi",
-    "chaikin_oscillator",
-    "bos_choch",
-    "liquidity_sweeps",
-    "zone_rejection",
-    "double_pattern",
-    "bottom_formation",
-    "flow_exhaustion",
-    "overextension_risk",
-    "smoothed_supertrend",
-    "coil_release",
-    "compression_zones",
-    "roc_context",
-    "tradability_filter",
-    "reaction_speed",
-    "market_state_chain",
-    "rsi_cycle_stats",
-    "price_average_relation",
-    "leg_conviction",
-    "trend_break_risk",
-    "sweep_reversal_score",
-    "equal_level_liquidity",
-    "leg_character",
-    "accumulation_phase",
-    "reversal_setup_score",
-    "structure_zones",
-    "structural_flow",
-    "pivot_divergence",
-    "oscillator_pivot_divergence",
-    "wavetrend_divergence",
-    "stoch_rsi_divergence",
-    "liquidity_pools",
-    "wyckoff",
-    "trend_quality",
-    "buy_sell_pressure",
-    "volatility_regime",
-    "zscore",
-    "multi_factor",
-    "fractal_dimension",
-    "r_squared",
-    "percent_rank",
-    "cycle_length",
-    "price_location",
-    "opening_range",
-    "period_midpoint",
-    "vwap_regime",
-    "swing_structure",
-    "fvg_fill",
-    "chart_patterns",
-    "harmonic_patterns",
-];
+/// Every canonical name `build_checked` can construct, in the order of [`catalog`]: the names of
+/// the [`IndicatorInput::Bars`] entries, derived from the definitions. Aliases (e.g. "vp", "ob",
+/// "wvf") are not listed: they stay buildable but are not separate catalog entries.
+pub fn canonical_indicator_names() -> Vec<&'static str> {
+    super::definition::definitions().map(|d| d.name).collect()
+}
 
 #[cfg(test)]
 mod tests {
@@ -720,29 +382,20 @@ mod tests {
     use crate::indicator::atr::Atr;
     use std::collections::HashSet;
 
-    /// Finding 04: `catalog()` must expose exactly the canonical, buildable indicator names —
-    /// no fewer (a name silently missing from discovery) and no more (a stray or alias-as-
-    /// canonical entry). This is the "buildable canonical name -> catalog entry" direction that a
-    /// simple `catalog().len() > N` check does not exercise.
+    /// The canonical names are the `Bars` entries of the catalog, derived from the definitions
+    /// (no second list), and each of them builds from its defaults.
     #[test]
-    fn test_catalog_matches_canonical_indicator_names_exactly() {
+    fn test_canonical_names_are_the_bars_entries_and_build() {
         let bars = catalog_of(IndicatorInput::Bars);
-        let catalog_names: HashSet<&str> = bars.iter().map(|e| e.name).collect();
-        let canonical: HashSet<&str> = CANONICAL_INDICATOR_NAMES.iter().copied().collect();
-
-        let missing_from_catalog: Vec<&&str> = canonical.difference(&catalog_names).collect();
-        assert!(
-            missing_from_catalog.is_empty(),
-            "buildable but not discoverable via catalog(): {missing_from_catalog:?}"
-        );
-
-        let extra_in_catalog: Vec<&&str> = catalog_names.difference(&canonical).collect();
-        assert!(
-            extra_in_catalog.is_empty(),
-            "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
-        );
-
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 152);
+        let catalog_names: Vec<&str> = bars.iter().map(|e| e.name).collect();
+        assert_eq!(canonical_indicator_names(), catalog_names);
+        for entry in &bars {
+            assert!(
+                build_checked(entry.name, &entry.default_params).is_ok(),
+                "{}",
+                entry.name
+            );
+        }
         assert_eq!(bars.len(), 152);
         // Pair (4), transform (1) and intrabar (1) entries on top of the 152 bar indicators.
         assert_eq!(catalog().len(), 158);
@@ -1413,21 +1066,25 @@ mod tests {
         }
     }
 
-    /// Every catalog entry outside [`RANGE_DEPENDENT_INDICATORS`] reads exactly one scalar per
-    /// bar, and that scalar is its [`native_source`]: feeding it a bar collapsed to that source
-    /// changes nothing. An entry that reads a second field fails here and belongs in the block
-    /// list (or `native_source` is wrong).
+    /// Every catalog entry not declared [`SourceHandling::RangeDependent`] reads exactly one
+    /// scalar per bar, and that scalar is its declared native source: feeding it a bar collapsed
+    /// to that source changes nothing. An entry that reads a second field fails here and must be
+    /// declared range-dependent (or its native source is wrong).
     #[test]
     fn test_source_mappable_entries_read_only_their_native_source() {
         let bars = walk_bars(400);
         for entry in catalog_of(IndicatorInput::Bars) {
-            if RANGE_DEPENDENT_INDICATORS.contains(&entry.name) || entry.name == "midas" {
+            let handling = crate::indicator::definition::definition(entry.name)
+                .unwrap()
+                .facts
+                .source;
+            if handling == SourceHandling::RangeDependent || entry.name == "midas" {
                 continue;
             }
             let mut raw = build_checked(entry.name, &entry.default_params).unwrap();
             let mut mapped = super::super::source_mapped::SourceMapped::new(
                 build_checked(entry.name, &entry.default_params).unwrap(),
-                native_source(entry.name),
+                handling.native(),
             );
             for bar in &bars {
                 let a = raw.on_bar(bar).map(|o| o.value);
@@ -1441,7 +1098,7 @@ mod tests {
                     same,
                     "'{}' reads more than its native source ({:?}): {a:?} vs {b:?}",
                     entry.name,
-                    native_source(entry.name)
+                    handling.native()
                 );
             }
         }
@@ -1470,7 +1127,7 @@ mod tests {
             assert_eq!(canonical_name(alias), *canonical);
             assert_eq!(canonical_name(&alias.to_uppercase()), *canonical);
             assert!(
-                CANONICAL_INDICATOR_NAMES.contains(canonical),
+                canonical_indicator_names().contains(canonical),
                 "alias '{alias}' points at non-canonical '{canonical}'"
             );
             assert!(
@@ -1479,13 +1136,6 @@ mod tests {
             );
         }
         assert_eq!(canonical_name("unknown_thing"), "unknown_thing");
-    }
-
-    #[test]
-    fn test_range_dependent_list_holds_canonical_names_only() {
-        for name in RANGE_DEPENDENT_INDICATORS {
-            assert_eq!(canonical_name(name), *name, "'{name}' is an alias");
-        }
     }
 
     #[test]

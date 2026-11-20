@@ -156,6 +156,8 @@ pub const LIQUIDITY_SWEEPS_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("distance, in percent, within which two pivots count as equal highs/lows"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(LiquiditySweepEngine::new(
                 p.count("pivot_len"),

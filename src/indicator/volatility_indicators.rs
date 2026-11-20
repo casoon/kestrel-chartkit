@@ -387,6 +387,10 @@ pub const TRUE_RANGE_DEFINITION: super::definition::IndicatorDefinition =
         description: "True Range in price units",
         params: &[],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .non_negative()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(TrueRangeEngine::new())),
     };
 
@@ -398,6 +402,8 @@ pub const HISTORICAL_VOLATILITY_DEFINITION: super::definition::IndicatorDefiniti
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("bars in the standard deviation of the log returns")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().non_negative(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(HistoricalVolatilityEngine::new(p.count("period")))),
     };
 
@@ -409,6 +415,10 @@ pub const GARMAN_KLASS_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("bars averaged in the open-high-low-close variance estimate")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .non_negative()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(GarmanKlassVolatilityEngine::new(
                 p.count("period"),
@@ -431,6 +441,8 @@ pub const KELTNER_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("band distance from the basis, in ATRs"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(KeltnerChannelEngine::new(
                 p.count("ema_period"),
@@ -448,5 +460,7 @@ pub const DONCHIAN_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 20, 1, 10000)
             .meaning("bars searched for the highest high and lowest low")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(DonchianChannelEngine::new(p.count("period")))),
     };

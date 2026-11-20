@@ -131,6 +131,11 @@ pub const VWAP_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("bars back for the slope"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .needs_real_volume()
+            .session_sensitive()
+            .native_hlc3(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(Vwap::new(
                 p.count("window"),

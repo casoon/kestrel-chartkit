@@ -98,6 +98,11 @@ pub const CHAIKIN_OSCILLATOR_DEFINITION: super::definition::IndicatorDefinition 
             lower: "fast_len",
             upper: "slow_len",
         }],
+        facts: super::definition::IndicatorFacts::volume()
+            .centered(0.0)
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ChaikinOscillatorEngine::new(
                 p.count("fast_len"),

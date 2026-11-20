@@ -11,13 +11,23 @@
 //! Every catalog indicator has a definition, listed per family under `definition/`; the
 //! registry's lookups (`catalog`, `canonical_name`, `threshold_params`, `build_checked`,
 //! `build_typed`) are answered from these lists.
+//!
+//! What is true of an indicator beyond its parameters is stated in its definition too, once: the
+//! [`IndicatorFacts`] (unit and range of the output, how a requested price `source` is handled,
+//! what the calculation needs from the series) and its [`Verification`]. `output_range`,
+//! `output_unit`, `data_requirements`, `pair_requirements` and `build_typed` read them from
+//! here; there is no second list by name.
 
 use std::collections::HashMap;
 
 use super::params::{ParamValue, TypedParams};
-use super::registry::{IndicatorCatalogEntry, IndicatorInput, RegistryError};
+use super::registry::{IndicatorCatalogEntry, IndicatorInput, OutputRange, RegistryError};
+use super::unit::IndicatorUnit;
 use super::Indicator;
+use crate::applicability::{DataRequirements, PairRequirements, StructureMethod};
 use crate::model::Source;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// What a parameter accepts.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -193,6 +203,223 @@ pub enum Check {
     },
 }
 
+/// How `build_typed` treats a requested price `source` for an indicator.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SourceHandling {
+    /// The indicator reduces a bar to one scalar and reads `Source` natively; another source is
+    /// mapped onto the bar by [`SourceMapped`](super::source_mapped::SourceMapped). Most read the
+    /// close; `hlc3` (CCI, MFI, VWAP, anchored VWAP, WaveTrend) and `hl2` (Fisher Transform,
+    /// Awesome Oscillator, Alligator) are the exceptions. A requested source is compared against
+    /// this, not against the close: an explicit close on CCI must switch it off its native `hlc3`.
+    Mapped(Source),
+    /// The price source is fixed to the close by an explicit decision rather than by the math:
+    /// mapping would compute a differently defined series under the same name (`efi` weighs a
+    /// close-to-close change by the bar's volume; pairing it with a derived price needs its own
+    /// documented contract). A non-close source is an error.
+    FixedToClose,
+    /// The indicator reads the genuine OHLC range (true range, pivots, volume at price, structure
+    /// detection, ...); mapping would collapse `high == low == open == close` to the selected
+    /// source and degenerate its math. A non-close source is an error; its native input is the
+    /// whole bar.
+    RangeDependent,
+}
+
+impl SourceHandling {
+    /// The price the indicator reads natively.
+    pub const fn native(self) -> Source {
+        match self {
+            Self::Mapped(source) => source,
+            Self::FixedToClose | Self::RangeDependent => Source::Close,
+        }
+    }
+}
+
+/// What is true of an entry beyond its parameters: the unit and range of the primary output, how
+/// a requested price source is handled and what the calculation needs from the series. Declared
+/// once in the entry's definition; the by-name lookups (`output_unit`, `output_range`,
+/// `data_requirements`, `pair_requirements`) read it from there.
+///
+/// Built from the unit, which has no default on purpose (a new entry must decide it), with the
+/// rest named only where it differs from the plain case: `IndicatorFacts::ratio().bounded(0.0,
+/// 100.0)`. A range left out is [`OutputRange::Unbounded`], "nothing is declared"; a source left
+/// out is the close; requirements left out are none.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct IndicatorFacts {
+    /// The unit of the primary output.
+    pub unit: IndicatorUnit,
+    /// The range of the primary output.
+    pub output_range: OutputRange,
+    /// How a requested price source is handled.
+    pub source: SourceHandling,
+    /// What the calculation needs from the series beyond plain OHLC prices.
+    pub data: DataRequirements,
+    /// What the two series of a two-series entry must have in common; none for every other kind.
+    pub pair: PairRequirements,
+}
+
+const NO_DATA_REQUIREMENTS: DataRequirements = DataRequirements {
+    needs_real_volume: false,
+    needs_trade_direction: false,
+    session_sensitive: false,
+    roll_sensitive: false,
+    adjustment_sensitive: false,
+    needs_liquidity_depth: false,
+    structure_method: None,
+};
+
+impl IndicatorFacts {
+    pub const fn new(unit: IndicatorUnit) -> Self {
+        Self {
+            unit,
+            output_range: OutputRange::Unbounded,
+            source: SourceHandling::Mapped(Source::Close),
+            data: NO_DATA_REQUIREMENTS,
+            pair: PairRequirements {
+                same_price_adjustment: false,
+                same_session: false,
+            },
+        }
+    }
+
+    /// A price level on the scale of the bars.
+    pub const fn price() -> Self {
+        Self::new(IndicatorUnit::Price)
+    }
+
+    /// A dimensionless, bounded or normalized number.
+    pub const fn ratio() -> Self {
+        Self::new(IndicatorUnit::Ratio)
+    }
+
+    /// The instrument's volume units.
+    pub const fn volume() -> Self {
+        Self::new(IndicatorUnit::Volume)
+    }
+
+    /// No scale shared with the price or volume axis.
+    pub const fn unitless() -> Self {
+        Self::new(IndicatorUnit::Unitless)
+    }
+
+    /// The output cannot leave `min..=max` by construction.
+    pub const fn bounded(mut self, min: f64, max: f64) -> Self {
+        self.output_range = OutputRange::Bounded { min, max };
+        self
+    }
+
+    /// Open on both sides, swinging around `center`.
+    pub const fn centered(mut self, center: f64) -> Self {
+        self.output_range = OutputRange::Centered { center };
+        self
+    }
+
+    /// Never negative, open upwards.
+    pub const fn non_negative(mut self) -> Self {
+        self.output_range = OutputRange::NonNegative;
+        self
+    }
+
+    /// Reads `hlc3` natively.
+    pub const fn native_hlc3(mut self) -> Self {
+        self.source = SourceHandling::Mapped(Source::Hlc3);
+        self
+    }
+
+    /// Reads `hl2` natively.
+    pub const fn native_hl2(mut self) -> Self {
+        self.source = SourceHandling::Mapped(Source::Hl2);
+        self
+    }
+
+    /// See [`SourceHandling::FixedToClose`].
+    pub const fn source_fixed_to_close(mut self) -> Self {
+        self.source = SourceHandling::FixedToClose;
+        self
+    }
+
+    /// See [`SourceHandling::RangeDependent`].
+    pub const fn range_dependent(mut self) -> Self {
+        self.source = SourceHandling::RangeDependent;
+        self
+    }
+
+    /// Needs real traded turnover, not an update count.
+    pub const fn needs_real_volume(mut self) -> Self {
+        self.data.needs_real_volume = true;
+        self
+    }
+
+    /// Needs classified individual trades.
+    pub const fn needs_trade_direction(mut self) -> Self {
+        self.data.needs_trade_direction = true;
+        self
+    }
+
+    /// The result depends on where the session is cut.
+    pub const fn session_sensitive(mut self) -> Self {
+        self.data.session_sensitive = true;
+        self
+    }
+
+    /// The result depends on contract continuity.
+    pub const fn roll_sensitive(mut self) -> Self {
+        self.data.roll_sensitive = true;
+        self
+    }
+
+    /// The result depends on historical levels matching what was traded.
+    pub const fn adjustment_sensitive(mut self) -> Self {
+        self.data.adjustment_sensitive = true;
+        self
+    }
+
+    /// Needs market-depth information.
+    pub const fn needs_liquidity_depth(mut self) -> Self {
+        self.data.needs_liquidity_depth = true;
+        self
+    }
+
+    /// A structure-counting method with requirements of its own, see [`StructureMethod`].
+    pub const fn structure_method(mut self, method: StructureMethod) -> Self {
+        self.data.structure_method = Some(method);
+        self
+    }
+
+    /// The two series must share price adjustment and session.
+    pub const fn same_adjustment_and_session(mut self) -> Self {
+        self.pair = PairRequirements {
+            same_price_adjustment: true,
+            same_session: true,
+        };
+        self
+    }
+}
+
+/// Whether an entry has passed the acceptance its kind requires (the ✅ and ❌ of
+/// `INDICATOR_STATUS.md`, which a test holds against this).
+///
+/// A new entry starts [`Verification::Open`] with the reason it is not accepted yet, and becomes
+/// [`Verification::Verified`] only once its acceptance is complete. A consumer that wants to
+/// show only accepted results filters on it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum Verification {
+    /// Accepted.
+    Verified,
+    /// Not accepted yet; the reason, in a few words.
+    Open(&'static str),
+}
+
+impl Verification {
+    pub const fn is_verified(self) -> bool {
+        matches!(self, Self::Verified)
+    }
+}
+
 /// Everything the registry knows about one indicator.
 pub struct IndicatorDefinition {
     pub name: &'static str,
@@ -200,6 +427,9 @@ pub struct IndicatorDefinition {
     pub description: &'static str,
     pub params: &'static [ParamSpec],
     pub checks: &'static [Check],
+    /// Unit, range, source handling and data requirements.
+    pub facts: IndicatorFacts,
+    pub verification: Verification,
     pub build: fn(&ResolvedParams) -> Result<Box<dyn Indicator>, RegistryError>,
 }
 
@@ -212,6 +442,7 @@ impl IndicatorDefinition {
             description: self.description,
             default_params: f64_defaults(self.params),
             input: IndicatorInput::Bars,
+            verification: self.verification,
         }
     }
 
@@ -656,6 +887,21 @@ pub fn definitions() -> impl Iterator<Item = &'static IndicatorDefinition> {
         .flat_map(|(_, family)| family.iter().copied())
 }
 
+/// A public calculation that is a module API without a per-bar catalog entry (the rule checks of
+/// `elliott` read a list of swing nodes, not a stream of bars), with the facts the by-name lookups
+/// answer for it. Only what is true of the calculation is declared; there is no build.
+pub struct ModuleApiDefinition {
+    pub name: &'static str,
+    pub facts: IndicatorFacts,
+}
+
+const MODULE_APIS: &[&ModuleApiDefinition] = &[&crate::indicator::elliott::ELLIOTT_API];
+
+/// Every module-API definition.
+pub fn module_api_definitions() -> impl Iterator<Item = &'static ModuleApiDefinition> {
+    MODULE_APIS.iter().copied()
+}
+
 /// The definition of `name` (canonical name or alias, case-insensitive), if it has one yet.
 pub fn definition(name: &str) -> Option<&'static IndicatorDefinition> {
     let lower = name.to_lowercase();
@@ -729,6 +975,8 @@ mod tests {
             lower: "fast",
             upper: "slow",
         }],
+        facts: IndicatorFacts::price(),
+        verification: Verification::Verified,
         build: |p| {
             Ok(Box::new(crate::indicator::moving_averages::SmaEngine::new(
                 p.count("slow") - p.count("fast"),

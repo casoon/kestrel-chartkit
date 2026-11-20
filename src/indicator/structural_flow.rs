@@ -1458,6 +1458,8 @@ pub const STRUCTURAL_FLOW_DEFINITION: super::definition::IndicatorDefinition =
 
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |_p| {
             Ok(Box::new(StructuralFlow::new()))
         },

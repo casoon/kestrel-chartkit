@@ -115,5 +115,7 @@ pub const T3_DEFINITION: super::definition::IndicatorDefinition =
             ),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(T3::new(p.count("period"), p.number("v")))),
     };

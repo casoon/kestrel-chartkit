@@ -144,6 +144,8 @@ pub const CUSUM_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("alarm threshold of the accumulated sum, in standard deviations"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().non_negative(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(CusumEngine::new(
                 p.count("len"),

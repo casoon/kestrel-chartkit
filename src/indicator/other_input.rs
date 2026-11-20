@@ -25,7 +25,9 @@
 use std::collections::HashMap;
 
 use super::cvd_intrabar::INTRABAR_CVD_DEFINITION;
-use super::definition::{f64_defaults, resolve_f64_map, Check, ParamSpec, ResolvedParams};
+use super::definition::{
+    f64_defaults, resolve_f64_map, Check, IndicatorFacts, ParamSpec, ResolvedParams, Verification,
+};
 use super::pair::{pair_definition, pair_definitions, PairIndicator};
 use super::registry::{IndicatorCatalogEntry, IndicatorInput, OutputRange, RegistryError};
 use super::unit::IndicatorUnit;
@@ -53,19 +55,20 @@ impl InputKind for dyn IntrabarIndicator {
 }
 
 /// Everything the registry knows about one entry that is not a one-series indicator: the
-/// counterpart of [`IndicatorDefinition`](super::definition::IndicatorDefinition) with the unit
-/// and range of the primary output declared here (the by-name tables of the one-series path
-/// cover `Bars` entries only), and a `build` returning the object of its kind `T`.
+/// counterpart of [`IndicatorDefinition`](super::definition::IndicatorDefinition) with a `build`
+/// returning the object of its kind `T`. Its [`IndicatorFacts`] are declared the same way: unit and
+/// range of the primary output, the requirements of the series (and, for a two-series entry, of
+/// the pair).
 pub struct InputDefinition<T: ?Sized + 'static> {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
     pub description: &'static str,
     pub params: &'static [ParamSpec],
     pub checks: &'static [Check],
-    /// What [`output_unit`](super::unit::output_unit) answers for this name.
-    pub unit: IndicatorUnit,
-    /// What [`output_range`](super::registry::output_range) answers for this name.
-    pub output_range: OutputRange,
+    /// What [`output_unit`](super::unit::output_unit), [`output_range`](super::registry::output_range)
+    /// and the requirement lookups of [`crate::applicability`] answer for this name.
+    pub facts: IndicatorFacts,
+    pub verification: Verification,
     pub build: fn(&ResolvedParams) -> Result<Box<T>, RegistryError>,
 }
 
@@ -77,6 +80,7 @@ impl<T: ?Sized + InputKind + 'static> InputDefinition<T> {
             description: self.description,
             default_params: f64_defaults(self.params),
             input: T::INPUT,
+            verification: self.verification,
         }
     }
 
@@ -195,9 +199,39 @@ pub(crate) fn not_bars(name: &str) -> RegistryError {
 /// The unit and range an entry of another kind declares in its definition.
 pub(crate) fn declared_unit_range(name: &str) -> Option<(IndicatorUnit, OutputRange)> {
     pair_definition(name)
-        .map(|d| (d.unit, d.output_range))
-        .or_else(|| transform_definition(name).map(|d| (d.unit, d.output_range)))
-        .or_else(|| intrabar_definition(name).map(|d| (d.unit, d.output_range)))
+        .map(|d| d.facts)
+        .or_else(|| transform_definition(name).map(|d| d.facts))
+        .or_else(|| intrabar_definition(name).map(|d| d.facts))
+        .map(|f| (f.unit, f.output_range))
+}
+
+/// The facts of the entry of any kind whose canonical name is `canonical`, or of the module API of
+/// that name (see [`super::definition::module_api_definitions`]). An alias does not match: callers
+/// resolve it first.
+pub(crate) fn facts_of(canonical: &str) -> Option<IndicatorFacts> {
+    super::definition::definitions()
+        .find(|d| d.name == canonical)
+        .map(|d| d.facts)
+        .or_else(|| {
+            pair_definitions()
+                .find(|d| d.name == canonical)
+                .map(|d| d.facts)
+        })
+        .or_else(|| {
+            transform_definitions()
+                .find(|d| d.name == canonical)
+                .map(|d| d.facts)
+        })
+        .or_else(|| {
+            intrabar_definitions()
+                .find(|d| d.name == canonical)
+                .map(|d| d.facts)
+        })
+        .or_else(|| {
+            super::definition::module_api_definitions()
+                .find(|d| d.name == canonical)
+                .map(|d| d.facts)
+        })
 }
 
 /// Builds a transformation from its catalog name (or an alias) and an `f64` parameter map,

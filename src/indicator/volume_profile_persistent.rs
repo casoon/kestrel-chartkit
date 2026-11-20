@@ -390,6 +390,11 @@ pub const PERSISTENT_VOLUME_PROFILE_DEFINITION: super::definition::IndicatorDefi
                 .meaning("fixed price-grid resolution, in price units"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price()
+            .needs_real_volume()
+            .roll_sensitive()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(PersistentVolumeProfileEngine::new(p.count("lookback"), p.number("bin_width")))),
     };
 

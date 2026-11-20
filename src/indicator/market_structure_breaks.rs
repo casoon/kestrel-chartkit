@@ -155,6 +155,8 @@ pub const MARKET_STRUCTURE_BREAKS_DEFINITION: super::definition::IndicatorDefini
         params: &[super::definition::ParamSpec::count("lookback", 5, 1, 10000)
             .meaning("bars on each side of a swing high/low")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(MarketStructureBreaksEngine::new(
                 p.count("lookback"),

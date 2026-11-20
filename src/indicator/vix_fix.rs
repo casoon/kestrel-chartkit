@@ -154,6 +154,8 @@ pub const VIX_FIX_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("mult", 2.0, 0.01, 100.0).meaning("standard deviations of the upper band"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio().non_negative().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(WilliamsVixFix::new(p.count("pd"), p.count("bband_len"), p.number("mult")))),
     };
 

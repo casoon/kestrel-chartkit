@@ -579,13 +579,12 @@ pub fn check_applicability(
 /// aliases such as `avwap` or `vp` resolved), so an alias carries exactly the requirements of the
 /// indicator it builds.
 ///
-/// This is a separate lookup rather than a field on
-/// [`crate::indicator::registry::IndicatorCatalogEntry`] because `elliott`, which needs requirements
-/// here, is not a catalog/registry entry at all — it is excluded from the single-bar registry due
-/// to its call signature (see the note above `CANONICAL_INDICATOR_NAMES` in
-/// `src/indicator/registry.rs`). A standalone function is the only way to give catalog and
-/// non-catalog indicators one shared source of truth without forcing a signature change on that
-/// engine.
+/// The requirements are declared in the entry's definition
+/// ([`IndicatorFacts::data`](crate::indicator::definition::IndicatorFacts)); this function reads
+/// them from there by name. It is a function rather than a field of
+/// [`crate::indicator::registry::IndicatorCatalogEntry`] because `elliott`, which needs
+/// requirements here, is a module API and not a catalog entry (its definition is a
+/// [`ModuleApiDefinition`](crate::indicator::definition::ModuleApiDefinition)).
 ///
 /// `needs_real_volume` follows the actual inputs: it is set for every indicator whose formula
 /// always consumes the bar volume (volume and money-flow measures, volume-weighted averages and
@@ -615,54 +614,9 @@ pub fn check_applicability(
 /// plan is described as needing actual classified-trade data (bar-derived CVD is a documented
 /// heuristic, not a hard requirement) or is named as needing liquidity-depth data.
 pub fn data_requirements(name: &str) -> DataRequirements {
-    match crate::indicator::registry::canonical_name(name).as_str() {
-        "volume_profile"
-        | "extended_volume_profile"
-        | "persistent_volume_profile"
-        | "money_flow_profile" => DataRequirements {
-            needs_real_volume: true,
-            roll_sensitive: true,
-            ..DataRequirements::default()
-        },
-        "vwap" | "anchored_vwap" | "rvat" | "vwap_regime" => DataRequirements {
-            needs_real_volume: true,
-            session_sensitive: true,
-            ..DataRequirements::default()
-        },
-        "volume" | "rvol" | "obv" | "acc_dist" | "cmf" | "vwma" | "cvd" | "intrabar_cvd"
-        | "hires_volume_flow" | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger"
-        | "chaikin_oscillator" | "midas" | "flow_exhaustion" | "trend_quality" | "multi_factor" => {
-            DataRequirements {
-                needs_real_volume: true,
-                ..DataRequirements::default()
-            }
-        }
-        "elliott" => DataRequirements {
-            structure_method: Some(StructureMethod::ElliottWaves),
-            ..DataRequirements::default()
-        },
-        "wyckoff" => DataRequirements {
-            needs_real_volume: true,
-            structure_method: Some(StructureMethod::WyckoffRange),
-            ..DataRequirements::default()
-        },
-        "gap" => DataRequirements {
-            structure_method: Some(StructureMethod::PriceGaps),
-            ..DataRequirements::default()
-        },
-        "point_and_figure" => DataRequirements {
-            structure_method: Some(StructureMethod::PointAndFigure),
-            ..DataRequirements::default()
-        },
-        "pivot_sets" | "pivots_structure" | "zigzag" | "zigzag_advanced" | "swing_structure"
-        | "trendlines" | "chart_patterns" | "harmonic_patterns" => DataRequirements {
-            session_sensitive: true,
-            roll_sensitive: true,
-            adjustment_sensitive: true,
-            ..DataRequirements::default()
-        },
-        _ => DataRequirements::default(),
-    }
+    let canonical = crate::indicator::registry::canonical_name(name);
+    crate::indicator::other_input::facts_of(&canonical)
+        .map_or_else(DataRequirements::default, |f| f.data)
 }
 
 /// What a two-series indicator ([`crate::indicator::pair`]) needs its two series to agree in.
@@ -713,15 +667,8 @@ pub fn pair_rule_catalog() -> [RuleDescription; 2] {
 /// `relative_strength` their ratio), so an adjustment applied to one series only and bars that do
 /// not cover the same span both enter the result.
 pub fn pair_requirements(name: &str) -> PairRequirements {
-    match crate::indicator::pair::pair_definition(name).map(|d| d.name) {
-        Some("relative_strength" | "correlation" | "rolling_beta" | "pair_spread") => {
-            PairRequirements {
-                same_price_adjustment: true,
-                same_session: true,
-            }
-        }
-        _ => PairRequirements::default(),
-    }
+    crate::indicator::pair::pair_definition(name)
+        .map_or_else(PairRequirements::default, |d| d.facts.pair)
 }
 
 /// Matches `requirements` against the capabilities of the two series of a two-series indicator.

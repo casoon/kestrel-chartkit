@@ -5,10 +5,9 @@
 //! traded, which is the whole reason this lives in its own type rather than in [`crate::Bar`]:
 //! a synthetic price must not reach fill, slippage or risk arithmetic by accident.
 
-use crate::indicator::definition::ResolvedParams;
+use crate::indicator::definition::{IndicatorFacts, ResolvedParams, Verification};
 use crate::indicator::other_input::{BarTransform, TransformDefinition};
-use crate::indicator::registry::{OutputRange, RegistryError};
-use crate::indicator::unit::IndicatorUnit;
+use crate::indicator::registry::RegistryError;
 use crate::model::{Bar, Provenance, SeriesIdentity};
 
 /// One Heikin-Ashi candle together with the observed bar it was derived from.
@@ -142,8 +141,8 @@ pub const HEIKIN_ASHI_DEFINITION: TransformDefinition = TransformDefinition {
         "Heikin-Ashi candles: averaged open, high, low and close derived from observed bars",
     params: &[],
     checks: &[],
-    unit: IndicatorUnit::Price,
-    output_range: OutputRange::Unbounded,
+    facts: IndicatorFacts::price(),
+    verification: Verification::Open("no independent second implementation yet"),
     build: build_heikin_ashi,
 };
 

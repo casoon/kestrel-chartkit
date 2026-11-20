@@ -313,6 +313,8 @@ pub const SMOOTHED_SUPERTREND_DEFINITION: super::definition::IndicatorDefinition
             super::definition::ParamSpec::count("touches", 2, 1, 5).meaning("baseline touches before a rejection alerts"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(SmoothedSupertrend::new(SmoothedSupertrendConfig {
                 factor: p.number("factor"),

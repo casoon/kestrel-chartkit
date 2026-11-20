@@ -125,6 +125,10 @@ pub const TREND_QUALITY_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
             .meaning("bars in the EMA, efficiency ratio, ADX and RVOL")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(TrendQualityScoreEngine::new(p.count("period")))),
     };
 

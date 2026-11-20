@@ -112,6 +112,10 @@ pub const MULTI_FACTOR_DEFINITION: super::definition::IndicatorDefinition =
         params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
             .meaning("bars of every input (trend quality, RSI, pressure, volatility regime)")],
         checks: &[],
+        facts: super::definition::IndicatorFacts::ratio()
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(MultiFactorMarketScore::new(p.count("period")))),
     };
 

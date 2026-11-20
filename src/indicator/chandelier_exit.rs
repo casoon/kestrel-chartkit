@@ -185,6 +185,8 @@ pub const CHANDELIER_EXIT_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("ATR multiple between the extreme and the stop"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::price().range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ChandelierExitEngine::new(
                 p.count("length"),

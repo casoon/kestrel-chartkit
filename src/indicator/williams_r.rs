@@ -298,6 +298,8 @@ pub const WILLIAMS_R_DEFINITION: super::definition::IndicatorDefinition = super:
             lower: "oversold",
             upper: "overbought",
         }],
+    facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0).range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(WilliamsR::new(
             p.count("wpr_len"),

@@ -259,6 +259,8 @@ pub const ZONE_REJECTION_DEFINITION: super::definition::IndicatorDefinition = su
         super::definition::ParamSpec::count("min_touches", 2, 1, 1000).meaning("pivots that confirm a zone"),
     ],
     checks: &[],
+    facts: super::definition::IndicatorFacts::unitless().range_dependent(),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(ZoneRejection::new(
             p.count("pivot_len"),

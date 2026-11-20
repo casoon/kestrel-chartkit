@@ -96,6 +96,11 @@ pub const EOM_DEFINITION: super::definition::IndicatorDefinition =
                 .meaning("rescales volume into a readable unit"),
         ],
         checks: &[],
+        facts: super::definition::IndicatorFacts::unitless()
+            .centered(0.0)
+            .needs_real_volume()
+            .range_dependent(),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(EomEngine::new(
                 p.count("period"),
