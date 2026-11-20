@@ -3,6 +3,10 @@ use std::fmt;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::definition::{ParamSpec, ResolvedParams};
+use super::other_input::{IntrabarDefinition, IntrabarIndicator};
+use super::registry::{OutputRange, RegistryError};
+use super::unit::IndicatorUnit;
 use crate::intrabar::IntrabarGroup;
 use crate::model::Bar;
 
@@ -263,4 +267,61 @@ impl IntrabarCvd {
         self.previous_direction = 0.0;
         self.current_day = None;
     }
+}
+
+impl IntrabarIndicator for IntrabarCvd {
+    fn name(&self) -> &str {
+        "intrabar_cvd"
+    }
+
+    fn on_group(&mut self, group: &IntrabarGroup) -> IntrabarDelta {
+        IntrabarCvd::on_group(self, group)
+    }
+
+    fn on_missing_children(&mut self, parent: &Bar) -> IntrabarDelta {
+        IntrabarCvd::on_missing_children(self, parent)
+    }
+
+    fn reset(&mut self) {
+        IntrabarCvd::reset(self)
+    }
+}
+
+/// The catalog definition of [`IntrabarCvd`]. The primary output is the cumulative delta at the
+/// parent's close, in volume units.
+pub const INTRABAR_CVD_DEFINITION: IntrabarDefinition = IntrabarDefinition {
+    name: "intrabar_cvd",
+    aliases: &[],
+    description: "Cumulative volume delta booked from lower-timeframe bars inside each parent bar",
+    params: &[
+        ParamSpec::choice("anchor", "continuous", &["continuous", "daily"], true)
+            .meaning("when the cumulative delta returns to zero: never, or at every UTC day"),
+        ParamSpec::number("anchor_offset_seconds", 0.0, -86_400.0, 86_400.0)
+            .meaning("shift of the daily anchor in seconds, rounded to whole seconds (used by `daily`)"),
+        ParamSpec::choice(
+            "unchanged_policy",
+            "unattributed",
+            &["unattributed", "carry_previous_direction"],
+            true,
+        )
+        .meaning("how a child bar that closes where it opened or where the previous child closed is booked"),
+    ],
+    checks: &[],
+    unit: IndicatorUnit::Volume,
+    output_range: OutputRange::Unbounded,
+    build: build_intrabar_cvd,
+};
+
+fn build_intrabar_cvd(p: &ResolvedParams) -> Result<Box<dyn IntrabarIndicator>, RegistryError> {
+    let anchor = match p.choice("anchor") {
+        "daily" => DeltaAnchor::Daily {
+            start_offset_seconds: p.number("anchor_offset_seconds").round() as i64,
+        },
+        _ => DeltaAnchor::Continuous,
+    };
+    let policy = match p.choice("unchanged_policy") {
+        "carry_previous_direction" => UnchangedIntrabarPolicy::CarryPreviousDirection,
+        _ => UnchangedIntrabarPolicy::Unattributed,
+    };
+    Ok(Box::new(IntrabarCvd::new(anchor, policy)))
 }

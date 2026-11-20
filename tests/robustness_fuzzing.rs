@@ -1,11 +1,11 @@
 mod common;
 
 use common::*;
-use kestrel_chartkit::indicator::registry::{build, catalog};
+use kestrel_chartkit::indicator::registry::{build, catalog_of, IndicatorInput};
 
 #[test]
 fn test_all_indicators_short_series_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     for entry in &entries {
         let mut indicator = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
@@ -17,7 +17,7 @@ fn test_all_indicators_short_series_no_panic() {
 
 #[test]
 fn test_all_indicators_flatline_data_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     for entry in &entries {
         let mut indicator = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
@@ -29,7 +29,7 @@ fn test_all_indicators_flatline_data_no_panic() {
 
 #[test]
 fn test_all_indicators_zero_volume_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     for entry in &entries {
         let mut indicator = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
@@ -41,7 +41,7 @@ fn test_all_indicators_zero_volume_no_panic() {
 
 #[test]
 fn test_all_indicators_nan_robustness_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     for entry in &entries {
         let mut indicator = build(entry.name, &entry.default_params)
             .unwrap_or_else(|| panic!("Failed to build indicator {}", entry.name));
@@ -53,7 +53,7 @@ fn test_all_indicators_nan_robustness_no_panic() {
 
 #[test]
 fn test_all_indicators_warmup_contract() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     for entry in &entries {
         if common::PATH_DEPENDENT_FIRST_OUTPUT.contains(&entry.name) {
             continue;
@@ -84,7 +84,7 @@ fn test_all_indicators_warmup_contract() {
 
 #[test]
 fn test_all_indicators_random_walk_fuzzing_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     // Test across multiple deterministic random walk seeds with varying drift and volatility
     for seed in [1, 42, 101, 777, 9999] {
         let bars = generate_random_walk_bars(seed, 120, 100.0, 0.05, 1.5, 1000.0);
@@ -98,7 +98,7 @@ fn test_all_indicators_random_walk_fuzzing_no_panic() {
 
 #[test]
 fn test_all_indicators_trending_fuzzing_no_panic() {
-    let entries = catalog();
+    let entries = catalog_of(IndicatorInput::Bars);
     // Test across strong uptrends and downtrends with noise
     for (trend_step, noise) in [(1.5, 0.3), (-1.5, 0.3)] {
         let bars = generate_trending_bars(42, 120, 100.0, trend_step, noise, 1000.0);

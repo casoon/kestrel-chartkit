@@ -15,7 +15,7 @@ active development: names, parameters and outputs can still change fundamentally
 
 ## Features
 
-- **140 Streaming Indicators and Detectors:** 101 technical indicators, 4 composite scores and 35 structure/pattern detectors, all built by name and streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
+- **144 Streaming Indicators and Detectors:** 101 technical indicators, 4 composite scores, 35 structure/pattern detectors and 4 entries with another input (two series, candle transform, intrabar), all built by name, the bar indicators streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
 - **Dynamic Catalog Registry:** Parameter validation and dynamic instantiation via `catalog()` and `build_checked(name, params)`.
 - **Market Regime Alignment:** Automatic regime classification (`BullishExpansion`, `BearishExpansion`, `Consolidation`, `Transition`) with permission grading (`ClearToTrade`, `Caution`, `Veto`).
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
@@ -31,10 +31,12 @@ active development: names, parameters and outputs can still change fundamentally
 caller-defined timestamp convention. `aggregate_agreement` combines directional statements;
 its confidence is agreement, not a calibrated success probability.
 
-Indicators over two bar series (`relative_strength`, `correlation`) are listed by
-`pair_catalog()`, built by name with `build_pair_checked(name, params)` and run with
-`run_pair_batch(indicator, bars, reference_bars)`, which pairs the two series by timestamp: a bar
-without a partner is skipped, nothing is carried forward. They are not part of `catalog()`.
+Indicators over two bar series (`relative_strength`, `correlation`) are entries of `catalog()`
+with `input == IndicatorInput::Pair`, built by name with `build_pair_checked(name, params)` and run
+with `run_pair_batch(indicator, bars, reference_bars)`, which pairs the two series by timestamp: a
+bar without a partner is skipped, nothing is carried forward. Heikin-Ashi (`build_transform_checked`)
+and the intrabar cumulative delta (`build_intrabar_checked`) are entries of their own kind; every
+entry's `input` names its builder.
 
 `PriceDirection`, `ForwardPriceOutcome`, `PriceStats` and `PriceOutcomeStats` provide
 price-unit paper/outcome calculations. They do not imply contract sizing, account-currency

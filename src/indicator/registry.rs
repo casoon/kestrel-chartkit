@@ -6,20 +6,71 @@ use serde::{Deserialize, Serialize};
 pub use super::params::{ParamValue, TypedParams};
 use super::Indicator;
 
+/// What an entry of [`catalog`] reads, and so which builder builds it.
+///
+/// Every entry computes something per bar; what differs is the input of one step. The kind is
+/// part of the entry so a consumer that lists the catalog sees all of them and picks the builder
+/// by kind instead of by knowing names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum IndicatorInput {
+    /// One bar of one series per step: [`build_checked`] / [`build_typed`], an [`Indicator`].
+    Bars,
+    /// One bar of a series with the bar of a reference series of the same timestamp:
+    /// [`build_pair_checked`](super::pair::build_pair_checked), a
+    /// [`PairIndicator`](super::pair::PairIndicator).
+    Pair,
+    /// One bar in, one derived candle out:
+    /// [`build_transform_checked`](super::other_input::build_transform_checked), a
+    /// [`BarTransform`](super::other_input::BarTransform).
+    Transform,
+    /// The lower-timeframe bars of one parent bar per step:
+    /// [`build_intrabar_checked`](super::other_input::build_intrabar_checked), an
+    /// [`IntrabarIndicator`](super::other_input::IntrabarIndicator).
+    Intrabar,
+}
+
+impl IndicatorInput {
+    /// The builder function of this kind, by name, for error messages and docs.
+    pub fn builder(self) -> &'static str {
+        match self {
+            Self::Bars => "build_checked",
+            Self::Pair => "build_pair_checked",
+            Self::Transform => "build_transform_checked",
+            Self::Intrabar => "build_intrabar_checked",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IndicatorCatalogEntry {
     pub name: &'static str,
     pub description: &'static str,
     pub default_params: HashMap<String, f64>,
+    /// What the entry reads per step, and so which builder builds it.
+    pub input: IndicatorInput,
 }
 
-/// Every indicator the registry builds, each from its definition (plan 49), in the order of the
-/// family lists in [`super::definition`].
+/// Everything that computes per bar, each entry from its definition (plan 49 and 141): first the
+/// [`IndicatorInput::Bars`] indicators in the order of the family lists in [`super::definition`],
+/// then the two-series, transform and intrabar entries of [`super::other_input`]. The
+/// [`IndicatorCatalogEntry::input`] says which builder builds an entry; `build_checked` builds
+/// `Bars` entries only.
 pub fn catalog() -> Vec<IndicatorCatalogEntry> {
     super::definition::definitions()
         .map(|d| d.catalog_entry())
+        .chain(super::other_input::other_entries())
         .collect()
+}
+
+/// The entries of [`catalog`] of one input kind.
+pub fn catalog_of(input: IndicatorInput) -> Vec<IndicatorCatalogEntry> {
+    catalog().into_iter().filter(|e| e.input == input).collect()
 }
 
 /// Der Wertebereich, in dem die Ausgabe eines Indikators liegt.
@@ -109,8 +160,10 @@ pub fn output_range(name: &str) -> OutputRange {
         | "volume"
         | "vortex" => OutputRange::NonNegative,
 
-        // A two-series indicator declares its range in its definition.
-        _ => super::pair::pair_definition(name).map_or(OutputRange::Unbounded, |d| d.output_range),
+        // An entry of another input kind declares its range in its definition.
+        _ => {
+            super::other_input::declared_unit_range(name).map_or(OutputRange::Unbounded, |(_, r)| r)
+        }
     }
 }
 
@@ -189,6 +242,13 @@ pub enum RegistryError {
         parameter: String,
         indicator: String,
     },
+    /// The name is in the catalog, but its entry reads another input than the builder called:
+    /// `build_checked` builds [`IndicatorInput::Bars`] entries only. `builder` names the right one.
+    WrongInput {
+        indicator: String,
+        input: IndicatorInput,
+        builder: String,
+    },
 }
 
 impl std::fmt::Display for RegistryError {
@@ -238,6 +298,15 @@ impl std::fmt::Display for RegistryError {
                 "Unknown parameter '{}' for indicator '{}'",
                 parameter, indicator
             ),
+            RegistryError::WrongInput {
+                indicator,
+                input,
+                builder,
+            } => write!(
+                f,
+                "Indicator '{}' reads {:?} input and is built with {}",
+                indicator, input, builder
+            ),
         }
     }
 }
@@ -252,7 +321,7 @@ pub fn build_checked(
     params: &HashMap<String, f64>,
 ) -> Result<Box<dyn Indicator>, RegistryError> {
     super::definition::definition(name)
-        .ok_or_else(|| RegistryError::UnknownIndicator(name.to_string()))?
+        .ok_or_else(|| super::other_input::not_bars(name))?
         .build_from_f64(name, params)
 }
 
@@ -395,8 +464,8 @@ const SOURCE_FIXED_INDICATORS: &[&str] = &["efi"];
 /// as numbers; choices take `Enum` names. `source` maps the bar to another price through
 /// [`super::source_mapped::SourceMapped`], unless the indicator reads its own `source`.
 pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator>, RegistryError> {
-    let definition = super::definition::definition(name)
-        .ok_or_else(|| RegistryError::UnknownIndicator(name.to_string()))?;
+    let definition =
+        super::definition::definition(name).ok_or_else(|| super::other_input::not_bars(name))?;
     definition.reject_unknown(name, params.keys().filter(|k| *k != "source"), true)?;
 
     // An indicator that reads `source` itself bypasses the generic handling below.
@@ -629,7 +698,8 @@ mod tests {
     /// simple `catalog().len() > N` check does not exercise.
     #[test]
     fn test_catalog_matches_canonical_indicator_names_exactly() {
-        let catalog_names: HashSet<&str> = catalog().iter().map(|e| e.name).collect();
+        let bars = catalog_of(IndicatorInput::Bars);
+        let catalog_names: HashSet<&str> = bars.iter().map(|e| e.name).collect();
         let canonical: HashSet<&str> = CANONICAL_INDICATOR_NAMES.iter().copied().collect();
 
         let missing_from_catalog: Vec<&&str> = canonical.difference(&catalog_names).collect();
@@ -645,7 +715,45 @@ mod tests {
         );
 
         assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 140);
-        assert_eq!(catalog().len(), 140);
+        assert_eq!(bars.len(), 140);
+        // Pair (2), transform (1) and intrabar (1) entries on top of the 140 bar indicators.
+        assert_eq!(catalog().len(), 144);
+        for (input, count) in [
+            (IndicatorInput::Pair, 2),
+            (IndicatorInput::Transform, 1),
+            (IndicatorInput::Intrabar, 1),
+        ] {
+            assert_eq!(catalog_of(input).len(), count, "{input:?}");
+        }
+    }
+
+    /// `build_checked` and `build_typed` build `Bars` entries only; the others answer with the
+    /// builder to call instead.
+    #[test]
+    fn test_one_series_builders_name_the_right_builder_for_other_inputs() {
+        for entry in catalog().iter().filter(|e| e.input != IndicatorInput::Bars) {
+            let expected = RegistryError::WrongInput {
+                indicator: entry.name.to_string(),
+                input: entry.input,
+                builder: entry.input.builder().to_string(),
+            };
+            assert_eq!(
+                build_checked(entry.name, &entry.default_params).err(),
+                Some(expected.clone()),
+                "{}",
+                entry.name
+            );
+            assert_eq!(
+                build_typed(entry.name, &HashMap::new()).err(),
+                Some(expected),
+                "{}",
+                entry.name
+            );
+        }
+        assert!(matches!(
+            build_checked("no_such_indicator", &HashMap::new()),
+            Err(RegistryError::UnknownIndicator(_))
+        ));
     }
 
     #[test]
@@ -661,7 +769,7 @@ mod tests {
 
     #[test]
     fn test_every_catalog_entry_builds_with_its_default_params() {
-        for entry in catalog() {
+        for entry in catalog_of(IndicatorInput::Bars) {
             let built = build_checked(entry.name, &entry.default_params);
             assert!(
                 built.is_ok(),
@@ -1284,7 +1392,7 @@ mod tests {
     #[test]
     fn test_source_mappable_entries_read_only_their_native_source() {
         let bars = walk_bars(400);
-        for entry in catalog() {
+        for entry in catalog_of(IndicatorInput::Bars) {
             if RANGE_DEPENDENT_INDICATORS.contains(&entry.name) || entry.name == "midas" {
                 continue;
             }

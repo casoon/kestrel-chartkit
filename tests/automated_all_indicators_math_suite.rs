@@ -1,14 +1,14 @@
 mod common;
 
 use common::*;
-use kestrel_chartkit::indicator::registry::{build, catalog};
+use kestrel_chartkit::indicator::registry::{build, catalog_of, IndicatorInput};
 
 /// AUTOMATED VERIFICATION SUITE: Runs across 100% of registered indicators in catalog()
 /// without any manual test writing needed for individual indicators.
 
 #[test]
 fn automated_test_1_all_indicators_instantiation_and_catalog() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     assert!(
         cat.len() >= 35,
         "Expected at least 35 indicators in catalog, found {}",
@@ -35,7 +35,7 @@ fn automated_test_1_all_indicators_instantiation_and_catalog() {
 
 #[test]
 fn automated_test_2_all_indicators_determinism_parity() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     let bars = generate_sine_bars(150, 100.0, 10.0, 20.0, 5000.0);
 
     for entry in &cat {
@@ -86,7 +86,7 @@ fn automated_test_2_all_indicators_determinism_parity() {
 
 #[test]
 fn automated_test_3_all_indicators_reset_equivalency() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     let bars = generate_sine_bars(100, 100.0, 5.0, 10.0, 1000.0);
 
     for entry in &cat {
@@ -135,7 +135,7 @@ fn automated_test_3_all_indicators_reset_equivalency() {
 
 #[test]
 fn automated_test_4_all_indicators_finite_math_guarantee() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     let series_list = [
         generate_sine_bars(200, 100.0, 15.0, 30.0, 10000.0),
         generate_trend_bars(200, 50.0, 2.0, 500.0),
@@ -177,7 +177,7 @@ fn automated_test_4_all_indicators_finite_math_guarantee() {
 
 #[test]
 fn automated_test_5_all_bounded_indicators_domain_constraints() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     let bars = generate_sine_bars(300, 100.0, 25.0, 40.0, 10000.0);
 
     for entry in &cat {
@@ -217,7 +217,7 @@ fn automated_test_5_all_bounded_indicators_domain_constraints() {
 
 #[test]
 fn automated_test_6_all_indicators_high_volume_stream_stress() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
 
     for entry in &cat {
         let mut ind = build(entry.name, &entry.default_params).unwrap();

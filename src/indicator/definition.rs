@@ -15,7 +15,7 @@
 use std::collections::HashMap;
 
 use super::params::{ParamValue, TypedParams};
-use super::registry::{IndicatorCatalogEntry, RegistryError};
+use super::registry::{IndicatorCatalogEntry, IndicatorInput, RegistryError};
 use super::Indicator;
 use crate::model::Source;
 
@@ -211,6 +211,7 @@ impl IndicatorDefinition {
             name: self.name,
             description: self.description,
             default_params: f64_defaults(self.params),
+            input: IndicatorInput::Bars,
         }
     }
 
@@ -312,7 +313,7 @@ fn reject_unknown_keys<'a>(
 
 /// Resolves an `f64` parameter map against `specs` and `checks` the way
 /// [`IndicatorDefinition::build_from_f64`] does, for a definition with another build signature
-/// (see [`super::pair::PairIndicatorDefinition`]).
+/// (see [`super::other_input::InputDefinition`]).
 pub(crate) fn resolve_f64_map(
     specs: &[ParamSpec],
     checks: &[Check],

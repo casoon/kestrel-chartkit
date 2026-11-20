@@ -59,6 +59,7 @@ pub mod moving_averages;
 pub mod multi_factor;
 pub mod nvi_pvi;
 pub mod order_block;
+pub mod other_input;
 pub mod overextension_risk;
 pub mod pair;
 pub mod params;

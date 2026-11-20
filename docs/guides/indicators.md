@@ -50,8 +50,9 @@ in `extra["raw"]`.
 
 ## The registry
 
-`catalog()` returns one `IndicatorCatalogEntry` per indicator, with `name`, `description` and
-`default_params`. The current version has 130 entries; the
+`catalog()` returns one `IndicatorCatalogEntry` per entry, with `name`, `description`,
+`default_params` and `input`, the `IndicatorInput` that says which builder builds it. It has 144
+entries (140 of kind `Bars`); `catalog_of(kind)` lists one kind; the
 [indicator reference](../../reference/indicators/) lists every one of them with its parameters.
 
 Behind the catalog, every indicator has one definition
@@ -117,13 +118,16 @@ every entry with its parameters, the [showcase](../../../showcase/) draws each o
 
 A relative strength or a return correlation compares the series with a second one, the
 *reference*: a benchmark, a sector, another instrument. `Indicator::on_bar` sees one bar, so these
-indicators have a path of their own that mirrors the one above step by step. They are listed by
-`pair_catalog()` and not by `catalog()`, and `input_series(name)` says for any name whether it
-reads one series or two.
+indicators have a path of their own that mirrors the one above step by step. They are entries
+of `catalog()` with `input == IndicatorInput::Pair` (`catalog_of(IndicatorInput::Pair)`);
+`build_checked` answers their names with `RegistryError::WrongInput`, naming the right builder, and
+`input_series(name)` says for any name whether it reads one series or two. The same holds for the
+other two kinds: Heikin-Ashi (`Transform`, `build_transform_checked`) and the intrabar cumulative
+delta (`Intrabar`, `build_intrabar_checked`).
 
-| One series       | Two series             |
-| ---------------- | ---------------------- |
-| `catalog()`      | `pair_catalog()`       |
+| One series                    | Two series                       |
+| ----------------------------- | -------------------------------- |
+| `catalog_of(Bars)`            | `catalog_of(Pair)`               |
 | `build_checked`  | `build_pair_checked`   |
 | `on_bar(&bar)`   | `on_bars(&bar, &reference_bar)` |
 | `run_batch`      | `run_pair_batch`       |

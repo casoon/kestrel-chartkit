@@ -21,7 +21,9 @@ mod volume;
 use std::collections::{BTreeMap, HashMap};
 
 use common::contract::{check, ContractCase};
-use kestrel_chartkit::indicator::registry::{build_checked, catalog, RegistryError};
+use kestrel_chartkit::indicator::registry::{
+    build_checked, catalog_of, IndicatorInput, RegistryError,
+};
 
 /// Whether an area of an indicator's contract is written down and checked.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -119,7 +121,10 @@ fn coverage_matrix_names_every_catalog_indicator_once() {
             }
         }
     }
-    let catalog: Vec<&str> = catalog().iter().map(|e| e.name).collect();
+    let catalog: Vec<&str> = catalog_of(IndicatorInput::Bars)
+        .iter()
+        .map(|e| e.name)
+        .collect();
     for name in &catalog {
         if !seen.contains_key(name) {
             problems.push(format!("{name}: in the catalog but in no family"));

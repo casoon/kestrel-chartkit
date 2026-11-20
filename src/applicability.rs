@@ -629,12 +629,14 @@ pub fn data_requirements(name: &str) -> DataRequirements {
             session_sensitive: true,
             ..DataRequirements::default()
         },
-        "volume" | "rvol" | "obv" | "acc_dist" | "cmf" | "vwma" | "cvd" | "hires_volume_flow"
-        | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger" | "chaikin_oscillator"
-        | "midas" | "flow_exhaustion" | "trend_quality" | "multi_factor" => DataRequirements {
-            needs_real_volume: true,
-            ..DataRequirements::default()
-        },
+        "volume" | "rvol" | "obv" | "acc_dist" | "cmf" | "vwma" | "cvd" | "intrabar_cvd"
+        | "hires_volume_flow" | "efi" | "mfi" | "eom" | "nvi" | "pvi" | "pvt" | "klinger"
+        | "chaikin_oscillator" | "midas" | "flow_exhaustion" | "trend_quality" | "multi_factor" => {
+            DataRequirements {
+                needs_real_volume: true,
+                ..DataRequirements::default()
+            }
+        }
         "elliott" => DataRequirements {
             structure_method: Some(StructureMethod::ElliottWaves),
             ..DataRequirements::default()
@@ -702,8 +704,9 @@ pub fn pair_rule_catalog() -> [RuleDescription; 2] {
     [PAIR_RULE_PRICE_ADJUSTMENT, PAIR_RULE_SESSION]
 }
 
-/// The [`PairRequirements`] of a two-series indicator, by its
-/// [`pair_catalog`](crate::indicator::pair::pair_catalog) name or alias (case-insensitive).
+/// The [`PairRequirements`] of a two-series indicator (an entry of the catalog with
+/// [`IndicatorInput::Pair`](crate::indicator::registry::IndicatorInput::Pair)), by its name or
+/// alias (case-insensitive); every other name gets the default.
 ///
 /// `relative_strength` and `correlation` set both: each compares the returns of two close series
 /// bar by bar (and `relative_strength` their ratio), so an adjustment applied to one series only

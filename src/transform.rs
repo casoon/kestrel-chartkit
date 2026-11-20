@@ -5,6 +5,10 @@
 //! traded, which is the whole reason this lives in its own type rather than in [`crate::Bar`]:
 //! a synthetic price must not reach fill, slippage or risk arithmetic by accident.
 
+use crate::indicator::definition::ResolvedParams;
+use crate::indicator::other_input::{BarTransform, TransformDefinition};
+use crate::indicator::registry::{OutputRange, RegistryError};
+use crate::indicator::unit::IndicatorUnit;
 use crate::model::{Bar, Provenance, SeriesIdentity};
 
 /// One Heikin-Ashi candle together with the observed bar it was derived from.
@@ -113,4 +117,36 @@ impl HeikinAshi {
     pub fn reset(&mut self) {
         self.prev = None;
     }
+}
+
+impl BarTransform for HeikinAshi {
+    fn name(&self) -> &str {
+        "heikin_ashi"
+    }
+
+    fn update(&mut self, bar: &Bar) -> HeikinAshiBar {
+        HeikinAshi::update(self, bar)
+    }
+
+    fn reset(&mut self) {
+        HeikinAshi::reset(self)
+    }
+}
+
+/// The catalog definition of [`HeikinAshi`]: no parameters; the output is a candle, so unit and
+/// range describe its close, a price.
+pub const HEIKIN_ASHI_DEFINITION: TransformDefinition = TransformDefinition {
+    name: "heikin_ashi",
+    aliases: &[],
+    description:
+        "Heikin-Ashi candles: averaged open, high, low and close derived from observed bars",
+    params: &[],
+    checks: &[],
+    unit: IndicatorUnit::Price,
+    output_range: OutputRange::Unbounded,
+    build: build_heikin_ashi,
+};
+
+fn build_heikin_ashi(_: &ResolvedParams) -> Result<Box<dyn BarTransform>, RegistryError> {
+    Ok(Box::new(HeikinAshi::new()))
 }

@@ -2,21 +2,22 @@
 //!
 //! [`Indicator::on_bar`] sees one bar of one series. A relative strength or a return correlation
 //! compares that series with a second one, the *reference* (a benchmark, a sector, another
-//! instrument). Such an indicator implements [`PairIndicator`] and is listed in [`pair_catalog`],
-//! not in [`catalog`](super::registry::catalog): every entry of `catalog()` builds with
-//! `build_checked` and runs on one series, and that stays so.
+//! instrument). Such an indicator implements [`PairIndicator`] and is an entry of
+//! [`catalog`](super::registry::catalog) with [`IndicatorInput::Pair`]: it is built with
+//! [`build_pair_checked`], not with `build_checked`, which answers a pair name with
+//! [`RegistryError::WrongInput`].
 //!
 //! The path mirrors the one-series path step by step:
 //!
 //! | One series | Two series |
 //! |---|---|
-//! | [`catalog`](super::registry::catalog) | [`pair_catalog`] |
+//! | [`catalog`](super::registry::catalog), `input == Bars` | [`catalog`](super::registry::catalog), `input == Pair` |
 //! | [`build_checked`](super::registry::build_checked) | [`build_pair_checked`] |
 //! | [`Indicator::on_bar`] | [`PairIndicator::on_bars`] |
 //! | [`run_batch`](crate::runner::run_batch) | [`run_pair_batch`] |
 //!
 //! [`input_series`] says for any name which of the two paths builds it. Parameters are declared
-//! and validated the same way ([`ParamSpec`], one `f64` map), and the result is the same
+//! and validated the same way ([`ParamSpec`](super::definition::ParamSpec), one `f64` map), and the result is the same
 //! [`IndicatorOutput`], so a consumer needs no case per indicator: only the second bar series is
 //! new. [`WithReference`] binds a reference series to a pair indicator and is an [`Indicator`]
 //! again, for code that holds a `Box<dyn Indicator>` and feeds it bar by bar.
@@ -40,10 +41,8 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use super::definition::{definition, f64_defaults, resolve_f64_map};
-use super::definition::{Check, ParamSpec, ResolvedParams};
-use super::registry::{IndicatorCatalogEntry, OutputRange, RegistryError};
-use super::unit::IndicatorUnit;
+use super::other_input::{wrong_input, InputDefinition};
+use super::registry::{IndicatorCatalogEntry, IndicatorInput, RegistryError};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use crate::runner::TimestampedOutput;
@@ -86,32 +85,9 @@ impl<T: PairIndicator + ?Sized> PairIndicator for Box<T> {
     }
 }
 
-/// Everything the registry knows about one two-series indicator: the counterpart of
-/// [`IndicatorDefinition`](super::definition::IndicatorDefinition), with the unit and range of the
-/// output declared here instead of in the by-name tables of the one-series registry.
-pub struct PairIndicatorDefinition {
-    pub name: &'static str,
-    pub aliases: &'static [&'static str],
-    pub description: &'static str,
-    pub params: &'static [ParamSpec],
-    pub checks: &'static [Check],
-    /// What [`output_unit`](super::unit::output_unit) answers for this name.
-    pub unit: IndicatorUnit,
-    /// What [`output_range`](super::registry::output_range) answers for this name.
-    pub output_range: OutputRange,
-    pub build: fn(&ResolvedParams) -> Result<Box<dyn PairIndicator>, RegistryError>,
-}
-
-impl PairIndicatorDefinition {
-    /// The catalog entry: name, description and parameter defaults.
-    pub fn catalog_entry(&self) -> IndicatorCatalogEntry {
-        IndicatorCatalogEntry {
-            name: self.name,
-            description: self.description,
-            default_params: f64_defaults(self.params),
-        }
-    }
-}
+/// Everything the registry knows about one two-series indicator: an
+/// [`InputDefinition`] building a [`PairIndicator`].
+pub type PairIndicatorDefinition = InputDefinition<dyn PairIndicator>;
 
 /// Every two-series indicator. Each definition lives beside its implementation.
 const DEFINITIONS: &[&PairIndicatorDefinition] = &[
@@ -131,22 +107,25 @@ pub fn pair_definition(name: &str) -> Option<&'static PairIndicatorDefinition> {
     pair_definitions().find(|d| d.name == lower || d.aliases.contains(&lower.as_str()))
 }
 
-/// Every indicator that needs two bar series, each buildable with [`build_pair_checked`]. None of
-/// these names is in [`catalog`](super::registry::catalog), and none of those is in here.
+/// Every indicator that needs two bar series, each buildable with [`build_pair_checked`]: the
+/// entries of [`catalog`](super::registry::catalog) whose input is
+/// [`IndicatorInput::Pair`], from the same definitions.
+#[deprecated(
+    since = "0.43.0",
+    note = "use `catalog_of(IndicatorInput::Pair)`; the pair indicators are entries of `catalog()`"
+)]
 pub fn pair_catalog() -> Vec<IndicatorCatalogEntry> {
-    pair_definitions().map(|d| d.catalog_entry()).collect()
+    super::registry::catalog_of(IndicatorInput::Pair)
 }
 
-/// How many bar series the indicator `name` reads: `2` for a name of [`pair_catalog`] (build it
-/// with [`build_pair_checked`]), `1` for a name of [`catalog`](super::registry::catalog) (build
-/// it with [`build_checked`](super::registry::build_checked)), `None` for an unknown name.
-/// Aliases count like the name they stand for.
+/// How many bar series the entry `name` of [`catalog`](super::registry::catalog) reads: `2` for
+/// a pair entry (build it with [`build_pair_checked`]), `1` for every other kind, `None` for an
+/// unknown name. Aliases count like the name they stand for.
 pub fn input_series(name: &str) -> Option<usize> {
-    if pair_definition(name).is_some() {
-        Some(2)
-    } else {
-        definition(name).map(|_| 1)
-    }
+    super::other_input::input_of(name).map(|input| match input {
+        IndicatorInput::Pair => 2,
+        _ => 1,
+    })
 }
 
 impl IndicatorCatalogEntry {
@@ -156,22 +135,17 @@ impl IndicatorCatalogEntry {
     }
 }
 
-/// Builds a two-series indicator from its [`pair_catalog`] name (or an alias) and an `f64`
+/// Builds a two-series indicator from its catalog name (or an alias) and an `f64`
 /// parameter map, validated like [`build_checked`](super::registry::build_checked): unknown keys,
 /// whole numbers, ranges and relations are errors, missing parameters take their defaults. A
-/// one-series name is a [`RegistryError::UnknownIndicator`] here, as a two-series name is there.
+/// name of another input kind is a [`RegistryError::WrongInput`] naming its builder.
 pub fn build_pair_checked(
     name: &str,
     params: &HashMap<String, f64>,
 ) -> Result<Box<dyn PairIndicator>, RegistryError> {
-    let definition =
-        pair_definition(name).ok_or_else(|| RegistryError::UnknownIndicator(name.to_string()))?;
-    (definition.build)(&resolve_f64_map(
-        definition.params,
-        definition.checks,
-        name,
-        params,
-    )?)
+    pair_definition(name)
+        .ok_or_else(|| wrong_input(name, IndicatorInput::Pair))?
+        .build_from_f64(name, params)
 }
 
 /// The reference series by timestamp. Where it holds a timestamp twice, the later bar counts
@@ -268,8 +242,11 @@ impl<P: PairIndicator> Indicator for WithReference<P> {
 mod tests {
     use super::*;
     use crate::cross_asset::{align_closes, CloseSample};
-    use crate::indicator::registry::{build_checked, catalog, output_range};
-    use crate::indicator::unit::output_unit;
+    use crate::indicator::definition::{definition, resolve_f64_map};
+    use crate::indicator::registry::{
+        build_checked, catalog, catalog_of, output_range, OutputRange,
+    };
+    use crate::indicator::unit::{output_unit, IndicatorUnit};
     use crate::runner::run_batch;
 
     fn bar(timestamp: i64, close: f64) -> Bar {
@@ -296,32 +273,46 @@ mod tests {
     }
 
     #[test]
-    fn test_catalogs_are_disjoint_and_input_series_tells_them_apart() {
-        let single: Vec<&str> = catalog().iter().map(|e| e.name).collect();
-        let pairs = pair_catalog();
+    fn test_pair_entries_are_in_the_catalog_and_input_series_tells_them_apart() {
+        let pairs = catalog_of(IndicatorInput::Pair);
         assert_eq!(
             pairs.iter().map(|e| e.name).collect::<Vec<_>>(),
             ["correlation", "relative_strength"]
         );
+        let all = catalog();
         for entry in &pairs {
-            assert!(!single.contains(&entry.name), "{}", entry.name);
+            assert!(all.contains(entry), "{}", entry.name);
             assert_eq!(input_series(entry.name), Some(2));
             assert_eq!(entry.input_series(), 2);
-            assert!(matches!(
-                build_checked(entry.name, &entry.default_params),
-                Err(RegistryError::UnknownIndicator(_))
-            ));
+            assert_eq!(
+                build_checked(entry.name, &entry.default_params).err(),
+                Some(RegistryError::WrongInput {
+                    indicator: entry.name.to_string(),
+                    input: IndicatorInput::Pair,
+                    builder: "build_pair_checked".to_string(),
+                })
+            );
             assert!(build_pair_checked(entry.name, &entry.default_params).is_ok());
         }
-        for entry in catalog() {
+        for entry in all.iter().filter(|e| e.input != IndicatorInput::Pair) {
             assert_eq!(input_series(entry.name), Some(1), "{}", entry.name);
             assert_eq!(entry.input_series(), 1);
             assert!(matches!(
                 build_pair_checked(entry.name, &HashMap::new()),
-                Err(RegistryError::UnknownIndicator(_))
+                Err(RegistryError::WrongInput { .. })
             ));
         }
+        assert!(matches!(
+            build_pair_checked("no_such_indicator", &HashMap::new()),
+            Err(RegistryError::UnknownIndicator(_))
+        ));
         assert_eq!(input_series("no_such_indicator"), None);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_pair_catalog_is_the_pair_filter_of_the_catalog() {
+        assert_eq!(pair_catalog(), catalog_of(IndicatorInput::Pair));
     }
 
     #[test]
@@ -475,7 +466,7 @@ mod tests {
             .filter(|t| t % 7 != 3)
             .map(|t| bar(t, 50.0 + (t as f64 * 0.4).cos() * 3.0))
             .collect();
-        for entry in pair_catalog() {
+        for entry in catalog_of(IndicatorInput::Pair) {
             let params = HashMap::from([("len".to_string(), 5.0)]);
             let mut pair = build_pair_checked(entry.name, &params).unwrap();
             let direct = run_pair_batch(pair.as_mut(), &bars, &reference);

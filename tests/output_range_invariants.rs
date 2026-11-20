@@ -12,7 +12,7 @@ mod common;
 
 use common::*;
 use kestrel_chartkit::indicator::registry::{
-    build_checked, catalog, output_range, threshold_params, OutputRange,
+    build_checked, catalog, catalog_of, output_range, threshold_params, IndicatorInput, OutputRange,
 };
 use kestrel_chartkit::model::Bar;
 use kestrel_chartkit::runner::run_batch;
@@ -69,7 +69,7 @@ fn deklarierter_wertebereich_wird_eingehalten() {
     // Fließkomma-Toleranz: Ein RSI, der rechnerisch bei 100.0000000001 landet, ist kein Befund.
     const EPS: f64 = 1e-6;
 
-    for eintrag in catalog() {
+    for eintrag in catalog_of(IndicatorInput::Bars) {
         let bereich = output_range(eintrag.name);
         if bereich == OutputRange::Unbounded {
             continue;
@@ -108,7 +108,7 @@ fn zentrierte_reihen_wechseln_das_vorzeichen() {
     // Gefordert wird das über *eine* der Serien, nicht über jede: Ein volumengetriebener
     // Oszillator liegt auf einer Serie mit konstantem Volumen konstruktionsbedingt bei exakt
     // null, und das ist eine Aussage über die Serie, nicht über die Deklaration.
-    for eintrag in catalog() {
+    for eintrag in catalog_of(IndicatorInput::Bars) {
         let OutputRange::Centered { center } = output_range(eintrag.name) else {
             continue;
         };
@@ -148,7 +148,7 @@ fn zentrierte_reihen_wechseln_das_vorzeichen() {
 
 #[test]
 fn schwellen_sind_parameter_des_indikators_und_liegen_im_bereich() {
-    for eintrag in catalog() {
+    for eintrag in catalog_of(IndicatorInput::Bars) {
         let namen = threshold_params(eintrag.name);
         if namen.is_empty() {
             continue;
@@ -178,7 +178,7 @@ fn schwellen_sind_parameter_des_indikators_und_liegen_im_bereich() {
 
 #[test]
 fn schwellen_kommen_aufsteigend() {
-    for eintrag in catalog() {
+    for eintrag in catalog_of(IndicatorInput::Bars) {
         let werte = eintrag.thresholds();
         assert!(
             werte.windows(2).all(|w| w[0] <= w[1]),

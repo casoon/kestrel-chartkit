@@ -184,17 +184,21 @@ is complete.
 | tradability_filter | ✅ |
 | market_state_chain | ✅ |
 
-## Two-Series Indicators
+## Other Input Kinds
 
-Built with `build_pair_checked` and listed by `pair_catalog()`, not by `catalog()`; they are not
-part of the total below.
+Entries of `catalog()` that do not read one bar of one series per step, each with its own
+builder: two series (`build_pair_checked`), candle transform (`build_transform_checked`) and
+intrabar (`build_intrabar_checked`).
 
 | Indicator | Verified |
 |---|---|
 | correlation | ❌ |
 | relative_strength | ❌ |
+| heikin_ashi | ❌ |
+| intrabar_cvd | ❌ |
 
 ---
 
-**Total: 133/140 verified** — the same 140 names `catalog()` returns: 101 indicators (the first
-five groups), 4 composite scores and 35 structure/pattern detectors.
+**Total: 133/144 verified** — the same 144 names `catalog()` returns: 101 indicators (the first
+five groups), 4 composite scores, 35 structure/pattern detectors and 4 entries of other input
+kinds.

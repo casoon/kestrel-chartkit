@@ -1993,11 +1993,15 @@ Multi-Factor Composite Market Score
 |---|---|---|---|
 | `period` | 14 | whole number 2 – 10000 | bars of every input (trend quality, RSI, pressure, volatility regime) |
 
-## Two-series indicators
+## Other input kinds
 
-These compare the series with a second one, the reference, and are not part of `catalog()`: they are listed by `pair_catalog()`, built with `build_pair_checked` and run with `run_pair_batch`, which pairs the bars of the two series by timestamp. A bar whose timestamp the reference lacks is skipped and has no output. **Warmup** counts paired bars. See [Indicators](../../guides/indicators/#two-series) for the rules.
+These are entries of `catalog()` whose `input` is not `Bars`; `build_checked` answers their names with `RegistryError::WrongInput`, naming the builder to call instead.
 
-### `correlation`
+### Two series
+
+`IndicatorInput::Pair`, built with `build_pair_checked` and run with `run_pair_batch`, which pairs the bars of the two series by timestamp: they compare the series with a second one, the reference. A bar whose timestamp the reference lacks is skipped and has no output. **Warmup** counts paired bars. See [Indicators](../../guides/indicators/#two-series) for the rules.
+
+#### `correlation`
 
 Rolling Pearson correlation of the simple returns of two close series
 
@@ -2007,7 +2011,7 @@ Rolling Pearson correlation of the simple returns of two close series
 |---|---|---|---|
 | `len` | 20 | whole number 3 – 10000 | return pairs in the rolling window |
 
-### `relative_strength`
+#### `relative_strength`
 
 Return difference and price ratio of a series against a reference series
 
@@ -2016,4 +2020,30 @@ Return difference and price ratio of a series against a reference series
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `len` | 20 | whole number 1 – 10000 | bars between the two closes of each return |
+
+### Candle transform
+
+`IndicatorInput::Transform`, built with `build_transform_checked`: one bar in, one derived candle out, with no warmup. The unit describes the candle's prices.
+
+#### `heikin_ashi`
+
+Heikin-Ashi candles: averaged open, high, low and close derived from observed bars
+
+**Output** unit Price, range not declared
+
+### Intrabar
+
+`IndicatorInput::Intrabar`, built with `build_intrabar_checked`: one step is the group of lower-timeframe bars of one parent bar (`IntrabarGrouper`), the result an `IntrabarDelta` per parent bar. The unit describes the primary value, the cumulative delta at the parent's close.
+
+#### `intrabar_cvd`
+
+Cumulative volume delta booked from lower-timeframe bars inside each parent bar
+
+**Output** unit Volume, range not declared
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `anchor` | `continuous` | `continuous`, `daily` (f64 map: 0 – 1) | when the cumulative delta returns to zero: never, or at every UTC day |
+| `anchor_offset_seconds` | 0 | -86400 – 86400 | shift of the daily anchor in seconds, rounded to whole seconds (used by `daily`) |
+| `unchanged_policy` | `unattributed` | `unattributed`, `carry_previous_direction` (f64 map: 0 – 1) | how a child bar that closes where it opened or where the previous child closed is booked |
 

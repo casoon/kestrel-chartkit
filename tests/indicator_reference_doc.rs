@@ -11,6 +11,7 @@ use std::fmt::Write;
 
 use kestrel_chartkit::applicability::data_requirements;
 use kestrel_chartkit::indicator::definition::{families, Check, ParamKind, ParamSpec};
+use kestrel_chartkit::indicator::other_input::{intrabar_definitions, transform_definitions};
 use kestrel_chartkit::indicator::pair::{build_pair_checked, pair_definitions};
 use kestrel_chartkit::indicator::registry::{build_checked, output_range, OutputRange};
 use kestrel_chartkit::output_unit;
@@ -159,7 +160,7 @@ fn render() -> String {
             parameters(&mut out, definition.params, definition.checks);
         }
     }
-    two_series(&mut out);
+    other_inputs(&mut out);
     out
 }
 
@@ -189,18 +190,22 @@ fn parameters(out: &mut String, params: &[ParamSpec], checks: &[Check]) {
     }
 }
 
-/// The indicators of `pair_catalog()`, which are not part of the families above.
-fn two_series(out: &mut String) {
+/// The entries of `catalog()` that do not read one bar of one series, which are not part of the
+/// families above.
+fn other_inputs(out: &mut String) {
     out.push_str(
-        "## Two-series indicators\n\n\
-         These compare the series with a second one, the reference, and are not part of \
-         `catalog()`: they are listed by `pair_catalog()`, built with `build_pair_checked` and run \
-         with `run_pair_batch`, which pairs the bars of the two series by timestamp. A bar whose \
-         timestamp the reference lacks is skipped and has no output. **Warmup** counts paired \
-         bars. See [Indicators](../../guides/indicators/#two-series) for the rules.\n\n",
+        "## Other input kinds\n\n\
+         These are entries of `catalog()` whose `input` is not `Bars`; `build_checked` answers their \
+         names with `RegistryError::WrongInput`, naming the builder to call instead.\n\n\
+         ### Two series\n\n\
+         `IndicatorInput::Pair`, built with `build_pair_checked` and run with `run_pair_batch`, \
+         which pairs the bars of the two series by timestamp: they compare the series with a \
+         second one, the reference. A bar whose timestamp the reference lacks is skipped and has \
+         no output. **Warmup** counts paired bars. See [Indicators](../../guides/indicators/#two-series) \
+         for the rules.\n\n",
     );
     for definition in pair_definitions() {
-        writeln!(out, "### `{}`\n", definition.name).unwrap();
+        writeln!(out, "#### `{}`\n", definition.name).unwrap();
         writeln!(out, "{}\n", definition.description).unwrap();
         let warmup = build_pair_checked(definition.name, &HashMap::new())
             .map(|i| i.warmup_period().to_string())
@@ -208,6 +213,44 @@ fn two_series(out: &mut String) {
         writeln!(
             out,
             "**Output** unit {:?}, range {} · **warmup** {warmup} paired bars\n",
+            output_unit(definition.name),
+            range(definition.name)
+        )
+        .unwrap();
+        parameters(out, definition.params, definition.checks);
+    }
+
+    out.push_str(
+        "### Candle transform\n\n\
+         `IndicatorInput::Transform`, built with `build_transform_checked`: one bar in, one \
+         derived candle out, with no warmup. The unit describes the candle's prices.\n\n",
+    );
+    for definition in transform_definitions() {
+        writeln!(out, "#### `{}`\n", definition.name).unwrap();
+        writeln!(out, "{}\n", definition.description).unwrap();
+        writeln!(
+            out,
+            "**Output** unit {:?}, range {}\n",
+            output_unit(definition.name),
+            range(definition.name)
+        )
+        .unwrap();
+        parameters(out, definition.params, definition.checks);
+    }
+
+    out.push_str(
+        "### Intrabar\n\n\
+         `IndicatorInput::Intrabar`, built with `build_intrabar_checked`: one step is the group of \
+         lower-timeframe bars of one parent bar (`IntrabarGrouper`), the result an \
+         `IntrabarDelta` per parent bar. The unit describes the primary value, the cumulative \
+         delta at the parent's close.\n\n",
+    );
+    for definition in intrabar_definitions() {
+        writeln!(out, "#### `{}`\n", definition.name).unwrap();
+        writeln!(out, "{}\n", definition.description).unwrap();
+        writeln!(
+            out,
+            "**Output** unit {:?}, range {}\n",
             output_unit(definition.name),
             range(definition.name)
         )

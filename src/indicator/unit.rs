@@ -68,7 +68,7 @@ pub fn output_unit(name: &str) -> IndicatorUnit {
         .iter()
         .find(|(candidate, _)| *candidate == lowered)
         .map(|(_, unit)| *unit)
-        .or_else(|| super::pair::pair_definition(&lowered).map(|d| d.unit))
+        .or_else(|| super::other_input::declared_unit_range(&lowered).map(|(unit, _)| unit))
         .unwrap_or(IndicatorUnit::Unitless)
 }
 

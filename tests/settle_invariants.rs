@@ -2,15 +2,19 @@
 //! a path it was not measured on: different seed, drift, phase length and noise, and second starts
 //! that are not among the measured ones.
 
+use kestrel_chartkit::indicator::registry::IndicatorInput;
 use kestrel_chartkit::indicator::{registry, settle};
 
 #[test]
 fn settle_bars_holds_on_a_differently_shaped_series() {
     let other = settle::reference_series(900, 0x2545_f491_4f6c_dd1d, 0.15, 60, 1.2);
     let mut failures = Vec::new();
-    for (criterion, entry) in registry::catalog().into_iter().flat_map(|e| {
-        [settle::Criterion::Outputs, settle::Criterion::Alerts].map(move |c| (c, e.clone()))
-    }) {
+    for (criterion, entry) in registry::catalog_of(IndicatorInput::Bars)
+        .into_iter()
+        .flat_map(|e| {
+            [settle::Criterion::Outputs, settle::Criterion::Alerts].map(move |c| (c, e.clone()))
+        })
+    {
         let declared = match criterion {
             settle::Criterion::Outputs => {
                 settle::settle_bars(entry.name, &entry.default_params, 900)
@@ -45,7 +49,7 @@ fn settle_bars_holds_on_a_differently_shaped_series() {
 
 #[test]
 fn settle_bars_is_never_shorter_than_warmup() {
-    for entry in registry::catalog() {
+    for entry in registry::catalog_of(IndicatorInput::Bars) {
         let Some(settle) = settle::settle_bars(entry.name, &entry.default_params, 900) else {
             continue;
         };

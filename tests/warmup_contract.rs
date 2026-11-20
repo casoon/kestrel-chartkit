@@ -10,6 +10,7 @@ use std::collections::HashMap;
 mod common;
 
 use common::PATH_DEPENDENT_FIRST_OUTPUT;
+use kestrel_chartkit::indicator::registry::IndicatorInput;
 use kestrel_chartkit::indicator::{registry, settle};
 
 /// Bar spacing of the reference paths. Indicators that think in time (`rvat`) get it as their
@@ -50,7 +51,7 @@ fn warmup_is_the_bar_of_the_first_output() {
         .map(|s| s.series(BAR_SECONDS))
         .collect();
     let mut failures = Vec::new();
-    for entry in registry::catalog() {
+    for entry in registry::catalog_of(IndicatorInput::Bars) {
         for (label, params) in variants(&entry.default_params) {
             let Ok(indicator) = registry::build_checked(entry.name, &params) else {
                 continue;

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use kestrel_chartkit::indicator::registry::{build_checked, catalog};
+use kestrel_chartkit::indicator::registry::{build_checked, catalog_of, IndicatorInput};
 use kestrel_chartkit::model::Bar;
 use kestrel_chartkit::synthetic::random_walk_bars;
 
@@ -22,7 +22,7 @@ fn bench_all_indicators(c: &mut Criterion) {
     let mut group = c.benchmark_group("indicator_stream_500_bars");
     group.warm_up_time(Duration::from_millis(500));
     group.measurement_time(Duration::from_secs(1));
-    for entry in catalog() {
+    for entry in catalog_of(IndicatorInput::Bars) {
         let Ok(mut ind) = build_checked(entry.name, &entry.default_params) else {
             continue;
         };

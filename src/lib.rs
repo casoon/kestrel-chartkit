@@ -139,11 +139,17 @@ pub use graph::{ComposedNode, CompositionGraph, GraphError, GraphIndicator, Leaf
 pub use indicator::cvd_intrabar::{
     DeltaAnchor, DeltaProvenance, IntrabarCvd, IntrabarDelta, UnchangedIntrabarPolicy,
 };
+pub use indicator::other_input::{
+    build_intrabar_checked, build_transform_checked, input_of, BarTransform, IntrabarIndicator,
+};
+#[allow(deprecated)]
+pub use indicator::pair::pair_catalog;
 pub use indicator::pair::{
-    build_pair_checked, input_series, pair_catalog, run_pair_batch, PairIndicator, WithReference,
+    build_pair_checked, input_series, run_pair_batch, PairIndicator, WithReference,
 };
 pub use indicator::registry::{
-    build, build_checked, build_typed, catalog, ParamValue, RegistryError, TypedParams,
+    build, build_checked, build_typed, catalog, catalog_of, IndicatorInput, ParamValue,
+    RegistryError, TypedParams,
 };
 pub use indicator::unit::{output_unit, IndicatorUnit};
 pub use indicator::{Indicator, IndicatorAlert, IndicatorOutput};

@@ -10,7 +10,7 @@ mod common;
 
 use common::*;
 use kestrel_chartkit::applicability::data_requirements;
-use kestrel_chartkit::indicator::registry::{build_checked, catalog};
+use kestrel_chartkit::indicator::registry::{build_checked, catalog_of, IndicatorInput};
 use kestrel_chartkit::indicator::IndicatorOutput;
 use kestrel_chartkit::model::Bar;
 
@@ -69,7 +69,7 @@ fn volume_requirement_matches_volume_use() {
         .collect();
 
     let mut mismatches = Vec::new();
-    for entry in catalog() {
+    for entry in catalog_of(IndicatorInput::Bars) {
         let mut a = build_checked(entry.name, &entry.default_params).unwrap();
         let mut b = build_checked(entry.name, &entry.default_params).unwrap();
         let mut uses_volume = false;

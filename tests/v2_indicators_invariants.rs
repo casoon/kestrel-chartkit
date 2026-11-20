@@ -1,12 +1,12 @@
 mod common;
 
 use common::*;
-use kestrel_chartkit::indicator::registry::{build, catalog};
+use kestrel_chartkit::indicator::registry::{build, catalog_of, IndicatorInput};
 use kestrel_chartkit::indicator::relative_strength::RelativeStrengthEngine;
 
 #[test]
 fn test_all_catalog_v2_indicators_build_and_run() {
-    let cat = catalog();
+    let cat = catalog_of(IndicatorInput::Bars);
     assert!(
         cat.len() >= 25,
         "Expected at least 25 indicators in catalog"
