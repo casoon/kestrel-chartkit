@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
+use super::kernels::up_down_index;
 use super::smoothing::{crossed_over, crossed_under, ExtremeWindow, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -143,15 +144,7 @@ impl Indicator for StochRsi {
             self.ctx_avg_loss.update(loss),
         ) {
             (Some(ctx_avg_gain), Some(ctx_avg_loss)) => {
-                let ctx_rsi = if ctx_avg_gain == 0.0 && ctx_avg_loss == 0.0 {
-                    50.0
-                } else if ctx_avg_loss == 0.0 {
-                    100.0
-                } else if ctx_avg_gain == 0.0 {
-                    0.0
-                } else {
-                    100.0 - 100.0 / (1.0 + ctx_avg_gain / ctx_avg_loss)
-                };
+                let ctx_rsi = up_down_index(ctx_avg_gain, ctx_avg_loss, 50.0);
                 self.ctx_stoch_window.push(ctx_rsi).and_then(|(low, high)| {
                     let ctx_stoch_raw = if high > low {
                         100.0 * (ctx_rsi - low) / (high - low)
@@ -169,15 +162,7 @@ impl Indicator for StochRsi {
             _ => return None,
         };
 
-        let rsi = if avg_gain == 0.0 && avg_loss == 0.0 {
-            50.0
-        } else if avg_loss == 0.0 {
-            100.0
-        } else if avg_gain == 0.0 {
-            0.0
-        } else {
-            100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
-        };
+        let rsi = up_down_index(avg_gain, avg_loss, 50.0);
 
         let (low, high) = self.stoch_window.push(rsi)?;
         let stoch_raw = if high > low {

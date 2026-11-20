@@ -126,6 +126,22 @@ pub(crate) fn rank_weight(values: impl Iterator<Item = f64>, current: f64, ties:
     }
 }
 
+/// Strength index from an averaged up move and an averaged down move: `100 - 100 / (1 + up / down)`,
+/// `100` without down moves and `0` without up moves. `no_move` is the value when neither side
+/// moved (`50` for RSI and MFI as published, `100` for the variants that let the "no down moves"
+/// rule decide). RSI feeds it the average gain and loss, MFI the positive and negative money flow.
+pub(crate) fn up_down_index(up: f64, down: f64, no_move: f64) -> f64 {
+    if up == 0.0 && down == 0.0 {
+        no_move
+    } else if down == 0.0 {
+        100.0
+    } else if up == 0.0 {
+        0.0
+    } else {
+        100.0 - 100.0 / (1.0 + up / down)
+    }
+}
+
 /// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
 /// true range on, so switching the method moves the values, never the first output.
 #[derive(Debug, Clone)]

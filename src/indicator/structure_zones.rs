@@ -84,7 +84,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::kernels::{efficiency_ratio, true_range_hl};
+use super::kernels::{efficiency_ratio, true_range_hl, up_down_index};
 use super::smoothing::{Ema, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -426,13 +426,7 @@ impl Indicator for StructureZones {
             let g = self.gain.update(ch.max(0.0));
             let lo = self.loss.update((-ch).max(0.0));
             match (g, lo) {
-                (Some(g), Some(lo)) => Some(if g == 0.0 && lo == 0.0 {
-                    50.0
-                } else if lo == 0.0 {
-                    100.0
-                } else {
-                    100.0 - 100.0 / (1.0 + g / lo)
-                }),
+                (Some(g), Some(lo)) => Some(up_down_index(g, lo, 50.0)),
                 _ => None,
             }
         });
@@ -454,13 +448,7 @@ impl Indicator for StructureZones {
                     .flows
                     .iter()
                     .fold((0.0, 0.0), |a, f| (a.0 + f.0, a.1 + f.1));
-                if pos == 0.0 && neg == 0.0 {
-                    50.0
-                } else if neg == 0.0 {
-                    100.0
-                } else {
-                    100.0 - 100.0 / (1.0 + pos / neg)
-                }
+                up_down_index(pos, neg, 50.0)
             })
         });
         self.prev_hlc3 = Some(hlc3);

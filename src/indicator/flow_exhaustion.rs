@@ -41,7 +41,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::kernels::true_range;
+use super::kernels::{true_range, up_down_index};
 use super::smoothing::{crossed_over, crossed_under, Jma, Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -213,12 +213,8 @@ impl FlowExhaustion {
         }
         if vol <= 0.0 {
             None
-        } else if neg == 0.0 {
-            Some(100.0)
-        } else if pos == 0.0 {
-            Some(0.0)
         } else {
-            Some(100.0 - 100.0 / (1.0 + pos / neg))
+            Some(up_down_index(pos, neg, 100.0))
         }
     }
 
@@ -227,13 +223,7 @@ impl FlowExhaustion {
         let up = self.rsi_up.update(d.max(0.0));
         let down = self.rsi_down.update((-d).max(0.0));
         let (u, dn) = (up?, down?);
-        Some(if dn == 0.0 {
-            100.0
-        } else if u == 0.0 {
-            0.0
-        } else {
-            100.0 - 100.0 / (1.0 + u / dn)
-        })
+        Some(up_down_index(u, dn, 100.0))
     }
 
     /// Strict pivot `pivot_right` bars back.

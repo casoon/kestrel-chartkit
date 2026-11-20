@@ -36,7 +36,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::kernels::true_range;
+use super::kernels::{true_range, up_down_index};
 use super::smoothing::{Rma, Sma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -165,13 +165,7 @@ impl Indicator for SweepReversalScore {
             let g = self.gain.update(ch.max(0.0));
             let l = self.loss.update((-ch).max(0.0));
             match (g, l) {
-                (Some(g), Some(l)) => Some(if g == 0.0 && l == 0.0 {
-                    50.0
-                } else if l == 0.0 {
-                    100.0
-                } else {
-                    100.0 - 100.0 / (1.0 + g / l)
-                }),
+                (Some(g), Some(l)) => Some(up_down_index(g, l, 50.0)),
                 _ => None,
             }
         });

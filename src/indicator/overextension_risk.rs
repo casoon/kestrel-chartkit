@@ -47,7 +47,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::model::Bar;
 
 use super::adx::Adx;
-use super::kernels::true_range;
+use super::kernels::{true_range, up_down_index};
 use super::smoothing::{Ema, Rma, Sma};
 use super::wavetrend::WaveTrendEngine;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
@@ -236,12 +236,8 @@ impl OverextensionRisk {
         }
         if vol <= 0.0 {
             50.0
-        } else if neg == 0.0 {
-            100.0
-        } else if pos == 0.0 {
-            0.0
         } else {
-            100.0 - 100.0 / (1.0 + pos / neg)
+            up_down_index(pos, neg, 100.0)
         }
     }
 
@@ -327,13 +323,7 @@ impl Indicator for OverextensionRisk {
             let up = self.rsi_up.update(d.max(0.0));
             let down = self.rsi_down.update((-d).max(0.0));
             let (u, dn) = (up?, down?);
-            Some(if dn == 0.0 {
-                100.0
-            } else if u == 0.0 {
-                0.0
-            } else {
-                100.0 - 100.0 / (1.0 + u / dn)
-            })
+            Some(up_down_index(u, dn, 100.0))
         });
         let stoch = rsi.and_then(|r| {
             self.rsi_window.push_back(r);

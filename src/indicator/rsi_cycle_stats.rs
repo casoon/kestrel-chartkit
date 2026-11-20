@@ -45,6 +45,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::up_down_index;
 use super::smoothing::Rma;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -273,13 +274,7 @@ impl Indicator for RsiCycleStats {
             let u = self.up.update(d.max(0.0));
             let dn = self.down.update((-d).max(0.0));
             let (u, dn) = (u?, dn?);
-            Some(if dn == 0.0 {
-                100.0
-            } else if u == 0.0 {
-                0.0
-            } else {
-                100.0 - 100.0 / (1.0 + u / dn)
-            })
+            Some(up_down_index(u, dn, 100.0))
         });
         let v = rsi?;
         let (ob, os) = (c.overbought, c.oversold);

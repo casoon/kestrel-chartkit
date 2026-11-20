@@ -2,6 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
+use super::kernels::up_down_index;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -146,16 +147,7 @@ impl Indicator for Mfi {
         }
 
         let has_volume = self.vol_sum > 0.0;
-        let total_flow = self.pos_sum + self.neg_sum;
-        let raw_mfi = if total_flow == 0.0 {
-            50.0
-        } else if self.neg_sum == 0.0 {
-            100.0
-        } else if self.pos_sum == 0.0 {
-            0.0
-        } else {
-            100.0 - 100.0 / (1.0 + self.pos_sum / self.neg_sum)
-        };
+        let raw_mfi = up_down_index(self.pos_sum, self.neg_sum, 50.0);
 
         let mfi_line = self.mfi_avg.update(raw_mfi)?;
         let signal = self.signal_avg.update(mfi_line)?;

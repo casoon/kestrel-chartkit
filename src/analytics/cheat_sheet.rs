@@ -4,6 +4,7 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
+use crate::indicator::smoothing::Rma;
 use crate::Bar;
 
 const DEFAULT_WINDOW: usize = 120;
@@ -328,21 +329,15 @@ fn wilder_gain_loss(bars: &[Bar], len: usize) -> Option<(f64, f64)> {
     if bars.len() < len + 1 {
         return None;
     }
-    let mut gains = Vec::with_capacity(len);
-    let mut losses = Vec::with_capacity(len);
-    for pair in bars[..=len].windows(2) {
+    let mut gain = Rma::new(len);
+    let mut loss = Rma::new(len);
+    let (mut avg_gain, mut avg_loss) = (None, None);
+    for pair in bars.windows(2) {
         let change = pair[1].close - pair[0].close;
-        gains.push(change.max(0.0));
-        losses.push((-change).max(0.0));
+        avg_gain = gain.update(change.max(0.0));
+        avg_loss = loss.update((-change).max(0.0));
     }
-    let mut avg_gain = gains.iter().sum::<f64>() / len as f64;
-    let mut avg_loss = losses.iter().sum::<f64>() / len as f64;
-    for pair in bars[len..].windows(2) {
-        let change = pair[1].close - pair[0].close;
-        avg_gain = (avg_gain * (len as f64 - 1.0) + change.max(0.0)) / len as f64;
-        avg_loss = (avg_loss * (len as f64 - 1.0) + (-change).max(0.0)) / len as f64;
-    }
-    Some((avg_gain, avg_loss))
+    Some((avg_gain?, avg_loss?))
 }
 
 fn rsi_target_price(

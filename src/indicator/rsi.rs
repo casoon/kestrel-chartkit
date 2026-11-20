@@ -7,6 +7,7 @@ use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
 use super::exhaustion::Exhaustion;
+use super::kernels::up_down_index;
 use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
@@ -262,15 +263,7 @@ impl Indicator for Rsi {
             self.ctx_avg_loss.update(loss),
         ) {
             (Some(ctx_avg_gain), Some(ctx_avg_loss)) => {
-                let ctx_raw = if ctx_avg_gain == 0.0 && ctx_avg_loss == 0.0 {
-                    50.0
-                } else if ctx_avg_loss == 0.0 {
-                    100.0
-                } else if ctx_avg_gain == 0.0 {
-                    0.0
-                } else {
-                    100.0 - 100.0 / (1.0 + ctx_avg_gain / ctx_avg_loss)
-                };
+                let ctx_raw = up_down_index(ctx_avg_gain, ctx_avg_loss, 50.0);
                 self.ctx_avg.update(ctx_raw)
             }
             _ => None,
@@ -281,15 +274,7 @@ impl Indicator for Rsi {
             _ => return None,
         };
 
-        let raw_rsi = if avg_gain == 0.0 && avg_loss == 0.0 {
-            50.0
-        } else if avg_loss == 0.0 {
-            100.0
-        } else if avg_gain == 0.0 {
-            0.0
-        } else {
-            (100.0 - 100.0 / (1.0 + avg_gain / avg_loss)).clamp(0.0, 100.0)
-        };
+        let raw_rsi = up_down_index(avg_gain, avg_loss, 50.0).clamp(0.0, 100.0);
 
         let rsi_line = self.rsi_avg.update(raw_rsi)?.clamp(0.0, 100.0);
         let signal = self.signal_avg.update(rsi_line)?.clamp(0.0, 100.0);
