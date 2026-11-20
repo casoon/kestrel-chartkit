@@ -80,6 +80,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structure_zones.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -249,15 +250,15 @@ impl StructureZones {
 
     fn pivot(&self, n: usize, low_side: bool) -> Option<f64> {
         let centre = self.at(n)?;
-        self.at(2 * n)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..n).chain(n + 1..=2 * n) {
-            let b = self.at(k)?;
-            let ok = if low_side { v < b.low } else { v > b.high };
-            if !ok {
-                return None;
-            }
+        let values =
+            (0..=2 * n)
+                .rev()
+                .filter_map(|k| self.at(k))
+                .map(|r| if low_side { r.low } else { r.high });
+        if !PivotRule::symmetric(n, true).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 

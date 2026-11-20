@@ -41,6 +41,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/compression_zones.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -216,15 +217,15 @@ impl CompressionZones {
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let p = self.cfg.pivot_len;
         let centre = self.at(p)?;
-        self.at(2 * p)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..p).chain(p + 1..=2 * p) {
-            let r = self.at(k)?;
-            let o = if low_side { r.low } else { r.high };
-            if (low_side && v >= o) || (!low_side && v <= o) {
-                return None;
-            }
+        let values =
+            (0..=2 * p)
+                .rev()
+                .filter_map(|k| self.at(k))
+                .map(|r| if low_side { r.low } else { r.high });
+        if !PivotRule::symmetric(p, true).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 }

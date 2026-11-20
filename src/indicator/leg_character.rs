@@ -61,6 +61,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_character.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -229,24 +230,17 @@ impl LegCharacter {
             return None;
         }
         let at = |k: usize| &self.rows[n - 1 - k];
+        let values = (0..=left + right)
+            .rev()
+            .map(|k| if low_side { at(k).low } else { at(k).high });
+        if !PivotRule::new(left, right, true, false).holds(low_side, values) {
+            return None;
+        }
         let v = if low_side {
             at(right).low
         } else {
             at(right).high
         };
-        for k in (0..right).chain(right + 1..=right + left) {
-            let r = at(k);
-            let rechts = k < right;
-            let ok = match (low_side, rechts) {
-                (true, true) => v <= r.low,
-                (true, false) => v < r.low,
-                (false, true) => v >= r.high,
-                (false, false) => v > r.high,
-            };
-            if !ok {
-                return None;
-            }
-        }
         Some(v)
     }
 

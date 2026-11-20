@@ -22,6 +22,7 @@
 //! event bar (the low for bull, the high for bear) — the natural stop level — and is present
 //! only on event bars. `value` is `+1`, `-1` or `0`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -191,16 +192,9 @@ impl Indicator for ZoneRejection {
         if let (Some(atr), true) = (self.atr_value, self.window.len() == 2 * self.pivot_len + 1) {
             let mid = self.pivot_len;
             let pivot = self.window[mid].clone();
-            let is_high = self
-                .window
-                .iter()
-                .enumerate()
-                .all(|(i, b)| i == mid || b.high < pivot.high);
-            let is_low = self
-                .window
-                .iter()
-                .enumerate()
-                .all(|(i, b)| i == mid || b.low > pivot.low);
+            let rule = PivotRule::symmetric(self.pivot_len, true);
+            let is_high = rule.holds(false, self.window.iter().map(|b| b.high));
+            let is_low = rule.holds(true, self.window.iter().map(|b| b.low));
             if is_high {
                 self.add_pivot(pivot.high, false, atr);
             }

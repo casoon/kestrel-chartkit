@@ -45,6 +45,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/price_average_relation.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -455,17 +456,17 @@ impl PriceAverageRelation {
     /// Strict pivot `pivot_right` bars back: (low or high) of that bar.
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let c = &self.cfg;
-        let centre = self.at(c.pivot_right)?;
-        self.at(c.pivot_right + c.pivot_left)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..c.pivot_right).chain(c.pivot_right + 1..=c.pivot_right + c.pivot_left) {
-            let r = self.at(k)?;
-            let o = if low_side { r.low } else { r.high };
-            let ok = if low_side { v < o } else { v > o };
-            if !ok {
-                return None;
-            }
+        let (l, r) = (c.pivot_left, c.pivot_right);
+        let centre = self.at(r)?;
+        let values =
+            (0..=l + r)
+                .rev()
+                .filter_map(|k| self.at(k))
+                .map(|b| if low_side { b.low } else { b.high });
+        if !PivotRule::new(l, r, true, true).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 

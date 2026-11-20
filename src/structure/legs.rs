@@ -13,6 +13,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_geometry.py`.
 
+use crate::indicator::kernels::{pivot_flags, PivotRule};
 use crate::model::Bar;
 
 #[cfg(feature = "serde")]
@@ -179,21 +180,7 @@ pub fn swing_sequence(highs: &[f64], lows: &[f64]) -> SwingSequence {
 /// known from bar `j + width` on. The first and last `width` bars are never pivots. Unlike
 /// [`super::confirmed_pivots`] (non-strict), two equal extremes cancel each other.
 pub fn strict_pivots(bars: &[Bar], width: usize) -> (Vec<bool>, Vec<bool>) {
-    let n = bars.len();
-    let mut lows = vec![false; n];
-    let mut highs = vec![false; n];
-    for j in width..n.saturating_sub(width) {
-        let window = &bars[j - width..=j + width];
-        lows[j] = window
-            .iter()
-            .enumerate()
-            .all(|(k, b)| k == width || b.low > bars[j].low);
-        highs[j] = window
-            .iter()
-            .enumerate()
-            .all(|(k, b)| k == width || b.high < bars[j].high);
-    }
-    (lows, highs)
+    pivot_flags(bars, PivotRule::symmetric(width, true))
 }
 
 /// A confirmed pivot of [`threshold_zigzag`].

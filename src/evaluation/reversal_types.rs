@@ -32,7 +32,7 @@
 //! Golden reference: `reference/kestrel_reference/fixtures/reversal_types.py`.
 
 use crate::indicator::adx::Adx;
-use crate::indicator::kernels::true_range;
+use crate::indicator::kernels::{true_range, PivotRule};
 use crate::indicator::smoothing::{Ema, Rma};
 use crate::indicator::wavetrend::WaveTrendEngine;
 use crate::indicator::Indicator;
@@ -120,10 +120,8 @@ pub struct ReversalLabel {
 }
 
 fn strict_pivot(values: &[f64], centre: usize, side: usize, low: bool) -> bool {
-    let v = values[centre];
-    (centre - side..=centre + side)
-        .filter(|&k| k != centre)
-        .all(|k| if low { v < values[k] } else { v > values[k] })
+    PivotRule::symmetric(side, true)
+        .holds(low, values[centre - side..=centre + side].iter().copied())
 }
 
 /// Labels every confirmed pivot reversal of `bars` whose evaluation window is complete.

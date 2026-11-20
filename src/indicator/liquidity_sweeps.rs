@@ -1,3 +1,4 @@
+use super::kernels::PivotRule;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
@@ -59,16 +60,9 @@ impl Indicator for LiquiditySweepEngine {
         let mid_idx = self.pivot_len;
         let mid_bar = &self.bars[mid_idx];
 
-        let is_pivot_high = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.high <= mid_bar.high);
-        let is_pivot_low = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.low >= mid_bar.low);
+        let rule = PivotRule::symmetric(self.pivot_len, false);
+        let is_pivot_high = rule.holds(false, self.bars.iter().map(|b| b.high));
+        let is_pivot_low = rule.holds(true, self.bars.iter().map(|b| b.low));
 
         if is_pivot_high {
             self.pivot_highs.push(mid_bar.high);

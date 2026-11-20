@@ -28,6 +28,7 @@
 //! for its natural stop, so a consumer that places stops there needs no second rule. `value` is
 //! `+1`/`-1` on a forming bar, `+2`/`-2` on a confirming bar, else `0`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -250,15 +251,9 @@ impl Indicator for DoublePattern {
             let mid = self.pivot_len;
             let pivot = self.window[mid].clone();
             let pivot_index = self.index - self.pivot_len;
-            let is_low = self
-                .window
-                .iter()
-                .enumerate()
-                .all(|(i, b)| i == mid || b.low > pivot.low || (i > mid && b.low == pivot.low));
-            let is_high =
-                self.window.iter().enumerate().all(|(i, b)| {
-                    i == mid || b.high < pivot.high || (i > mid && b.high == pivot.high)
-                });
+            let rule = PivotRule::new(self.pivot_len, self.pivot_len, true, false);
+            let is_low = rule.holds(true, self.window.iter().map(|b| b.low));
+            let is_high = rule.holds(false, self.window.iter().map(|b| b.high));
             for (is_pivot, bottom, price) in
                 [(is_low, true, pivot.low), (is_high, false, pivot.high)]
             {

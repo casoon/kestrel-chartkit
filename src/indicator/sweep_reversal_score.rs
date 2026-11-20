@@ -32,6 +32,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/sweep_reversal_score.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -120,15 +121,15 @@ impl SweepReversalScore {
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let p = self.cfg.pivot_len;
         let centre = self.at(p)?;
-        self.at(2 * p)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..p).chain(p + 1..=2 * p) {
-            let b = self.at(k)?;
-            let ok = if low_side { v < b.low } else { v > b.high };
-            if !ok {
-                return None;
-            }
+        let values =
+            (0..=2 * p)
+                .rev()
+                .filter_map(|k| self.at(k))
+                .map(|r| if low_side { r.low } else { r.high });
+        if !PivotRule::symmetric(p, true).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 }

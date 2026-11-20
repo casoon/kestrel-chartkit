@@ -1,3 +1,4 @@
+use super::kernels::PivotRule;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 use std::collections::{HashMap, VecDeque};
@@ -143,16 +144,9 @@ impl Indicator for ZigZagEngine {
         let mid_idx = self.depth;
         let mid_bar = &self.bars[mid_idx];
 
-        let is_pivot_high = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.high <= mid_bar.high);
-        let is_pivot_low = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.low >= mid_bar.low);
+        let rule = PivotRule::symmetric(self.depth, false);
+        let is_pivot_high = rule.holds(false, self.bars.iter().map(|b| b.high));
+        let is_pivot_low = rule.holds(true, self.bars.iter().map(|b| b.low));
         let (timestamp, high, low) = (mid_bar.timestamp, mid_bar.high, mid_bar.low);
 
         // A bar that is both: the pivot of the newest node's kind first, and none before the

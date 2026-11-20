@@ -37,6 +37,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/leg_conviction.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -128,22 +129,14 @@ impl LegConviction {
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let c = &self.cfg;
         let centre = self.at(c.pivot_right)?;
-        self.at(c.pivot_right + c.pivot_left)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..c.pivot_right).chain(c.pivot_right + 1..=c.pivot_right + c.pivot_left) {
-            let b = self.at(k)?;
-            // k < pivot_right: bars after the centre (right side), compared non-strictly.
-            let rechts = k < c.pivot_right;
-            let ok = match (low_side, rechts) {
-                (true, true) => v <= b.low,
-                (true, false) => v < b.low,
-                (false, true) => v >= b.high,
-                (false, false) => v > b.high,
-            };
-            if !ok {
-                return None;
-            }
+        let values = (0..=c.pivot_left + c.pivot_right)
+            .rev()
+            .filter_map(|k| self.at(k))
+            .map(|b| if low_side { b.low } else { b.high });
+        if !PivotRule::new(c.pivot_left, c.pivot_right, true, false).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 

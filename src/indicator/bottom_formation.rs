@@ -32,6 +32,7 @@
 //! 1 attempt … 4 confirmed) on every bar. `value` is `+n`/`-n` for the stage a bottom/top
 //! reached on this bar (bottom first), else `0`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -225,7 +226,9 @@ impl Machine {
         }
         if self.window.len() == 2 * self.pivot_len + 1 {
             let low = self.window[self.pivot_len].low;
-            if self.window.iter().all(|b| b.low >= low) {
+            if PivotRule::symmetric(self.pivot_len, false)
+                .holds(true, self.window.iter().map(|b| b.low))
+            {
                 let rsi_at = self.rsi_recent.front().copied().flatten();
                 self.lows.push_back((i - self.pivot_len, low, rsi_at));
                 if self.lows.len() > 2 {

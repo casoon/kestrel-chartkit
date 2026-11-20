@@ -8,6 +8,7 @@
 //! [`super::IndicatorAlert`] streams (every indicator already exposes one) and reports when
 //! several independently corroborate the same bar.
 
+use super::kernels::PivotRule;
 use std::collections::VecDeque;
 
 use crate::model::Bar;
@@ -144,16 +145,9 @@ impl Indicator for LiquidityPoolEngine {
         let mid_idx = self.pivot_len;
         let mid_bar = self.bars[mid_idx].clone();
 
-        let is_pivot_high = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.high <= mid_bar.high);
-        let is_pivot_low = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.low >= mid_bar.low);
+        let rule = PivotRule::symmetric(self.pivot_len, false);
+        let is_pivot_high = rule.holds(false, self.bars.iter().map(|b| b.high));
+        let is_pivot_low = rule.holds(true, self.bars.iter().map(|b| b.low));
 
         if is_pivot_high {
             self.register_pivot(LiquidityPoolKind::Bsl, mid_bar.high, mid_bar.timestamp);

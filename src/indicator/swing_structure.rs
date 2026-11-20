@@ -1,5 +1,6 @@
 use crate::model::{Bar, SeriesCapabilities};
 
+use super::kernels::PivotRule;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -231,20 +232,10 @@ impl SwingStructureEngine {
         let candidate_idx = self.bars.len() - 1 - self.right;
         let cand_high = self.bars[candidate_idx].1.high;
         let cand_low = self.bars[candidate_idx].1.low;
-        let mut is_high = true;
-        let mut is_low = true;
+        let rule = PivotRule::new(self.left, self.right, true, true);
         let window = &self.bars[candidate_idx - self.left..=candidate_idx + self.right];
-        for (offset, (_, bar)) in window.iter().enumerate() {
-            if offset == self.left {
-                continue;
-            }
-            if bar.high >= cand_high {
-                is_high = false;
-            }
-            if bar.low <= cand_low {
-                is_low = false;
-            }
-        }
+        let is_high = rule.holds(false, window.iter().map(|(_, b)| b.high));
+        let is_low = rule.holds(true, window.iter().map(|(_, b)| b.low));
         let abs_index = self.bars[candidate_idx].0;
         if is_high {
             self.push_pivot(abs_index, cand_high, true);

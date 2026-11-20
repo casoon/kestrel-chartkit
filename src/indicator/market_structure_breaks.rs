@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::kernels::PivotRule;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -69,21 +70,10 @@ impl Indicator for MarketStructureBreaksEngine {
         let cand_high = self.bars[cand_idx].high;
         let cand_low = self.bars[cand_idx].low;
 
-        let mut is_high = true;
-        let mut is_low = true;
-
+        let rule = PivotRule::symmetric(self.lookback, true);
         let window = &self.bars[cand_idx - self.lookback..=cand_idx + self.lookback];
-        for (offset, bar) in window.iter().enumerate() {
-            if offset == self.lookback {
-                continue;
-            }
-            if bar.high >= cand_high {
-                is_high = false;
-            }
-            if bar.low <= cand_low {
-                is_low = false;
-            }
-        }
+        let is_high = rule.holds(false, window.iter().map(|b| b.high));
+        let is_low = rule.holds(true, window.iter().map(|b| b.low));
 
         if is_high {
             self.swing_high = Some(cand_high);

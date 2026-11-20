@@ -38,6 +38,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/accumulation_phase.py`.
 
+use super::kernels::PivotRule;
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -164,15 +165,15 @@ impl AccumulationPhase {
     fn pivot(&self, low_side: bool) -> Option<f64> {
         let (l, r) = (self.cfg.pivot_left, self.cfg.pivot_right);
         let centre = self.at(r)?;
-        self.at(r + l)?;
-        let v = if low_side { centre.low } else { centre.high };
-        for k in (0..r).chain(r + 1..=r + l) {
-            let b = self.at(k)?;
-            let ok = if low_side { v < b.low } else { v > b.high };
-            if !ok {
-                return None;
-            }
+        let values =
+            (0..=l + r)
+                .rev()
+                .filter_map(|k| self.at(k))
+                .map(|b| if low_side { b.low } else { b.high });
+        if !PivotRule::new(l, r, true, true).holds(low_side, values) {
+            return None;
         }
+        let v = if low_side { centre.low } else { centre.high };
         Some(v)
     }
 

@@ -3,6 +3,7 @@
 //! higher-timeframe projection — the capabilities [`super::zigzag::ZigZagEngine`]'s fixed-depth,
 //! percent-only pivot detector does not offer. Complements rather than replaces it.
 
+use super::kernels::PivotRule;
 use std::collections::VecDeque;
 
 use crate::model::Bar;
@@ -279,16 +280,9 @@ impl Indicator for AdvancedZigZagEngine {
         let mid_bar = self.bars[mid_idx].clone();
         let mid_bar_index = current_bar_index - self.depth;
 
-        let is_pivot_high = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.high <= mid_bar.high);
-        let is_pivot_low = self
-            .bars
-            .iter()
-            .enumerate()
-            .all(|(i, b)| i == mid_idx || b.low >= mid_bar.low);
+        let rule = PivotRule::symmetric(self.depth, false);
+        let is_pivot_high = rule.holds(false, self.bars.iter().map(|b| b.high));
+        let is_pivot_low = rule.holds(true, self.bars.iter().map(|b| b.low));
 
         let threshold = self.deviation_threshold(atr);
 

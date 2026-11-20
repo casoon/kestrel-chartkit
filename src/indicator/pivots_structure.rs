@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::kernels::PivotRule;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -89,21 +90,10 @@ impl Indicator for PivotStructureEngine {
         let cand_high = self.bars[candidate_idx].high;
         let cand_low = self.bars[candidate_idx].low;
 
-        let mut is_pivot_high = true;
-        let mut is_pivot_low = true;
-
+        let rule = PivotRule::new(self.left_bars, self.right_bars, true, true);
         let window = &self.bars[candidate_idx - self.left_bars..=candidate_idx + self.right_bars];
-        for (offset, bar) in window.iter().enumerate() {
-            if offset == self.left_bars {
-                continue;
-            }
-            if bar.high >= cand_high {
-                is_pivot_high = false;
-            }
-            if bar.low <= cand_low {
-                is_pivot_low = false;
-            }
-        }
+        let is_pivot_high = rule.holds(false, window.iter().map(|b| b.high));
+        let is_pivot_low = rule.holds(true, window.iter().map(|b| b.low));
 
         let mut cur_score = 0.0;
         let mut found_pivot = false;

@@ -238,3 +238,123 @@ impl AtrKernel {
         self.average.reset();
     }
 }
+
+/// How a bar qualifies as a swing pivot: `left` bars before it and `right` bars after it must all
+/// lie beyond it. `*_strict` decides what a tie means on that side: strict, an equal extreme
+/// disqualifies the bar; non-strict, an equal extreme is tolerated. Every pivot detector in the
+/// crate states its rule through this type and runs it through [`PivotRule::holds`] (one window)
+/// or [`pivot_flags`] (a whole series); a pivot is known `right` bars after the bar itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PivotRule {
+    pub(crate) left: usize,
+    pub(crate) right: usize,
+    pub(crate) left_strict: bool,
+    pub(crate) right_strict: bool,
+}
+
+impl PivotRule {
+    pub(crate) const fn new(
+        left: usize,
+        right: usize,
+        left_strict: bool,
+        right_strict: bool,
+    ) -> Self {
+        Self {
+            left,
+            right,
+            left_strict,
+            right_strict,
+        }
+    }
+
+    /// `width` bars on each side, the same tie rule on both.
+    pub(crate) const fn symmetric(width: usize, strict: bool) -> Self {
+        Self::new(width, width, strict, strict)
+    }
+
+    /// Bars a pivot needs: the left ones, the pivot and the right ones.
+    pub(crate) const fn window(&self) -> usize {
+        self.left + self.right + 1
+    }
+
+    /// Whether the bar at position `left` of `values` is a pivot. `values` is one value per bar of
+    /// the window in time order, oldest first, exactly [`PivotRule::window`] long: the highs for a
+    /// pivot high (`low_side` false), the lows for a pivot low. A shorter or longer run is no
+    /// pivot. A neighbour that is not a number never lets a side qualify.
+    pub(crate) fn holds(&self, low_side: bool, values: impl Iterator<Item = f64> + Clone) -> bool {
+        let Some(centre) = values.clone().nth(self.left) else {
+            return false;
+        };
+        let mut seen = 0usize;
+        let beyond = values.enumerate().all(|(i, v)| {
+            seen = i + 1;
+            if i == self.left {
+                return true;
+            }
+            let strict = if i < self.left {
+                self.left_strict
+            } else {
+                self.right_strict
+            };
+            match (low_side, strict) {
+                (true, true) => centre < v,
+                (true, false) => centre <= v,
+                (false, true) => centre > v,
+                (false, false) => centre >= v,
+            }
+        });
+        beyond && seen == self.window()
+    }
+}
+
+/// Pivot flags for every bar of `bars` as `(lows, highs)`. Bar `j` is a pivot low if its low
+/// satisfies `rule` against `bars[j - left ..= j + right]` (highs likewise); the first `left` and
+/// last `right` bars are never pivots.
+pub(crate) fn pivot_flags(bars: &[Bar], rule: PivotRule) -> (Vec<bool>, Vec<bool>) {
+    let n = bars.len();
+    let mut lows = vec![false; n];
+    let mut highs = vec![false; n];
+    for j in rule.left..n.saturating_sub(rule.right) {
+        let window = &bars[j - rule.left..=j + rule.right];
+        lows[j] = rule.holds(true, window.iter().map(|b| b.low));
+        highs[j] = rule.holds(false, window.iter().map(|b| b.high));
+    }
+    (lows, highs)
+}
+
+#[cfg(test)]
+mod pivot_tests {
+    use super::*;
+
+    #[test]
+    fn ties_follow_the_strictness_of_their_side() {
+        let highs = [1.0, 3.0, 3.0, 1.0];
+        let tie_right = |rule: PivotRule| rule.holds(false, highs.iter().copied().take(3));
+        // Window of the bar at index 1: left 1, right 1; the tie sits on its right.
+        assert!(tie_right(PivotRule::new(1, 1, true, false)));
+        assert!(!tie_right(PivotRule::new(1, 1, true, true)));
+        // Window of the bar at index 2: the tie sits on its left.
+        let tie_left = |rule: PivotRule| rule.holds(false, highs.iter().copied().skip(1));
+        assert!(tie_left(PivotRule::new(1, 1, false, true)));
+        assert!(!tie_left(PivotRule::new(1, 1, true, true)));
+    }
+
+    #[test]
+    fn low_side_mirrors_high_side() {
+        let lows = [3.0, 1.0, 2.0];
+        let negated: Vec<f64> = lows.iter().map(|v| -v).collect();
+        for strict in [false, true] {
+            let rule = PivotRule::symmetric(1, strict);
+            assert!(rule.holds(true, lows.iter().copied()));
+            assert!(rule.holds(false, negated.iter().copied()));
+        }
+    }
+
+    #[test]
+    fn a_window_of_the_wrong_length_is_no_pivot() {
+        let rule = PivotRule::symmetric(2, false);
+        assert!(!rule.holds(false, [1.0, 2.0, 5.0, 2.0].into_iter()));
+        assert!(!rule.holds(false, [1.0, 2.0, 5.0, 2.0, 1.0, 0.0].into_iter()));
+        assert!(rule.holds(false, [1.0, 2.0, 5.0, 2.0, 1.0].into_iter()));
+    }
+}

@@ -7,6 +7,7 @@ pub use legs::{
 };
 pub use zone_registry::*;
 
+use crate::indicator::kernels::{pivot_flags, PivotRule};
 use crate::model::{Bar, SupportResistanceZone, ZoneKind};
 
 #[cfg(feature = "serde")]
@@ -46,33 +47,26 @@ pub fn confirmed_pivots(bars: &[Bar], pivot_len: usize) -> Vec<ConfirmedPivot> {
     if pivot_len == 0 || bars.len() < pivot_len * 2 + 1 {
         return Vec::new();
     }
+    let (lows, highs) = pivot_flags(bars, PivotRule::symmetric(pivot_len, false));
     let mut out = Vec::new();
     for i in pivot_len..(bars.len() - pivot_len) {
         let bar = &bars[i];
         let confirmed_at = bars[i + pivot_len].timestamp;
-        let high = bar.high;
-        if bars[i - pivot_len..=i + pivot_len]
-            .iter()
-            .all(|b| b.high <= high)
-        {
+        if highs[i] {
             out.push(ConfirmedPivot {
                 id: bar.timestamp,
                 timestamp: bar.timestamp,
                 confirmed_at,
-                price: high,
+                price: bar.high,
                 is_high: true,
             });
         }
-        let low = bar.low;
-        if bars[i - pivot_len..=i + pivot_len]
-            .iter()
-            .all(|b| b.low >= low)
-        {
+        if lows[i] {
             out.push(ConfirmedPivot {
                 id: bar.timestamp,
                 timestamp: bar.timestamp,
                 confirmed_at,
-                price: low,
+                price: bar.low,
                 is_high: false,
             });
         }
@@ -156,23 +150,13 @@ pub fn find_sr_zones_with_tolerance(
         dedup_distance,
     } = tolerance.sanitized(current_price);
 
+    let (lows, highs) = pivot_flags(bars, PivotRule::symmetric(pivot_len, false));
     for i in pivot_len..(bars.len() - pivot_len) {
-        let candidate_high = bars[i].high;
-        let is_pivot_high = bars[i - pivot_len..=i + pivot_len]
-            .iter()
-            .all(|b| b.high <= candidate_high);
-
-        if is_pivot_high {
-            resistances.push((candidate_high, bars[i].timestamp));
+        if highs[i] {
+            resistances.push((bars[i].high, bars[i].timestamp));
         }
-
-        let candidate_low = bars[i].low;
-        let is_pivot_low = bars[i - pivot_len..=i + pivot_len]
-            .iter()
-            .all(|b| b.low >= candidate_low);
-
-        if is_pivot_low {
-            supports.push((candidate_low, bars[i].timestamp));
+        if lows[i] {
+            supports.push((bars[i].low, bars[i].timestamp));
         }
     }
 
