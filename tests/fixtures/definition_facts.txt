@@ -555,9 +555,9 @@
 	source Open: ok 2c9d2b9d80011558
 	source Hlc3: ok 43fd8ab8b872ebb6
 "SMA"	canonical="sma"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
-	source Close: ok f378a6eea46411d8
-	source Open: ok fe55bae1f9bdca06
-	source Hlc3: ok e6eb7a513faea180
+	source Close: ok 0abbc0e153d63278
+	source Open: ok 58fbb13104a63e12
+	source Hlc3: ok d03423aaf2af875b
 "SMC"	canonical="liquidity_fvg"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok 1112850caa30a618
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "SMC", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1323,9 +1323,9 @@
 	source Open: ok c477c9202add5fc2
 	source Hlc3: ok c477c9202add5fc2
 "sma"	canonical="sma"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
-	source Close: ok f378a6eea46411d8
-	source Open: ok fe55bae1f9bdca06
-	source Hlc3: ok e6eb7a513faea180
+	source Close: ok 0abbc0e153d63278
+	source Open: ok 58fbb13104a63e12
+	source Hlc3: ok d03423aaf2af875b
 "smc"	canonical="liquidity_fvg"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok 1112850caa30a618
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "smc", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }

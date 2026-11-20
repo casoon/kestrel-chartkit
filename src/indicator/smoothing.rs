@@ -210,33 +210,75 @@ impl Rma {
     }
 }
 
-/// Plain windowed average
+/// How a [`Sma`] forms the sum of its window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SmaSum {
+    /// `sum += x; sum -= popped`: constant work per sample, but the rounding error accumulates with
+    /// the history length.
+    Running,
+    /// The window is summed anew, oldest to newest, on every sample: `window.iter().sum() / len`.
+    /// Work proportional to the window, but the error stays at a few ulp whatever the history length.
+    Resum,
+}
+
+/// Plain windowed average: the one SMA kernel, with two ways of summing the window.
+///
+/// - [`Sma::new`]: running sum (add the new value, subtract the one leaving). Constant work per
+///   sample; the rounding error grows with the history (around 100 ulp after 200,000 bars near
+///   20,000). This is what the nested users (ATR baselines, volume averages, ...) use.
+/// - [`Sma::exact`]: re-sums the window on every sample in oldest-to-newest order, so the error is
+///   independent of the history length (1-3 ulp). The catalog entry `sma` uses it, because that
+///   value is published as the average itself.
+///
+/// Both modes return the same values up to rounding and share the warm-up: `None` until `len`
+/// samples are in.
 #[derive(Debug, Clone)]
 pub struct Sma {
     len: usize,
     window: VecDeque<f64>,
     sum: f64,
+    mode: SmaSum,
 }
 
 impl Sma {
+    /// Running-sum average; see the type documentation.
     pub fn new(len: usize) -> Self {
+        Self::with_mode(len, SmaSum::Running)
+    }
+
+    /// Average that re-sums its window on every sample; see the type documentation.
+    pub fn exact(len: usize) -> Self {
+        Self::with_mode(len, SmaSum::Resum)
+    }
+
+    fn with_mode(len: usize, mode: SmaSum) -> Self {
         Self {
             len,
             window: VecDeque::with_capacity(len),
             sum: 0.0,
+            mode,
         }
     }
 
     pub fn update(&mut self, src: f64) -> Option<f64> {
         self.window.push_back(src);
-        self.sum += src;
+        if self.mode == SmaSum::Running {
+            self.sum += src;
+        }
         if self.window.len() > self.len {
-            self.sum -= self.window.pop_front().unwrap();
+            let popped = self.window.pop_front().unwrap();
+            if self.mode == SmaSum::Running {
+                self.sum -= popped;
+            }
         }
         if self.window.len() < self.len {
             return None;
         }
-        Some(self.sum / self.len as f64)
+        let sum = match self.mode {
+            SmaSum::Running => self.sum,
+            SmaSum::Resum => self.window.iter().sum::<f64>(),
+        };
+        Some(sum / self.len as f64)
     }
 
     pub fn reset(&mut self) {
@@ -1053,6 +1095,53 @@ mod chain_tests {
         let mut direct = Ema::new(5);
         for v in [10.0, 11.0, 12.0, 9.0] {
             assert_eq!(via_kind.update(v), Ema::update(&mut direct, v));
+        }
+    }
+}
+
+#[cfg(test)]
+mod sma_tests {
+    use super::Sma;
+    use crate::indicator::moving_averages::SmaEngine;
+    use crate::indicator::Indicator;
+    use crate::model::Bar;
+
+    fn series(n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|i| 20_000.0 + ((i * 7919) % 1000) as f64 * 0.37 + (i as f64 * 0.013).sin() * 40.0)
+            .collect()
+    }
+
+    /// The catalog `sma` is the plain re-sum of the window, oldest to newest, bit for bit, however
+    /// long the history is.
+    #[test]
+    fn catalog_sma_equals_a_plain_resum_bit_for_bit() {
+        let closes = series(200_000);
+        let period = 20;
+        let mut engine = SmaEngine::new(period);
+        for (i, &c) in closes.iter().enumerate() {
+            let bar = Bar::new(i as i64, c, c, c, c, 1.0);
+            let out = engine.on_bar(&bar);
+            if i + 1 < period {
+                assert!(out.is_none());
+                continue;
+            }
+            let expected = closes[i + 1 - period..=i].iter().sum::<f64>() / period as f64;
+            assert_eq!(out.unwrap().value.to_bits(), expected.to_bits(), "bar {i}");
+        }
+    }
+
+    #[test]
+    fn exact_and_running_modes_agree_up_to_rounding() {
+        let closes = series(5_000);
+        let mut exact = Sma::exact(10);
+        let mut running = Sma::new(10);
+        for &c in &closes {
+            match (exact.update(c), running.update(c)) {
+                (Some(a), Some(b)) => assert!((a - b).abs() < 1e-8),
+                (None, None) => {}
+                other => panic!("warm-up differs: {other:?}"),
+            }
         }
     }
 }

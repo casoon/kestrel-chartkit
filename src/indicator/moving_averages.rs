@@ -20,7 +20,7 @@ impl SmaEngine {
     pub fn new(period: usize) -> Self {
         Self {
             period,
-            sma: Sma::new(period),
+            sma: Sma::exact(period),
             alerts: Vec::new(),
         }
     }
