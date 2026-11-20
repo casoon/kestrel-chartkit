@@ -22,6 +22,7 @@ pub use cheat_sheet::{
 pub use fear_gauge::{fear_gauge_reading, FearGaugeReading, FearGaugeState};
 pub use fear_greed::{fear_greed_reading, FearGreedDriver, FearGreedReading, FearGreedState};
 pub use price::{price_summary, PriceSummary};
+#[allow(deprecated)]
 pub use price_location::{
     price_location_series, true_range, wilder_atr_series, PriceLocation, PriceLocationConfig,
     PriceLocationEngine, WilderAtr,

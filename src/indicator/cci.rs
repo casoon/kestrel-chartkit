@@ -14,8 +14,8 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// line**: an exponential average over `avg_len` of the raw CCI, seeded with its first value.
 /// `extra["signal"]` is the same average over `sig_len` of the line; the context line uses
 /// `ctx_len`. Alerts fire on line/signal and zero crosses, on the trend wedge (`bull_/bear_trend_wedge`, see
-/// [`SlopeDivergence`]) and on exhaustion of
-/// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history before
+/// `SlopeDivergence`) and on exhaustion of
+/// the line (`Exhaustion` with its defaults — it needs its own 200 bars of line history before
 /// it can fire).
 ///
 /// First output: with the `cci_len`-th bar. [`Indicator::reset`] clears windows and averages.

@@ -247,20 +247,20 @@ impl Sma {
 
 /// Rolling window for finding highest and lowest values
 #[derive(Debug, Clone)]
-pub struct ExtremeWindow {
+pub(crate) struct ExtremeWindow {
     len: usize,
     window: VecDeque<f64>,
 }
 
 impl ExtremeWindow {
-    pub fn new(len: usize) -> Self {
+    pub(crate) fn new(len: usize) -> Self {
         Self {
             len,
             window: VecDeque::with_capacity(len),
         }
     }
 
-    pub fn push(&mut self, value: f64) -> Option<(f64, f64)> {
+    pub(crate) fn push(&mut self, value: f64) -> Option<(f64, f64)> {
         if self.window.len() == self.len {
             self.window.pop_front();
         }
@@ -277,7 +277,7 @@ impl ExtremeWindow {
         Some((lowest, highest))
     }
 
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.window.clear();
     }
 }
@@ -453,7 +453,7 @@ impl SmootherKind {
     }
 }
 
-/// Common contract for streaming smoothers, letting them be chained ([`SmootherChain`]) or
+/// Common contract for streaming smoothers, letting them be
 /// selected dynamically ([`SmootherKind::build`]) regardless of concrete type.
 pub trait Smoother: Send + Sync {
     /// Feeds one value. Returns `None` while still inside this smoother's own warmup.
@@ -553,57 +553,6 @@ impl Smoother for Kama {
     }
     fn warmup_period(&self) -> usize {
         self.period + 1
-    }
-}
-
-/// A typed, ordered pipeline of [`Smoother`] stages: each stage's output feeds the next stage's
-/// input. Its own warmup/reset contract composes cleanly from its stages':
-/// [`SmootherChain::warmup_period`] is the sum of every stage's warmup (a downstream stage cannot
-/// start accumulating until its upstream first emits), and [`SmootherChain::reset`] resets every
-/// stage. Works with any mix of existing `Smoother` impls, and with future ones without changes
-/// here — implement [`Smoother`] and it is chainable.
-pub struct SmootherChain {
-    stages: Vec<Box<dyn Smoother>>,
-}
-
-impl SmootherChain {
-    pub fn new(stages: Vec<Box<dyn Smoother>>) -> Self {
-        Self { stages }
-    }
-
-    pub fn warmup_period(&self) -> usize {
-        self.stages.iter().map(|s| s.warmup_period()).sum()
-    }
-
-    pub fn reset(&mut self) {
-        for stage in &mut self.stages {
-            stage.reset();
-        }
-    }
-
-    /// Feeds `src` through every stage in order. Returns `None` if any stage is still inside its
-    /// own warmup this bar.
-    pub fn update(&mut self, src: f64) -> Option<f64> {
-        let mut value = src;
-        for stage in &mut self.stages {
-            value = stage.update(value)?;
-        }
-        Some(value)
-    }
-}
-
-/// A [`SmootherChain`] is itself a [`Smoother`], so chains compose (a chain can be one stage of
-/// another chain) and can be used anywhere a single smoother is expected, e.g. as one leg of
-/// [`super::trend_relationship::AdaptiveTrendRelationship`].
-impl Smoother for SmootherChain {
-    fn update(&mut self, src: f64) -> Option<f64> {
-        SmootherChain::update(self, src)
-    }
-    fn reset(&mut self) {
-        SmootherChain::reset(self)
-    }
-    fn warmup_period(&self) -> usize {
-        SmootherChain::warmup_period(self)
     }
 }
 
@@ -784,7 +733,7 @@ impl SuperSmoother {
 
 /// Kaufman's Adaptive Moving Average over a scalar stream: the one KAMA kernel. The catalog
 /// indicator [`KamaEngine`](super::moving_averages::KamaEngine) wraps it, and it is a stage of a
-/// [`Smoother`]/[`SmootherChain`] pipeline. `fast_period`/`slow_period` are parameters (Kaufman's
+/// [`Smoother`] stage. `fast_period`/`slow_period` are parameters (Kaufman's
 /// defaults 2/30).
 #[derive(Debug, Clone)]
 pub struct Kama {
@@ -1064,35 +1013,6 @@ mod chain_tests {
     }
 
     use super::*;
-
-    #[test]
-    fn test_chain_warmup_is_sum_of_stage_warmups() {
-        let chain =
-            SmootherChain::new(vec![SmootherKind::Sma.build(3), SmootherKind::Rma.build(4)]);
-        assert_eq!(chain.warmup_period(), 3 + 4);
-    }
-
-    #[test]
-    fn test_chain_none_until_every_stage_warm() {
-        let mut chain =
-            SmootherChain::new(vec![SmootherKind::Sma.build(2), SmootherKind::Sma.build(2)]);
-        assert_eq!(chain.update(1.0), None); // stage 1 still cold
-        assert_eq!(chain.update(2.0), None); // stage 1 warm (sma=1.5), stage 2 gets its 1st input
-                                             // stage 1 sma(2,3)=2.5; stage 2 now has both its inputs (1.5, 2.5) -> warm.
-        let value = chain.update(3.0).unwrap();
-        assert!((value - 2.0).abs() < 1e-9);
-        let value = chain.update(4.0).unwrap();
-        assert!((value - 3.0).abs() < 1e-9);
-    }
-
-    #[test]
-    fn test_chain_reset_clears_every_stage() {
-        let mut chain = SmootherChain::new(vec![SmootherKind::Sma.build(2)]);
-        chain.update(1.0);
-        assert!(chain.update(2.0).is_some());
-        chain.reset();
-        assert_eq!(chain.update(5.0), None, "reset stage must re-enter warmup");
-    }
 
     #[test]
     fn test_smoother_kind_build_matches_direct_construction() {

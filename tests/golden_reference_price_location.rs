@@ -1,5 +1,8 @@
 //! Price location and Wilder ATR against `reference/kestrel_reference/fixtures/price_location.py`.
 
+// The deprecated `wilder_atr_series` is still the public ATR series of this module and stays checked.
+#![allow(deprecated)]
+
 mod common;
 
 use kestrel_chartkit::analytics::{

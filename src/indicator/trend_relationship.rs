@@ -1,8 +1,6 @@
 //! Adaptive trend-relationship engine: classifies trend state from the relative position and
 //! slope of two configurable [`super::smoothing::Smoother`] stages (any [`SmootherKind`], any
 //! length), instead of duplicating the same "fast MA vs. slow MA, is it rising" logic per script.
-//! Combine with [`super::smoothing::SmootherChain`] to compare cascades of more than one stage per
-//! side (e.g. an EMA-of-SMA fast leg against a plain slow EMA).
 
 use std::collections::HashMap;
 
@@ -65,8 +63,8 @@ impl AdaptiveTrendRelationship {
         }
     }
 
-    /// Builds the relationship from two arbitrary, already-constructed smoothers (e.g. a
-    /// multi-stage [`super::smoothing::SmootherChain`] wrapped to implement [`Smoother`]).
+    /// Builds the relationship from two arbitrary, already-constructed smoothers (any type
+    /// implementing [`Smoother`]).
     pub fn from_smoothers(fast: Box<dyn Smoother>, slow: Box<dyn Smoother>) -> Self {
         Self {
             fast,
@@ -264,13 +262,8 @@ mod tests {
     }
 
     #[test]
-    fn test_from_smoothers_accepts_chain() {
-        use super::super::smoothing::SmootherChain;
-
-        let fast = Box::new(SmootherChain::new(vec![
-            SmootherKind::Sma.build(2),
-            SmootherKind::Ema.build(2),
-        ]));
+    fn test_from_smoothers_accepts_smoothers() {
+        let fast = SmootherKind::Ema.build(2);
         let slow = SmootherKind::Sma.build(5);
         let mut engine = AdaptiveTrendRelationship::from_smoothers(fast, slow);
 

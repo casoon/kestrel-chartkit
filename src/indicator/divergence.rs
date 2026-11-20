@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 /// Stoch RSI, CCI, Williams %R, Fisher Transform and TSI; up to 0.33 the kinds were named
 /// `bull_/bear_divergence`.
 #[derive(Debug, Clone)]
-pub struct SlopeDivergence {
+pub(crate) struct SlopeDivergence {
     div_len: usize,
     div_min: f64,
     fast_window: VecDeque<f64>,
@@ -16,14 +16,14 @@ pub struct SlopeDivergence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct DivergenceAlerts {
-    pub bull: bool,
-    pub bear: bool,
-    pub fast_dir: f64,
+pub(crate) struct DivergenceAlerts {
+    pub(crate) bull: bool,
+    pub(crate) bear: bool,
+    pub(crate) fast_dir: f64,
 }
 
 impl SlopeDivergence {
-    pub fn new(div_len: usize, div_min: f64) -> Self {
+    pub(crate) fn new(div_len: usize, div_min: f64) -> Self {
         Self {
             div_len,
             div_min,
@@ -32,7 +32,7 @@ impl SlopeDivergence {
         }
     }
 
-    pub fn update(&mut self, fast: f64, slow: f64) -> DivergenceAlerts {
+    pub(crate) fn update(&mut self, fast: f64, slow: f64) -> DivergenceAlerts {
         if self.fast_window.len() == self.div_len + 1 {
             self.fast_window.pop_front();
         }
@@ -54,12 +54,12 @@ impl SlopeDivergence {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.fast_window.clear();
         self.slow_window.clear();
     }
 
-    pub fn div_min(&self) -> f64 {
+    pub(crate) fn div_min(&self) -> f64 {
         self.div_min
     }
 }

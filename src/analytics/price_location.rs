@@ -12,8 +12,7 @@
 //! | `sma_prior` | `sma` exactly `slope_bars` bars earlier (`None` while either is missing). |
 //! | `vol_tercile` | rank of `atr / close` among the finite values of the last `vol_window` bars (the current one included): `share = #{x < current} / count`, tercile `min(⌊3 · share⌋, 2)`; from the `vol_warmup`-th bar. |
 //!
-//! [`WilderAtr`] is the ATR part on its own, [`wilder_atr_series`] the ATR over a whole series.
-//! The update `(ATR₋₁ · (n − 1) + TR) / n` is written exactly so (not as `α · TR + (1 − α) ·
+//! The catalog indicator `atr` is the ATR on its own. The update `(ATR₋₁ · (n − 1) + TR) / n` is written exactly so (not as `α · TR + (1 − α) ·
 //! ATR₋₁`): the two agree mathematically, not bit for bit, and downstream thresholds compare
 //! these values.
 //!
@@ -32,9 +31,13 @@ pub fn true_range(high: f64, low: f64, prev_close: Option<f64>) -> f64 {
 }
 
 /// Wilder ATR, pushed bar by bar (see the module table).
+#[deprecated(
+    note = "use the catalog indicator `atr` (percent of close; `extra[\"raw\"]` is this price distance)"
+)]
 #[derive(Debug, Clone)]
 pub struct WilderAtr(AtrKernel);
 
+#[allow(deprecated)]
 impl WilderAtr {
     pub fn new(len: usize) -> Self {
         Self(AtrKernel::new(TrueRangeSmoothing::Rma, len.max(1)))
@@ -47,10 +50,13 @@ impl WilderAtr {
 }
 
 /// Wilder ATR for every bar of `bars` (`None` before the `len`-th bar).
+#[deprecated(
+    note = "use the catalog indicator `atr` (percent of close; `extra[\"raw\"]` is this price distance)"
+)]
 pub fn wilder_atr_series(bars: &[Bar], len: usize) -> Vec<Option<f64>> {
-    let mut atr = WilderAtr::new(len);
+    let mut atr = AtrKernel::new(TrueRangeSmoothing::Rma, len.max(1));
     bars.iter()
-        .map(|b| atr.push(b.high, b.low, b.close))
+        .map(|b| atr.push_hlc(b.high, b.low, b.close))
         .collect()
 }
 
@@ -98,7 +104,7 @@ pub struct PriceLocation {
 pub struct PriceLocationEngine {
     cfg: PriceLocationConfig,
     seen: usize,
-    atr: WilderAtr,
+    atr: AtrKernel,
     ema: Ema,
     hl: VecDeque<(f64, f64)>,
     sma: Sma,
@@ -109,7 +115,7 @@ pub struct PriceLocationEngine {
 impl PriceLocationEngine {
     pub fn new(cfg: PriceLocationConfig) -> Self {
         Self {
-            atr: WilderAtr::new(cfg.atr_len),
+            atr: AtrKernel::new(TrueRangeSmoothing::Rma, cfg.atr_len.max(1)),
             cfg,
             seen: 0,
             ema: Ema::new(cfg.ema_len),
@@ -126,7 +132,7 @@ impl PriceLocationEngine {
 
     pub fn push(&mut self, high: f64, low: f64, close: f64) -> PriceLocation {
         let c = self.cfg;
-        let atr = self.atr.push(high, low, close);
+        let atr = self.atr.push_hlc(high, low, close);
         let ema = self.ema.update(close).unwrap();
         self.hl.push_back((high, low));
         if self.hl.len() > c.range_len {

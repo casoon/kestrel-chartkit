@@ -4,7 +4,6 @@
 //! bespoke, differently-shaped outputs.
 
 use crate::model::Bar;
-use crate::session::{SessionConfig, SessionConfigError, SessionTracker};
 use crate::timeframe::{Timeframe, TimeframeError};
 
 /// Which family a [`PriceLevel`] candidate comes from.
@@ -173,67 +172,6 @@ impl PeriodMidpointTracker {
     }
 }
 
-/// Combines Opening Range and period-midpoint levels (both stateful/time-driven) plus round
-/// numbers (stateless, derived from the current price) into one merged candidate list per bar.
-/// Swing Fibonacci levels are intentionally not included here: they need an externally supplied
-/// confirmed swing (see [`swing_fibonacci_levels`]), which this aggregator has no opinion on.
-pub struct PriceLevelAggregator {
-    session: SessionTracker,
-    period: PeriodMidpointTracker,
-    round_increment: f64,
-    round_levels_each_side: usize,
-}
-
-impl PriceLevelAggregator {
-    pub fn new(
-        session_config: SessionConfig,
-        period_tf: Timeframe,
-        round_increment: f64,
-        round_levels_each_side: usize,
-    ) -> Result<Self, PriceLevelAggregatorError> {
-        Ok(Self {
-            session: SessionTracker::new(session_config)
-                .map_err(PriceLevelAggregatorError::Session)?,
-            period: PeriodMidpointTracker::new(period_tf)
-                .map_err(PriceLevelAggregatorError::Timeframe)?,
-            round_increment,
-            round_levels_each_side,
-        })
-    }
-
-    pub fn reset(&mut self) {
-        self.session.reset();
-        self.period.reset();
-    }
-
-    pub fn on_bar(&mut self, bar: &Bar) -> Vec<PriceLevel> {
-        self.session.on_bar(bar);
-        let period_level = self.period.on_bar(bar);
-
-        let mut levels = Vec::new();
-        if let (Some(h), Some(l)) = (self.session.orb_high(), self.session.orb_low()) {
-            if !self.session.in_orb_window() {
-                levels.extend(opening_range_levels(h, l));
-            }
-        }
-        if let Some(level) = period_level {
-            levels.push(level);
-        }
-        levels.extend(round_number_levels(
-            bar.close,
-            self.round_increment,
-            self.round_levels_each_side,
-        ));
-        levels
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum PriceLevelAggregatorError {
-    Session(SessionConfigError),
-    Timeframe(TimeframeError),
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -299,28 +237,5 @@ mod tests {
             .on_bar(&Bar::new(300, 100.0, 101.0, 99.0, 100.0, 10.0))
             .unwrap();
         assert!((level.price - 100.0).abs() < 1e-9); // (110+90)/2
-    }
-
-    #[test]
-    fn test_aggregator_merges_round_numbers_and_opening_range() {
-        let session = SessionConfig {
-            start_hour: 0,
-            start_minute: 0,
-            end_hour: 23,
-            end_minute: 59,
-            orb_duration_mins: 1,
-            utc_offset_seconds: 0,
-        };
-        let mut aggregator =
-            PriceLevelAggregator::new(session, Timeframe::Day(1), 10.0, 1).unwrap();
-
-        // First bar starts the ORB window (still forming), later bars are past it.
-        aggregator.on_bar(&Bar::new(0, 100.0, 101.0, 99.0, 100.0, 10.0));
-        let levels = aggregator.on_bar(&Bar::new(120, 105.0, 106.0, 104.0, 105.0, 10.0));
-
-        assert!(levels.iter().any(|l| l.kind == PriceLevelKind::RoundNumber));
-        assert!(levels
-            .iter()
-            .any(|l| l.kind == PriceLevelKind::OpeningRangeHigh));
     }
 }

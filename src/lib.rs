@@ -119,7 +119,7 @@ pub use artifact::{
 pub use calendar::{ExchangeCalendar, SessionSegment};
 pub use changepoint::{cusum, CusumOutput, CusumState};
 pub use checkpoint::{Checkpoint, CheckpointStore};
-pub use clustering::{kmeans_1d, KMeansResult, RobustBand, RollingRobustThreshold};
+pub use clustering::{kmeans_1d, KMeansResult};
 pub use contract::{
     contract_pnl, contract_tick_value, notional_value, stop_risk_amount, ContractSpec,
     ContractSpecError, Currency, FxConversionError, FxRate, InstrumentType, ValuationError,
@@ -181,8 +181,8 @@ pub use portfolio::{
 };
 pub use regime::classify_regime;
 pub use regime_advanced::{
-    AdaptiveCycleOutput, AdaptiveCycleTracker, HysteresisBand, HysteresisLevel,
-    PredictabilityTracker, RegimeMarkovModel, RegimePersistenceOutput, RegimePersistenceTracker,
+    AdaptiveCycleOutput, AdaptiveCycleTracker, PredictabilityTracker, RegimeMarkovModel,
+    RegimePersistenceOutput, RegimePersistenceTracker,
 };
 pub use risk::{
     position_size, position_size_contract, AccountRisk, PositionSizeResult, ScaleInStep,

@@ -33,7 +33,7 @@ pub mod elliott;
 pub mod envelope;
 pub mod eom;
 pub mod equal_level_liquidity;
-pub mod exhaustion;
+pub(crate) mod exhaustion;
 pub mod fisher_transform;
 pub mod flow_exhaustion;
 pub mod force_index;

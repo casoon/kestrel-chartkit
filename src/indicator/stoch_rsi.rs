@@ -13,7 +13,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// placed in the range of its last `stoch_len` values, `100 * (rsi - min) / (max - min)`, `50` for a
 /// flat range. `value` is `%K`, an `SMA(k_len)` of that; `extra["signal"]` is `%D`, an
 /// `SMA(d_len)` of `%K`; both clamped to `0..=100`. A context line over longer windows serves the
-/// trend-wedge alerts (`bull_/bear_trend_wedge`, see [`SlopeDivergence`]).
+/// trend-wedge alerts (`bull_/bear_trend_wedge`, see `SlopeDivergence`).
 ///
 /// First output: with the `rsi_len + stoch_len + k_len + d_len - 2`-th bar, since `%K` is only
 /// published together with its `%D`. [`Indicator::reset`] clears all

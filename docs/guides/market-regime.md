@@ -67,8 +67,6 @@ over synthetic bars and shades every run of equal regimes.
 - `RegimeMarkovModel` counts observed transitions and returns `transition_probability(from, to)`
   and `next_state_distribution(from)`.
 - `RegimePersistenceTracker` reports how long the current regime has lasted.
-- `HysteresisBand` switches levels only after a value has crossed separate enter and exit
-  thresholds, so a reading that hovers at a boundary does not flip back and forth.
 
 The composite scoring uses the regime to grade a signal: see
 [Composite scoring](../composite-scoring/).

@@ -17,7 +17,7 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// `extra["raw"]` is the unsmoothed value before that EMA (equals `value` for `avg_len = 1`).
 /// `extra["signal"]` is `Ema(sig_len)` over the line; the context line runs over `ctx_len` bars.
 /// Alerts fire on line/signal crosses inside the extreme zones, on crosses of `mid_line` and on
-/// the trend wedge (`bull_/bear_trend_wedge`, see [`SlopeDivergence`]).
+/// the trend wedge (`bull_/bear_trend_wedge`, see `SlopeDivergence`).
 ///
 /// First output: with the `wpr_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct WilliamsR {

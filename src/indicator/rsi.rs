@@ -121,9 +121,9 @@ impl ChangeSmoother {
 /// `extra["raw"]`: the unsmoothed RSI before the `avg_len` smoothing (equals `value` for
 /// `avg_len = 1`). `extra["signal"]`: `Ema(sig_len)` over the line. `extra["ctx"]`: the same construction over
 /// `ctx_len` changes (default 100), present once that many changes exist; the trend wedge is judged
-/// between line and context ([`SlopeDivergence`]). Alerts fire on line/signal crosses (inside the extreme zones when
+/// between line and context (`SlopeDivergence`). Alerts fire on line/signal crosses (inside the extreme zones when
 /// `require_extreme_zone` is set), on crosses of `mid_line`, on the trend wedge (`bull_/bear_trend_wedge`) and on exhaustion of
-/// the line ([`Exhaustion`] with its defaults — it needs its own 200 bars of line history on top
+/// the line (`Exhaustion` with its defaults — it needs its own 200 bars of line history on top
 /// of the warmup before it can fire).
 ///
 /// First output: once `rsi_len` changes exist, i.e. with the `rsi_len + 1`-th bar.

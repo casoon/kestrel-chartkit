@@ -32,8 +32,13 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 - **Indicators:** `SmootherKind` is the one list of moving-average kinds usable as a smoother parameter (new: `Wma`; `name()`, `from_name()`, `from_code()`, `ALL`, `NAMES`, each variant named like its catalog entry). `trend_relationship` now accepts every kind for `fast_kind`/`slow_kind`; the `ma_kind` of `price_average_relation` and `roc_context`, the ATR smoothing and the RSI smoothing are documented subsets of it (`MA_KINDS`, `TrueRangeSmoothing::KINDS`, `RsiSmoothing`) and convert to and from it. Existing numeric codes and names keep their meaning; catalog outputs are unchanged.
 - **Indicators:** swing-pivot detection is one kernel (`kernels::PivotRule`: bars left and right, strict or tolerant ties per side, run through one window test or over a whole series). `structure::confirmed_pivots`, `find_sr_zones` and `strict_pivots`, the pivot detectors of 24 indicators (ZigZag, advanced ZigZag, BOS/CHoCH, market structure breaks, pivot structure, swing structure, liquidity sweeps, smart-money structure, double pattern, bottom formation, zone rejection, divergence, leg character, leg conviction and others) and the reversal-type labels call it instead of carrying their own window loop. Catalog outputs are unchanged.
 
+### Removed
+
+- **Internal building blocks (BREAKING):** what computes a value per bar is a catalog entry or crate-internal. `Exhaustion` (module `indicator::exhaustion`), `SlopeDivergence`, `ExtremeWindow`, `RollingRobustThreshold` and `RobustBand` are now `pub(crate)`; `SmootherChain`, `HysteresisBand`, `HysteresisLevel` and `PriceLevelAggregator` (with its error type) are removed, none was used outside the crate.
+
 ### Deprecated
 
+- **`analytics::WilderAtr` and `analytics::wilder_atr_series`:** use the catalog indicator `atr` (percent of close; `extra["raw"]` is the price distance these return).
 - **`pair_catalog()`:** the pair indicators are entries of `catalog()`; `pair_catalog()` is a filter over it, and `catalog_of(IndicatorInput::Pair)` returns the same.
 
 ## [0.42.0] - 2026-11-17

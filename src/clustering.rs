@@ -97,17 +97,11 @@ pub fn kmeans_1d(values: &[f64], k: usize, max_iterations: usize) -> Option<KMea
 /// rather than mean +/- k*stddev, so a handful of outlier bars in the window do not blow out the
 /// band the way a plain stddev-based threshold would.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct RobustBand {
+pub(crate) struct RobustBand {
     pub median: f64,
     pub mad: f64,
     pub upper: f64,
     pub lower: f64,
-}
-
-impl RobustBand {
-    pub fn contains(&self, value: f64) -> bool {
-        value >= self.lower && value <= self.upper
-    }
 }
 
 /// MAD-to-stddev consistency constant under a normal distribution (`1 / Phi^-1(3/4)`), the
@@ -116,7 +110,7 @@ const MAD_CONSISTENCY_CONSTANT: f64 = 1.482_602_218_505_602;
 
 /// Streaming robust threshold over a fixed-size trailing window.
 #[derive(Debug, Clone)]
-pub struct RollingRobustThreshold {
+pub(crate) struct RollingRobustThreshold {
     window_len: usize,
     k: f64,
     buffer: VecDeque<f64>,
@@ -210,9 +204,8 @@ mod tests {
         // Median stays near 100 despite the outlier; a mean-based threshold would be dragged
         // toward the 1000.0 outlier instead.
         assert!((band.median - 100.0).abs() < 1.0);
-        assert!(band.contains(100.5));
         assert!(
-            !band.contains(1000.0),
+            band.upper < 1000.0,
             "outlier must fall outside the robust band"
         );
     }

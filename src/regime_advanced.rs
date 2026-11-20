@@ -161,80 +161,6 @@ impl PredictabilityTracker {
     }
 }
 
-/// Three-level hysteretic (Schmitt-trigger-style) classification, so a score oscillating near a
-/// single threshold does not flap the classified level back and forth every bar.
-///
-/// Contract: `enter_low <= exit_low <= exit_high <= enter_high`. From [`HysteresisLevel::Neutral`]
-/// a value must reach `enter_high`/`enter_low` to leave; from [`HysteresisLevel::High`]/
-/// [`HysteresisLevel::Low`] a value must retreat past `exit_high`/`exit_low` to fall back to
-/// `Neutral` (an extreme-to-extreme jump takes two updates: extreme -> Neutral -> the other
-/// extreme, never a same-bar jump between the two extremes).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum HysteresisLevel {
-    Low,
-    Neutral,
-    High,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct HysteresisBand {
-    enter_low: f64,
-    exit_low: f64,
-    exit_high: f64,
-    enter_high: f64,
-    level: HysteresisLevel,
-}
-
-impl HysteresisBand {
-    pub fn new(enter_low: f64, exit_low: f64, exit_high: f64, enter_high: f64) -> Self {
-        Self {
-            enter_low,
-            exit_low,
-            exit_high,
-            enter_high,
-            level: HysteresisLevel::Neutral,
-        }
-    }
-
-    pub fn level(&self) -> HysteresisLevel {
-        self.level
-    }
-
-    pub fn reset(&mut self) {
-        self.level = HysteresisLevel::Neutral;
-    }
-
-    pub fn update(&mut self, value: f64) -> HysteresisLevel {
-        self.level = match self.level {
-            HysteresisLevel::High => {
-                if value <= self.exit_high {
-                    HysteresisLevel::Neutral
-                } else {
-                    HysteresisLevel::High
-                }
-            }
-            HysteresisLevel::Low => {
-                if value >= self.exit_low {
-                    HysteresisLevel::Neutral
-                } else {
-                    HysteresisLevel::Low
-                }
-            }
-            HysteresisLevel::Neutral => {
-                if value >= self.enter_high {
-                    HysteresisLevel::High
-                } else if value <= self.enter_low {
-                    HysteresisLevel::Low
-                } else {
-                    HysteresisLevel::Neutral
-                }
-            }
-        };
-        self.level
-    }
-}
-
 /// Adaptive swing-length tracking: counts bars between sign crossings of a signed input (an
 /// oscillator or signed regime score) as an empirical, adapting proxy for the dominant cycle
 /// length, without claiming spectral/Hilbert-transform precision.
@@ -394,27 +320,6 @@ mod tests {
             last.unwrap() < 0.3,
             "zig-zagging noise must score low predictability"
         );
-    }
-
-    #[test]
-    fn test_hysteresis_band_does_not_chatter_near_a_single_threshold() {
-        let mut band = HysteresisBand::new(-2.0, -1.0, 1.0, 2.0);
-        assert_eq!(band.update(2.5), HysteresisLevel::High);
-        // Oscillates between the enter/exit thresholds without ever falling to/below exit_high:
-        // must stay High the whole time (no chatter).
-        for v in [1.8, 1.2, 1.9, 1.3, 1.7] {
-            assert_eq!(band.update(v), HysteresisLevel::High);
-        }
-        // Now genuinely retreats past exit_high -> Neutral.
-        assert_eq!(band.update(0.5), HysteresisLevel::Neutral);
-    }
-
-    #[test]
-    fn test_hysteresis_band_extreme_to_extreme_passes_through_neutral() {
-        let mut band = HysteresisBand::new(-2.0, -1.0, 1.0, 2.0);
-        assert_eq!(band.update(2.5), HysteresisLevel::High);
-        assert_eq!(band.update(-2.5), HysteresisLevel::Neutral);
-        assert_eq!(band.update(-2.5), HysteresisLevel::Low);
     }
 
     #[test]

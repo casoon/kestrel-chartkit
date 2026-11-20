@@ -77,11 +77,6 @@ impl Exhaustion {
         )
     }
 
-    /// Bars until the first signal can appear: the rank needs `lookback` previous values.
-    pub fn warmup_period(&self) -> usize {
-        self.lookback + 1
-    }
-
     /// Feeds one bar: the oscillator's line value and the bar's high and low.
     pub fn update(&mut self, value: f64, high: f64, low: f64) -> ExhaustionSignal {
         // Percentile rank of the current value among the previous `lookback` values:
@@ -233,7 +228,6 @@ mod tests {
         let mut d = Exhaustion::new(20, 90.0, 3, 3);
         let s = feed(&mut d, &history(10));
         assert_eq!(s, ExhaustionSignal::default());
-        assert_eq!(d.warmup_period(), 21);
     }
 
     #[test]
