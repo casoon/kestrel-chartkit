@@ -1,4 +1,4 @@
-use super::kernels::true_range;
+use super::kernels::AtrKernel;
 use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Bar;
 
-use super::smoothing::{crossed_over, crossed_under, Ema, Rma, Sma, Wma};
+use super::smoothing::{crossed_over, crossed_under, Rma};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// How the true range is averaged.
@@ -31,56 +31,6 @@ pub enum TrueRangeSmoothing {
     Ema,
     /// Linearly weighted over the last `N` true ranges, heaviest on the most recent.
     Wma,
-}
-
-/// The true-range average in whichever form was selected. Every mode publishes from the `N`-th
-/// true range on, so switching the method moves the values, never the first output.
-#[derive(Debug, Clone)]
-enum TrSmoother {
-    Rma(Rma),
-    Sma(Sma),
-    Ema { ema: Ema, len: usize, seen: usize },
-    Wma(Wma),
-}
-
-impl TrSmoother {
-    fn new(method: TrueRangeSmoothing, len: usize) -> Self {
-        match method {
-            TrueRangeSmoothing::Rma => Self::Rma(Rma::new(len)),
-            TrueRangeSmoothing::Sma => Self::Sma(Sma::new(len)),
-            TrueRangeSmoothing::Ema => Self::Ema {
-                ema: Ema::new(len),
-                len,
-                seen: 0,
-            },
-            TrueRangeSmoothing::Wma => Self::Wma(Wma::new(len)),
-        }
-    }
-
-    fn update(&mut self, tr: f64) -> Option<f64> {
-        match self {
-            Self::Rma(rma) => rma.update(tr),
-            Self::Sma(sma) => sma.update(tr),
-            Self::Ema { ema, len, seen } => {
-                let value = ema.update(tr)?;
-                *seen += 1;
-                (*seen >= *len).then_some(value)
-            }
-            Self::Wma(wma) => wma.update(tr),
-        }
-    }
-
-    fn reset(&mut self) {
-        match self {
-            Self::Rma(rma) => rma.reset(),
-            Self::Sma(sma) => sma.reset(),
-            Self::Ema { ema, seen, .. } => {
-                ema.reset();
-                *seen = 0;
-            }
-            Self::Wma(wma) => wma.reset(),
-        }
-    }
 }
 
 /// Average True Range, emitted in two units.
@@ -108,8 +58,7 @@ impl TrSmoother {
 pub struct Atr {
     atr_len: usize,
     smoothing: TrueRangeSmoothing,
-    prev_close: Option<f64>,
-    tr_average: TrSmoother,
+    atr: AtrKernel,
     signal_rma: Rma,
 
     prev_atr_disp: Option<f64>,
@@ -132,8 +81,7 @@ impl Atr {
         Self {
             atr_len,
             smoothing: TrueRangeSmoothing::Rma,
-            prev_close: None,
-            tr_average: TrSmoother::new(TrueRangeSmoothing::Rma, atr_len),
+            atr: AtrKernel::new(TrueRangeSmoothing::Rma, atr_len),
             signal_rma: Rma::new(sig_len),
             prev_atr_disp: None,
             prev_signal: None,
@@ -162,7 +110,7 @@ impl Atr {
     /// Resets the true-range average, so this belongs before the first bar.
     pub fn with_smoothing(mut self, method: TrueRangeSmoothing) -> Self {
         self.smoothing = method;
-        self.tr_average = TrSmoother::new(method, self.atr_len);
+        self.atr = AtrKernel::new(method, self.atr_len);
         self
     }
 
@@ -196,10 +144,7 @@ impl Indicator for Atr {
         self.alerts = AtrAlerts::default();
         self.bars_seen += 1;
 
-        let tr = true_range(bar, self.prev_close);
-        self.prev_close = Some(bar.close);
-
-        let atr_raw = self.tr_average.update(tr)?;
+        let atr_raw = self.atr.push(bar)?;
         let atr_disp = if bar.close > 0.0 {
             100.0 * atr_raw / bar.close
         } else {
@@ -227,8 +172,7 @@ impl Indicator for Atr {
     }
 
     fn reset(&mut self) {
-        self.prev_close = None;
-        self.tr_average.reset();
+        self.atr.reset();
         self.signal_rma.reset();
         self.prev_atr_disp = None;
         self.prev_signal = None;

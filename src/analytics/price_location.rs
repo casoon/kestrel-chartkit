@@ -21,7 +21,8 @@
 
 use std::collections::VecDeque;
 
-use crate::indicator::kernels::true_range_hl;
+use crate::indicator::atr::TrueRangeSmoothing;
+use crate::indicator::kernels::{true_range_hl, AtrKernel};
 use crate::indicator::smoothing::{Ema, Sma};
 use crate::model::Bar;
 
@@ -32,39 +33,16 @@ pub fn true_range(high: f64, low: f64, prev_close: Option<f64>) -> f64 {
 
 /// Wilder ATR, pushed bar by bar (see the module table).
 #[derive(Debug, Clone)]
-pub struct WilderAtr {
-    len: usize,
-    seen: usize,
-    sum: f64,
-    value: Option<f64>,
-    prev_close: Option<f64>,
-}
+pub struct WilderAtr(AtrKernel);
 
 impl WilderAtr {
     pub fn new(len: usize) -> Self {
-        Self {
-            len: len.max(1),
-            seen: 0,
-            sum: 0.0,
-            value: None,
-            prev_close: None,
-        }
+        Self(AtrKernel::new(TrueRangeSmoothing::Rma, len.max(1)))
     }
 
     /// The ATR after this bar, `None` before the `len`-th bar.
     pub fn push(&mut self, high: f64, low: f64, close: f64) -> Option<f64> {
-        let tr = true_range(high, low, self.prev_close);
-        let n = self.len as f64;
-        self.value = match self.value {
-            Some(a) => Some((a * (n - 1.0) + tr) / n),
-            None => {
-                self.sum += tr;
-                (self.seen + 1 == self.len).then_some(self.sum / n)
-            }
-        };
-        self.prev_close = Some(close);
-        self.seen += 1;
-        self.value
+        self.0.push_hlc(high, low, close)
     }
 }
 

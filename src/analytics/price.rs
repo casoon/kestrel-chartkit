@@ -3,7 +3,8 @@
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
-use super::bar_true_range;
+use crate::indicator::atr::TrueRangeSmoothing;
+use crate::indicator::kernels::AtrKernel;
 use crate::Bar;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -90,15 +91,8 @@ pub fn price_summary(bars: &[Bar], atr_len: usize, stop_mult: f64) -> Option<Pri
 /// seed window has filled, in absolute price units; the whole series is kept
 /// so `atr_percentile` has something to rank against.
 fn wilder_atr_series(bars: &[Bar], len: usize) -> Vec<f64> {
-    let mut smoother = crate::indicator::smoothing::Rma::new(len);
-    let mut prev_close = None;
-    bars.iter()
-        .filter_map(|bar| {
-            let tr = bar_true_range(bar, prev_close);
-            prev_close = Some(bar.close);
-            smoother.update(tr)
-        })
-        .collect()
+    let mut atr = AtrKernel::new(TrueRangeSmoothing::Rma, len);
+    bars.iter().filter_map(|bar| atr.push(bar)).collect()
 }
 
 /// Fraction of `series` values ≤ its last element, 0..1.
