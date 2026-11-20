@@ -13,10 +13,12 @@
 use std::collections::HashSet;
 
 use kestrel_chartkit::indicator::definition::Verification;
-use kestrel_chartkit::indicator::registry::catalog;
+use kestrel_chartkit::indicator::registry::{catalog, catalog_of, IndicatorInput};
 
 const README: &str = include_str!("../README.md");
 const STATUS: &str = include_str!("../INDICATOR_STATUS.md");
+const DOCS_INDEX: &str = include_str!("../docs/index.md");
+const INDICATORS_GUIDE: &str = include_str!("../docs/guides/indicators.md");
 
 /// `0.15.3` → `0.15`. Pre-1.0 the minor is the breaking level, so that is the granularity a
 /// dependency line has to name; a patch release must not force a README edit.
@@ -116,6 +118,24 @@ fn readme_nennt_die_katalogzahl() {
         split.iter().sum::<usize>(),
         count,
         "Die Aufteilung {split:?} im README summiert sich nicht auf {count}"
+    );
+}
+
+#[test]
+fn docs_nennen_die_katalogzahlen() {
+    // The docs restate the total and the number of `Bars` entries; both come from `catalog()`.
+    let total = catalog().len();
+    let bars = catalog_of(IndicatorInput::Bars).len();
+    let index = format!("{total} entries in the registry (`catalog()`; {bars} stream bar by bar");
+    assert!(
+        DOCS_INDEX.contains(&index),
+        "docs/index.md nennt nicht `{index}` — catalog() ist gewachsen oder geschrumpft"
+    );
+    let guide = format!("It has {total}\nentries ({bars} of kind `Bars`)");
+    assert!(
+        INDICATORS_GUIDE.contains(&guide),
+        "docs/guides/indicators.md nennt nicht `{}` — catalog() ist gewachsen oder geschrumpft",
+        guide.replace('\n', " ")
     );
 }
 

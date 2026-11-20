@@ -7,7 +7,12 @@ export interface IndicatorEntry {
   family: string;
   description: string;
   unit: string;
+  /** What the entry reads per step: Bars, Pair, Transform or Intrabar. */
+  input: 'Bars' | 'Pair' | 'Transform' | 'Intrabar';
   chart: boolean;
+  /** Whether the entry has passed its acceptance; `reason` says why not when it has not. */
+  verified: boolean;
+  reason: string;
   defaults: Record<string, number>;
 }
 

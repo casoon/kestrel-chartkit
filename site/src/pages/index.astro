@@ -38,13 +38,10 @@ const contractFixtures = import.meta.glob<string>('../../../tests/fixtures/contr
 const contractCases = Object.values(contractFixtures)
   .map((text) => text.split('\n').filter((line) => line.startsWith('@')).length)
   .reduce((a, b) => a + b, 0);
-// The verification status per indicator as INDICATOR_STATUS.md records it (✅ verified, ❌ open),
-// catalog and pair indicators together.
-const status = Object.values(
-  import.meta.glob<string>('../../../INDICATOR_STATUS.md', { query: '?raw', import: 'default', eager: true })
-)[0];
-const verified = (status.match(/\| ✅ \|/g) ?? []).length;
-const tracked = verified + (status.match(/\| ❌ \|/g) ?? []).length;
+// The verification status is the `verification` of each catalog entry, as the example wrote it, so
+// the counts below equal the catalog.
+const tracked = indicators.length;
+const verified = indicators.filter((i) => i.verified).length;
 
 // The release the theme reads from Cargo.toml, so install line and badge follow every release.
 const version = config.version;

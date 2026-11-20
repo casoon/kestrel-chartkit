@@ -1,6 +1,6 @@
 import type { ShowcaseExample } from '@casoon/pages-theme/showcase';
 import { url } from '@casoon/pages-theme/url';
-import { indicators, indicatorSpec, inlineChart, spec } from './chartlet';
+import { indicators, indicatorSpec, inlineChart, spec, type IndicatorEntry } from './chartlet';
 
 // The showcase is the visual indicator reference: every catalog indicator on the same fictitious
 // CASOON share (invented prices), with its default parameters, drawn by chartlet from numbers
@@ -64,18 +64,65 @@ const features: ShowcaseExample[] = [
   },
 ];
 
-const perIndicator: ShowcaseExample[] = indicators
-  .filter((entry) => entry.chart)
-  .map((entry) => ({
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// The mark of an entry that has not passed its acceptance yet, in the theme's own colours
+// (text on the surface, so it keeps its contrast in both themes).
+const MARK_STYLE =
+  '<style>.ind-mark{display:inline-block;margin:0 0 8px;padding:3px 9px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;line-height:1.3}.ind-note{margin:0 0 14px;padding:10px 14px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--text);font-size:14.5px;line-height:1.5}.ind-note strong{color:var(--heading)}</style>';
+const mark = (entry: IndicatorEntry) =>
+  entry.verified ? '' : `<span class="ind-mark">not yet verified</span><br>`;
+const notice = (entry: IndicatorEntry) =>
+  entry.verified
+    ? ''
+    : `<p class="ind-note"><strong>Not yet verified:</strong> ${escapeHtml(entry.reason)}.</p>`;
+
+/** Why an entry of another input kind has no chart on this showcase. */
+const WHY_NOT_DRAWN: Record<string, string> = {
+  Pair: 'It reads two series, the bars and a reference series, and the demo is one share; it is not drawn here.',
+  Transform: 'It derives a candle from each bar instead of a value, so it has no pane of its own; it is not drawn here.',
+  Intrabar: 'It reads the lower-timeframe bars inside each parent bar, which the demo series does not carry; it is not drawn here.',
+};
+
+const otherRust = (entry: IndicatorEntry) => {
+  const map = Object.keys(entry.defaults).length
+    ? '&params'
+    : '&HashMap::new()';
+  switch (entry.input) {
+    case 'Pair':
+      return `let mut indicator = build_pair_checked("${entry.name}", ${map})?;\n// The bars of the two series are paired by timestamp.\nlet outputs = run_pair_batch(indicator.as_mut(), &bars, &reference);`;
+    case 'Transform':
+      return `let mut transform = build_transform_checked("${entry.name}", ${map})?;\n\nfor bar in &bars {\n    let candle = transform.update(bar);\n}`;
+    default:
+      return `let mut indicator = build_intrabar_checked("${entry.name}", ${map})?;\n\n// IntrabarGrouper collects the lower-timeframe bars of each parent bar.\nlet delta = indicator.on_group(&group);`;
+  }
+};
+
+const perIndicator: ShowcaseExample[] = indicators.map((entry) => {
+  const base = {
     slug: entry.name,
     title: entry.name,
     description: short(entry.description),
     file: FILE,
     group: entry.family,
     tags: [entry.family, `unit: ${entry.unit}`],
-    input: { lang: 'rust', code: `// ${entry.description}\n${rustFor(entry.name, entry.defaults)}` },
-    output: { html: lazyChart(entry.name), kind: 'panel' },
-    preview: { html: lazyChart(entry.name) },
-  }));
+  };
+  if (entry.chart) {
+    return {
+      ...base,
+      input: { lang: 'rust', code: `// ${entry.description}\n${rustFor(entry.name, entry.defaults)}` },
+      output: { html: `${MARK_STYLE}${notice(entry)}${lazyChart(entry.name)}`, kind: 'panel' as const },
+      preview: { html: `${MARK_STYLE}${mark(entry)}${lazyChart(entry.name)}` },
+    };
+  }
+  const why = escapeHtml(WHY_NOT_DRAWN[entry.input]);
+  return {
+    ...base,
+    input: { lang: 'rust', code: `// ${entry.description}\n${otherRust(entry)}` },
+    output: { html: `${MARK_STYLE}${notice(entry)}<p class="ind-note">${why}</p>`, kind: 'panel' as const },
+    preview: { html: `${MARK_STYLE}${mark(entry)}<span style="display:block;color:var(--muted);font-size:13.5px;line-height:1.45">${why}</span>` },
+  };
+});
 
 export const examples: ShowcaseExample[] = [...features, ...perIndicator];

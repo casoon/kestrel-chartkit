@@ -9,14 +9,16 @@
 //!
 //! Writes into `site/.generated/` (not committed; the Pages workflow runs this example first):
 //! `hero.json`, `regime.json`, `composite.json`, one `indicators/<name>.json` per catalog
-//! indicator, and `indicators.json`, the list the showcase is built from.
+//! indicator, and `indicators.json`, the list the showcase is built from (one element per `catalog()` entry,
+//! with its verification status).
 
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use kestrel_chartkit::indicator::definition::families;
+use kestrel_chartkit::indicator::definition::{families, Verification};
+use kestrel_chartkit::indicator::registry::{IndicatorCatalogEntry, IndicatorInput};
 use kestrel_chartkit::model::{MarketRegime, ZoneKind};
 use kestrel_chartkit::signal::TriggerAction;
 use kestrel_chartkit::structure::find_sr_zones;
@@ -495,6 +497,36 @@ fn indicator_chart(name: &str, description: &str, bars: &[Bar]) -> Option<String
     ))
 }
 
+/// The family under which the entries of the other input kinds are listed.
+const OTHER_INPUTS: &str = "Other input kinds";
+
+/// One element of `indicators.json`: name, family, description, unit, input kind, verification
+/// and default parameters.
+fn list_entry(entry: &IndicatorCatalogEntry, family: &str, chart: bool) -> String {
+    let mut defaults: Vec<(&String, &f64)> = entry.default_params.iter().collect();
+    defaults.sort_by(|a, b| a.0.cmp(b.0));
+    let defaults: Vec<String> = defaults
+        .iter()
+        .map(|(k, v)| format!(r#""{}":{}"#, esc(k), v))
+        .collect();
+    let (verified, reason) = match entry.verification {
+        Verification::Verified => (true, ""),
+        Verification::Open(reason) => (false, reason),
+    };
+    format!(
+        r#"{{"name":"{}","family":"{}","description":"{}","unit":"{:?}","input":"{:?}","chart":{},"verified":{},"reason":"{}","defaults":{{{}}}}}"#,
+        entry.name,
+        esc(family),
+        esc(entry.description),
+        output_unit(entry.name),
+        entry.input,
+        chart,
+        verified,
+        esc(reason),
+        defaults.join(",")
+    )
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("site/.generated");
     let indicators = out.join("indicators");
@@ -539,23 +571,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                     format!("{spec}\n"),
                 )?;
             }
-            let mut defaults: Vec<(&String, &f64)> = entry.default_params.iter().collect();
-            defaults.sort_by(|a, b| a.0.cmp(b.0));
-            let defaults: Vec<String> = defaults
-                .iter()
-                .map(|(k, v)| format!(r#""{}":{}"#, esc(k), v))
-                .collect();
-            entries.push(format!(
-                r#"{{"name":"{}","family":"{}","description":"{}","unit":"{:?}","chart":{},"defaults":{{{}}}}}"#,
-                entry.name,
-                esc(family),
-                esc(entry.description),
-                output_unit(entry.name),
-                chart.is_some(),
-                defaults.join(",")
-            ));
+            entries.push(list_entry(entry, family, chart.is_some()));
         }
     }
+    // The entries that do not read one series of bars (two series, candle transform, intrabar)
+    // have no chart here: the list carries them so no entry of the catalog is missing.
+    for entry in catalog.iter().filter(|e| e.input != IndicatorInput::Bars) {
+        entries.push(list_entry(entry, OTHER_INPUTS, false));
+    }
+    assert_eq!(
+        entries.len(),
+        catalog.len(),
+        "an entry of catalog() is missing from the list"
+    );
     fs::write(
         out.join("indicators.json"),
         format!("[\n{}\n]\n", entries.join(",\n")),
