@@ -9,7 +9,7 @@
     "type-check": "astro check"
   },
   "dependencies": {
-    "@casoon/chartlet": "^0.21.0",
+    "@casoon/chartlet": "^0.24.0",
     "@casoon/pages-theme": "^0.16.1",
     "astro": "^7.3.2"
   },
