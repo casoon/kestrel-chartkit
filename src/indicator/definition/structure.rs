@@ -25,4 +25,7 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::wyckoff::WYCKOFF_DEFINITION,
     &crate::indicator::zigzag_advanced::ZIGZAG_ADVANCED_DEFINITION,
     &crate::indicator::trendlines::TRENDLINES_DEFINITION,
+    &crate::analytics::price_location::PRICE_LOCATION_DEFINITION,
+    &crate::session::OPENING_RANGE_DEFINITION,
+    &crate::indicator::price_levels::PERIOD_MIDPOINT_DEFINITION,
 ];

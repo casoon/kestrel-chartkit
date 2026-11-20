@@ -4,6 +4,7 @@ from the Rust code. Bars are (open, high, low, close, volume); every function re
 (or None) per bar.
 """
 
+import datetime
 import math
 
 
@@ -115,4 +116,110 @@ def cycle_length(closes, period, history):
             last_sign = sign
         if lengths:
             out[i] = (sum(lengths) / len(lengths), float(since))
+    return out
+
+
+_EPOCH_ORDINAL = datetime.date(1970, 1, 1).toordinal()
+_UNIT_SECONDS = {"second": 1, "minute": 60, "hour": 3600, "day": 86400}
+
+
+def period_start(ts, unit, count, offset):
+    """Start of the period of `count` units that holds the instant `ts`, in UTC seconds.
+
+    The periods are cut in local time `ts + offset`. Seconds up to days align to the epoch
+    (multiples of count * unit). Weeks start on Mondays; a period of several weeks counts them
+    from the Monday of 29 December 1969. Months align to the calendar: the month index
+    `12 * year + month - 1` is cut into multiples of `count`.
+    """
+    local = ts + offset
+    if unit in _UNIT_SECONDS:
+        width = _UNIT_SECONDS[unit] * count
+        start = local // width * width
+    elif unit == "week":
+        day = local // 86400
+        monday = day - datetime.date.fromordinal(_EPOCH_ORDINAL + day).weekday()
+        weeks_since_anchor = (monday + 3) // 7
+        start = (weeks_since_anchor // count * count * 7 - 3) * 86400
+    else:
+        day = local // 86400
+        date = datetime.date.fromordinal(_EPOCH_ORDINAL + day)
+        index = 12 * date.year + date.month - 1
+        index = index // count * count
+        first = datetime.date(index // 12, index % 12 + 1, 1)
+        start = (first.toordinal() - _EPOCH_ORDINAL) * 86400
+    return start - offset
+
+
+def period_midpoint(bars, unit, count, offset, step=900):
+    """Per bar: None, or (midpoint of the last completed period, 1.0 on the bar that completed
+    it else 0.0). `bars` are (open, high, low, close, volume) with timestamps step, 2 * step, ...;
+    or (timestamp, high, low) triples when `step` is None. A period completes on the first bar of
+    a different period; the midpoint is (highest high + lowest low) / 2 of its bars."""
+    out = []
+    current = high = low = last = None
+    for k, bar in enumerate(bars):
+        if step is None:
+            ts, h, l = bar
+        else:
+            ts, h, l = step * (k + 1), bar[1], bar[2]
+        start = period_start(ts, unit, count, offset)
+        new = 0.0
+        if current is None:
+            current, high, low = start, h, l
+        elif start != current:
+            last = (high + low) / 2.0
+            new = 1.0
+            current, high, low = start, h, l
+        else:
+            high, low = max(high, h), min(low, l)
+        out.append(None if last is None else (last, new))
+    return out
+
+
+def opening_range(bars, start_hour, start_minute, end_hour, end_minute, orb_minutes, offset,
+                  step=900):
+    """Per bar: None, or (width of the opening range, high, low, in window, new session).
+
+    A bar belongs to the session whose start lies at or before its local time `ts + offset`
+    (start == end: the session is the whole day; start < end: from start to end, end exclusive;
+    start > end: overnight, from start to end of the next day). The session opens at its start
+    (UTC: start - offset). The range is the highest high and lowest low of the bars whose open
+    time lies within `orb_minutes` of the session open; a new session clears the range; a bar
+    outside every session leaves it as it is and has no output. Without a bar inside the window
+    (the first bar of the session arrived late) there is no range and no output.
+    """
+    start = start_hour * 3600 + start_minute * 60
+    end = end_hour * 3600 + end_minute * 60
+    session_open = high = low = None
+    out = []
+    for k, bar in enumerate(bars):
+        ts = step * (k + 1)
+        local = ts + offset
+        day, second = local // 86400, local % 86400
+        if start == end:
+            session_day = day
+        elif start < end:
+            session_day = day if start <= second < end else None
+        elif second >= start:
+            session_day = day
+        elif second < end:
+            session_day = day - 1
+        else:
+            session_day = None
+        if session_day is None:
+            out.append(None)
+            continue
+        opened = session_day * 86400 + start - offset
+        new = opened != session_open
+        if new:
+            session_open, high, low = opened, None, None
+        elapsed = ts - opened
+        in_window = 0 <= elapsed < orb_minutes * 60
+        if in_window:
+            high = bar[1] if high is None else max(high, bar[1])
+            low = bar[2] if low is None else min(low, bar[2])
+        if high is None:
+            out.append(None)
+        else:
+            out.append((high - low, high, low, 1.0 if in_window else 0.0, 1.0 if new else 0.0))
     return out

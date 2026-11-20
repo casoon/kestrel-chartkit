@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 144 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
+description: All 147 indicators of the registry with their parameters, output unit and range, generated from the indicator definitions.
 order: 2
 ---
 
@@ -1658,6 +1658,55 @@ Trendlines through confirmed zigzag_advanced nodes: a support line through the l
 | `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move for a new leg, in the unit of deviation_mode |
 | `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR |
 | `tolerance_atr` | 0.25 | 0 – 100 | distance from a line, in ATR, within which a node or a bar touches it and beyond which a node pierces it |
+
+### `price_location`
+
+Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras
+
+[See it in the showcase](../../../showcase/price_location/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `atr_len` | 14 | whole number 1 – 10000 | Wilder ATR length |
+| `ema_len` | 20 | whole number 1 – 10000 | EMA length the stretch is measured from |
+| `range_len` | 50 | whole number 1 – 10000 | bars of the high-low range the close position is taken in |
+| `sma_len` | 200 | whole number 1 – 10000 | simple average length |
+| `slope_bars` | 20 | whole number 1 – 10000 | bars back for the earlier value of the simple average |
+| `vol_window` | 100 | whole number 1 – 10000 | bars of ATR / close the volatility tercile ranks against |
+| `vol_warmup` | 200 | whole number 1 – 10000 | first bar that reports a volatility tercile |
+
+### `opening_range`
+
+Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours
+
+[See it in the showcase](../../../showcase/opening_range/)
+
+**Output** unit Unitless, range 0 and above · **warmup** 1 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `start_hour` | 0 | whole number 0 – 23 | session start, hour of the local time |
+| `start_minute` | 0 | whole number 0 – 59 | session start, minute |
+| `end_hour` | 0 | whole number 0 – 23 | session end (exclusive), hour; an end before the start is an overnight session |
+| `end_minute` | 0 | whole number 0 – 59 | session end, minute |
+| `orb_duration_mins` | 30 | whole number 1 – 1440 | minutes from the session open whose bars build the range (by bar open time) |
+| `utc_offset_seconds` | 0 | -86399 – 86399 | fixed local-time offset from UTC in whole seconds (a fraction is cut off) |
+
+### `period_midpoint`
+
+Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to Mondays (week) and to the calendar (month: multiples of count from January)
+
+[See it in the showcase](../../../showcase/period_midpoint/)
+
+**Output** unit Price, range not declared · **warmup** 2 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `unit` | `hour` | `second`, `minute`, `hour`, `day`, `week`, `month` (f64 map: 0 – 5) | unit of the period |
+| `count` | 1 | whole number 1 – 10000 | units per period |
+| `utc_offset_seconds` | 0 | -86399 – 86399 | fixed local-time offset from UTC in whole seconds the periods are cut in (a fraction is cut off) |
 
 ## Composite read-outs, part 1
 

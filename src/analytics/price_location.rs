@@ -21,8 +21,10 @@
 use std::collections::VecDeque;
 
 use crate::indicator::atr::TrueRangeSmoothing;
+use crate::indicator::definition::{IndicatorDefinition, ParamSpec};
 use crate::indicator::kernels::{true_range_hl, AtrKernel};
 use crate::indicator::smoothing::{Ema, Sma};
+use crate::indicator::{Indicator, IndicatorOutput};
 use crate::model::Bar;
 
 /// True range of a bar; `prev_close = None` on the first bar gives `high − low`.
@@ -195,6 +197,89 @@ pub fn price_location_series(bars: &[Bar], cfg: PriceLocationConfig) -> Vec<Pric
         .map(|b| e.push(b.high, b.low, b.close))
         .collect()
 }
+
+/// The catalog entry `price_location`: [`PriceLocationEngine`] as an [`Indicator`]. `value` is the
+/// stretch (`(close - ema) / atr`, in ATRs); `extra` carries `atr`, `ema`, `range_position`,
+/// `sma`, `sma_prior` and `vol_tercile` (0, 1 or 2) on the bars where each exists. There is no
+/// output while the stretch is undefined (before the `max(atr_len, ema_len)`-th bar, and while the
+/// ATR is zero). [`Indicator::reset`] starts over.
+#[derive(Debug, Clone)]
+pub struct PriceLocationIndicator {
+    engine: PriceLocationEngine,
+}
+
+impl PriceLocationIndicator {
+    pub fn new(cfg: PriceLocationConfig) -> Self {
+        Self {
+            engine: PriceLocationEngine::new(cfg),
+        }
+    }
+}
+
+impl Indicator for PriceLocationIndicator {
+    fn name(&self) -> &str {
+        "price_location"
+    }
+
+    fn warmup_period(&self) -> usize {
+        let cfg = self.engine.config();
+        cfg.atr_len.max(cfg.ema_len)
+    }
+
+    fn reset(&mut self) {
+        self.engine = PriceLocationEngine::new(*self.engine.config());
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        let reading = self.engine.push(bar.high, bar.low, bar.close);
+        let mut output = IndicatorOutput::new(reading.stretch?);
+        for (key, value) in [
+            ("atr", reading.atr),
+            ("ema", reading.ema),
+            ("range_position", reading.range_position),
+            ("sma", reading.sma),
+            ("sma_prior", reading.sma_prior),
+            ("vol_tercile", reading.vol_tercile.map(f64::from)),
+        ] {
+            if let Some(value) = value {
+                output.extra.insert(key.to_string(), value);
+            }
+        }
+        Some(output)
+    }
+}
+
+/// Registry definition of `price_location`.
+pub const PRICE_LOCATION_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "price_location",
+    aliases: &[],
+    description: "Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras",
+    params: &[
+        ParamSpec::count("atr_len", 14, 1, 10000).meaning("Wilder ATR length"),
+        ParamSpec::count("ema_len", 20, 1, 10000).meaning("EMA length the stretch is measured from"),
+        ParamSpec::count("range_len", 50, 1, 10000)
+            .meaning("bars of the high-low range the close position is taken in"),
+        ParamSpec::count("sma_len", 200, 1, 10000).meaning("simple average length"),
+        ParamSpec::count("slope_bars", 20, 1, 10000)
+            .meaning("bars back for the earlier value of the simple average"),
+        ParamSpec::count("vol_window", 100, 1, 10000)
+            .meaning("bars of ATR / close the volatility tercile ranks against"),
+        ParamSpec::count("vol_warmup", 200, 1, 10000)
+            .meaning("first bar that reports a volatility tercile"),
+    ],
+    checks: &[],
+    build: |p| {
+        Ok(Box::new(PriceLocationIndicator::new(PriceLocationConfig {
+            atr_len: p.count("atr_len"),
+            ema_len: p.count("ema_len"),
+            range_len: p.count("range_len"),
+            sma_len: p.count("sma_len"),
+            slope_bars: p.count("slope_bars"),
+            vol_window: p.count("vol_window"),
+            vol_warmup: p.count("vol_warmup"),
+        })))
+    },
+};
 
 #[cfg(test)]
 mod tests {

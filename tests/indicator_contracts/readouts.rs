@@ -22,6 +22,9 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("r_squared"),
     Coverage::full("percent_rank"),
     Coverage::full("cycle_length"),
+    Coverage::full("price_location"),
+    Coverage::full("period_midpoint"),
+    Coverage::full("opening_range"),
 ];
 
 // --- Fractal dimension -----------------------------------------------------------------------
@@ -263,4 +266,193 @@ fn cycle_length_rejects_invalid_configuration() {
     assert_rejected("cycle_length", &[("history", 0.0)]);
     assert_rejected("cycle_length", &[("history", 2.5)]);
     assert_rejected("cycle_length", &[("len", 20.0)]);
+}
+
+// --- Price location ----------------------------------------------------------
+
+#[test]
+fn price_location_defaults() {
+    assert_holds(&case(
+        "price_location_defaults",
+        "price_location",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn price_location_small() {
+    assert_holds(&case(
+        "price_location_small",
+        "price_location",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn price_location_minimal() {
+    assert_holds(&case(
+        "price_location_minimal",
+        "price_location",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn price_location_flat() {
+    assert_holds(&case(
+        "price_location_flat",
+        "price_location",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn price_location_rejects_invalid_configuration() {
+    assert_rejected("price_location", &[("atr_len", 0.0)]);
+    assert_rejected("price_location", &[("ema_len", 2.5)]);
+    assert_rejected("price_location", &[("sma_len", 10001.0)]);
+    assert_rejected("price_location", &[("vol_warmup", 0.0)]);
+    assert_rejected("price_location", &[("len", 14.0)]);
+}
+
+// --- Period midpoint ---------------------------------------------------------
+
+#[test]
+fn period_midpoint_defaults() {
+    assert_holds(&case(
+        "period_midpoint_defaults",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_day() {
+    assert_holds(&case(
+        "period_midpoint_day",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_minutes() {
+    assert_holds(&case(
+        "period_midpoint_minutes",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_hours() {
+    assert_holds(&case(
+        "period_midpoint_hours",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_seconds() {
+    assert_holds(&case(
+        "period_midpoint_seconds",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_week() {
+    assert_holds(&case(
+        "period_midpoint_week",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_negative_offset() {
+    assert_holds(&case(
+        "period_midpoint_negative_offset",
+        "period_midpoint",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn period_midpoint_rejects_invalid_configuration() {
+    assert_rejected("period_midpoint", &[("unit", 6.0)]);
+    assert_rejected("period_midpoint", &[("unit", -1.0)]);
+    assert_rejected("period_midpoint", &[("count", 0.0)]);
+    assert_rejected("period_midpoint", &[("utc_offset_seconds", 86400.0)]);
+    assert_rejected("period_midpoint", &[("period", 1.0)]);
+}
+
+// --- Opening range -----------------------------------------------------------
+
+#[test]
+fn opening_range_defaults() {
+    assert_holds(&case(
+        "opening_range_defaults",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_session() {
+    assert_holds(&case(
+        "opening_range_session",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_overnight() {
+    assert_holds(&case(
+        "opening_range_overnight",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_negative_offset() {
+    assert_holds(&case(
+        "opening_range_negative_offset",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_late() {
+    assert_holds(&case(
+        "opening_range_late",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_all_day() {
+    assert_holds(&case(
+        "opening_range_all_day",
+        "opening_range",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn opening_range_rejects_invalid_configuration() {
+    assert_rejected("opening_range", &[("start_hour", 24.0)]);
+    assert_rejected("opening_range", &[("start_minute", 60.0)]);
+    assert_rejected("opening_range", &[("end_hour", 24.0)]);
+    assert_rejected("opening_range", &[("end_minute", 60.0)]);
+    assert_rejected("opening_range", &[("orb_duration_mins", 0.0)]);
+    assert_rejected("opening_range", &[("orb_duration_mins", 1441.0)]);
+    assert_rejected("opening_range", &[("utc_offset_seconds", -86400.0)]);
+    assert_rejected("opening_range", &[("duration", 30.0)]);
 }

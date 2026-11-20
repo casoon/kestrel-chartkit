@@ -134,6 +134,9 @@ pub fn output_range(name: &str) -> OutputRange {
             max: 100.0,
         },
 
+        // Um null schwankend, in ATR gemessen.
+        "price_location" => OutputRange::Centered { center: 0.0 },
+
         // Bestimmtheitsmaß: ein Anteil der erklärten Streuung.
         "r_squared" => OutputRange::Bounded { min: 0.0, max: 1.0 },
 
@@ -157,6 +160,7 @@ pub fn output_range(name: &str) -> OutputRange {
         | "garman_klass"
         | "historical_volatility"
         | "mass_index"
+        | "opening_range"
         | "rvat"
         | "rvol"
         | "true_range"
@@ -372,6 +376,9 @@ fn native_source(canonical: &str) -> crate::model::Source {
 /// every catalog entry that reads more than one bar field: a test feeds each remaining entry a
 /// source-mapped series and checks that it reads exactly one scalar (its [`native_source`]).
 const RANGE_DEPENDENT_INDICATORS: &[&str] = &[
+    "period_midpoint",
+    "opening_range",
+    "price_location",
     "fractal_dimension",
     "market_state_chain",
     "reaction_speed",
@@ -693,6 +700,9 @@ pub const CANONICAL_INDICATOR_NAMES: &[&str] = &[
     "r_squared",
     "percent_rank",
     "cycle_length",
+    "price_location",
+    "opening_range",
+    "period_midpoint",
 ];
 
 #[cfg(test)]
@@ -724,10 +734,10 @@ mod tests {
             "catalog() entries with no matching canonical build_checked arm: {extra_in_catalog:?}"
         );
 
-        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 144);
-        assert_eq!(bars.len(), 144);
-        // Pair (2), transform (1) and intrabar (1) entries on top of the 144 bar indicators.
-        assert_eq!(catalog().len(), 148);
+        assert_eq!(CANONICAL_INDICATOR_NAMES.len(), 147);
+        assert_eq!(bars.len(), 147);
+        // Pair (2), transform (1) and intrabar (1) entries on top of the 147 bar indicators.
+        assert_eq!(catalog().len(), 151);
         for (input, count) in [
             (IndicatorInput::Pair, 2),
             (IndicatorInput::Transform, 1),

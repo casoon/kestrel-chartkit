@@ -8,6 +8,7 @@ i (zero-based); a bar without a value is written as `<label>_cp<i>_none=1`.
 from .. import readouts as ro
 from .. import series as ps
 from ..fixture import provenance
+from . import price_location as pl
 
 NAME = "golden_readouts"
 
@@ -27,6 +28,11 @@ HEADER = [
     "D = 1 + ln(path / range) / ln n over n close-to-close steps and the range of n + 1 bars.",
     "r_squared: 1 - SS_res / SS_tot of the least-squares line through the last n closes, 0..1.",
     "percent_rank: 100 * (previous n closes at or below the close) / n.",
+    "price_location: the stretch (close - EMA) / ATR of the price-location read-out",
+    "(fixtures/price_location.py), default and small windows.",
+    "period_midpoint: scenarios over daily bars with explicit timestamps (pmscn_*): bar i has",
+    "ts, high, low; out<i> is the held midpoint of the last completed period, new<i> 1 on the",
+    "bar that completed one; `none` before the first period completed.",
     "cycle_length: mean of the last `history` swing lengths between sign changes of",
     "close - SMA(close, period) (value only; bars_since_crossing is in the contract cases).",
 ]
@@ -48,8 +54,32 @@ def specs(bars):
         ("pr_one", ro.percent_rank(closes, 1)),
         ("pr_long", ro.percent_rank(closes, 100)),
         ("cl_default", [None if v is None else v[0] for v in ro.cycle_length(closes, 20, 8)]),
+        ("pl_default", [None if r["stretch"] is None else r["stretch"]
+                        for r in pl.compute(bars, pl.DEFAULT)]),
+        ("pl_small", [None if r["stretch"] is None else r["stretch"]
+                      for r in pl.compute(bars, pl.SMALL)]),
         ("cl_fast", [None if v is None else v[0] for v in ro.cycle_length(closes, 5, 3)]),
     ]
+
+
+SCENARIOS = [
+    # label, unit, count, utc offset, first day (days since the epoch), bar time of day (s)
+    ("month1", "month", 1, 0, 20, 0),
+    ("month2", "month", 2, 0, 20, 0),
+    ("week2", "week", 2, 0, 0, 43200),
+    ("month_offset", "month", 1, -3600, 20, 1800),
+]
+SCENARIO_DAYS = 130
+
+
+def scenario_bars(first_day, time_of_day):
+    """Daily bars: timestamp, high, low from a fixed integer pattern."""
+    bars = []
+    for k in range(SCENARIO_DAYS):
+        high = 100.0 + (k * 7) % 13
+        low = high - 3.0 - (k * 5) % 4
+        bars.append(((first_day + k) * 86400 + time_of_day, high, low))
+    return bars
 
 
 def build():
@@ -64,5 +94,18 @@ def build():
             else:
                 case[f"cp{cp}"] = values[cp]
         blocks.append((label, label, case))
+    for label, unit, count, offset, first_day, time_of_day in SCENARIOS:
+        bars = scenario_bars(first_day, time_of_day)
+        case = {"n": float(len(bars))}
+        for k, ((ts, high, low), out) in enumerate(
+                zip(bars, ro.period_midpoint(bars, unit, count, offset, step=None))):
+            case[f"bar{k}_ts"] = float(ts)
+            case[f"bar{k}_high"] = high
+            case[f"bar{k}_low"] = low
+            if out is None:
+                case[f"out{k}_none"] = 1.0
+            else:
+                case[f"out{k}"], case[f"new{k}"] = out
+        blocks.append((f"pmscn_{label}", f"period_midpoint scenario {label}", case))
     blocks.append((None, None, {"readouts_tolerance": 1e-9}))
     return HEADER, blocks

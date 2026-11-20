@@ -3,6 +3,8 @@
 //! (e.g. a zone/confluence step) can merge and rank them uniformly instead of handling four
 //! bespoke, differently-shaped outputs.
 
+use super::definition::{IndicatorDefinition, ParamSpec};
+use super::{Indicator, IndicatorOutput};
 use crate::model::Bar;
 use crate::timeframe::{Timeframe, TimeframeError};
 
@@ -106,6 +108,7 @@ pub fn swing_fibonacci_levels(
 
 /// Tracks period open/high/low/close on a configurable [`Timeframe`] and yields the prior
 /// (confirmed) period's midpoint once a new period starts.
+#[derive(Debug, Clone)]
 pub struct PeriodMidpointTracker {
     period_tf: Timeframe,
     utc_offset_seconds: i32,
@@ -171,6 +174,89 @@ impl PeriodMidpointTracker {
         completed
     }
 }
+
+/// The catalog entry `period_midpoint`: [`PeriodMidpointTracker`] as an [`Indicator`]. `value` is
+/// the midpoint `(high + low) / 2` of the last completed period, held on every bar until the next
+/// period completes; `extra["new_period"]` is 1 on the bar that completed a period. There is no
+/// output before the first period has completed, so the first output depends on the timestamps;
+/// `warmup_period` is 2. [`Indicator::reset`] starts over.
+#[derive(Debug, Clone)]
+pub struct PeriodMidpointEngine {
+    tracker: PeriodMidpointTracker,
+    last: Option<f64>,
+}
+
+impl PeriodMidpointEngine {
+    pub fn new(period_tf: Timeframe, utc_offset_seconds: i32) -> Result<Self, TimeframeError> {
+        Ok(Self {
+            tracker: PeriodMidpointTracker::with_utc_offset(period_tf, utc_offset_seconds)?,
+            last: None,
+        })
+    }
+}
+
+impl Indicator for PeriodMidpointEngine {
+    fn name(&self) -> &str {
+        "period_midpoint"
+    }
+
+    fn warmup_period(&self) -> usize {
+        2
+    }
+
+    fn reset(&mut self) {
+        self.tracker.reset();
+        self.last = None;
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        let completed = self.tracker.on_bar(bar);
+        let new_period = completed.is_some();
+        if let Some(level) = completed {
+            self.last = Some(level.price);
+        }
+        let mut output = IndicatorOutput::new(self.last?);
+        output
+            .extra
+            .insert("new_period".to_string(), f64::from(u8::from(new_period)));
+        Some(output)
+    }
+}
+
+/// Registry definition of `period_midpoint`.
+pub const PERIOD_MIDPOINT_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "period_midpoint",
+    aliases: &[],
+    description: "Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to Mondays (week) and to the calendar (month: multiples of count from January)",
+    params: &[
+        ParamSpec::choice(
+            "unit",
+            "hour",
+            &["second", "minute", "hour", "day", "week", "month"],
+            true,
+        )
+        .meaning("unit of the period"),
+        ParamSpec::count("count", 1, 1, 10000).meaning("units per period"),
+        ParamSpec::number("utc_offset_seconds", 0.0, -86399.0, 86399.0)
+            .meaning("fixed local-time offset from UTC in whole seconds the periods are cut in (a fraction is cut off)"),
+    ],
+    checks: &[],
+    build: |p| {
+        let count = p.count("count") as u32;
+        let period_tf = match p.choice("unit") {
+            "second" => Timeframe::Second(count),
+            "minute" => Timeframe::Minute(count),
+            "hour" => Timeframe::Hour(count),
+            "day" => Timeframe::Day(count),
+            "week" => Timeframe::Week(count),
+            _ => Timeframe::Month(count),
+        };
+        Ok(Box::new(
+            PeriodMidpointEngine::new(period_tf, p.number("utc_offset_seconds") as i32)
+                .expect("a count of at least 1 is a valid timeframe"),
+        ))
+    },
+};
 
 #[cfg(test)]
 mod tests {

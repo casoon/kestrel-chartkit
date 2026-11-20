@@ -13,8 +13,16 @@ pub mod contract;
 /// - `structure_zones`: bar 15 without volume, bar 20 with real volume (MFI and the 20-bar
 ///   volume average then gate the output).
 /// - `cycle_length`: waits for the first completed swing, which depends on the data.
-pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] =
-    &["leg_character", "structure_zones", "cycle_length"];
+/// - `period_midpoint`: waits for the first completed period, which depends on the timestamps.
+/// - `opening_range`: waits for the first bar of a session inside its opening window, which
+///   depends on the timestamps.
+pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
+    "leg_character",
+    "structure_zones",
+    "cycle_length",
+    "period_midpoint",
+    "opening_range",
+];
 
 /// Generiert eine Flachpreis-Serie mit konstantem Preis und Volumen.
 pub fn generate_flat_bars(count: usize, price: f64, volume: f64) -> Vec<Bar> {

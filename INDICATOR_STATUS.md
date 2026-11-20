@@ -135,6 +135,7 @@ is complete.
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |
+| price_location | ❌ |
 | zscore | ✅ |
 | smoothed_supertrend | ✅ |
 
@@ -187,6 +188,8 @@ is complete.
 | compression_zones | ✅ |
 | tradability_filter | ✅ |
 | market_state_chain | ✅ |
+| period_midpoint | ❌ |
+| opening_range | ❌ |
 
 ## Other Input Kinds
 
@@ -203,6 +206,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/148 verified** — the same 148 names `catalog()` returns: 105 indicators (the first
-five groups), 4 composite scores, 35 structure/pattern detectors and 4 entries of other input
+**Total: 133/151 verified** — the same 151 names `catalog()` returns: 106 indicators (the first
+five groups), 4 composite scores, 37 structure/pattern detectors and 4 entries of other input
 kinds.

@@ -1,3 +1,5 @@
+use crate::indicator::definition::{IndicatorDefinition, ParamSpec};
+use crate::indicator::{Indicator, IndicatorOutput};
 use crate::model::Bar;
 use std::fmt;
 
@@ -199,6 +201,98 @@ impl SessionTracker {
         }
     }
 }
+
+/// The catalog entry `opening_range`: the high-low range of the first `orb_duration_mins` of each
+/// session ([`SessionTracker`]) as an [`Indicator`]. `value` is the width of the range, `extra`
+/// holds `orb_high`, `orb_low`, `in_orb_window` (1 while a bar still builds the range) and
+/// `new_session` (1 on the first bar of a session). There is an output on every bar inside a
+/// session once at least one bar of its opening window has been seen; a session whose first bar
+/// arrives after the window has no range and no output. [`Indicator::reset`] starts over.
+///
+/// The first output comes with the first bar of a session, so it depends on the bar timestamps;
+/// `warmup_period` is 1.
+#[derive(Debug, Clone)]
+pub struct OpeningRangeEngine {
+    tracker: SessionTracker,
+}
+
+impl OpeningRangeEngine {
+    pub fn new(config: SessionConfig) -> Result<Self, SessionConfigError> {
+        Ok(Self {
+            tracker: SessionTracker::new(config)?,
+        })
+    }
+}
+
+impl Indicator for OpeningRangeEngine {
+    fn name(&self) -> &str {
+        "opening_range"
+    }
+
+    fn warmup_period(&self) -> usize {
+        1
+    }
+
+    fn reset(&mut self) {
+        self.tracker.reset();
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.tracker.on_bar(bar);
+        if !self.tracker.in_session() {
+            return None;
+        }
+        let range = self.tracker.orb_range()?;
+        let mut output = IndicatorOutput::new(range);
+        output
+            .extra
+            .insert("orb_high".to_string(), self.tracker.orb_high()?);
+        output
+            .extra
+            .insert("orb_low".to_string(), self.tracker.orb_low()?);
+        output.extra.insert(
+            "in_orb_window".to_string(),
+            f64::from(u8::from(self.tracker.in_orb_window())),
+        );
+        output.extra.insert(
+            "new_session".to_string(),
+            f64::from(u8::from(self.tracker.is_new_session())),
+        );
+        Some(output)
+    }
+}
+
+/// Registry definition of `opening_range`.
+pub const OPENING_RANGE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "opening_range",
+    aliases: &[],
+    description: "Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours",
+    params: &[
+        ParamSpec::count("start_hour", 0, 0, 23).meaning("session start, hour of the local time"),
+        ParamSpec::count("start_minute", 0, 0, 59).meaning("session start, minute"),
+        ParamSpec::count("end_hour", 0, 0, 23)
+            .meaning("session end (exclusive), hour; an end before the start is an overnight session"),
+        ParamSpec::count("end_minute", 0, 0, 59).meaning("session end, minute"),
+        ParamSpec::count("orb_duration_mins", 30, 1, 1440)
+            .meaning("minutes from the session open whose bars build the range (by bar open time)"),
+        ParamSpec::number("utc_offset_seconds", 0.0, -86399.0, 86399.0)
+            .meaning("fixed local-time offset from UTC in whole seconds (a fraction is cut off)"),
+    ],
+    checks: &[],
+    build: |p| {
+        let config = SessionConfig {
+            start_hour: p.count("start_hour") as u8,
+            start_minute: p.count("start_minute") as u8,
+            end_hour: p.count("end_hour") as u8,
+            end_minute: p.count("end_minute") as u8,
+            orb_duration_mins: p.count("orb_duration_mins") as u32,
+            utc_offset_seconds: p.number("utc_offset_seconds") as i32,
+        };
+        Ok(Box::new(OpeningRangeEngine::new(config).expect(
+            "the parameter ranges are the valid ranges of a session",
+        )))
+    },
+};
 
 #[cfg(test)]
 mod tests {
