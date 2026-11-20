@@ -24,8 +24,8 @@
 //! | `bull_stall` / `bear_stall` | first bar of a stall (+1 / −1) |
 //!
 //! The raw ROC itself is [`super::momentum_indicators`]' `roc`; this indicator adds the context
-//! layer. `ma_kind`: 0 EMA (default), 1 SMA, 2 RMA; the WMA/SuperSmoother/T3/KAMA/JMA
-//! choices are not offered.
+//! layer. `ma_kind`: 0 EMA (default), 1 SMA, 2 RMA, the codes of [`MA_KINDS`]; the other
+//! [`SmootherKind`]s are not offered.
 //!
 //! Conventions the reference definition leaves open (also in the golden fixture): EMAs seeded with the
 //! first ROC value; ATR Wilder average seeded with an SMA. A bar reports once line, signal,
@@ -343,13 +343,17 @@ impl Indicator for RocContext {
     }
 }
 
+/// The [`SmootherKind`]s `ma_kind` selects, by code: a documented subset of
+/// [`SmootherKind::ALL`], sharing its first three codes.
+pub const MA_KINDS: [SmootherKind; 3] = [SmootherKind::Ema, SmootherKind::Sma, SmootherKind::Rma];
+
 pub const ROC_CONTEXT_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "roc_context",
         aliases: &[],
         description: "ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2 RMA) with a signal line (sig_len) and a slow context ROC (ctx_len); value = line, secondary = signal; extra: hist, context, sentiment (-100..100 stretch depth), stall (+1 line falling while price holds, -1 rising), divergence (fast vs. context), quality on stretch-cross bars; alerts bull/bear_cross (signal cross out of the stretch zone, context agrees, no stall against), bull/bear_cross_weak (with stall against or counter-context), bull/bear_zero_cross, bull/bear_stall (first stall bar); prefix = expected move",
         params: &[
-            super::definition::ParamSpec::count("ma_kind", 0, 0, 2).meaning("how the ROC is smoothed: 0 EMA, 1 SMA, 2 RMA"),
+            super::definition::ParamSpec::count("ma_kind", 0, 0, MA_KINDS.len() - 1).meaning("how the ROC is smoothed: 0 EMA, 1 SMA, 2 RMA"),
             super::definition::ParamSpec::count("roc_len", 12, 1, 1000).meaning("bars in the rate of change"),
             super::definition::ParamSpec::count("avg_len", 3, 1, 200).meaning("bars smoothing the ROC (the line)"),
             super::definition::ParamSpec::count("sig_len", 9, 1, 200).meaning("bars in the signal line"),
@@ -360,11 +364,7 @@ pub const ROC_CONTEXT_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         build: |p| {
-            let ma_kind = match p.count("ma_kind") {
-                0 => SmootherKind::Ema,
-                1 => SmootherKind::Sma,
-                _ => SmootherKind::Rma,
-            };
+            let ma_kind = MA_KINDS[p.count("ma_kind")];
             Ok(Box::new(RocContext::new(RocContextConfig {
                 ma_kind,
                 roc_len: p.count("roc_len"),

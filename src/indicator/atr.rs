@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::model::Bar;
 
 use super::kernels::AtrKernel;
-use super::smoothing::{crossed_over, crossed_under, Rma};
+use super::smoothing::{crossed_over, crossed_under, smoother_names, Rma, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-/// How the true range is averaged.
+/// How the true range is averaged: a documented subset of [`SmootherKind`] (see
+/// [`TrueRangeSmoothing::KINDS`]).
 ///
 /// This is the ATR's own smoothing. The separate averaging of the percentage series into
 /// `extra["signal"]` is not affected — it stays Wilder's, so the alerts keep their meaning.
@@ -31,6 +32,48 @@ pub enum TrueRangeSmoothing {
     Ema,
     /// Linearly weighted over the last `N` true ranges, heaviest on the most recent.
     Wma,
+}
+
+impl TrueRangeSmoothing {
+    /// The [`SmootherKind`]s the ATR averages with, in the order of the `f64` map's code
+    /// (`0` rma … `3` wma) — not the order of [`SmootherKind::ALL`].
+    pub const KINDS: [SmootherKind; 4] = [
+        SmootherKind::Rma,
+        SmootherKind::Sma,
+        SmootherKind::Ema,
+        SmootherKind::Wma,
+    ];
+
+    /// [`SmootherKind::name`] of [`TrueRangeSmoothing::KINDS`]: the options of the `smoothing`
+    /// parameter.
+    pub const NAMES: [&'static str; 4] = smoother_names(Self::KINDS);
+
+    /// The kind of average this smoothing is.
+    pub const fn kind(self) -> SmootherKind {
+        match self {
+            TrueRangeSmoothing::Rma => SmootherKind::Rma,
+            TrueRangeSmoothing::Sma => SmootherKind::Sma,
+            TrueRangeSmoothing::Ema => SmootherKind::Ema,
+            TrueRangeSmoothing::Wma => SmootherKind::Wma,
+        }
+    }
+
+    /// The smoothing of this kind of average, `None` for a kind the ATR does not offer.
+    pub const fn from_kind(kind: SmootherKind) -> Option<Self> {
+        match kind {
+            SmootherKind::Rma => Some(TrueRangeSmoothing::Rma),
+            SmootherKind::Sma => Some(TrueRangeSmoothing::Sma),
+            SmootherKind::Ema => Some(TrueRangeSmoothing::Ema),
+            SmootherKind::Wma => Some(TrueRangeSmoothing::Wma),
+            _ => None,
+        }
+    }
+}
+
+impl From<TrueRangeSmoothing> for SmootherKind {
+    fn from(smoothing: TrueRangeSmoothing) -> Self {
+        smoothing.kind()
+    }
 }
 
 /// Average True Range, emitted in two units.
@@ -212,7 +255,7 @@ pub const ATR_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::choice(
                 "smoothing",
                 "rma",
-                &["rma", "sma", "ema", "wma"],
+                &TrueRangeSmoothing::NAMES,
                 true,
             )
             .meaning("how the true range is averaged"),
@@ -223,12 +266,9 @@ pub const ATR_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         build: |p| {
-            let smoothing = match p.choice("smoothing") {
-                "sma" => TrueRangeSmoothing::Sma,
-                "ema" => TrueRangeSmoothing::Ema,
-                "wma" => TrueRangeSmoothing::Wma,
-                _ => TrueRangeSmoothing::Rma,
-            };
+            let smoothing = SmootherKind::from_name(p.choice("smoothing"))
+                .and_then(TrueRangeSmoothing::from_kind)
+                .unwrap_or_default();
             Ok(Box::new(
                 Atr::new(p.count("atr_len"), p.count("sig_len")).with_smoothing(smoothing),
             ))

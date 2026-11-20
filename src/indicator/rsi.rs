@@ -8,7 +8,7 @@ use crate::model::Bar;
 use super::divergence::SlopeDivergence;
 use super::exhaustion::Exhaustion;
 use super::kernels::up_down_index;
-use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow, Rma};
+use super::smoothing::{crossed_over, crossed_under, Ema, ExtremeWindow, Rma, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// How the average up/down moves feeding the RSI ratio are smoothed.
@@ -29,6 +29,36 @@ pub enum RsiSmoothing {
     /// `Wilder(2N - 1)`. Matching a period against another implementation therefore does not by
     /// itself produce matching values, and the seeds differ as well.
     Ema,
+}
+
+impl RsiSmoothing {
+    /// The options of the `smoothing` parameter: Wilder's name for [`SmootherKind::Rma`], then the
+    /// catalog name of [`SmootherKind::Ema`]. `wilder` is the accepted name of this one use of
+    /// the Wilder average, kept as it is persisted by consumers.
+    pub const NAMES: [&'static str; 2] = ["wilder", SmootherKind::Ema.name()];
+
+    /// The kind of average this smoothing is: a documented subset of [`SmootherKind`].
+    pub const fn kind(self) -> SmootherKind {
+        match self {
+            RsiSmoothing::Wilder => SmootherKind::Rma,
+            RsiSmoothing::Ema => SmootherKind::Ema,
+        }
+    }
+
+    /// The smoothing of this kind of average, `None` for a kind the RSI does not offer.
+    pub const fn from_kind(kind: SmootherKind) -> Option<Self> {
+        match kind {
+            SmootherKind::Rma => Some(RsiSmoothing::Wilder),
+            SmootherKind::Ema => Some(RsiSmoothing::Ema),
+            _ => None,
+        }
+    }
+}
+
+impl From<RsiSmoothing> for SmootherKind {
+    fn from(smoothing: RsiSmoothing) -> Self {
+        smoothing.kind()
+    }
 }
 
 /// Smooths the up/down moves for one RSI line, in whichever mode was selected.
@@ -427,7 +457,7 @@ pub const RSI_DEFINITION: super::definition::IndicatorDefinition = super::defini
     aliases: &[],
     description: "Relative Strength Index (build_typed accepts smoothing=wilder|ema for the up/down averages; wilder is the default)",
     params: &[
-        super::definition::ParamSpec::choice("smoothing", "wilder", &["wilder", "ema"], false)
+        super::definition::ParamSpec::choice("smoothing", "wilder", &RsiSmoothing::NAMES, false)
             .meaning("how the up and down moves are averaged"),
         super::definition::ParamSpec::count("rsi_len", 14, 1, 10000).meaning("changes in the RSI average"),
         super::definition::ParamSpec::count("avg_len", 3, 1, 10000).meaning("EMA over the raw RSI (the line)"),
@@ -445,8 +475,10 @@ pub const RSI_DEFINITION: super::definition::IndicatorDefinition = super::defini
         }],
     build: |p| {
         let smoothing = match p.choice("smoothing") {
-            "ema" => RsiSmoothing::Ema,
-            _ => RsiSmoothing::Wilder,
+            "wilder" => RsiSmoothing::Wilder,
+            name => SmootherKind::from_name(name)
+                .and_then(RsiSmoothing::from_kind)
+                .unwrap_or_default(),
         };
         Ok(Box::new(
             Rsi::new(

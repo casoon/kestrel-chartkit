@@ -343,6 +343,18 @@ pub fn crossed_under(prev_a: f64, prev_b: f64, a: f64, b: f64) -> bool {
     prev_a >= prev_b - tol && a < b - tol
 }
 
+/// The one list of moving-average kinds that can be chosen as a smoother parameter.
+///
+/// Every place that offers a choice of average reads it from here: the `fast_kind`/`slow_kind`
+/// of `trend_relationship`, the `ma_kind` of `price_average_relation` and `roc_context`, the
+/// smoothing of `atr` and `rsi`, and the trend read-out of `analytics`. Each variant is named
+/// like its catalog entry ([`SmootherKind::name`]), which is also the name the typed parameter
+/// maps accept. A parameter that deliberately offers only some of them states a subset of
+/// [`SmootherKind::ALL`] (see [`TrueRangeSmoothing`](super::atr::TrueRangeSmoothing),
+/// [`RsiSmoothing`](super::rsi::RsiSmoothing)) instead of keeping a list of its own.
+///
+/// The position in [`SmootherKind::ALL`] is the numeric code of the `f64` parameter maps
+/// (`ma_kind = 3` is `alma`); new kinds are appended, so existing codes keep their meaning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "serde",
@@ -358,9 +370,71 @@ pub enum SmootherKind {
     Jma,
     SuperSmoother,
     Kama,
+    Wma,
+}
+
+/// The catalog names of a subset of [`SmootherKind`], in the subset's order.
+pub(crate) const fn smoother_names<const N: usize>(kinds: [SmootherKind; N]) -> [&'static str; N] {
+    let mut names = [""; N];
+    let mut i = 0;
+    while i < N {
+        names[i] = kinds[i].name();
+        i += 1;
+    }
+    names
 }
 
 impl SmootherKind {
+    /// Every kind, in code order.
+    pub const ALL: [SmootherKind; 8] = [
+        SmootherKind::Ema,
+        SmootherKind::Sma,
+        SmootherKind::Rma,
+        SmootherKind::Alma,
+        SmootherKind::Jma,
+        SmootherKind::SuperSmoother,
+        SmootherKind::Kama,
+        SmootherKind::Wma,
+    ];
+
+    /// [`SmootherKind::name`] of every kind, in the order of [`SmootherKind::ALL`]: the options of
+    /// a choice parameter that offers every kind.
+    pub const NAMES: [&'static str; 8] = smoother_names(Self::ALL);
+
+    /// The name of the catalog entry that computes this average.
+    pub const fn name(self) -> &'static str {
+        match self {
+            SmootherKind::Ema => "ema",
+            SmootherKind::Sma => "sma",
+            SmootherKind::Rma => "rma",
+            SmootherKind::Alma => "alma",
+            SmootherKind::Jma => "jma",
+            SmootherKind::SuperSmoother => "super_smoother",
+            SmootherKind::Kama => "kama",
+            SmootherKind::Wma => "wma",
+        }
+    }
+
+    /// The kind with this catalog name (case-insensitive).
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|kind| kind.name().eq_ignore_ascii_case(name))
+    }
+
+    /// The kind at this position of [`SmootherKind::ALL`], the code of the `f64` parameter maps.
+    pub fn from_code(code: usize) -> Option<Self> {
+        Self::ALL.get(code).copied()
+    }
+
+    /// The position of this kind in [`SmootherKind::ALL`].
+    pub fn code(self) -> usize {
+        Self::ALL
+            .iter()
+            .position(|kind| *kind == self)
+            .expect("every kind is in ALL")
+    }
+
     /// Builds a boxed [`Smoother`] of this kind with `len` bars of lookback/decay, using common
     /// defaults for `Alma` (`offset = 0.85`, `sigma = 6.0`), `Jma` (`phase = 0.0`,
     /// `power = 2.0`) and `Kama` (Kaufman's own `fast_period = 2`, `slow_period = 30`). Use the
@@ -374,6 +448,7 @@ impl SmootherKind {
             SmootherKind::Jma => Box::new(Jma::new(len, 0.0, 2.0)),
             SmootherKind::SuperSmoother => Box::new(SuperSmoother::new(len)),
             SmootherKind::Kama => Box::new(Kama::with_defaults(len)),
+            SmootherKind::Wma => Box::new(Wma::new(len)),
         }
     }
 }
@@ -764,6 +839,67 @@ impl Kama {
     pub fn reset(&mut self) {
         self.window.clear();
         self.state = None;
+    }
+}
+
+#[cfg(test)]
+mod kind_tests {
+    use super::SmootherKind;
+    use crate::indicator::atr::TrueRangeSmoothing;
+    use crate::indicator::rsi::RsiSmoothing;
+
+    #[test]
+    fn names_and_codes_round_trip_and_are_unique() {
+        for (code, kind) in SmootherKind::ALL.into_iter().enumerate() {
+            assert_eq!(kind.code(), code);
+            assert_eq!(SmootherKind::from_code(code), Some(kind));
+            assert_eq!(SmootherKind::from_name(kind.name()), Some(kind));
+            assert_eq!(SmootherKind::NAMES[code], kind.name());
+        }
+        assert_eq!(SmootherKind::from_code(SmootherKind::ALL.len()), None);
+        assert_eq!(SmootherKind::from_name("nope"), None);
+        let mut names = SmootherKind::NAMES.to_vec();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), SmootherKind::ALL.len());
+    }
+
+    /// The codes that were published before the list grew keep their meaning.
+    #[test]
+    fn the_first_codes_are_stable() {
+        let published = [
+            SmootherKind::Ema,
+            SmootherKind::Sma,
+            SmootherKind::Rma,
+            SmootherKind::Alma,
+        ];
+        assert_eq!(SmootherKind::ALL[..4], published);
+    }
+
+    #[test]
+    fn subsets_convert_to_and_from_their_kinds() {
+        for smoothing in [
+            TrueRangeSmoothing::Rma,
+            TrueRangeSmoothing::Sma,
+            TrueRangeSmoothing::Ema,
+            TrueRangeSmoothing::Wma,
+        ] {
+            let kind = SmootherKind::from(smoothing);
+            assert_eq!(TrueRangeSmoothing::from_kind(kind), Some(smoothing));
+        }
+        assert_eq!(TrueRangeSmoothing::from_kind(SmootherKind::Kama), None);
+        assert_eq!(
+            TrueRangeSmoothing::NAMES,
+            ["rma", "sma", "ema", "wma"],
+            "the f64 map codes of the atr smoothing"
+        );
+        for smoothing in [RsiSmoothing::Wilder, RsiSmoothing::Ema] {
+            assert_eq!(
+                RsiSmoothing::from_kind(SmootherKind::from(smoothing)),
+                Some(smoothing)
+            );
+        }
+        assert_eq!(RsiSmoothing::from_kind(SmootherKind::Alma), None);
     }
 }
 

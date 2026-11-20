@@ -175,11 +175,11 @@ pub const TREND_RELATIONSHIP_DEFINITION: super::definition::IndicatorDefinition 
     super::definition::IndicatorDefinition {
         name: "trend_relationship",
         aliases: &[],
-        description: "Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma)",
+        description: "Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma|super_smoother|kama|wma)",
         params: &[
-            super::definition::ParamSpec::choice("fast_kind", "ema", SMOOTHER_KINDS, false)
+            super::definition::ParamSpec::choice("fast_kind", "ema", &SmootherKind::NAMES, false)
                 .meaning("smoother of the fast line"),
-            super::definition::ParamSpec::choice("slow_kind", "ema", SMOOTHER_KINDS, false)
+            super::definition::ParamSpec::choice("slow_kind", "ema", &SmootherKind::NAMES, false)
                 .meaning("smoother of the slow line"),
             super::definition::ParamSpec::count("fast_len", 9, 1, 10000)
                 .meaning("length of the fast smoother"),
@@ -191,13 +191,7 @@ pub const TREND_RELATIONSHIP_DEFINITION: super::definition::IndicatorDefinition 
             upper: "slow_len",
         }],
         build: |p| {
-            let kind = |name| match p.choice(name) {
-                "sma" => SmootherKind::Sma,
-                "rma" => SmootherKind::Rma,
-                "alma" => SmootherKind::Alma,
-                "jma" => SmootherKind::Jma,
-                _ => SmootherKind::Ema,
-            };
+            let kind = |name| SmootherKind::from_name(p.choice(name)).unwrap_or_default();
             Ok(Box::new(AdaptiveTrendRelationship::new(
                 kind("fast_kind"),
                 p.count("fast_len"),
@@ -206,9 +200,6 @@ pub const TREND_RELATIONSHIP_DEFINITION: super::definition::IndicatorDefinition 
             )))
         },
     };
-
-/// The smoother kinds selectable by name, in the order the registry's error lists them.
-const SMOOTHER_KINDS: &[&str] = &["ema", "sma", "rma", "alma", "jma"];
 
 #[cfg(test)]
 mod tests {

@@ -216,7 +216,7 @@ Rolling Volume Weighted Average Price with sigma bands and slope
 
 ### `trend_relationship`
 
-Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma)
+Adaptive trend relationship between two configurable smoothers (build via build_typed with fast_kind/slow_kind params: ema|sma|rma|alma|jma|super_smoother|kama|wma)
 
 [See it in the showcase](../../../showcase/trend_relationship/)
 
@@ -224,8 +224,8 @@ Adaptive trend relationship between two configurable smoothers (build via build_
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
-| `fast_kind` | `ema` | `ema`, `sma`, `rma`, `alma`, `jma` (typed map only) | smoother of the fast line |
-| `slow_kind` | `ema` | `ema`, `sma`, `rma`, `alma`, `jma` (typed map only) | smoother of the slow line |
+| `fast_kind` | `ema` | `ema`, `sma`, `rma`, `alma`, `jma`, `super_smoother`, `kama`, `wma` (typed map only) | smoother of the fast line |
+| `slow_kind` | `ema` | `ema`, `sma`, `rma`, `alma`, `jma`, `super_smoother`, `kama`, `wma` (typed map only) | smoother of the slow line |
 | `fast_len` | 9 | whole number 1 – 10000 | length of the fast smoother |
 | `slow_len` | 21 | whole number 1 – 10000 | length of the slow smoother |
 

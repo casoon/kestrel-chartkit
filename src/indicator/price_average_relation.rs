@@ -40,8 +40,8 @@
 //! tick-size floor on ATR is `1e-12`; pivots strict on both sides. Every quantity
 //! propagates "not available", a bar reports only when the oscillator, its signal and all six
 //! scores exist, and alerts are evaluated only on reported bars and need every input they read
-//! (including the previous bar's condition for transitions). The VWMA/HMA/WMA/DEMA/TEMA
-//! families are not offered; the MA is any [`SmootherKind`].
+//! (including the previous bar's condition for transitions). The VWMA/HMA/DEMA/TEMA
+//! families are not offered; the MA is one of [`MA_KINDS`].
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/price_average_relation.py`.
 
@@ -977,13 +977,23 @@ impl Indicator for PriceAverageRelation {
     }
 }
 
+/// The [`SmootherKind`]s `ma_kind` selects, by code: a documented subset of
+/// [`SmootherKind::ALL`], sharing its first four codes.
+pub const MA_KINDS: [SmootherKind; 4] = [
+    SmootherKind::Ema,
+    SmootherKind::Sma,
+    SmootherKind::Rma,
+    SmootherKind::Alma,
+];
+
 pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "price_average_relation",
         aliases: &[],
         description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase",
         params: &[
-            super::definition::ParamSpec::count("ma_kind", 0, 0, 3).meaning("the moving average price is related to: 0 EMA, 1 SMA, 2 RMA, 3 ALMA"),
+            super::definition::ParamSpec::count("ma_kind", 0, 0, MA_KINDS.len() - 1)
+                .meaning("the moving average price is related to: 0 EMA, 1 SMA, 2 RMA, 3 ALMA"),
             super::definition::ParamSpec::count("ma_len", 50, 2, 1000).meaning("bars in the moving average"),
             super::definition::ParamSpec::count("atr_len", 14, 2, 200).meaning("bars in the ATR that scales distances"),
             super::definition::ParamSpec::count("cooldown", 8, 0, 100).meaning("bars between two alerts of one kind"),
@@ -992,12 +1002,7 @@ pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinit
         ],
         checks: &[],
         build: |p| {
-            let ma_kind = match p.count("ma_kind") {
-                0 => SmootherKind::Ema,
-                1 => SmootherKind::Sma,
-                2 => SmootherKind::Rma,
-                _ => SmootherKind::Alma,
-            };
+            let ma_kind = MA_KINDS[p.count("ma_kind")];
             Ok(Box::new(PriceAverageRelation::new(PriceAverageRelationConfig {
                 ma_kind,
                 ma_len: p.count("ma_len"),
