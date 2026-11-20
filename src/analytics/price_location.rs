@@ -21,6 +21,7 @@
 
 use std::collections::VecDeque;
 
+use crate::indicator::smoothing::{Ema, Sma};
 use crate::model::Bar;
 
 /// True range of a bar; `prev_close = None` on the first bar gives `high − low`.
@@ -122,10 +123,9 @@ pub struct PriceLocationEngine {
     cfg: PriceLocationConfig,
     seen: usize,
     atr: WilderAtr,
-    ema: Option<f64>,
+    ema: Ema,
     hl: VecDeque<(f64, f64)>,
-    closes: VecDeque<f64>,
-    sma_sum: f64,
+    sma: Sma,
     smas: VecDeque<Option<f64>>,
     rel: VecDeque<Option<f64>>,
 }
@@ -136,10 +136,9 @@ impl PriceLocationEngine {
             atr: WilderAtr::new(cfg.atr_len),
             cfg,
             seen: 0,
-            ema: None,
+            ema: Ema::new(cfg.ema_len),
             hl: VecDeque::new(),
-            closes: VecDeque::new(),
-            sma_sum: 0.0,
+            sma: Sma::new(cfg.sma_len),
             smas: VecDeque::new(),
             rel: VecDeque::new(),
         }
@@ -152,12 +151,7 @@ impl PriceLocationEngine {
     pub fn push(&mut self, high: f64, low: f64, close: f64) -> PriceLocation {
         let c = self.cfg;
         let atr = self.atr.push(high, low, close);
-        let alpha = 2.0 / (c.ema_len as f64 + 1.0);
-        let ema = match self.ema {
-            Some(e) => e + alpha * (close - e),
-            None => close,
-        };
-        self.ema = Some(ema);
+        let ema = self.ema.update(close).unwrap();
         self.hl.push_back((high, low));
         if self.hl.len() > c.range_len {
             self.hl.pop_front();
@@ -175,12 +169,7 @@ impl PriceLocationEngine {
             (Some(a), true) if a > 0.0 => Some((close - ema) / a),
             _ => None,
         };
-        self.closes.push_back(close);
-        self.sma_sum += close;
-        if self.closes.len() > c.sma_len {
-            self.sma_sum -= self.closes.pop_front().unwrap_or(0.0);
-        }
-        let sma = (self.closes.len() == c.sma_len).then(|| self.sma_sum / c.sma_len as f64);
+        let sma = self.sma.update(close);
         self.smas.push_back(sma);
         if self.smas.len() > c.slope_bars + 1 {
             self.smas.pop_front();

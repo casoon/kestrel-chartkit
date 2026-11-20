@@ -49,7 +49,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
 
-use super::smoothing::{Rma, Smoother, SmootherKind};
+use super::smoothing::{Ema, Rma, Smoother, SmootherKind};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Parameters, defaults of the reference definition.
@@ -170,6 +170,8 @@ pub struct PriceAverageRelation {
     atr: Rma,
     rel_ema: Option<f64>,
     signal_ema: Option<f64>,
+    rel_kernel: Ema,
+    signal_kernel: Ema,
     rows: VecDeque<Row>,
     cap: usize,
     bars: usize,
@@ -209,14 +211,6 @@ fn sign(v: f64, dead: f64) -> f64 {
     }
 }
 
-fn ema_step(prev: Option<f64>, v: f64, len: usize) -> f64 {
-    let a = 2.0 / (len as f64 + 1.0);
-    match prev {
-        Some(p) => a * v + (1.0 - a) * p,
-        None => v,
-    }
-}
-
 impl PriceAverageRelation {
     pub fn new(cfg: PriceAverageRelationConfig) -> Self {
         let cap = [
@@ -241,6 +235,8 @@ impl PriceAverageRelation {
             cfg,
             rel_ema: None,
             signal_ema: None,
+            rel_kernel: Ema::new(3),
+            signal_kernel: Ema::new(5),
             rows: VecDeque::with_capacity(cap + 1),
             cap,
             bars: 0,
@@ -803,9 +799,9 @@ impl Indicator for PriceAverageRelation {
                 0.50,
             );
             let raw = tq * d * (1.0 - penalty);
-            let rel = ema_step(self.rel_ema, raw, 3);
+            let rel = self.rel_kernel.update(raw).unwrap();
             self.rel_ema = Some(rel);
-            self.signal_ema = Some(ema_step(self.signal_ema, rel, 5));
+            self.signal_ema = self.signal_kernel.update(rel);
         }
         let rel = trend
             .and(direction)

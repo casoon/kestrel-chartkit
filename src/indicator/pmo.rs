@@ -5,42 +5,6 @@ use crate::model::Bar;
 use super::smoothing::Ema;
 use super::{Indicator, IndicatorOutput};
 
-/// An exponential average with the smoothing constant stated directly.
-///
-/// The crate's [`Ema`] takes a period and derives `alpha = 2/(len + 1)`. This one takes
-/// `alpha = 2/len`, which is what the Price Momentum Oscillator is defined with. The two agree
-/// only if the period is shifted by one, and silently doing that shift would leave a `length = 35`
-/// in a caller's configuration meaning something else than it says.
-///
-/// Seeded with the first sample, like [`Ema`].
-#[derive(Debug, Clone, Copy)]
-struct DirectAlphaEma {
-    alpha: f64,
-    state: Option<f64>,
-}
-
-impl DirectAlphaEma {
-    fn new(length: usize) -> Self {
-        Self {
-            alpha: 2.0 / length.max(1) as f64,
-            state: None,
-        }
-    }
-
-    fn update(&mut self, value: f64) -> f64 {
-        let next = match self.state {
-            None => value,
-            Some(previous) => self.alpha * value + (1.0 - self.alpha) * previous,
-        };
-        self.state = Some(next);
-        next
-    }
-
-    fn reset(&mut self) {
-        self.state = None;
-    }
-}
-
 /// Price Momentum Oscillator: the one-bar percentage return, smoothed twice and scaled.
 ///
 /// ```text
@@ -76,8 +40,8 @@ pub struct PriceMomentumOscillator {
     length_2: usize,
     signal_len: usize,
     prev_close: Option<f64>,
-    stage_1: DirectAlphaEma,
-    stage_2: DirectAlphaEma,
+    stage_1: Ema,
+    stage_2: Ema,
     signal_ema: Ema,
     observations: usize,
     lines_published: usize,
@@ -90,8 +54,8 @@ impl PriceMomentumOscillator {
             length_2: length_2.max(1),
             signal_len: signal_len.max(1),
             prev_close: None,
-            stage_1: DirectAlphaEma::new(length_1),
-            stage_2: DirectAlphaEma::new(length_2),
+            stage_1: Ema::from_alpha(2.0 / length_1.max(1) as f64),
+            stage_2: Ema::from_alpha(2.0 / length_2.max(1) as f64),
             signal_ema: Ema::new(signal_len.max(1)),
             observations: 0,
             lines_published: 0,
@@ -126,7 +90,8 @@ impl Indicator for PriceMomentumOscillator {
             return None;
         }
         let roc = 100.0 * (bar.close / prev_close - 1.0);
-        let line = self.stage_2.update(10.0 * self.stage_1.update(roc));
+        let stage_1 = self.stage_1.update(roc).unwrap();
+        let line = self.stage_2.update(10.0 * stage_1).unwrap();
 
         self.observations += 1;
         if self.observations < self.length_1 + self.length_2 - 1 {

@@ -303,11 +303,7 @@ fn add_moving_averages(levels: &mut Vec<CheatSheetLevel>, bars: &[Bar], last: f6
 }
 
 fn sma(bars: &[Bar], len: usize) -> Option<f64> {
-    if bars.len() < len {
-        return None;
-    }
-    let window = &bars[bars.len() - len..];
-    Some(window.iter().map(|b| b.close).sum::<f64>() / len as f64)
+    crate::indicator::smoothing::sma_of_last(bars.iter().map(|b| b.close), len)
 }
 
 fn add_rsi_targets(levels: &mut Vec<CheatSheetLevel>, bars: &[Bar], last: f64) {

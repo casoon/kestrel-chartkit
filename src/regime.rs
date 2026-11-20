@@ -1,3 +1,4 @@
+use crate::indicator::smoothing::sma_of_last;
 use crate::model::{Bar, MarketRegime};
 
 pub fn classify_regime(bars: &[Bar], adx_val: f64, atr_val: f64) -> MarketRegime {
@@ -7,8 +8,8 @@ pub fn classify_regime(bars: &[Bar], adx_val: f64, atr_val: f64) -> MarketRegime
 
     let len = bars.len();
     let current_close = bars[len - 1].close;
-    let sma_20: f64 = bars[len - 20..].iter().map(|b| b.close).sum::<f64>() / 20.0;
-    let prev_sma_20: f64 = bars[len - 21..len - 1].iter().map(|b| b.close).sum::<f64>() / 20.0;
+    let sma_20 = sma_of_last(bars.iter().map(|b| b.close), 20).unwrap_or_default();
+    let prev_sma_20 = sma_of_last(bars[..len - 1].iter().map(|b| b.close), 20).unwrap_or_default();
 
     let slope = if prev_sma_20 != 0.0 {
         (sma_20 - prev_sma_20) / prev_sma_20

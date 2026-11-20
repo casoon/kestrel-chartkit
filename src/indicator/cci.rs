@@ -4,6 +4,7 @@ use crate::model::Bar;
 
 use super::divergence::SlopeDivergence;
 use super::exhaustion::Exhaustion;
+use super::smoothing::Ema;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 /// Commodity Channel Index with a smoothed line, a signal and a context line.
@@ -20,8 +21,6 @@ use super::{Indicator, IndicatorAlert, IndicatorOutput};
 /// First output: with the `cci_len`-th bar. [`Indicator::reset`] clears windows and averages.
 pub struct Cci {
     cci_len: usize,
-    avg_len: usize,
-    sig_len: usize,
     lookback_extreme: usize,
     oversold: f64,
     overbought: f64,
@@ -29,14 +28,14 @@ pub struct Cci {
     ctx_len: usize,
 
     source_window: VecDeque<f64>,
-    cci_ema: Option<f64>,
-    signal_ema: Option<f64>,
+    cci_ema: Ema,
+    signal_ema: Ema,
     cci_line_window: VecDeque<f64>,
     prev_cci_line: Option<f64>,
     prev_signal: Option<f64>,
 
     ctx_window: VecDeque<f64>,
-    ctx_ema: Option<f64>,
+    ctx_ema: Ema,
     divergence: SlopeDivergence,
     exhaustion: Exhaustion,
 
@@ -74,21 +73,19 @@ impl Cci {
     ) -> Self {
         Self {
             cci_len,
-            avg_len,
-            sig_len,
             lookback_extreme,
             oversold,
             overbought,
             require_extreme_zone,
             ctx_len,
             source_window: VecDeque::with_capacity(cci_len),
-            cci_ema: None,
-            signal_ema: None,
+            cci_ema: Ema::new(avg_len),
+            signal_ema: Ema::new(sig_len),
             cci_line_window: VecDeque::with_capacity(lookback_extreme),
             prev_cci_line: None,
             prev_signal: None,
             ctx_window: VecDeque::with_capacity(ctx_len),
-            ctx_ema: None,
+            ctx_ema: Ema::new(avg_len),
             divergence: SlopeDivergence::new(div_len, div_min),
             exhaustion: Exhaustion::with_defaults(),
             alerts: CciAlerts::default(),
@@ -97,16 +94,6 @@ impl Cci {
 
     pub fn with_defaults() -> Self {
         Self::new(20, 3, 3, 5, -100.0, 100.0, true, 100, 4, 25.0)
-    }
-
-    fn ema_step(state: &mut Option<f64>, src: f64, len: usize) -> f64 {
-        let alpha = 2.0 / (len as f64 + 1.0);
-        let next = match *state {
-            None => src,
-            Some(prev) => alpha * src + (1.0 - alpha) * prev,
-        };
-        *state = Some(next);
-        next
     }
 }
 
@@ -141,7 +128,7 @@ impl Indicator for Cci {
             } else {
                 0.0
             };
-            Some(Self::ema_step(&mut self.ctx_ema, ctx_raw, self.avg_len))
+            self.ctx_ema.update(ctx_raw)
         } else {
             None
         };
@@ -167,8 +154,8 @@ impl Indicator for Cci {
             0.0
         };
 
-        let cci_line = Self::ema_step(&mut self.cci_ema, raw_cci, self.avg_len);
-        let signal = Self::ema_step(&mut self.signal_ema, cci_line, self.sig_len);
+        let cci_line = self.cci_ema.update(raw_cci).unwrap();
+        let signal = self.signal_ema.update(cci_line).unwrap();
 
         if self.cci_line_window.len() == self.lookback_extreme {
             self.cci_line_window.pop_front();
@@ -243,13 +230,13 @@ impl Indicator for Cci {
 
     fn reset(&mut self) {
         self.source_window.clear();
-        self.cci_ema = None;
-        self.signal_ema = None;
+        self.cci_ema.reset();
+        self.signal_ema.reset();
         self.cci_line_window.clear();
         self.prev_cci_line = None;
         self.prev_signal = None;
         self.ctx_window.clear();
-        self.ctx_ema = None;
+        self.ctx_ema.reset();
         self.divergence.reset();
         self.exhaustion.reset();
         self.alerts = CciAlerts::default();

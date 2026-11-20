@@ -35,6 +35,7 @@ pub enum EmaInit {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Ema {
     len: usize,
+    alpha: Option<f64>,
     init: EmaInit,
     state: Option<f64>,
     seed_sum: f64,
@@ -45,10 +46,23 @@ impl Ema {
     pub fn new(len: usize) -> Self {
         Self {
             len,
+            alpha: None,
             init: EmaInit::FirstSample,
             state: None,
             seed_sum: 0.0,
             seed_count: 0,
+        }
+    }
+
+    /// An EMA with the smoothing constant stated directly instead of derived from a period.
+    ///
+    /// [`Ema::new`] derives `alpha = 2/(len + 1)`; this takes `alpha` as given (a definition such
+    /// as `alpha = 2/len` is not the same average as `Ema::new(len)`). Seeded with the first sample;
+    /// do not combine with [`EmaInit::Sma`], which needs a period.
+    pub(crate) fn from_alpha(alpha: f64) -> Self {
+        Self {
+            alpha: Some(alpha),
+            ..Self::new(1)
         }
     }
 
@@ -67,7 +81,7 @@ impl Ema {
     }
 
     pub fn update(&mut self, src: f64) -> Option<f64> {
-        let alpha = 2.0 / (self.len as f64 + 1.0);
+        let alpha = self.alpha.unwrap_or_else(|| 2.0 / (self.len as f64 + 1.0));
         if let Some(prev) = self.state {
             let next = alpha * src + (1.0 - alpha) * prev;
             self.state = Some(next);
@@ -102,6 +116,20 @@ impl Ema {
         self.seed_sum = 0.0;
         self.seed_count = 0;
     }
+}
+
+/// Mean of the last `len` values of `values`, `None` if fewer are given.
+///
+/// One-shot form of [`Sma`] for snapshot read-outs over a slice: the values pass through a fresh
+/// kernel, so the result is the same number the streaming indicator publishes.
+pub(crate) fn sma_of_last(values: impl DoubleEndedIterator<Item = f64>, len: usize) -> Option<f64> {
+    let mut window: Vec<f64> = values.rev().take(len).collect();
+    if window.len() < len {
+        return None;
+    }
+    window.reverse();
+    let mut sma = Sma::new(len);
+    window.into_iter().filter_map(|v| sma.update(v)).last()
 }
 
 /// Weighted moving average for scalar streams: weight `len` on the most recent sample
@@ -678,12 +706,10 @@ impl SuperSmoother {
     }
 }
 
-/// Kaufman's Adaptive Moving Average as a scalar-stream [`Smoother`] stage — same
-/// efficiency-ratio-derived adaptive-alpha formula as
-/// [`KamaEngine`](super::moving_averages::KamaEngine), decoupled from [`crate::model::Bar`] so it
-/// can be one stage of a [`Smoother`]/[`SmootherChain`] pipeline instead of only a stand-alone bar
-/// indicator. It reuses `KamaEngine`'s math with configurable `fast_period`/`slow_period` rather
-/// than adding a second variant with fixed 2/30 periods.
+/// Kaufman's Adaptive Moving Average over a scalar stream: the one KAMA kernel. The catalog
+/// indicator [`KamaEngine`](super::moving_averages::KamaEngine) wraps it, and it is a stage of a
+/// [`Smoother`]/[`SmootherChain`] pipeline. `fast_period`/`slow_period` are parameters (Kaufman's
+/// defaults 2/30).
 #[derive(Debug, Clone)]
 pub struct Kama {
     period: usize,
@@ -706,7 +732,7 @@ impl Kama {
     }
 
     /// Kaufman's own defaults (`fast_period = 2`, `slow_period = 30`), matching
-    /// [`KamaEngine`](super::moving_averages::KamaEngine)'s catalog defaults.
+    /// the catalog defaults of [`KamaEngine`](super::moving_averages::KamaEngine).
     pub fn with_defaults(period: usize) -> Self {
         Self::new(period, 2, 30)
     }
@@ -839,7 +865,7 @@ mod supersmoother_tests {
 mod kama_smoother_tests {
     use super::Kama;
 
-    /// `Kama` reuses `KamaEngine`'s already golden-validated formula (see
+    /// `KamaEngine` wraps `Kama`; the formula is golden-validated (see
     /// `tests/golden_reference_moving_averages.rs`, `kama5_last =
     /// 14.554043488814198` for `KAMA(period=5, fast_period=2, slow_period=30)` over the shared
     /// `CLOSES` series `[10, 11, 12, 11, 13, 14, 13, 15, 16, 15]`) — this is not a new formula

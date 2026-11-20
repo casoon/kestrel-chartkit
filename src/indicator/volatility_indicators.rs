@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
+use crate::indicator::smoothing::Ema;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -78,7 +79,7 @@ pub struct KeltnerChannelEngine {
     closes: VecDeque<f64>,
     trs: VecDeque<f64>,
     prev_close: Option<f64>,
-    current_ema: Option<f64>,
+    current_ema: Ema,
     alerts: Vec<IndicatorAlert>,
 }
 
@@ -91,7 +92,7 @@ impl KeltnerChannelEngine {
             closes: VecDeque::new(),
             trs: VecDeque::new(),
             prev_close: None,
-            current_ema: None,
+            current_ema: Ema::new(ema_period),
             alerts: Vec::new(),
         }
     }
@@ -110,7 +111,7 @@ impl Indicator for KeltnerChannelEngine {
         self.closes.clear();
         self.trs.clear();
         self.prev_close = None;
-        self.current_ema = None;
+        self.current_ema.reset();
         self.alerts.clear();
     }
 
@@ -127,11 +128,7 @@ impl Indicator for KeltnerChannelEngine {
         self.closes.push_back(bar.close);
         self.trs.push_back(tr);
 
-        let k = 2.0 / (self.ema_period as f64 + 1.0);
-        self.current_ema = match self.current_ema {
-            Some(prev_ema) => Some(bar.close * k + prev_ema * (1.0 - k)),
-            None => Some(bar.close),
-        };
+        let basis = self.current_ema.update(bar.close).unwrap();
 
         if self.closes.len() > self.ema_period {
             self.closes.pop_front();
@@ -145,7 +142,6 @@ impl Indicator for KeltnerChannelEngine {
             return None;
         }
 
-        let basis = self.current_ema.unwrap_or(bar.close);
         let atr: f64 = self.trs.iter().sum::<f64>() / self.atr_period as f64;
         let upper = basis + self.multiplier * atr;
         let lower = basis - self.multiplier * atr;

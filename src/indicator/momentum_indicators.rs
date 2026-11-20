@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
+use crate::indicator::smoothing::Ema;
 use crate::indicator::{Indicator, IndicatorAlert, IndicatorOutput};
 use crate::model::Bar;
 
@@ -332,12 +333,10 @@ impl Indicator for AwesomeOscillatorEngine {
 ///
 /// First output: with the `slow_period`-th bar. [`Indicator::reset`] clears all averages.
 pub struct PpoEngine {
-    fast_period: usize,
     slow_period: usize,
-    signal_period: usize,
-    fast_ema: Option<f64>,
-    slow_ema: Option<f64>,
-    signal_ema: Option<f64>,
+    fast_ema: Ema,
+    slow_ema: Ema,
+    signal_ema: Ema,
     count: usize,
     alerts: Vec<IndicatorAlert>,
 }
@@ -345,12 +344,10 @@ pub struct PpoEngine {
 impl PpoEngine {
     pub fn new(fast_period: usize, slow_period: usize, signal_period: usize) -> Self {
         Self {
-            fast_period,
             slow_period,
-            signal_period,
-            fast_ema: None,
-            slow_ema: None,
-            signal_ema: None,
+            fast_ema: Ema::new(fast_period),
+            slow_ema: Ema::new(slow_period),
+            signal_ema: Ema::new(signal_period),
             count: 0,
             alerts: Vec::new(),
         }
@@ -367,47 +364,30 @@ impl Indicator for PpoEngine {
     }
 
     fn reset(&mut self) {
-        self.fast_ema = None;
-        self.slow_ema = None;
-        self.signal_ema = None;
+        self.fast_ema.reset();
+        self.slow_ema.reset();
+        self.signal_ema.reset();
         self.count = 0;
         self.alerts.clear();
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         self.count += 1;
-        let k_fast = 2.0 / (self.fast_period as f64 + 1.0);
-        let k_slow = 2.0 / (self.slow_period as f64 + 1.0);
-        let k_sig = 2.0 / (self.signal_period as f64 + 1.0);
-
-        self.fast_ema = Some(match self.fast_ema {
-            Some(prev) => bar.close * k_fast + prev * (1.0 - k_fast),
-            None => bar.close,
-        });
-
-        self.slow_ema = Some(match self.slow_ema {
-            Some(prev) => bar.close * k_slow + prev * (1.0 - k_slow),
-            None => bar.close,
-        });
+        let fast = self.fast_ema.update(bar.close).unwrap();
+        let slow = self.slow_ema.update(bar.close).unwrap();
 
         self.alerts.clear();
         if self.count < self.slow_period {
             return None;
         }
 
-        let fast = self.fast_ema.unwrap();
-        let slow = self.slow_ema.unwrap();
         let ppo_line = if slow > 0.0 {
             ((fast - slow) / slow) * 100.0
         } else {
             0.0
         };
 
-        let sig = match self.signal_ema {
-            Some(prev) => ppo_line * k_sig + prev * (1.0 - k_sig),
-            None => ppo_line,
-        };
-        self.signal_ema = Some(sig);
+        let sig = self.signal_ema.update(ppo_line).unwrap();
 
         let hist = ppo_line - sig;
 
