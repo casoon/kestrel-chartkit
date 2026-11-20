@@ -55,33 +55,35 @@ fn names() -> Vec<String> {
     all.into_iter().collect()
 }
 
-fn fnv(hash: &mut u64, value: u64) {
-    for byte in value.to_le_bytes() {
-        *hash ^= byte as u64;
-        *hash = hash.wrapping_mul(0x100000001b3);
+/// The outputs of `name` built by `build_typed` with `params` over `bars`, or the build error.
+fn run(
+    name: &str,
+    params: &HashMap<String, ParamValue>,
+    bars: &[Bar],
+) -> Result<Vec<Option<u64>>, String> {
+    match build_typed(name, params) {
+        Err(e) => Err(format!("err {e:?}")),
+        Ok(mut indicator) => Ok(bars
+            .iter()
+            .map(|bar| indicator.on_bar(bar).map(|o| o.value.to_bits()))
+            .collect()),
     }
 }
 
-/// What `build_typed` does with a requested `source`: its error, or a hash of the outputs over a
-/// fixed series (which differs when the indicator was wrapped to read another price).
+/// What `build_typed` does with a requested `source`: its error, or whether the outputs over a
+/// fixed series equal those of the same entry built without a `source` (they differ when the
+/// indicator was wrapped to read another price). Compared within one run, so the record does not
+/// depend on the platform's last-place rounding.
 fn source_probe(name: &str, source: Source, bars: &[Bar]) -> String {
     let params: HashMap<String, ParamValue> =
         HashMap::from([("source".to_string(), ParamValue::Source(source))]);
-    match build_typed(name, &params) {
-        Err(e) => format!("err {e:?}"),
-        Ok(mut indicator) => {
-            let mut hash = 0xcbf29ce484222325u64;
-            for bar in bars {
-                match indicator.on_bar(bar) {
-                    Some(o) => {
-                        fnv(&mut hash, 1);
-                        fnv(&mut hash, o.value.to_bits());
-                    }
-                    None => fnv(&mut hash, 0),
-                }
-            }
-            format!("ok {hash:016x}")
-        }
+    match run(name, &params, bars) {
+        Err(e) => e,
+        Ok(with_source) => match run(name, &HashMap::new(), bars) {
+            Ok(native) if native == with_source => "ok same as without source".to_string(),
+            Ok(_) => "ok differs from without source".to_string(),
+            Err(e) => format!("ok, but without source: {e}"),
+        },
     }
 }
 
