@@ -12,6 +12,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 ### Changed
 
 - **Pages:** the project site uses the current shared theme (0.16.1).
+- **Pages:** the start page shows a computed chart up front, the areas of the crate with their counts, chartlet and kestrel-loom as the two ways to draw, and how the results are checked against the independent reference.
 
 
 ## [0.42.0] - 2026-11-17

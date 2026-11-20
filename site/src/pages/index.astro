@@ -3,29 +3,30 @@ import { readFile } from 'node:fs/promises';
 import {
   Badge,
   Badges,
-  BuildOutput,
-  Callout,
   Button,
   CodeBlock,
-  Facts,
   Faq,
   Features,
+  FlowPanel,
   Hero,
   Install,
   Quickstart,
   ReleaseHighlights,
+  Split,
+  StatBand,
+  Tradeoffs,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import { url } from '@casoon/pages-theme/url';
 import config from 'virtual:casoon-pages/config';
 import { parseChangelog } from '@casoon/pages-theme/lib/changelog';
 import { indicators, inlineChart, spec } from '../chartlet';
-// Animated SVG built with castwright from site/captures/basic-indicator.terminal.yaml: the captured
-// run of examples/basic_indicator.rs (see site/captures/capture.sh), unchanged.
-import basicIndicatorSvg from '../../captures/basic-indicator.svg?url';
 
-// Written by `cargo run --example site_showcase`: one entry per indicator of `catalog()`.
+// Written by `cargo run --example site_showcase`: one entry per indicator of `catalog()`, with
+// its family, so every count below follows the catalog.
 const indicatorCount = indicators.length;
+const perFamily = (prefix: string) => String(indicators.filter((i) => i.family.startsWith(prefix)).length);
+
 const goldenSuites = Object.keys(import.meta.glob('../../../tests/golden_reference_*.rs', { query: '?raw' })).length;
 // Each contract case is one table headed `@<case>` in tests/fixtures/contract_*.txt: a complete
 // expected run of one indicator, bar by bar.
@@ -37,6 +38,13 @@ const contractFixtures = import.meta.glob<string>('../../../tests/fixtures/contr
 const contractCases = Object.values(contractFixtures)
   .map((text) => text.split('\n').filter((line) => line.startsWith('@')).length)
   .reduce((a, b) => a + b, 0);
+// The verification status per indicator as INDICATOR_STATUS.md records it (✅ verified, ❌ open),
+// catalog and pair indicators together.
+const status = Object.values(
+  import.meta.glob<string>('../../../INDICATOR_STATUS.md', { query: '?raw', import: 'default', eager: true })
+)[0];
+const verified = (status.match(/\| ✅ \|/g) ?? []).length;
+const tracked = verified + (status.match(/\| ❌ \|/g) ?? []).length;
 
 // The release the theme reads from Cargo.toml, so install line and badge follow every release.
 const version = config.version;
@@ -46,8 +54,9 @@ const latestRelease = config.changelog
       (r) => r.version.toLowerCase() !== 'unreleased'
     )
   : undefined;
-// A calm price chart of a fictitious CASOON share (invented prices), as Kestrel draws its own with
-// chartlet: the numbers from kestrel-chartkit, the drawing from chartlet.
+
+// A price chart of a fictitious CASOON share (invented prices): the numbers from kestrel-chartkit,
+// the drawing from chartlet, both when this site is built.
 const hero = inlineChart(spec('hero'), 'hero');
 // The same chart laid out for phones, so its labels stay readable at 390 px.
 const heroNarrow = inlineChart({ ...spec('hero'), width: 380, height: 660 }, 'hero-narrow');
@@ -56,16 +65,17 @@ const regime = inlineChart(spec('regime'), 'regime');
 const mainRs = `let params = HashMap::from([("rsi_len".to_string(), 14.0)]);
 let mut rsi = build_checked("rsi", &params)?;
 
-let bar = Bar::try_new(1700000000, 100.0, 105.0, 95.0, 104.0, 1000.0)?;
-if let Some(output) = rsi.on_bar(&bar) {
-    println!("RSI: {:.2}", output.value);
+for bar in &bars {
+    if let Some(output) = rsi.on_bar(bar) {
+        println!("RSI: {:.2}", output.value);
+    }
 }`;
 ---
 
 <Base>
   <Hero
-    title="Price bars in, readings out."
-    lead="kestrel-chartkit is technical analysis as plain, testable Rust. Feed it price bars one at a time and it returns indicator values, the current market regime and a composite signal that explains itself. It computes, nothing more: you bring the bars, a renderer of your choice draws."
+    title="Technical analysis in Rust, checked."
+    lead={`${indicatorCount} streaming indicators and detectors, market regime, composite signals, trade evaluation and instrument valuation. kestrel-chartkit does the math and hands back plain data; chartlet or kestrel-loom draws it.`}
   >
     <Install
       commands={[
@@ -76,102 +86,149 @@ if let Some(output) = rsi.on_bar(&bar) {
       ]}
     />
     <Badges>
-      <Badge tone="brand">in development</Badge>
       <Badge>v{version}</Badge>
+      <Badge>pre-1.0</Badge>
       <Badge>BUSL-1.1</Badge>
       <Badge>Rust 1.87+</Badge>
     </Badges>
-    <img
-      slot="output"
-      class="terminal-demo"
-      src={basicIndicatorSvg}
-      width="427.2"
-      height="368"
-      alt="Terminal: cargo run -q --example basic_indicator streams 16 closing prices into RSI(14). Bars 0 to 13, closes from 44.34 to 46.28, print RSI(14)=<warming up>; bar 14 at close 46.28 prints RSI(14)=70.46 and bar 15 at close 46.00 prints RSI(14)=68.36."
-    />
-  </Hero>
-
-  <section class="chart" aria-labelledby="chart-heading">
-    <div class="text">
-      <h2 id="chart-heading">From bars to a chart</h2>
-      <p>
-        The same streaming calls behind a whole chart: EMA 20 and EMA 50, support and resistance
-        zones from confirmed pivots, volume, RSI(14) and its latest signals. kestrel-chartkit computes
-        every value when this site is built; chartlet draws them.
-      </p>
-      <p class="note">
-        Synthetic 4-hour bars of a fictitious CASOON share with invented prices, no real quotes.
-      </p>
-      <div class="links">
-        <Button href={url('showcase/')} variant="secondary">All {String(indicatorCount)} indicators drawn</Button>
-        <Button href={url('docs/guides/visualising/')} variant="quiet">Visualising →</Button>
-      </div>
-    </div>
-    <div class="figure">
+    <div slot="output" class="hero-chart">
       <div class="wide" set:html={hero} />
       <div class="narrow" set:html={heroNarrow} />
     </div>
-  </section>
+    <span slot="caption">
+      A fictitious share with invented prices. kestrel-chartkit computes every value when this site
+      is built, chartlet draws it.
+    </span>
+  </Hero>
 
-  <div class="wrap">
-  <Callout type="caution" title="Work in progress">
-    kestrel-chartkit is under active development and not yet a stable foundation. Indicator names,
-    parameters, outputs and whole modules can still change fundamentally between versions, and
-    there is no compatibility promise before 1.0. Pin a release tag and expect to adapt when you
-    upgrade.
-  </Callout>
-  </div>
-
-  <Facts
+  <StatBand
     items={[
-      { value: String(indicatorCount), label: 'indicators, each built by name from one definition' },
-      { value: String(contractCases), label: 'contract cases: complete expected runs, bar by bar' },
+      { value: String(indicatorCount), label: 'indicators and detectors in the catalog' },
+      { value: `${verified}/${tracked}`, label: 'indicators verified against an independent implementation' },
+      { value: String(contractCases), label: 'contract cases, each a full expected run' },
       { value: String(goldenSuites), label: 'golden-reference test suites' },
-      { value: '4', label: 'market regimes, from fixed and documented rules' },
     ]}
   />
 
   <Features
-    items={[
-      {
-        title: 'Streaming by design',
-        body: 'Every indicator consumes one bar at a time and answers from the bar its warmup ends. The same code serves a backtest over years of history and a live feed.',
-      },
-      {
-        title: 'Checked against independent references',
-        body: `Each indicator runs against expected values derived outside the crate, and a contract fixes every bar: whether a value exists, every field it carries and every alert it raises. The <a href="${url('docs/reference/indicators/')}">indicator reference</a> lists all of them.`,
-      },
-      {
-        title: 'Signals you can explain',
-        body: 'Regime and composite score follow a handful of fixed thresholds. A direction against the regime is vetoed, and every signal carries its subscores. Events alert on the bar they are confirmed, never earlier.',
-      },
+      layout="grid"
+      heading="What's in the crate"
+      items={[
+        {
+          icon: perFamily('Oscillators'),
+          title: 'Oscillators',
+          body: 'RSI, Stochastic RSI, MACD, TSI, Williams %R, CCI, Fisher Transform, WaveTrend and more.',
+        },
+        {
+          icon: perFamily('Moving averages'),
+          title: 'Averages, bands and trend lines',
+          body: 'SMA to KAMA, VIDYA and T3, Bollinger and Keltner, Ichimoku, Supertrend, anchored VWAP.',
+        },
+        {
+          icon: perFamily('Volatility'),
+          title: 'Volatility and trend strength',
+          body: 'ATR, ADX and DMI, Aroon, Choppiness, Garman–Klass, Chande Kroll Stop, Chandelier Exit.',
+        },
+        {
+          icon: perFamily('Volume'),
+          title: 'Volume',
+          body: 'OBV, VWAP, Chaikin Money Flow, Klinger, cumulative delta and several volume profiles.',
+        },
+        {
+          icon: perFamily('Market structure'),
+          title: 'Structure and patterns',
+          body: 'Pivots, break of structure, order blocks, fair value gaps, liquidity sweeps, ZigZag, point and figure.',
+        },
+        {
+          icon: perFamily('Composite'),
+          title: 'Composite read-outs',
+          body: 'Indicators that combine several readings into one statement, such as trend quality or compression zones.',
+        },
+        {
+          icon: 'RGM',
+          title: 'Regime and scoring',
+          body: 'Four market regimes from fixed rules, a trade permission per regime, weighted scores with their subscores and a risk plan.',
+        },
+        {
+          icon: 'EVAL',
+          title: 'Evaluation and analytics',
+          body: 'R-multiples, win rate, profit factor, drawdown and expectancy; correlation matrix and relative-strength ranking.',
+        },
+        {
+          icon: 'VAL',
+          title: 'Valuation and risk',
+          body: 'Black–Scholes–Merton and Black-76 with Greeks, fixed-rate bonds over real coupon schedules, VaR and stress scenarios.',
+        },
+      ]}
+    />
+
+  <Split
+    eyebrow="Drawing"
+    title="Computed once, drawn where you need it"
+    lead="kestrel-chartkit draws nothing itself. Every result is plain data — values, extras, alerts, zones — and overlays such as signal markers and levels can travel as a renderer-neutral `Scene`."
+    points={[
+      '**chartlet** renders static SVG, like every chart on this site.',
+      '**kestrel-loom** draws an interactive chart in the browser: Rust to WebAssembly to Canvas, with indicator panes; alpha.',
+      'Your own renderer reads the same data; with the default `serde` feature it serialises as it is.',
     ]}
-  />
-
-  <BuildOutput
-    caption="The market regime per bar, from classify_regime with ADX and ATR, on the fictitious CASOON share. kestrel-chartkit computes every value; chartlet draws them when this site is built."
-    file="examples/site_showcase.rs"
+    links={[
+      { label: `All ${indicatorCount} indicators drawn`, href: url('showcase/') },
+      { label: 'Visualising', href: url('docs/guides/visualising/') },
+      { label: 'kestrel-loom on GitHub', href: 'https://github.com/casoon/kestrel-loom' },
+    ]}
   >
-    <Fragment set:html={regime} />
-  </BuildOutput>
+    <FlowPanel
+      start={{ title: 'kestrel-chartkit', body: 'values, alerts, zones and a Scene, per bar' }}
+      paths={[
+        { label: 'static', title: 'chartlet', body: 'SVG at build time' },
+        { label: 'interactive', title: 'kestrel-loom', body: 'WebAssembly and Canvas in the browser' },
+        { label: 'custom', title: 'your renderer', body: 'plain data, serde' },
+      ]}
+      result="one chart, numbers from one source"
+    />
+  </Split>
 
-  <div class="wrap">
-  <Callout type="note" title="Pure computation">
-    The crate contains mathematics only: indicators, statistics and valuation formulas. It fetches
-    no market data, connects to no broker or exchange, and holds no credentials, keys, account or
-    personal data. Drawing is left to a renderer: <a href={url('docs/guides/visualising/')}>chartlet</a>
-    for static charts like the ones on this site, or
-    <a href="https://github.com/casoon/kestrel-loom">kestrel-loom</a> for an interactive chart in the
-    browser, itself still in development. A composite signal is a rule-based summary of indicator
-    readings, not a forecast, and nothing here is investment advice.
-  </Callout>
-  </div>
+  <Split
+    reverse
+    eyebrow="Regime and signals"
+    title="Signals you can trace back"
+    lead="`classify_regime` sorts every bar into one of four regimes from ADX and ATR, with fixed thresholds. Scoring weighs indicator readings into a composite signal that keeps its subscores."
+    points={[
+      'Bullish expansion, bearish expansion, consolidation and transition — each with a trade permission: clear, caution or veto.',
+      'A direction against the regime is vetoed, not averaged away.',
+      'Events alert on the bar they are confirmed, never earlier.',
+    ]}
+    links={[
+      { label: 'Market regime', href: url('docs/guides/market-regime/') },
+      { label: 'Composite scoring', href: url('docs/guides/composite-scoring/') },
+    ]}
+  >
+    <div class="figure" set:html={regime} />
+  </Split>
+
+    <Features
+      heading="Checked against a second implementation"
+      items={[
+        {
+          title: 'Independent reference',
+          body: `${verified} of ${tracked} indicators match a second implementation in Python, written from the documented formulas rather than translated from the Rust code, with the standard library only. Where a formula leaves a convention open, the fixture states the choice.`,
+        },
+        {
+          title: 'Contracts, bar by bar',
+          body: `${contractCases} contract cases fix a complete run per indicator: whether a value exists on each bar, every field it carries and every alert it raises, within a stated tolerance.`,
+        },
+        {
+          title: 'Reproducible',
+          body: `${goldenSuites} golden-reference suites cover indicators, structure, analytics and valuation. The reference regenerates every fixture byte for byte, so anyone with Python can check the expected values.`,
+        },
+      ]}
+    />
 
   <Quickstart
-    lead="Build an indicator by name and feed it bars. The quickstart in the documentation runs the full example from the terminal above."
+    lead="Build an indicator by name and feed it bars. The quickstart runs a complete example from the terminal."
     steps={[
       'Add the dependency, pinned to a release tag.',
-      'Build an indicator from the registry with <code>build_checked</code>.',
+      'Build an indicator from the catalog with <code>build_checked</code>.',
       'Stream validated bars through <code>on_bar</code> and read the output.',
     ]}
   >
@@ -181,82 +238,50 @@ if let Some(output) = rsi.on_bar(&bar) {
     </div>
   </Quickstart>
 
+  <Tradeoffs
+    eyebrow="Status"
+    title="What to expect"
+    lead="kestrel-chartkit is under active development. Read this before you build on it."
+    items={[
+      '**Pre-1.0.** Names, parameters and outputs can still change between minor versions; pin a release tag.',
+      '**Pure computation.** No market data, no broker or exchange connection, no credentials — you bring the bars.',
+      '**No forecast.** A composite signal summarises indicator readings by fixed rules; it is not investment advice.',
+      '**Install from the repository.** crates.io and docs.rs still carry an old version.',
+    ]}
+  />
+
   {latestRelease && <ReleaseHighlights release={latestRelease} />}
 
   <Faq
     items={[
       {
-        q: 'Is kestrel-chartkit stable enough to build on?',
-        a: 'Not yet. The crate is pre-1.0 and under active development, so indicator names, parameters and outputs can still change fundamentally between versions. Pin a release tag and expect to adapt when you upgrade.',
+        q: 'How do I find the right indicator?',
+        a: 'The showcase draws every indicator of the catalog on the same chart, with its default parameters and the Rust call that builds it. The indicator reference lists parameters, outputs and alerts.',
       },
       {
         q: 'Does kestrel-chartkit draw charts itself?',
-        a: 'No. It returns plain indicator and signal data; drawing is left to a renderer such as chartlet for static charts, used throughout this site, or kestrel-loom for an interactive browser chart, still in alpha.',
+        a: 'No. It returns plain indicator and signal data; chartlet draws static charts like the ones on this site, kestrel-loom an interactive chart in the browser (alpha).',
       },
       {
-        q: 'Is the composite signal investment advice?',
-        a: "No. It's a rule-based summary of indicator readings from fixed thresholds, with a direction against the regime vetoed and every signal carrying its subscores — not a forecast, and nothing here is investment advice.",
+        q: 'Does it work on live data?',
+        a: 'Yes. Every indicator consumes one bar at a time and answers from the bar its warmup ends, so the same code serves a backtest over years of history and a live feed.',
       },
       {
         q: 'Does the crate fetch market data or need API keys?',
-        a: 'No. It contains mathematics only: it fetches no market data, connects to no broker or exchange, and holds no credentials, keys, accounts or personal data — you bring the bars.',
+        a: 'No. It contains mathematics only: it fetches no market data, connects to no broker or exchange, and holds no credentials, keys, accounts or personal data.',
       },
     ]}
   />
 </Base>
 
 <style>
-  .terminal-demo {
+  .hero-chart {
+    min-width: 0;
+  }
+  .hero-chart :global(svg) {
     display: block;
     width: 100%;
-    max-width: 480px;
     height: auto;
-    margin-inline: auto;
-  }
-  .chart {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-    gap: 48px;
-    align-items: center;
-    max-width: var(--max);
-    margin: 0 auto;
-    padding: 0 24px 96px;
-  }
-  @media (max-width: 900px) {
-    .chart {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 24px;
-    }
-  }
-  h2 {
-    margin: 0 0 14px;
-    color: var(--heading);
-    font-size: 30px;
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
-  .text p {
-    margin: 0 0 16px;
-    font-size: 15.5px;
-  }
-  .text .note {
-    color: var(--muted);
-    font-size: 13.5px;
-  }
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-  }
-  .wrap {
-    max-width: var(--max);
-    margin: 0 auto 64px;
-    padding: 0 24px;
-  }
-  .figure {
-    min-width: 0;
   }
   .narrow {
     display: none;
@@ -268,6 +293,14 @@ if let Some(output) = rsi.on_bar(&bar) {
     .narrow {
       display: block;
     }
+  }
+  .figure {
+    min-width: 0;
+  }
+  .figure :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
   }
   .qs {
     display: flex;
