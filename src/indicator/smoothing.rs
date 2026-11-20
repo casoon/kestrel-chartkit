@@ -685,8 +685,13 @@ impl Jma {
 /// Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter:
 /// `a1 = exp(-1.414 · π / len)`, `c2 = 2 · a1 · cos(1.414 · π / len)`, `c3 = -a1²`,
 /// `c1 = 1 - c2 - c3`, and `ss_t = c1 · (src_t + src_(t-1)) / 2 + c2 · ss_(t-1) + c3 · ss_(t-2)`.
-/// Valid from the first sample: the missing `src[1]`/`ss[1]`/`ss[2]` terms on the first bars
-/// default to `0`, producing a short transient rather than a `None` warmup.
+/// Valid from the first sample, with one of two starts:
+/// - [`SuperSmoother::new`]: the missing `src[1]`/`ss[1]`/`ss[2]` terms on the first bars
+///   default to `0`, producing a transient of the size of the price level rather than a `None`
+///   warmup. This is the start the smoother kinds ([`SmootherKind::build`]) use.
+/// - [`SuperSmoother::price_seeded`]: the first two outputs equal the first two inputs
+///   (`ss_0 = src_0`, `ss_1 = src_1`) and the recursion runs from the third sample, so the
+///   remaining start-up error scales with the price change of the first bars, not the level.
 #[derive(Debug, Clone)]
 pub struct SuperSmoother {
     c1: f64,
@@ -695,10 +700,22 @@ pub struct SuperSmoother {
     prev_src: f64,
     prev1: f64,
     prev2: f64,
+    price_seed: bool,
+    count: usize,
 }
 
 impl SuperSmoother {
+    /// Starts from a zero state.
     pub fn new(len: usize) -> Self {
+        Self::with_seed(len, false)
+    }
+
+    /// Starts from the price: the first two outputs equal the first two inputs.
+    pub fn price_seeded(len: usize) -> Self {
+        Self::with_seed(len, true)
+    }
+
+    fn with_seed(len: usize, price_seed: bool) -> Self {
         let len = len.max(1) as f64;
         let a1 = (-1.414 * std::f64::consts::PI / len).exp();
         let b1 = 2.0 * a1 * (1.414 * std::f64::consts::PI / len).cos();
@@ -712,12 +729,18 @@ impl SuperSmoother {
             prev_src: 0.0,
             prev1: 0.0,
             prev2: 0.0,
+            price_seed,
+            count: 0,
         }
     }
 
     pub fn update(&mut self, src: f64) -> f64 {
-        let ss =
-            self.c1 * (src + self.prev_src) / 2.0 + self.c2 * self.prev1 + self.c3 * self.prev2;
+        let ss = if self.price_seed && self.count < 2 {
+            src
+        } else {
+            self.c1 * (src + self.prev_src) / 2.0 + self.c2 * self.prev1 + self.c3 * self.prev2
+        };
+        self.count += 1;
         self.prev2 = self.prev1;
         self.prev1 = ss;
         self.prev_src = src;
@@ -728,6 +751,7 @@ impl SuperSmoother {
         self.prev_src = 0.0;
         self.prev1 = 0.0;
         self.prev2 = 0.0;
+        self.count = 0;
     }
 }
 
@@ -937,6 +961,15 @@ mod supersmoother_tests {
         for (actual, expected) in actual.iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
         }
+    }
+
+    #[test]
+    fn price_seed_starts_at_the_first_two_closes() {
+        let mut ss = SuperSmoother::price_seeded(3);
+        assert_eq!(ss.update(10_000.0), 10_000.0);
+        assert_eq!(ss.update(10_010.0), 10_010.0);
+        ss.reset();
+        assert_eq!(ss.update(5.0), 5.0);
     }
 
     #[test]

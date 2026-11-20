@@ -599,9 +599,9 @@
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "SUPERTREND", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "SUPERTREND", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "SUPER_SMOOTHER"	canonical="super_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
-	source Close: ok 1e50dc1887359a3c
-	source Open: ok aed41be5ad2f7dfc
-	source Hlc3: ok 6a989b24c97535f0
+	source Close: ok cb4631181089d783
+	source Open: ok 501559bf5f672149
+	source Hlc3: ok 353d7935ce3f6390
 "SWEEPS"	canonical="liquidity_sweeps"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok f119763c9bce2b38
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "SWEEPS", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1363,9 +1363,9 @@
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "structure_zones", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "structure_zones", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "super_smoother"	canonical="super_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
-	source Close: ok 1e50dc1887359a3c
-	source Open: ok aed41be5ad2f7dfc
-	source Hlc3: ok 6a989b24c97535f0
+	source Close: ok cb4631181089d783
+	source Open: ok 501559bf5f672149
+	source Hlc3: ok 353d7935ce3f6390
 "supertrend"	canonical="supertrend"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok d3b2db2a7ed81687
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "supertrend", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }

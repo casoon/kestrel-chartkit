@@ -178,3 +178,25 @@ fn convergence_period_exceeds_warmup_for_cascades() {
     );
     assert!(WaveTrendEngine::with_defaults().convergence_period() > 100);
 }
+
+#[test]
+fn super_smoother_starts_at_the_price_level() {
+    let published = |closes: &[f64]| -> Vec<f64> {
+        let mut engine = SuperSmootherEngine::new(10);
+        close_bars(closes)
+            .iter()
+            .filter_map(|b| engine.on_bar(b).map(|o| o.value))
+            .collect()
+    };
+    for level in [10_000.0, 50.0] {
+        for value in published(&vec![level; 30]) {
+            assert!((value - level).abs() < 1e-9 * level, "{value} != {level}");
+        }
+    }
+    let closes: Vec<f64> = (0..30).map(|i| 10_000.0 + (i % 7) as f64 * 3.0).collect();
+    let first = published(&closes)[0];
+    assert!(
+        (first - 10_000.0).abs() < 10.0,
+        "first published value {first}"
+    );
+}

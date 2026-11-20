@@ -168,7 +168,7 @@ def jma_values(closes, period, phase, power):
 
 
 def super_smoother_values(closes, period):
-    """The 2-pole filter from a zero state, published from the `period`-th bar."""
+    """The 2-pole filter started from the price, published from the `period`-th bar."""
     return aligned(len(closes), period - 1, super_smoother(closes, period)[period - 1:])
 
 
@@ -697,8 +697,8 @@ def build_blocks():
                    value_series(super_smoother_values(LONG[:30], 10))))
     add(simple("super_smoother_short", "SuperSmoother(3), published from bar 3", 3, SHORT,
                super_smoother_values(SHORT, 3)))
-    add(simple("super_smoother_unit", "SuperSmoother(1): published from bar 1, the zero start "
-               "visible in the first values", 1, SHORT[:6], super_smoother_values(SHORT[:6], 1)))
+    add(simple("super_smoother_unit", "SuperSmoother(1): published from bar 1, the first two "
+               "values equal the closes", 1, SHORT[:6], super_smoother_values(SHORT[:6], 1)))
 
     # LSMA
     add(case_block("lsma_defaults", "LSMA(25): endpoint, slope, intercept, R^2", params(period=25),

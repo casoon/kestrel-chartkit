@@ -592,12 +592,14 @@ impl Indicator for JmaEngine {
 /// 2013).
 ///
 /// With `a1 = exp(-1.414 pi / period)`, `c2 = 2 a1 cos(1.414 pi / period)`, `c3 = -a1^2` and
-/// `c1 = 1 - c2 - c3`: `SS_t = c1 (close_t + close_{t-1}) / 2 + c2 SS_{t-1} + c3 SS_{t-2}`, with
-/// the missing earlier terms of the first bars taken as `0`. That start from zero leaves a
-/// transient in the first values, so the average is published from the `period`-th bar and
-/// [`Indicator::convergence_period`] states when the transient has decayed.
+/// `c1 = 1 - c2 - c3`: `SS_t = c1 (close_t + close_{t-1}) / 2 + c2 SS_{t-1} + c3 SS_{t-2}`,
+/// started from the price: `SS_0 = close_0` and `SS_1 = close_1`, the recursion running from bar
+/// 2. A start at the price level leaves a transient only as large as the price change of the
+/// first bars (none on a constant series), not as large as the level itself, so the average is
+/// published from the `period`-th bar, the cutoff period of the filter.
+/// [`Indicator::convergence_period`] states when the remaining transient has decayed.
 ///
-/// [`Indicator::reset`] returns the filter to its zero state.
+/// [`Indicator::reset`] returns the filter to its start.
 #[derive(Debug, Clone)]
 pub struct SuperSmootherEngine {
     period: usize,
@@ -610,7 +612,7 @@ impl SuperSmootherEngine {
         let period = period.max(1);
         Self {
             period,
-            ss: SuperSmoother::new(period),
+            ss: SuperSmoother::price_seeded(period),
             count: 0,
         }
     }
@@ -625,7 +627,9 @@ impl Indicator for SuperSmootherEngine {
         self.period
     }
 
-    /// The transient decays like `exp(-1.414 pi n / period)`.
+    /// The start-up error (the price change of the first bars, not the price level) decays like
+    /// `exp(-1.414 pi n / period)`; `20 * period` bars, the shared bound, leave it far below
+    /// `1e-3` of that change, so the bound of the zero start still holds.
     fn convergence_period(&self) -> usize {
         self.period.max(super::settle_bars(&[self.period as f64]))
     }

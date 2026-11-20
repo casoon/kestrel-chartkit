@@ -73,7 +73,7 @@ HEADER = [
     "                 alpha = beta^power, three recursions per close, the first value the close;",
     "                 period 5 with phase 0 / power 2 (the defaults), phase 100, phase -100 and",
     "                 power 1; a phase beyond 100 is clamped to 100, a power below 1 to 1.",
-    "  SuperSmoother  Ehlers' 2-pole low-pass from a zero state, period 5, over the same series;",
+    "  SuperSmoother  Ehlers' 2-pole low-pass started from the price, period 5, over the same series;",
     "                 the indicator publishes from the period-th bar (period 3: the third value).",
 ]
 

@@ -110,17 +110,18 @@ def alma_window(window, offset, sigma):
 def super_smoother(values, period):
     """Ehlers' 2-pole SuperSmoother (Cycle Analytics for Traders, 2013):
     a1 = exp(-1.414 pi / period), b1 = 2 a1 cos(1.414 pi / period), c2 = b1, c3 = -a1^2,
-    c1 = 1 - c2 - c3, and ss_t = c1 (x_t + x_(t-1)) / 2 + c2 ss_(t-1) + c3 ss_(t-2), the terms
-    before the first value being 0. One output per input, the first bars carrying that start."""
+    c1 = 1 - c2 - c3. Started from the price: ss_0 = x_0 and ss_1 = x_1, then
+    ss_t = c1 (x_t + x_(t-1)) / 2 + c2 ss_(t-1) + c3 ss_(t-2) from t = 2. One output per input."""
     a1 = math.exp(-1.414 * math.pi / period)
     b1 = 2.0 * a1 * math.cos(1.414 * math.pi / period)
     c2, c3 = b1, -(a1 * a1)
     c1 = 1.0 - c2 - c3
-    previous_x, s1, s2, out = 0.0, 0.0, 0.0, []
-    for x in values:
-        ss = c1 * (x + previous_x) / 2.0 + c2 * s1 + c3 * s2
-        previous_x, s2, s1 = x, s1, ss
-        out.append(ss)
+    out = []
+    for t, x in enumerate(values):
+        if t < 2:
+            out.append(x)
+        else:
+            out.append(c1 * (x + values[t - 1]) / 2.0 + c2 * out[t - 1] + c3 * out[t - 2])
     return out
 
 
