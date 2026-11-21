@@ -142,7 +142,7 @@ impl VwapRegimeTracker {
     }
 }
 
-/// The catalog entry `vwap_regime`: the rolling [`Vwap`] (with its sigma and slope), a Wilder ATR
+/// The catalog entry `kestrel_vwap_regime`: the rolling [`Vwap`] (with its sigma and slope), a Wilder ATR
 /// and the [`VwapRegimeTracker`] over the distance of the close from the VWAP.
 ///
 /// `value` is the distance of the close from the VWAP in ATRs; `extra` has `vwap`, `slope_atr`
@@ -192,7 +192,7 @@ impl VwapRegimeEngine {
 
 impl Indicator for VwapRegimeEngine {
     fn name(&self) -> &str {
-        "vwap_regime"
+        "kestrel_vwap_regime"
     }
 
     fn warmup_period(&self) -> usize {
@@ -252,11 +252,11 @@ impl Indicator for VwapRegimeEngine {
     }
 }
 
-/// Registry definition of `vwap_regime`.
+/// Registry definition of `kestrel_vwap_regime`; `vwap_regime` is its alias.
 pub const VWAP_REGIME_DEFINITION: IndicatorDefinition = IndicatorDefinition {
-    name: "vwap_regime",
-    aliases: &[],
-    description: "VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume",
+    name: "kestrel_vwap_regime",
+    aliases: &["vwap_regime"],
+    description: "Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume",
     params: &[
         ParamSpec::count("window", 390, 1, 10000).meaning("bars of the rolling VWAP"),
         ParamSpec::count("slope_lookback", 20, 1, 10000)

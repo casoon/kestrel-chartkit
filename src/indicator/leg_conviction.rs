@@ -190,7 +190,7 @@ impl LegConviction {
 
 impl Indicator for LegConviction {
     fn name(&self) -> &str {
-        "leg_conviction"
+        "kestrel_leg_conviction"
     }
 
     /// The first output comes on the bar after the first full pivot window.
@@ -291,9 +291,9 @@ impl Indicator for LegConviction {
 
 pub const LEG_CONVICTION_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "leg_conviction",
-        aliases: &[],
-        description: "Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)",
+        name: "kestrel_leg_conviction",
+        aliases: &["leg_conviction"],
+        description: "Kestrel Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)",
         params: &[
             super::definition::ParamSpec::count("pivot_left", 5, 1, 50).meaning("bars left of a pivot"),
             super::definition::ParamSpec::count("pivot_right", 5, 1, 50).meaning("bars right of a pivot, the confirmation delay"),

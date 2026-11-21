@@ -94,15 +94,15 @@ cvd	stock-adjusted	applicable
 cvd	stock-thin	applicable	
 cvd	commodity-chained	applicable	
 cvd	synthetic	applicable	
-buy_sell_pressure	index-cash	applicable	
-buy_sell_pressure	index-future	applicable	
-buy_sell_pressure	future-continuous	applicable	
-buy_sell_pressure	cfd-broker	applicable	
-buy_sell_pressure	fx-spot	applicable	
-buy_sell_pressure	stock-adjusted	applicable	
-buy_sell_pressure	stock-thin	applicable	
-buy_sell_pressure	commodity-chained	applicable	
-buy_sell_pressure	synthetic	applicable	
+kestrel_buy_sell_pressure	index-cash	applicable	
+kestrel_buy_sell_pressure	index-future	applicable	
+kestrel_buy_sell_pressure	future-continuous	applicable	
+kestrel_buy_sell_pressure	cfd-broker	applicable	
+kestrel_buy_sell_pressure	fx-spot	applicable	
+kestrel_buy_sell_pressure	stock-adjusted	applicable	
+kestrel_buy_sell_pressure	stock-thin	applicable	
+kestrel_buy_sell_pressure	commodity-chained	applicable	
+kestrel_buy_sell_pressure	synthetic	applicable	
 klinger	index-cash	misleading	die Serie hat kein Volumen; ein Index ist ein berechneter Wert — Volumen-Referenz wäre Future oder ETF
 klinger	index-future	applicable	
 klinger	future-continuous	applicable	
@@ -130,15 +130,15 @@ pivots_structure	stock-adjusted	limited	historische Marken liegen in der bereini
 pivots_structure	stock-thin	applicable	
 pivots_structure	commodity-chained	limited	Roll-Sprünge in der Reihe
 pivots_structure	synthetic	applicable	
-swing_structure	index-cash	applicable	
-swing_structure	index-future	applicable	
-swing_structure	future-continuous	limited	historische Niveaus sind nicht die gehandelten
-swing_structure	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
-swing_structure	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
-swing_structure	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
-swing_structure	stock-thin	applicable	
-swing_structure	commodity-chained	limited	Roll-Sprünge in der Reihe
-swing_structure	synthetic	applicable	
+kestrel_swing_structure	index-cash	applicable	
+kestrel_swing_structure	index-future	applicable	
+kestrel_swing_structure	future-continuous	limited	historische Niveaus sind nicht die gehandelten
+kestrel_swing_structure	cfd-broker	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+kestrel_swing_structure	fx-spot	limited	Extreme sind anbieterspezifisch, eine Auszeichnung ist nicht übertragbar
+kestrel_swing_structure	stock-adjusted	limited	historische Marken liegen in der bereinigten Reihe an anderen Zahlen
+kestrel_swing_structure	stock-thin	applicable	
+kestrel_swing_structure	commodity-chained	limited	Roll-Sprünge in der Reihe
+kestrel_swing_structure	synthetic	applicable	
 zigzag	index-cash	applicable	
 zigzag	index-future	applicable	
 zigzag	future-continuous	limited	historische Niveaus sind nicht die gehandelten

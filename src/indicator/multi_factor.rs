@@ -45,7 +45,7 @@ impl MultiFactorMarketScore {
 
 impl Indicator for MultiFactorMarketScore {
     fn name(&self) -> &str {
-        "multi_factor"
+        "kestrel_multi_factor"
     }
 
     fn warmup_period(&self) -> usize {
@@ -106,9 +106,9 @@ impl Indicator for MultiFactorMarketScore {
 
 pub const MULTI_FACTOR_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "multi_factor",
-        aliases: &[],
-        description: "Multi-Factor Composite Market Score",
+        name: "kestrel_multi_factor",
+        aliases: &["multi_factor"],
+        description: "Kestrel Multi-Factor Composite Market Score",
         params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
             .meaning("bars of every input (trend quality, RSI, pressure, volatility regime)")],
         checks: &[],

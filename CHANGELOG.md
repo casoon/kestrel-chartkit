@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Breaking
+
+- **Catalog:** the 25 own constructions carry the `kestrel_` prefix (`kestrel_trend_quality`, `kestrel_swing_structure`, `kestrel_vwap_regime` and so on; the [indicator guide](docs/guides/indicators.md) says which). The old names stay aliases for building and lookup; `Indicator::name()` and the catalog report the new name, so code that compares stored names against `name()` has to resolve them through `canonical_name`.
+
 ### Added
 
 - **Catalog:** `ultimate_smoother`, `roofing_filter`, `reflex`, `trendflex`, `correlation_trend`, `laguerre_rsi`, `cyber_cycle` and `mama` (Ehlers' filters and oscillators) are verified catalog entries; 166 entries in all, 155 of them verified. Where they start differently from Ehlers' listings (from the price instead of from 0), the description says so.
@@ -16,6 +20,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 ### Changed
 
 - **Catalog:** `rma`, `alma`, `jma`, `super_smoother`, `percent_rank`, `fractal_dimension`, `r_squared`, `cycle_length`, `price_location`, `period_midpoint`, `opening_range`, `rolling_beta`, `pair_spread` and `heikin_ashi` are verified. Their descriptions state the conventions a formula leaves open, such as the start values, the unrounded `alma` peak and the week and month grid of `period_midpoint`.
+
+### Fixed
+
+- **Catalog:** `output_unit` and `output_range` resolve aliases like `definition` does; before, an alias (`wpr`, `srsi`, `vp`) answered `Unitless` and `Unbounded`.
 
 ## [0.43.0] - 2026-11-20
 

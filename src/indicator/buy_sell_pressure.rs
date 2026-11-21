@@ -36,7 +36,7 @@ impl BuySellPressureEstimator {
 
 impl Indicator for BuySellPressureEstimator {
     fn name(&self) -> &str {
-        "buy_sell_pressure"
+        "kestrel_buy_sell_pressure"
     }
 
     fn warmup_period(&self) -> usize {
@@ -80,9 +80,9 @@ impl Indicator for BuySellPressureEstimator {
 
 pub const BUY_SELL_PRESSURE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "buy_sell_pressure",
-        aliases: &["pressure"],
-        description: "Buy/Sell Pressure Estimator",
+        name: "kestrel_buy_sell_pressure",
+        aliases: &["buy_sell_pressure", "pressure"],
+        description: "Kestrel Buy/Sell Pressure Estimator",
         params: &[super::definition::ParamSpec::count("period", 14, 1, 10000)
             .meaning("bars in the EMA of the raw pressure")],
         checks: &[],

@@ -282,7 +282,7 @@ impl OverextensionRisk {
 
 impl Indicator for OverextensionRisk {
     fn name(&self) -> &str {
-        "overextension_risk"
+        "kestrel_overextension_risk"
     }
 
     fn warmup_period(&self) -> usize {
@@ -635,9 +635,9 @@ impl Indicator for OverextensionRisk {
 
 pub const OVEREXTENSION_RISK_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "overextension_risk",
-        aliases: &[],
-        description: "Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
+        name: "kestrel_overextension_risk",
+        aliases: &["overextension_risk"],
+        description: "Kestrel Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)",
         params: &[
             super::definition::ParamSpec::number("w_stretch", 40.0, 0.0, 100.0).meaning("weight of the stretch role"),
             super::definition::ParamSpec::number("w_exhaust", 35.0, 0.0, 100.0).meaning("weight of the exhaustion role"),

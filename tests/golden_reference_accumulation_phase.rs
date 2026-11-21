@@ -84,7 +84,7 @@ fn series() -> Vec<Bar> {
 
 #[test]
 fn accumulation_phase_matches_the_reference_implementation() {
-    let mut ind = build_checked("accumulation_phase", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_accumulation_phase", &HashMap::new()).unwrap();
     let tol = expected("vacc_tolerance");
     let mut first = None;
     let mut events: HashMap<&str, Vec<usize>> = HashMap::new();

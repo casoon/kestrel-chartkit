@@ -107,10 +107,9 @@ pub enum OutputRange {
 /// weil ein Konsument sie für bare Münze nimmt. `tests/output_range_invariants.rs` prüft jede
 /// Angabe gegen tatsächliche Läufe, damit sie nicht still veralten kann.
 pub fn output_range(name: &str) -> OutputRange {
-    // One-series indicators are found by their canonical name only; an entry of another input
-    // kind also by alias.
-    super::definition::definitions()
-        .find(|d| d.name == name)
+    // A one-series indicator is found by canonical name or alias; an entry of another input
+    // kind by the lookup of its own kind.
+    super::definition::definition(name)
         .map(|d| d.facts.output_range)
         .or_else(|| super::other_input::declared_unit_range(name).map(|(_, range)| range))
         .unwrap_or(OutputRange::Unbounded)
@@ -365,7 +364,7 @@ pub fn build_typed(name: &str, params: &TypedParams) -> Result<Box<dyn Indicator
 // Note: `indicator::relative_strength::RelativeStrengthEngine` requires dual-series input
 // (`update(own_bar, bench_bar)`) and is built by name through the two-series registry,
 // `super::pair::build_pair_checked`. `indicator::swing_structure::SwingStructureEngine` takes the
-// raw ATR per bar (`update(bar, atr)`); its catalog entry `swing_structure` feeds it a Wilder ATR
+// raw ATR per bar (`update(bar, atr)`); its catalog entry `kestrel_swing_structure` feeds it a Wilder ATR
 // of its own.
 
 /// Every canonical name `build_checked` can construct, in the order of [`catalog`]: the names of

@@ -516,7 +516,7 @@ impl PriceAverageRelation {
 
 impl Indicator for PriceAverageRelation {
     fn name(&self) -> &str {
-        "price_average_relation"
+        "kestrel_price_average_relation"
     }
 
     fn warmup_period(&self) -> usize {
@@ -989,9 +989,9 @@ pub const MA_KINDS: [SmootherKind; 4] = [
 
 pub const PRICE_AVERAGE_RELATION_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "price_average_relation",
-        aliases: &[],
-        description: "Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase",
+        name: "kestrel_price_average_relation",
+        aliases: &["price_average_relation"],
+        description: "Kestrel Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase",
         params: &[
             super::definition::ParamSpec::count("ma_kind", 0, 0, MA_KINDS.len() - 1)
                 .meaning("the moving average price is related to: 0 EMA, 1 SMA, 2 RMA, 3 ALMA"),

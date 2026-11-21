@@ -174,7 +174,7 @@ impl MarketStateChain {
 
 impl Indicator for MarketStateChain {
     fn name(&self) -> &str {
-        "market_state_chain"
+        "kestrel_market_state_chain"
     }
 
     fn warmup_period(&self) -> usize {
@@ -427,9 +427,9 @@ impl Indicator for MarketStateChain {
 
 pub const MARKET_STATE_CHAIN_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "market_state_chain",
-        aliases: &[],
-        description: "Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
+        name: "kestrel_market_state_chain",
+        aliases: &["market_state_chain"],
+        description: "Kestrel Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended",
         params: &[
             super::definition::ParamSpec::count("ema_len", 55, 10, 1000).meaning("bars in the trend EMA"),
             super::definition::ParamSpec::count("rank_len", 100, 20, 2000).meaning("bars the ATR and Bollinger width are ranked against"),

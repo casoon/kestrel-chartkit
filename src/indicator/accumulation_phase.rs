@@ -214,7 +214,7 @@ impl AccumulationPhase {
 
 impl Indicator for AccumulationPhase {
     fn name(&self) -> &str {
-        "accumulation_phase"
+        "kestrel_accumulation_phase"
     }
 
     fn warmup_period(&self) -> usize {
@@ -521,9 +521,9 @@ impl Indicator for AccumulationPhase {
 
 pub const ACCUMULATION_PHASE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "accumulation_phase",
-        aliases: &[],
-        description: "Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
+        name: "kestrel_accumulation_phase",
+        aliases: &["accumulation_phase"],
+        description: "Kestrel Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready",
         params: &[
             super::definition::ParamSpec::count("atr_len", 14, 1, 500).meaning("bars in the Wilder ATR"),
             super::definition::ParamSpec::count("lookback", 20, 10, 500).meaning("bars of the trend-loss, range and compression comparisons"),

@@ -50,7 +50,7 @@ impl TrendQualityScoreEngine {
 
 impl Indicator for TrendQualityScoreEngine {
     fn name(&self) -> &str {
-        "trend_quality"
+        "kestrel_trend_quality"
     }
 
     fn warmup_period(&self) -> usize {
@@ -119,9 +119,9 @@ impl Indicator for TrendQualityScoreEngine {
 
 pub const TREND_QUALITY_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "trend_quality",
-        aliases: &[],
-        description: "Trend Quality Score Engine",
+        name: "kestrel_trend_quality",
+        aliases: &["trend_quality"],
+        description: "Kestrel Trend Quality Score Engine",
         params: &[super::definition::ParamSpec::count("period", 14, 2, 10000)
             .meaning("bars in the EMA, efficiency ratio, ADX and RVOL")],
         checks: &[],

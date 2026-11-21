@@ -314,7 +314,7 @@ impl EqualLevelLiquidity {
 
 impl Indicator for EqualLevelLiquidity {
     fn name(&self) -> &str {
-        "equal_level_liquidity"
+        "kestrel_equal_level_liquidity"
     }
 
     /// The first output comes with the ATR.
@@ -641,9 +641,9 @@ impl Indicator for EqualLevelLiquidity {
 
 pub const EQUAL_LEVEL_LIQUIDITY_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "equal_level_liquidity",
-        aliases: &[],
-        description: "Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
+        name: "kestrel_equal_level_liquidity",
+        aliases: &["equal_level_liquidity"],
+        description: "Kestrel Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near",
         params: &[
             super::definition::ParamSpec::count("pivot_len", 8, 1, 50).meaning("bars on each side of a level pivot"),
             super::definition::ParamSpec::number("eq_tolerance_atr", 0.12, 0.0, 10.0).meaning("pivots within this many ATR join one level"),

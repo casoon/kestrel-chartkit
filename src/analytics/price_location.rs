@@ -218,7 +218,7 @@ impl PriceLocationIndicator {
 
 impl Indicator for PriceLocationIndicator {
     fn name(&self) -> &str {
-        "price_location"
+        "kestrel_price_location"
     }
 
     fn warmup_period(&self) -> usize {
@@ -249,11 +249,11 @@ impl Indicator for PriceLocationIndicator {
     }
 }
 
-/// Registry definition of `price_location`.
+/// Registry definition of `kestrel_price_location`; `price_location` is its alias.
 pub const PRICE_LOCATION_DEFINITION: IndicatorDefinition = IndicatorDefinition {
-    name: "price_location",
-    aliases: &[],
-    description: "Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras",
+    name: "kestrel_price_location",
+    aliases: &["price_location"],
+    description: "Kestrel price location: where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras",
     params: &[
         ParamSpec::count("atr_len", 14, 1, 10000).meaning("Wilder ATR length"),
         ParamSpec::count("ema_len", 20, 1, 10000).meaning("EMA length the stretch is measured from"),

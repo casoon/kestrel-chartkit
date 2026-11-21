@@ -257,7 +257,7 @@ fn regime_chart() -> Result<String, Box<dyn Error>> {
 /// composite score below the candles, and a marker where a Buy or Sell trigger starts.
 fn composite_chart() -> Result<String, Box<dyn Error>> {
     let bars = demo_bars(3, &[(42, 0.45), (36, 0.0), (42, -0.5), (26, 0.0)]);
-    let names = ["macd", "vortex", "trend_quality"];
+    let names = ["macd", "vortex", "kestrel_trend_quality"];
     let mut indicators = names
         .iter()
         .map(|name| build_checked(name, &HashMap::new()))

@@ -116,7 +116,7 @@ Two detectors list what they track in `extra`, so a chart can draw it without re
 anything. Lists are numbered from 1, oldest first; an entry keeps its place until it is dropped,
 after which the later ones move up.
 
-**`equal_level_liquidity`** groups confirmed pivots into levels: a pivot high joins the first
+**`kestrel_equal_level_liquidity`** groups confirmed pivots into levels: a pivot high joins the first
 buy-side level within `eq_tolerance_atr · ATR` of it (the level's price becomes the mean of its
 pivots) or founds a new one; pivot lows form the sell-side levels. `extra["atr"]` is the ATR of
 the bar and `extra["tolerance"]` the absolute tolerance, the half-width of every level's band.
@@ -139,7 +139,7 @@ reclaim:  within reclaim_bars bars of the sweep, close <= price - min_close_back
 A swept level leaves the ranking (`primary_bsl`, `secondary_bsl`) but stays in the list with its
 status. Sell-side levels mirror every line.
 
-**`structure_zones`** lists every tracked zone, the broken ones included, until it expires after
+**`kestrel_structure_zones`** lists every tracked zone, the broken ones included, until it expires after
 200 bars: `value` is their number, `extra["atr"]` the ATR, and zone `i` has `zone_<i>_lower`,
 `_upper`, `_type`, `_role` (1 support, -1 resistance), `_status` (0 fresh, 1 tested, 2 confirmed,
 3 broken, 4 flipped), `_tests`, `_age` and `_event` (1 created, 2 test, 4 bounce, 8 break, 16 role
@@ -210,7 +210,7 @@ fn events(bars: &[Bar]) -> Result<(), Box<dyn std::error::Error>> {
 ## Warmup and settling
 
 `warmup_period()` is the 1-based bar of the first value — SMA(20) answers 20. Where the first
-value depends on the data (`leg_character` waits for a completed leg, `structure_zones` for the
+value depends on the data (`kestrel_leg_character` waits for a completed leg, `kestrel_structure_zones` for the
 volume average when there is volume), it is the earliest possible bar. Size a history window by the
 settle measures below, not by the warmup: recursive state keeps the imprint of the series start
 much longer. `indicator::settle::settle_bars(name, &params, bar_seconds)` measures
@@ -304,7 +304,7 @@ through), `invalidation` (the pattern's extreme, the 1-2-3's second node, the fa
 The auto-fitted trendlines of the batch detector are the `trendlines` entry's. The Wolfe wave of
 `ChartPatternDetector` follows Bill Wolfe's rules: five alternating nodes where, for points 1, 3, 5 as lows (`bull_wolfe_wave`), point 3 is below point 1, point 4 is above point 1 and below point 2, line 1-3 and line 2-4 converge, and point 5 undercuts the 1-3 line projected to its time; for highs the mirror image (`bear_wolfe_wave`). `fit` is the convergence, `1 - gap(5) / gap(1)`; `tolerance_pct` plays no part.
 
-### bottom_formation
+### kestrel_bottom_formation
 
 A bottom as a sequence of four stages, a top as the same sequence on mirrored prices:
 

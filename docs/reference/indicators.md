@@ -122,7 +122,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `nvi` | bars | verified |
 | `pvi` | bars | verified |
 | `chaikin_oscillator` | bars | verified |
-| `vwap_regime` | bars | **not yet verified:** no independent second implementation yet |
+| `kestrel_vwap_regime` | bars | **not yet verified:** no independent second implementation yet |
 | `order_block` | bars | verified |
 | `liquidity_fvg` | bars | verified |
 | `gap` | bars | **not yet verified:** verification not completed |
@@ -136,7 +136,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `liquidity_sweeps` | bars | verified |
 | `zone_rejection` | bars | verified |
 | `double_pattern` | bars | verified |
-| `bottom_formation` | bars | verified |
+| `kestrel_bottom_formation` | bars | verified |
 | `pivot_divergence` | bars | verified |
 | `oscillator_pivot_divergence` | bars | verified |
 | `wavetrend_divergence` | bars | verified |
@@ -145,36 +145,36 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `wyckoff` | bars | verified |
 | `zigzag_advanced` | bars | verified |
 | `trendlines` | bars | **not yet verified:** verification not completed |
-| `price_location` | bars | verified |
+| `kestrel_price_location` | bars | verified |
 | `opening_range` | bars | verified |
 | `period_midpoint` | bars | verified |
-| `swing_structure` | bars | **not yet verified:** no independent second implementation yet |
+| `kestrel_swing_structure` | bars | **not yet verified:** no independent second implementation yet |
 | `fvg_fill` | bars | **not yet verified:** no independent second implementation yet |
 | `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
 | `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
-| `flow_exhaustion` | bars | verified |
-| `overextension_risk` | bars | verified |
+| `kestrel_flow_exhaustion` | bars | verified |
+| `kestrel_overextension_risk` | bars | verified |
 | `smoothed_supertrend` | bars | verified |
-| `coil_release` | bars | verified |
-| `compression_zones` | bars | verified |
+| `kestrel_coil_release` | bars | verified |
+| `kestrel_compression_zones` | bars | verified |
 | `roc_context` | bars | verified |
-| `tradability_filter` | bars | verified |
-| `reaction_speed` | bars | verified |
-| `market_state_chain` | bars | verified |
-| `rsi_cycle_stats` | bars | verified |
-| `price_average_relation` | bars | verified |
-| `leg_conviction` | bars | verified |
-| `trend_break_risk` | bars | verified |
-| `sweep_reversal_score` | bars | verified |
-| `equal_level_liquidity` | bars | verified |
-| `leg_character` | bars | verified |
-| `accumulation_phase` | bars | verified |
-| `reversal_setup_score` | bars | verified |
-| `structure_zones` | bars | verified |
-| `structural_flow` | bars | verified |
-| `trend_quality` | bars | verified |
-| `buy_sell_pressure` | bars | verified |
-| `multi_factor` | bars | verified |
+| `kestrel_tradability_filter` | bars | verified |
+| `kestrel_reaction_speed` | bars | verified |
+| `kestrel_market_state_chain` | bars | verified |
+| `kestrel_rsi_cycle_stats` | bars | verified |
+| `kestrel_price_average_relation` | bars | verified |
+| `kestrel_leg_conviction` | bars | verified |
+| `kestrel_trend_break_risk` | bars | verified |
+| `kestrel_sweep_reversal_score` | bars | verified |
+| `kestrel_equal_level_liquidity` | bars | verified |
+| `kestrel_leg_character` | bars | verified |
+| `kestrel_accumulation_phase` | bars | verified |
+| `kestrel_reversal_setup_score` | bars | verified |
+| `kestrel_structure_zones` | bars | verified |
+| `kestrel_structural_flow` | bars | verified |
+| `kestrel_trend_quality` | bars | verified |
+| `kestrel_buy_sell_pressure` | bars | verified |
+| `kestrel_multi_factor` | bars | verified |
 | `correlation` | two series | **not yet verified:** no independent second implementation yet |
 | `relative_strength` | two series | **not yet verified:** no independent second implementation yet |
 | `rolling_beta` | two series | verified |
@@ -1591,13 +1591,13 @@ Chaikin Oscillator
 
 Requires `fast_len` to be smaller than `slow_len`.
 
-### `vwap_regime`
+### `kestrel_vwap_regime` · alias `vwap_regime`
 
-VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume
+Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume
 
 **Not yet verified:** no independent second implementation yet.
 
-[See it in the showcase](../../../showcase/vwap_regime/)
+[See it in the showcase](../../../showcase/kestrel_vwap_regime/)
 
 **Output** unit Unitless, range not declared · **warmup** 21 bars · needs real volume
 
@@ -1806,11 +1806,11 @@ Double bottom/top as a streaming event: forming on the second pivot (equal level
 | `max_gap` | 100 | whole number 2 – 100000 | most bars between the two pivots |
 | `max_wait` | 50 | whole number 1 – 100000 | bars after forming within which the neckline must break |
 
-### `bottom_formation`
+### `kestrel_bottom_formation` · alias `bottom_formation`
 
-Bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage
+Kestrel bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage
 
-[See it in the showcase](../../../showcase/bottom_formation/)
+[See it in the showcase](../../../showcase/kestrel_bottom_formation/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -1963,11 +1963,11 @@ Trendlines through confirmed zigzag_advanced nodes: a support line through the l
 | `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR |
 | `tolerance_atr` | 0.25 | 0 – 100 | distance from a line, in ATR, within which a node or a bar touches it and beyond which a node pierces it |
 
-### `price_location`
+### `kestrel_price_location` · alias `price_location`
 
-Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras
+Kestrel price location: where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras
 
-[See it in the showcase](../../../showcase/price_location/)
+[See it in the showcase](../../../showcase/kestrel_price_location/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 20 bars
 
@@ -2012,13 +2012,13 @@ Midpoint (high + low) / 2 of the last completed period of count units, held unti
 | `count` | 1 | whole number 1 – 10000 | units per period |
 | `utc_offset_seconds` | 0 | -86399 – 86399 | fixed local-time offset from UTC in whole seconds the periods are cut in (a fraction is cut off) |
 
-### `swing_structure`
+### `kestrel_swing_structure` · alias `swing_structure`
 
-Statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras
+Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras
 
 **Not yet verified:** no independent second implementation yet.
 
-[See it in the showcase](../../../showcase/swing_structure/)
+[See it in the showcase](../../../showcase/kestrel_swing_structure/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
 
@@ -2087,11 +2087,11 @@ Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from Z
 
 ## Composite read-outs, part 1
 
-### `flow_exhaustion`
+### `kestrel_flow_exhaustion` · alias `flow_exhaustion`
 
-Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)
+Kestrel Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)
 
-[See it in the showcase](../../../showcase/flow_exhaustion/)
+[See it in the showcase](../../../showcase/kestrel_flow_exhaustion/)
 
 **Output** unit Ratio, range not declared · **warmup** 30 bars · needs real volume
 
@@ -2107,11 +2107,11 @@ Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real v
 | `confirm_bars` | 1 | whole number 0 – 5 | bars an exhaustion must hold before it alerts |
 | `react_bars` | 10 | whole number 2 – 100 | bars after a divergence until its final score |
 
-### `overextension_risk`
+### `kestrel_overextension_risk` · alias `overextension_risk`
 
-Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)
+Kestrel Overextension Risk: overextension score per side from three roles — stretch (EMA/ATR distance, Bollinger z, structure proximity, band breach), exhaustion (RSI, StochRSI, WaveTrend, WT divergence, money flow where real volume exists), reaction (reclaim-fail, WT cross from extreme, wick rejection) — times a volatility factor; regime (EMA stack + ADX) raises the countertrend threshold; value = top score 0..100, secondary = bottom score; extra: role scores, vol_factor, thresholds, regime, adx, money_flow; alerts bull/bear_do_not_chase (top in uptrend / bottom in downtrend), bear/bull_trend_exhaustion, bear/bull_range_fade (prefix = expected move)
 
-[See it in the showcase](../../../showcase/overextension_risk/)
+[See it in the showcase](../../../showcase/kestrel_overextension_risk/)
 
 **Output** unit Ratio, range not declared · **warmup** 81 bars
 
@@ -2145,11 +2145,11 @@ Smoothed Supertrend: baseline = EMA(ema_len) of WMA(wma_len) of the supertrend m
 | `slope_threshold` | 0.05 | 0 – 10 | slope in ATRs that turns the trend |
 | `touches` | 2 | whole number 1 – 5 | baseline touches before a rejection alerts |
 
-### `coil_release`
+### `kestrel_coil_release` · alias `coil_release`
 
-Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)
+Kestrel Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)
 
-[See it in the showcase](../../../showcase/coil_release/)
+[See it in the showcase](../../../showcase/kestrel_coil_release/)
 
 **Output** unit Ratio, range not declared · **warmup** 58 bars
 
@@ -2164,11 +2164,11 @@ Coil Release: coil strength from symbolic complexity, box-counting fractal dimen
 | `cooldown` | 8 | whole number 0 – 100 | bars between two alerts |
 | `chop_veto` | 61.8 | 30 – 80 | choppiness above which no alert fires |
 
-### `compression_zones`
+### `kestrel_compression_zones` · alias `compression_zones`
 
-Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)
+Kestrel Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)
 
-[See it in the showcase](../../../showcase/compression_zones/)
+[See it in the showcase](../../../showcase/kestrel_compression_zones/)
 
 **Output** unit Ratio, range not declared · **warmup** 28 bars
 
@@ -2201,11 +2201,11 @@ ROC Context: percentage ROC (roc_len) smoothed (avg_len, ma_kind 0 EMA, 1 SMA, 2
 | `ctx_len` | 50 | whole number 2 – 2000 | bars in the slow context ROC |
 | `stall_len` | 5 | whole number 1 – 200 | bars a stall is measured over |
 
-### `tradability_filter`
+### `kestrel_tradability_filter` · alias `tradability_filter`
 
-Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)
+Kestrel Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)
 
-[See it in the showcase](../../../showcase/tradability_filter/)
+[See it in the showcase](../../../showcase/kestrel_tradability_filter/)
 
 **Output** unit Ratio, range not declared · **warmup** 190 bars
 
@@ -2220,11 +2220,11 @@ Tradability Filter: no-trade filter with an eight-state machine (no_trade, balan
 | `max_range_atr` | 7 | 2 – 20 | widest range for balance/compression, in ATRs |
 | `confirm_bars` | 2 | whole number 1 – 10 | bars a candidate state must hold before it is entered |
 
-### `reaction_speed`
+### `kestrel_reaction_speed` · alias `reaction_speed`
 
-Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)
+Kestrel Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)
 
-[See it in the showcase](../../../showcase/reaction_speed/)
+[See it in the showcase](../../../showcase/kestrel_reaction_speed/)
 
 **Output** unit Ratio, range not declared · **warmup** 63 bars
 
@@ -2237,11 +2237,11 @@ Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > or
 | `valid_bars` | 20 | whole number 1 – 1000 | bars the validation may take |
 | `atr_move` | 1.6 | 0.1 – 20 | move in ATRs that validates the reaction |
 
-### `market_state_chain`
+### `kestrel_market_state_chain` · alias `market_state_chain`
 
-Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended
+Kestrel Market State Chain: six debounced states (up/down trend, up/down weak, compression, chaos) as a first-order Markov chain; over lookback bars the exits of the current (context) state give Laplace-smoothed bull/bear/neutral exit probabilities, persistence, reliability (sample adequacy x predictability) and a hysteresis bias; value = p_bull - p_bear; extra: state_code, context_state, p_bull, p_bear, p_neutral, reliability, bias, exits, bars_in_state, persistence, dwell_ratio, atr_rank, bb_rank, efficiency, adx; alerts bull/bear_breakout (edge out of compression or chaos), bull/bear_reversal, bull/bear_continuation (prefix = expected move), regime_change, state_extended
 
-[See it in the showcase](../../../showcase/market_state_chain/)
+[See it in the showcase](../../../showcase/kestrel_market_state_chain/)
 
 **Output** unit Ratio, range not declared · **warmup** 119 bars
 
@@ -2256,11 +2256,11 @@ Market State Chain: six debounced states (up/down trend, up/down weak, compressi
 | `rel_th` | 40 | 0 – 100 | reliability an alert needs, in percent |
 | `bias_margin` | 8 | 0 – 100 | probability lead that turns the bias, in percent |
 
-### `rsi_cycle_stats`
+### `kestrel_rsi_cycle_stats` · alias `rsi_cycle_stats`
 
-RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout
+Kestrel RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout
 
-[See it in the showcase](../../../showcase/rsi_cycle_stats/)
+[See it in the showcase](../../../showcase/kestrel_rsi_cycle_stats/)
 
 **Output** unit Ratio, range not declared · **warmup** 15 bars
 
@@ -2275,11 +2275,11 @@ RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure /
 | `edge_th` | 15 | 0 – 100 | edge over the base rate an opportunity needs, in percent |
 | `max_ci` | 40 | 1 – 100 | widest Wilson interval an opportunity allows, in percent |
 
-### `price_average_relation`
+### `kestrel_price_average_relation` · alias `price_average_relation`
 
-Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase
+Kestrel Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 2 RMA, 3 ALMA); value = relationship oscillator -100..100 (signed trend quality minus an extension/exhaustion penalty), secondary = its signal line; extra: trend, respect, extension, compression, acceleration, exhaustion (0..100), ma, distance_atr, respect_samples, respect_hit_rate, direction; alerts bull/bear_pullback, _momentum_release, _exhaustion (prefix = expected move), _relationship_break, _divergence, _turn, bull/bear_do_not_chase
 
-[See it in the showcase](../../../showcase/price_average_relation/)
+[See it in the showcase](../../../showcase/kestrel_price_average_relation/)
 
 **Output** unit Unitless, range not declared · **warmup** 113 bars
 
@@ -2294,11 +2294,11 @@ Price-Average Relation: price against one moving average (ma_kind 0 EMA, 1 SMA, 
 
 ## Composite read-outs, part 2
 
-### `leg_conviction`
+### `kestrel_leg_conviction` · alias `leg_conviction`
 
-Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)
+Kestrel Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR per bar against speed_ref), cleanliness (share of closes in leg direction) and volume gradient (later vs. earlier half; weight 0 without real volume); value = last up-leg conviction, secondary = minus last down-leg conviction; extra: bull_last, bull_prev, bear_last, bear_prev, pivot_price on alert bars; alerts bear/bull_conviction_divergence (new price extreme on a weaker leg, prefix = expected move)
 
-[See it in the showcase](../../../showcase/leg_conviction/)
+[See it in the showcase](../../../showcase/kestrel_leg_conviction/)
 
 **Output** unit Ratio, range not declared · **warmup** 12 bars
 
@@ -2313,11 +2313,11 @@ Leg Conviction: each confirmed pivot-to-pivot leg scored 0..100 from speed (ATR 
 | `w_clean` | 0.4 | 0 – 1 | weight of cleanliness in the conviction |
 | `w_volume` | 0.2 | 0 – 1 | weight of the volume gradient (0 without real volume) |
 
-### `trend_break_risk`
+### `kestrel_trend_break_risk` · alias `trend_break_risk`
 
-Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)
+Kestrel Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)
 
-[See it in the showcase](../../../showcase/trend_break_risk/)
+[See it in the showcase](../../../showcase/kestrel_trend_break_risk/)
 
 **Output** unit Ratio, range not declared · **warmup** 15 bars
 
@@ -2330,11 +2330,11 @@ Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structur
 | `hold_bars` | 10 | whole number 1 – 500 | bars over which a held sensor decays |
 | `smooth_len` | 3 | whole number 1 – 100 | bars in the EMA of the raw risk |
 
-### `sweep_reversal_score`
+### `kestrel_sweep_reversal_score` · alias `sweep_reversal_score`
 
-Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal
+Kestrel Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal
 
-[See it in the showcase](../../../showcase/sweep_reversal_score/)
+[See it in the showcase](../../../showcase/kestrel_sweep_reversal_score/)
 
 **Output** unit Unitless, range not declared · **warmup** 63 bars
 
@@ -2350,11 +2350,11 @@ Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off)
 | `min_quality_short` | 2 | whole number 0 – 2 | quality points a short signal needs |
 | `cooldown` | 5 | whole number 0 – 500 | bars after a signal before the next one |
 
-### `equal_level_liquidity`
+### `kestrel_equal_level_liquidity` · alias `equal_level_liquidity`
 
-Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near
+Kestrel Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr ATR, pruned by age and distance, ranked by touches, freshness and distance (primary/secondary per side); sweep vs. breakout, stop hunt (rejection candle + volume spike), reclaim within reclaim_bars with a 0..100 score; value = bias; extra: primary/secondary_bsl/ssl (+_score, primary _touches), bsl_count, ssl_count, recent_bull/bear_score, volume_ratio, bear/bull_reclaim_score, atr, tolerance (eq_tolerance_atr x atr), and every level with at least list_min_touches pivots as bsl_levels/ssl_levels and bsl_<i>_/ssl_<i>_ price, touches, tests, status (0 unswept, 1 swept, 2 broken out, 3 reclaimed), first_bars_back, last_bars_back, swept_bars_back, event (bits: 1 pivot, 2 test, 4 sweep, 8 breakout, 16 stop hunt, 32 reclaim); alerts bear_bsl_sweep, bull_ssl_sweep, bull_bsl_breakout, bear_ssl_breakout, bear_bsl/bull_ssl_stop_hunt, bear/bull_reclaim, bear/bull_premium_reclaim (prefix = expected move), primary_bsl/ssl_near
 
-[See it in the showcase](../../../showcase/equal_level_liquidity/)
+[See it in the showcase](../../../showcase/kestrel_equal_level_liquidity/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
 
@@ -2370,11 +2370,11 @@ Equal-Level Liquidity: equal-high/low levels clustered within eq_tolerance_atr A
 | `alert_distance_atr` | 1 | 0 – 100 | distance to the primary level, in ATR, that counts as near |
 | `list_min_touches` | 2 | whole number 1 – 20 | pivots a level needs to be listed in the output |
 
-### `leg_character`
+### `kestrel_leg_character` · alias `leg_character`
 
-Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost
+Kestrel Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost
 
-[See it in the showcase](../../../showcase/leg_character/)
+[See it in the showcase](../../../showcase/kestrel_leg_character/)
 
 **Output** unit Ratio, range not declared · **warmup** 11 bars
 
@@ -2390,11 +2390,11 @@ Leg Character: character of the live leg from the last alternating pivot (min_le
 | `correction_threshold` | 62 | 50 – 95 | correction score that classifies the leg as correction |
 | `change_buffer` | 5 | 0 – 25 | points below its threshold a class is kept (hysteresis) |
 
-### `accumulation_phase`
+### `kestrel_accumulation_phase` · alias `accumulation_phase`
 
-Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready
+Kestrel Accumulation Phase: accumulation (bottom) and distribution (top) as process states from five components 0..2 each (trend loss, range formation, volatility compression, liquidity sweeps/springs, early structure); value = accumulation score 0..10, secondary = distribution score; extra: components per side, accum/dist_bars, accum/dist_state (0 none .. 5 breakout/breakdown ready), efficiency, bbw_ratio, atr_ratio, range_atr; alerts bull_accumulation_developing/_mature, bull_breakout_ready, bear_distribution_developing/_mature, bear_breakdown_ready
 
-[See it in the showcase](../../../showcase/accumulation_phase/)
+[See it in the showcase](../../../showcase/kestrel_accumulation_phase/)
 
 **Output** unit Unitless, range not declared · **warmup** 39 bars
 
@@ -2409,35 +2409,35 @@ Accumulation Phase: accumulation (bottom) and distribution (top) as process stat
 | `bbw_compress` | 0.7 | 0.3 – 5 | Bollinger width against its average below which volatility compresses |
 | `atr_compress` | 0.8 | 0.3 – 5 | ATR against its average below which volatility compresses |
 
-### `reversal_setup_score`
+### `kestrel_reversal_setup_score` · alias `reversal_setup_score`
 
-Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict
+Kestrel Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict
 
-[See it in the showcase](../../../showcase/reversal_setup_score/)
+[See it in the showcase](../../../showcase/kestrel_reversal_setup_score/)
 
 **Output** unit Unitless, range not declared · **warmup** 69 bars
 
-### `structure_zones`
+### `kestrel_structure_zones` · alias `structure_zones`
 
-Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break
+Kestrel Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break
 
-[See it in the showcase](../../../showcase/structure_zones/)
+[See it in the showcase](../../../showcase/kestrel_structure_zones/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
 
-### `structural_flow`
+### `kestrel_structural_flow` · alias `structural_flow`
 
-Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves
+Kestrel Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves
 
-[See it in the showcase](../../../showcase/structural_flow/)
+[See it in the showcase](../../../showcase/kestrel_structural_flow/)
 
 **Output** unit Unitless, range not declared · **warmup** 192 bars
 
-### `trend_quality`
+### `kestrel_trend_quality` · alias `trend_quality`
 
-Trend Quality Score Engine
+Kestrel Trend Quality Score Engine
 
-[See it in the showcase](../../../showcase/trend_quality/)
+[See it in the showcase](../../../showcase/kestrel_trend_quality/)
 
 **Output** unit Unitless, range not declared · **warmup** 28 bars · needs real volume
 
@@ -2445,11 +2445,11 @@ Trend Quality Score Engine
 |---|---|---|---|
 | `period` | 14 | whole number 2 – 10000 | bars in the EMA, efficiency ratio, ADX and RVOL |
 
-### `buy_sell_pressure` · alias `pressure`
+### `kestrel_buy_sell_pressure` · alias `buy_sell_pressure`, `pressure`
 
-Buy/Sell Pressure Estimator
+Kestrel Buy/Sell Pressure Estimator
 
-[See it in the showcase](../../../showcase/buy_sell_pressure/)
+[See it in the showcase](../../../showcase/kestrel_buy_sell_pressure/)
 
 **Output** unit Unitless, range not declared · **warmup** 1 bars
 
@@ -2457,11 +2457,11 @@ Buy/Sell Pressure Estimator
 |---|---|---|---|
 | `period` | 14 | whole number 1 – 10000 | bars in the EMA of the raw pressure |
 
-### `multi_factor`
+### `kestrel_multi_factor` · alias `multi_factor`
 
-Multi-Factor Composite Market Score
+Kestrel Multi-Factor Composite Market Score
 
-[See it in the showcase](../../../showcase/multi_factor/)
+[See it in the showcase](../../../showcase/kestrel_multi_factor/)
 
 **Output** unit Ratio, range not declared · **warmup** 28 bars · needs real volume
 

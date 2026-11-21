@@ -198,7 +198,7 @@ impl TrendBreakRisk {
 
 impl Indicator for TrendBreakRisk {
     fn name(&self) -> &str {
-        "trend_break_risk"
+        "kestrel_trend_break_risk"
     }
 
     fn warmup_period(&self) -> usize {
@@ -465,9 +465,9 @@ impl Indicator for TrendBreakRisk {
 
 pub const TREND_BREAK_RISK_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "trend_break_risk",
-        aliases: &[],
-        description: "Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
+        name: "kestrel_trend_break_risk",
+        aliases: &["trend_break_risk"],
+        description: "Kestrel Trend Break Risk: risk 0..100 that the prevailing (EMA-latched) trend's structure breaks against its last opposite swing; weighted held sensors near break level, failed breakout, structure erosion, RSI pivot divergence; extra: risk_raw, trend_dir, near, sfp, structure, divergence, rsi, ema, break_level, distance_atr; state no_trend/structure_broken/break_pressure/critical/watch/quiet; alerts bear/bull_break_pressure, _break_critical, _structure_break, _divergence (prefix = expected move, against the trend at risk)",
         params: &[
             super::definition::ParamSpec::count("bias_len", 50, 2, 1000).meaning("bars in the EMA that latches the trend"),
             super::definition::ParamSpec::count("pivot_len", 5, 1, 50).meaning("bars on each side of a swing pivot"),

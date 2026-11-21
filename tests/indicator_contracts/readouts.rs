@@ -22,11 +22,11 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("r_squared"),
     Coverage::full("percent_rank"),
     Coverage::full("cycle_length"),
-    Coverage::full("price_location"),
+    Coverage::full("kestrel_price_location"),
     Coverage::full("period_midpoint"),
     Coverage::full("opening_range"),
-    Coverage::full("vwap_regime"),
-    Coverage::full("swing_structure"),
+    Coverage::full("kestrel_vwap_regime"),
+    Coverage::full("kestrel_swing_structure"),
     Coverage::full("fvg_fill"),
 ];
 
@@ -277,7 +277,7 @@ fn cycle_length_rejects_invalid_configuration() {
 fn price_location_defaults() {
     assert_holds(&case(
         "price_location_defaults",
-        "price_location",
+        "kestrel_price_location",
         IndicatorUnit::Unitless,
     ));
 }
@@ -286,7 +286,7 @@ fn price_location_defaults() {
 fn price_location_small() {
     assert_holds(&case(
         "price_location_small",
-        "price_location",
+        "kestrel_price_location",
         IndicatorUnit::Unitless,
     ));
 }
@@ -295,7 +295,7 @@ fn price_location_small() {
 fn price_location_minimal() {
     assert_holds(&case(
         "price_location_minimal",
-        "price_location",
+        "kestrel_price_location",
         IndicatorUnit::Unitless,
     ));
 }
@@ -304,18 +304,18 @@ fn price_location_minimal() {
 fn price_location_flat() {
     assert_holds(&case(
         "price_location_flat",
-        "price_location",
+        "kestrel_price_location",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn price_location_rejects_invalid_configuration() {
-    assert_rejected("price_location", &[("atr_len", 0.0)]);
-    assert_rejected("price_location", &[("ema_len", 2.5)]);
-    assert_rejected("price_location", &[("sma_len", 10001.0)]);
-    assert_rejected("price_location", &[("vol_warmup", 0.0)]);
-    assert_rejected("price_location", &[("len", 14.0)]);
+    assert_rejected("kestrel_price_location", &[("atr_len", 0.0)]);
+    assert_rejected("kestrel_price_location", &[("ema_len", 2.5)]);
+    assert_rejected("kestrel_price_location", &[("sma_len", 10001.0)]);
+    assert_rejected("kestrel_price_location", &[("vol_warmup", 0.0)]);
+    assert_rejected("kestrel_price_location", &[("len", 14.0)]);
 }
 
 // --- Period midpoint ---------------------------------------------------------
@@ -466,7 +466,7 @@ fn opening_range_rejects_invalid_configuration() {
 fn vwap_regime_defaults() {
     assert_holds(&case(
         "vwap_regime_defaults",
-        "vwap_regime",
+        "kestrel_vwap_regime",
         IndicatorUnit::Unitless,
     ));
 }
@@ -475,7 +475,7 @@ fn vwap_regime_defaults() {
 fn vwap_regime_small() {
     assert_holds(&case(
         "vwap_regime_small",
-        "vwap_regime",
+        "kestrel_vwap_regime",
         IndicatorUnit::Unitless,
     ));
 }
@@ -484,7 +484,7 @@ fn vwap_regime_small() {
 fn vwap_regime_no_volume() {
     assert_holds(&case(
         "vwap_regime_no_volume",
-        "vwap_regime",
+        "kestrel_vwap_regime",
         IndicatorUnit::Unitless,
     ));
 }
@@ -493,24 +493,24 @@ fn vwap_regime_no_volume() {
 fn vwap_regime_flat() {
     assert_holds(&case(
         "vwap_regime_flat",
-        "vwap_regime",
+        "kestrel_vwap_regime",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn vwap_regime_rejects_invalid_configuration() {
-    assert_rejected("vwap_regime", &[("window", 0.0)]);
-    assert_rejected("vwap_regime", &[("slope_lookback", 0.0)]);
-    assert_rejected("vwap_regime", &[("atr_len", 2.5)]);
-    assert_rejected("vwap_regime", &[("regime_window", 0.0)]);
-    assert_rejected("vwap_regime", &[("flat_threshold", -0.1)]);
+    assert_rejected("kestrel_vwap_regime", &[("window", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("slope_lookback", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("atr_len", 2.5)]);
+    assert_rejected("kestrel_vwap_regime", &[("regime_window", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("flat_threshold", -0.1)]);
     // The flat threshold lies below the strong one.
     assert_rejected(
-        "vwap_regime",
+        "kestrel_vwap_regime",
         &[("flat_threshold", 0.3), ("strong_threshold", 0.3)],
     );
-    assert_rejected("vwap_regime", &[("len", 14.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("len", 14.0)]);
 }
 
 // --- Swing structure ---------------------------------------------------------
@@ -519,7 +519,7 @@ fn vwap_regime_rejects_invalid_configuration() {
 fn swing_structure_defaults() {
     assert_holds(&case(
         "swing_structure_defaults",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -528,7 +528,7 @@ fn swing_structure_defaults() {
 fn swing_structure_strengthening() {
     assert_holds(&case(
         "swing_structure_strengthening",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -537,7 +537,7 @@ fn swing_structure_strengthening() {
 fn swing_structure_weakening() {
     assert_holds(&case(
         "swing_structure_weakening",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -546,7 +546,7 @@ fn swing_structure_weakening() {
 fn swing_structure_falling() {
     assert_holds(&case(
         "swing_structure_falling",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -555,7 +555,7 @@ fn swing_structure_falling() {
 fn swing_structure_capped() {
     assert_holds(&case(
         "swing_structure_capped",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -564,19 +564,19 @@ fn swing_structure_capped() {
 fn swing_structure_flat() {
     assert_holds(&case(
         "swing_structure_flat",
-        "swing_structure",
+        "kestrel_swing_structure",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn swing_structure_rejects_invalid_configuration() {
-    assert_rejected("swing_structure", &[("left", 0.0)]);
-    assert_rejected("swing_structure", &[("right", 0.0)]);
-    assert_rejected("swing_structure", &[("max_swings", 3.0)]);
-    assert_rejected("swing_structure", &[("atr_len", 0.0)]);
-    assert_rejected("swing_structure", &[("left", 2.5)]);
-    assert_rejected("swing_structure", &[("len", 14.0)]);
+    assert_rejected("kestrel_swing_structure", &[("left", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("right", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("max_swings", 3.0)]);
+    assert_rejected("kestrel_swing_structure", &[("atr_len", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("left", 2.5)]);
+    assert_rejected("kestrel_swing_structure", &[("len", 14.0)]);
 }
 
 // --- FVG fill --------------------------------------------------------------------------------

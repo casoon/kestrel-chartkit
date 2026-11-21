@@ -64,7 +64,7 @@ fn series() -> Vec<Bar> {
 
 #[test]
 fn leg_character_matches_the_reference_implementation() {
-    let mut ind = build_checked("leg_character", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_leg_character", &HashMap::new()).unwrap();
     let tol = expected("mmd_tolerance");
     let mut first = None;
     let mut events: HashMap<&str, Vec<usize>> = HashMap::new();
@@ -113,7 +113,7 @@ fn leg_character_matches_the_reference_implementation() {
 #[test]
 fn leg_character_truncates_long_legs_like_the_reference() {
     let params: HashMap<String, f64> = [("max_leg_bars".to_string(), 20.0)].into();
-    let mut ind = build_checked("leg_character", &params).unwrap();
+    let mut ind = build_checked("kestrel_leg_character", &params).unwrap();
     let tol = expected("mmd_tolerance");
     for (t, bar) in series().iter().enumerate() {
         let out = ind.on_bar(bar);

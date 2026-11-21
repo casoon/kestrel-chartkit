@@ -174,7 +174,7 @@ impl ReactionSpeed {
 
 impl Indicator for ReactionSpeed {
     fn name(&self) -> &str {
-        "reaction_speed"
+        "kestrel_reaction_speed"
     }
 
     fn warmup_period(&self) -> usize {
@@ -352,9 +352,9 @@ impl Indicator for ReactionSpeed {
 
 pub const REACTION_SPEED_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "reaction_speed",
-        aliases: &[],
-        description: "Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
+        name: "kestrel_reaction_speed",
+        aliases: &["reaction_speed"],
+        description: "Kestrel Reaction Speed: tracks one structure event at a time (BOS > liquidity sweep > order-block tap) and scores the reaction: speed to the first reaction candle within react_bars, validation (break of the reaction extreme, ATR-move progress) within valid_bars; value = activity score 50 + 50 tanh((ATR/SMA(ATR) - 1) k); extra while tracking and on the closing bar: reaction, speed, validation, event_dir, event_type (1 BOS, 2 sweep, 3 OB), final_score; no alerts (the score describes a reaction that already happened)",
         params: &[
             super::definition::ParamSpec::count("atr_len", 14, 1, 500).meaning("bars in the ATR"),
             super::definition::ParamSpec::count("atr_base", 50, 5, 1000).meaning("bars in the SMA of the ATR the activity is measured against"),

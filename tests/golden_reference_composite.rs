@@ -31,7 +31,7 @@ fn run_composite_bars(
 #[test]
 fn test_golden_trend_quality_sub_components_and_composition() {
     let out = run_composite_bars(
-        "trend_quality",
+        "kestrel_trend_quality",
         &HashMap::from([("period".to_string(), 5.0)]),
         30,
     )
@@ -96,7 +96,7 @@ fn test_golden_buy_sell_pressure_neutral_and_extreme_scenarios() {
 
     // 1. Neutral baseline (symmetric wicks and centered close)
     let out_neutral = run_composite_bars(
-        "buy_sell_pressure",
+        "kestrel_buy_sell_pressure",
         &HashMap::from([("period".to_string(), 5.0)]),
         30,
     )
@@ -125,7 +125,7 @@ fn test_golden_buy_sell_pressure_neutral_and_extreme_scenarios() {
     // Open = Close = High = 100.0, Low = 90.0
     // Location = +1.0, Wick Balance = +1.0 -> Raw Pressure = 100.0
     let mut ind_hammer = build_checked(
-        "buy_sell_pressure",
+        "kestrel_buy_sell_pressure",
         &HashMap::from([("period".to_string(), 5.0)]),
     )
     .unwrap();
@@ -232,7 +232,7 @@ fn test_golden_volatility_regime_squeeze_and_expansion() {
 #[test]
 fn test_golden_multi_factor_sub_components_and_composition() {
     let out = run_composite_bars(
-        "multi_factor",
+        "kestrel_multi_factor",
         &HashMap::from([("period".to_string(), 5.0)]),
         30,
     )
@@ -331,7 +331,7 @@ fn test_golden_composites_off_the_straight_line() {
     let bars = falling_bars();
     let tol = expected("composite_tolerance");
 
-    let trend = run_on("trend_quality", &bars);
+    let trend = run_on("kestrel_trend_quality", &bars);
     let mut product = 100.0;
     for factor in ["direction", "efficiency", "strength", "participation"] {
         let key = format!("trend_quality5_shaped_{factor}");
@@ -353,7 +353,7 @@ fn test_golden_composites_off_the_straight_line() {
         "Trend Quality, fallende Reihe",
     );
 
-    let pressure = run_on("buy_sell_pressure", &bars);
+    let pressure = run_on("kestrel_buy_sell_pressure", &bars);
     common::assert_close(
         pressure.value,
         expected("buy_sell_pressure5_shaped"),
@@ -377,7 +377,7 @@ fn test_golden_composites_off_the_straight_line() {
         common::assert_close(regime.extra[field], expected(&key), tol, &key);
     }
 
-    let multi = run_on("multi_factor", &bars);
+    let multi = run_on("kestrel_multi_factor", &bars);
     for (field, key) in [
         ("trend_factor", "trend_factor"),
         ("rsi_factor", "rsi_factor"),

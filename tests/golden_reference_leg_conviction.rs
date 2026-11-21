@@ -49,7 +49,7 @@ fn series(with_volume: bool) -> Vec<Bar> {
 }
 
 fn check(prefix: &str, with_volume: bool) {
-    let mut ind = build_checked("leg_conviction", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_leg_conviction", &HashMap::new()).unwrap();
     let tol = expected("scr_tolerance");
     let key = |k: &str| expected(&format!("{prefix}_{k}"));
     let mut legs: HashMap<usize, (f64, f64)> = HashMap::new();

@@ -28,7 +28,7 @@ fn expected(key: &str) -> f64 {
 
 #[test]
 fn mte_matches_the_reference_implementation() {
-    let mut ind = build_checked("tradability_filter", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_tradability_filter", &HashMap::new()).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut events: HashMap<String, Vec<usize>> = HashMap::new();

@@ -305,7 +305,7 @@ impl TradabilityFilter {
 
 impl Indicator for TradabilityFilter {
     fn name(&self) -> &str {
-        "tradability_filter"
+        "kestrel_tradability_filter"
     }
 
     fn warmup_period(&self) -> usize {
@@ -766,9 +766,9 @@ impl Indicator for TradabilityFilter {
 
 pub const TRADABILITY_FILTER_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "tradability_filter",
-        aliases: &[],
-        description: "Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
+        name: "kestrel_tradability_filter",
+        aliases: &["tradability_filter"],
+        description: "Kestrel Tradability Filter: no-trade filter with an eight-state machine (no_trade, balance, compression, ready, breakout, trend, aftermath, exhaustion) driven by rank-normalised tradability, balance, compression and direction scores; value = tradability 0..100, secondary = direction -100..100; extra: balance, compression, direction, state_code, candidate_code, efficiency, fast_efficiency, adx, range_high, range_low, range_position, atr_ratio; alerts on entering a state: no_trade, compression, aftermath (warnings), bull/bear_ready, bull/bear_breakout, bull/bear_trend, bear/bull_exhaustion (prefix = expected move)",
         params: &[
             super::definition::ParamSpec::count("quality_len", 20, 8, 100).meaning("bars the tradability scores are measured over"),
             super::definition::ParamSpec::count("range_len", 30, 10, 200).meaning("bars of the reference range"),

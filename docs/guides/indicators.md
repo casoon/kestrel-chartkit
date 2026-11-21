@@ -118,12 +118,17 @@ description names them.
 | Volatility and trend strength  | `atr`, `adx`, `bollinger`, `keltner`, `donchian`, `supertrend`, `parabolic_sar` |
 | Volume                         | `obv`, `vwap`, `anchored_vwap`, `cmf`, `mfi`, `volume_profile`, `cvd` |
 | Trend                          | `ichimoku`, `alligator`, `efficiency`, `zscore`                     |
-| Composite scores               | `trend_quality`, `buy_sell_pressure`, `volatility_regime`, `multi_factor` |
-| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `trendlines`, `double_pattern`, `bottom_formation`, `chart_patterns`, `harmonic_patterns` |
+| Composite scores               | `kestrel_trend_quality`, `kestrel_buy_sell_pressure`, `volatility_regime`, `kestrel_multi_factor` |
+| Structure and pattern detectors | `bos_choch`, `order_block`, `liquidity_fvg`, `liquidity_sweeps`, `wyckoff`, `zigzag`, `trendlines`, `double_pattern`, `kestrel_bottom_formation`, `chart_patterns`, `harmonic_patterns` |
 | Divergence                     | `pivot_divergence`, `oscillator_pivot_divergence`                   |
 
 Print the full list with `catalog()`. The [indicator reference](../../reference/indicators/) lists
 every entry with its parameters, the [showcase](../../../showcase/) draws each one.
+
+Entries that are the project's own constructions carry the `kestrel_` prefix
+(`kestrel_trend_quality`, `kestrel_swing_structure`, ...). The name they had before stays an alias:
+`build`, `build_checked`, `canonical_name` and `definition` accept both, and `canonical_name`
+resolves the old name to the new one.
 
 ## Two series
 

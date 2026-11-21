@@ -20,22 +20,22 @@ pub const PENDING: &[&str] = &[];
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("roc_context"),
     Coverage::full("smoothed_supertrend"),
-    Coverage::full("reaction_speed"),
-    Coverage::full("flow_exhaustion"),
-    Coverage::full("coil_release"),
-    Coverage::full("compression_zones"),
+    Coverage::full("kestrel_reaction_speed"),
+    Coverage::full("kestrel_flow_exhaustion"),
+    Coverage::full("kestrel_coil_release"),
+    Coverage::full("kestrel_compression_zones"),
     Coverage {
-        indicator: "price_average_relation",
+        indicator: "kestrel_price_average_relation",
         values: Partial(
             "ma_kind 1-3 (SMA/RMA/ALMA): the reference reads the MA from the first bar",
         ),
         alerts: Partial("ma_kind 1-3 (SMA/RMA/ALMA) not exercised"),
         configuration: Specified,
     },
-    Coverage::full("overextension_risk"),
-    Coverage::full("tradability_filter"),
-    Coverage::full("market_state_chain"),
-    Coverage::full("rsi_cycle_stats"),
+    Coverage::full("kestrel_overextension_risk"),
+    Coverage::full("kestrel_tradability_filter"),
+    Coverage::full("kestrel_market_state_chain"),
+    Coverage::full("kestrel_rsi_cycle_stats"),
 ];
 
 // --- ROC Context -----------------------------------------------------------------------------
@@ -118,7 +118,7 @@ fn smoothed_supertrend_rejects_invalid_configuration() {
 // --- Reaction Speed --------------------------------------------------------------------------
 
 fn reaction_speed(name: &str) {
-    assert_holds(&case(name, "reaction_speed", IndicatorUnit::Ratio));
+    assert_holds(&case(name, "kestrel_reaction_speed", IndicatorUnit::Ratio));
 }
 
 #[test]
@@ -138,17 +138,17 @@ fn reaction_speed_short() {
 
 #[test]
 fn reaction_speed_rejects_invalid_configuration() {
-    assert_rejected("reaction_speed", &[("atr_len", 0.0)]);
-    assert_rejected("reaction_speed", &[("atr_base", 4.0)]);
-    assert_rejected("reaction_speed", &[("swing_len", 1.0)]);
-    assert_rejected("reaction_speed", &[("atr_move", 0.05)]);
-    assert_rejected("reaction_speed", &[("react_window", 8.0)]);
+    assert_rejected("kestrel_reaction_speed", &[("atr_len", 0.0)]);
+    assert_rejected("kestrel_reaction_speed", &[("atr_base", 4.0)]);
+    assert_rejected("kestrel_reaction_speed", &[("swing_len", 1.0)]);
+    assert_rejected("kestrel_reaction_speed", &[("atr_move", 0.05)]);
+    assert_rejected("kestrel_reaction_speed", &[("react_window", 8.0)]);
 }
 
 // --- Flow Exhaustion -------------------------------------------------------------------------
 
 fn flow_exhaustion(name: &str) {
-    assert_holds(&case(name, "flow_exhaustion", IndicatorUnit::Ratio));
+    assert_holds(&case(name, "kestrel_flow_exhaustion", IndicatorUnit::Ratio));
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn flow_exhaustion_lag() {
 fn flow_exhaustion_late_volume() {
     let failures = check(&case(
         "flow_exhaustion_late_volume",
-        "flow_exhaustion",
+        "kestrel_flow_exhaustion",
         IndicatorUnit::Ratio,
     ));
     assert!(
@@ -194,17 +194,17 @@ fn flow_exhaustion_no_volume() {
 
 #[test]
 fn flow_exhaustion_rejects_invalid_configuration() {
-    assert_rejected("flow_exhaustion", &[("mfi_len", 1.0)]);
-    assert_rejected("flow_exhaustion", &[("zone_lookback", 9.0)]);
-    assert_rejected("flow_exhaustion", &[("confirm_bars", 6.0)]);
-    assert_rejected("flow_exhaustion", &[("react_bars", 1.0)]);
-    assert_rejected("flow_exhaustion", &[("pivot_left", 7.0)]);
+    assert_rejected("kestrel_flow_exhaustion", &[("mfi_len", 1.0)]);
+    assert_rejected("kestrel_flow_exhaustion", &[("zone_lookback", 9.0)]);
+    assert_rejected("kestrel_flow_exhaustion", &[("confirm_bars", 6.0)]);
+    assert_rejected("kestrel_flow_exhaustion", &[("react_bars", 1.0)]);
+    assert_rejected("kestrel_flow_exhaustion", &[("pivot_left", 7.0)]);
 }
 
 // --- Coil Release ----------------------------------------------------------------------------
 
 fn coil_release(name: &str) {
-    assert_holds(&case(name, "coil_release", IndicatorUnit::Ratio));
+    assert_holds(&case(name, "kestrel_coil_release", IndicatorUnit::Ratio));
 }
 
 #[test]
@@ -224,17 +224,21 @@ fn coil_release_short() {
 
 #[test]
 fn coil_release_rejects_invalid_configuration() {
-    assert_rejected("coil_release", &[("len", 9.0)]);
-    assert_rejected("coil_release", &[("break_len", 51.0)]);
-    assert_rejected("coil_release", &[("thr_cont", 1.5)]);
-    assert_rejected("coil_release", &[("chop_veto", 20.0)]);
-    assert_rejected("coil_release", &[("length", 34.0)]);
+    assert_rejected("kestrel_coil_release", &[("len", 9.0)]);
+    assert_rejected("kestrel_coil_release", &[("break_len", 51.0)]);
+    assert_rejected("kestrel_coil_release", &[("thr_cont", 1.5)]);
+    assert_rejected("kestrel_coil_release", &[("chop_veto", 20.0)]);
+    assert_rejected("kestrel_coil_release", &[("length", 34.0)]);
 }
 
 // --- Compression Zones -----------------------------------------------------------------------
 
 fn compression_zones(name: &str) {
-    assert_holds(&case(name, "compression_zones", IndicatorUnit::Ratio));
+    assert_holds(&case(
+        name,
+        "kestrel_compression_zones",
+        IndicatorUnit::Ratio,
+    ));
 }
 
 #[test]
@@ -254,11 +258,11 @@ fn compression_zones_no_volume() {
 
 #[test]
 fn compression_zones_rejects_invalid_configuration() {
-    assert_rejected("compression_zones", &[("lookback", 7.0)]);
-    assert_rejected("compression_zones", &[("min_zone_bars", 2.0)]);
-    assert_rejected("compression_zones", &[("min_touches", 1.0)]);
-    assert_rejected("compression_zones", &[("min_score", 90.0)]);
-    assert_rejected("compression_zones", &[("watch", 20.0)]);
+    assert_rejected("kestrel_compression_zones", &[("lookback", 7.0)]);
+    assert_rejected("kestrel_compression_zones", &[("min_zone_bars", 2.0)]);
+    assert_rejected("kestrel_compression_zones", &[("min_touches", 1.0)]);
+    assert_rejected("kestrel_compression_zones", &[("min_score", 90.0)]);
+    assert_rejected("kestrel_compression_zones", &[("watch", 20.0)]);
 }
 
 // --- Price-Average Relation ------------------------------------------------------------------
@@ -266,7 +270,7 @@ fn compression_zones_rejects_invalid_configuration() {
 fn price_average_relation(name: &str) {
     assert_holds(&case(
         name,
-        "price_average_relation",
+        "kestrel_price_average_relation",
         IndicatorUnit::Unitless,
     ));
 }
@@ -298,18 +302,25 @@ fn price_average_relation_short() {
 
 #[test]
 fn price_average_relation_rejects_invalid_configuration() {
-    assert_rejected("price_average_relation", &[("ma_len", 1.0)]);
-    assert_rejected("price_average_relation", &[("ma_kind", 4.0)]);
-    assert_rejected("price_average_relation", &[("atr_len", 1.0)]);
-    assert_rejected("price_average_relation", &[("turn_level", 5.0)]);
-    assert_rejected("price_average_relation", &[("turn_lookback", 151.0)]);
-    assert_rejected("price_average_relation", &[("length", 50.0)]);
+    assert_rejected("kestrel_price_average_relation", &[("ma_len", 1.0)]);
+    assert_rejected("kestrel_price_average_relation", &[("ma_kind", 4.0)]);
+    assert_rejected("kestrel_price_average_relation", &[("atr_len", 1.0)]);
+    assert_rejected("kestrel_price_average_relation", &[("turn_level", 5.0)]);
+    assert_rejected(
+        "kestrel_price_average_relation",
+        &[("turn_lookback", 151.0)],
+    );
+    assert_rejected("kestrel_price_average_relation", &[("length", 50.0)]);
 }
 
 // --- Overextension Risk ----------------------------------------------------------------------
 
 fn overextension_risk(name: &str) {
-    assert_holds(&case(name, "overextension_risk", IndicatorUnit::Ratio));
+    assert_holds(&case(
+        name,
+        "kestrel_overextension_risk",
+        IndicatorUnit::Ratio,
+    ));
 }
 
 #[test]
@@ -339,17 +350,21 @@ fn overextension_risk_no_volume() {
 
 #[test]
 fn overextension_risk_rejects_invalid_configuration() {
-    assert_rejected("overextension_risk", &[("w_stretch", -1.0)]);
-    assert_rejected("overextension_risk", &[("base_threshold", 85.0)]);
-    assert_rejected("overextension_risk", &[("confirm", 2.0)]);
-    assert_rejected("overextension_risk", &[("ema_len", 1.0)]);
-    assert_rejected("overextension_risk", &[("threshold", 40.0)]);
+    assert_rejected("kestrel_overextension_risk", &[("w_stretch", -1.0)]);
+    assert_rejected("kestrel_overextension_risk", &[("base_threshold", 85.0)]);
+    assert_rejected("kestrel_overextension_risk", &[("confirm", 2.0)]);
+    assert_rejected("kestrel_overextension_risk", &[("ema_len", 1.0)]);
+    assert_rejected("kestrel_overextension_risk", &[("threshold", 40.0)]);
 }
 
 // --- Tradability Filter ----------------------------------------------------------------------
 
 fn tradability_filter(name: &str) {
-    assert_holds(&case(name, "tradability_filter", IndicatorUnit::Ratio));
+    assert_holds(&case(
+        name,
+        "kestrel_tradability_filter",
+        IndicatorUnit::Ratio,
+    ));
 }
 
 #[test]
@@ -369,17 +384,21 @@ fn tradability_filter_loose() {
 
 #[test]
 fn tradability_filter_rejects_invalid_configuration() {
-    assert_rejected("tradability_filter", &[("quality_len", 7.0)]);
-    assert_rejected("tradability_filter", &[("rank_len", 49.0)]);
-    assert_rejected("tradability_filter", &[("balance_threshold", 95.0)]);
-    assert_rejected("tradability_filter", &[("confirm_bars", 0.0)]);
-    assert_rejected("tradability_filter", &[("min_state_bars", 3.0)]);
+    assert_rejected("kestrel_tradability_filter", &[("quality_len", 7.0)]);
+    assert_rejected("kestrel_tradability_filter", &[("rank_len", 49.0)]);
+    assert_rejected("kestrel_tradability_filter", &[("balance_threshold", 95.0)]);
+    assert_rejected("kestrel_tradability_filter", &[("confirm_bars", 0.0)]);
+    assert_rejected("kestrel_tradability_filter", &[("min_state_bars", 3.0)]);
 }
 
 // --- Market State Chain ----------------------------------------------------------------------
 
 fn market_state_chain(name: &str) {
-    assert_holds(&case(name, "market_state_chain", IndicatorUnit::Ratio));
+    assert_holds(&case(
+        name,
+        "kestrel_market_state_chain",
+        IndicatorUnit::Ratio,
+    ));
 }
 
 #[test]
@@ -404,18 +423,18 @@ fn market_state_chain_continuations() {
 
 #[test]
 fn market_state_chain_rejects_invalid_configuration() {
-    assert_rejected("market_state_chain", &[("ema_len", 9.0)]);
-    assert_rejected("market_state_chain", &[("rank_len", 19.0)]);
-    assert_rejected("market_state_chain", &[("lookback", 1501.0)]);
-    assert_rejected("market_state_chain", &[("min_dwell", 0.0)]);
-    assert_rejected("market_state_chain", &[("conf_th", 101.0)]);
-    assert_rejected("market_state_chain", &[("laplace", 1.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("ema_len", 9.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("rank_len", 19.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("lookback", 1501.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("min_dwell", 0.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("conf_th", 101.0)]);
+    assert_rejected("kestrel_market_state_chain", &[("laplace", 1.0)]);
 }
 
 // --- RSI Cycle Statistics --------------------------------------------------------------------
 
 fn rsi_cycle_stats(name: &str) {
-    assert_holds(&case(name, "rsi_cycle_stats", IndicatorUnit::Ratio));
+    assert_holds(&case(name, "kestrel_rsi_cycle_stats", IndicatorUnit::Ratio));
 }
 
 #[test]
@@ -430,10 +449,10 @@ fn rsi_cycle_stats_short() {
 
 #[test]
 fn rsi_cycle_stats_rejects_invalid_configuration() {
-    assert_rejected("rsi_cycle_stats", &[("rsi_len", 1.0)]);
-    assert_rejected("rsi_cycle_stats", &[("overbought", 50.0)]);
-    assert_rejected("rsi_cycle_stats", &[("oversold", 50.0)]);
-    assert_rejected("rsi_cycle_stats", &[("lookback", 99.0)]);
-    assert_rejected("rsi_cycle_stats", &[("max_ci", 0.5)]);
-    assert_rejected("rsi_cycle_stats", &[("max_samples", 1500.0)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("rsi_len", 1.0)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("overbought", 50.0)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("oversold", 50.0)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("lookback", 99.0)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("max_ci", 0.5)]);
+    assert_rejected("kestrel_rsi_cycle_stats", &[("max_samples", 1500.0)]);
 }

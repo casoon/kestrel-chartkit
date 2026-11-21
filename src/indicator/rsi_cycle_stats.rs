@@ -252,7 +252,7 @@ impl RsiCycleStats {
 
 impl Indicator for RsiCycleStats {
     fn name(&self) -> &str {
-        "rsi_cycle_stats"
+        "kestrel_rsi_cycle_stats"
     }
 
     fn warmup_period(&self) -> usize {
@@ -437,9 +437,9 @@ impl Indicator for RsiCycleStats {
 
 pub const RSI_CYCLE_STATS_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "rsi_cycle_stats",
-        aliases: &[],
-        description: "RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
+        name: "kestrel_rsi_cycle_stats",
+        aliases: &["rsi_cycle_stats"],
+        description: "Kestrel RSI Cycle Statistics: cycle state machine origin -> armed -> success / failure / timeout between the overbought and oversold zones, completed cycles stored with progress-bucket timing; the live cycle gets the progress- and age-conditioned completion frequency of past cycles within lookback bars (past data only), base rate, edge and Wilson interval; value = RSI; extra: cycle_dir, progress, max_progress, age, cond_n, conditional, base_rate, edge, ci_low, ci_high, median_duration; alerts bull/bear_cycle_opportunity (once per cycle at a bucket crossing in the zone with enough samples, edge and a narrow interval; prefix = cycle direction), cycle_success, cycle_failure, cycle_timeout",
         params: &[
             super::definition::ParamSpec::count("rsi_len", 14, 2, 200).meaning("bars in the RSI"),
             super::definition::ParamSpec::number("overbought", 70.0, 51.0, 99.0).meaning("RSI level of the upper zone"),

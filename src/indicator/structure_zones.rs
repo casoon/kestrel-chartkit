@@ -366,7 +366,7 @@ impl StructureZones {
 
 impl Indicator for StructureZones {
     fn name(&self) -> &str {
-        "structure_zones"
+        "kestrel_structure_zones"
     }
 
     /// The earliest possible first output: without volume it starts with ATR (14) and RSI (14,
@@ -1236,9 +1236,9 @@ fn h_in(high: Option<f64>, low: Option<f64>, lower: f64, upper: f64) -> bool {
 
 pub const STRUCTURE_ZONES_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "structure_zones",
-        aliases: &[],
-        description: "Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
+        name: "kestrel_structure_zones",
+        aliases: &["structure_zones"],
+        description: "Kestrel Structure Zones (default parameters): micro 3/3 and major 7/7 swing events (BOS/CHoCH, spring/upthrust, fake breaks, climax-test sequence, rejections, EQH/EQL as event_code), automatic support/resistance zones (major swings, springs/upthrusts, BOS flips, climax bars) with lifecycle fresh/tested/confirmed/broken/flipped, and an assessment of the nearest support and resistance within 3 ATR (reach, hold, break 0..100 from structure, respect, approach, context, plus nearby fair value gap, order block and volume-profile POC/value area); value = number of tracked zones; extra: support_*/resistance_* (mid, upper, lower, type, status, distance_atr, reach, hold, break, structural, respect, approach, context, state), micro_trend, major_trend, clx_state, clx_direction, event_code, poc, va_high, va_low, atr, and every tracked zone, the broken ones included, as zone_<i>_ lower, upper, type, role (1 support, -1 resistance), status, tests, age, event (bits: 1 created, 2 test, 4 bounce, 8 break, 16 role reversal), break_bars_back, break_close, flip_bars_back; alerts support/resistance_relevant, bull_support_hold, bear_resistance_hold, bear_support_break, bull_resistance_break",
         params: &[
 
         ],

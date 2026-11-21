@@ -100,10 +100,10 @@ fn test_golden_cycle_length() {
 
 #[test]
 fn test_golden_price_location() {
-    check("pl_default", "price_location", &[]);
+    check("pl_default", "kestrel_price_location", &[]);
     check(
         "pl_small",
-        "price_location",
+        "kestrel_price_location",
         &[
             ("atr_len", 5.0),
             ("ema_len", 8.0),
@@ -171,10 +171,10 @@ fn test_golden_period_midpoint_calendar_periods() {
 
 #[test]
 fn test_golden_vwap_regime() {
-    check("vr_default", "vwap_regime", &[]);
+    check("vr_default", "kestrel_vwap_regime", &[]);
     check(
         "vr_small",
-        "vwap_regime",
+        "kestrel_vwap_regime",
         &[
             ("window", 60.0),
             ("slope_lookback", 5.0),
@@ -188,10 +188,10 @@ fn test_golden_vwap_regime() {
 
 #[test]
 fn test_golden_swing_structure() {
-    check("ss_default", "swing_structure", &[]);
+    check("ss_default", "kestrel_swing_structure", &[]);
     check(
         "ss_small",
-        "swing_structure",
+        "kestrel_swing_structure",
         &[
             ("left", 3.0),
             ("right", 3.0),
