@@ -17,8 +17,13 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Changed
 
-- **Catalog:** `kestrel_adaptive_smoother` is accepted and counts as verified; its formula and measurements are in the [guide](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/).
 - **Chart patterns (BREAKING):** `ChartPatternKind` has three more variants, so an exhaustive `match` needs arms for them. Series with these shapes report the new kinds in addition; an inverse head and shoulders whose right shoulder stays in the cup's upper half also raises `bull_cup_and_handle`.
+
+## [0.45.1] - 2026-11-21
+
+### Changed
+
+- **Catalog:** `kestrel_adaptive_smoother` is accepted and counts as verified; its formula and measurements are in the [guide](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/).
 
 ## [0.45.0] - 2026-11-21
 
