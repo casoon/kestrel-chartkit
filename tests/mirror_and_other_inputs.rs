@@ -730,3 +730,14 @@ fn n4_tpo_profile_reflects_its_value_and_swaps_its_area_edges() {
     assert_eq!(b.extra["vah"], 2.0 * LEVEL - a.extra["val"]);
     assert_eq!(b.extra["val"], 2.0 * LEVEL - a.extra["vah"]);
 }
+
+#[test]
+fn n4_tpo_profile_mirrors_on_the_generated_series() {
+    // Ties at equal distance from the range centre are broken by the close, so the generated
+    // series mirror as well (short windows tie often).
+    for params in [&[][..], &[("lookback", 13.0), ("num_bins", 12.0)][..]] {
+        check_bars_entry("tpo_profile", params, &[("value", Answer::Reflected)]);
+        check_bars_swapped_pair("tpo_profile", params, "vah", "val");
+        check_bars_swapped_pair("tpo_profile", params, "val", "vah");
+    }
+}

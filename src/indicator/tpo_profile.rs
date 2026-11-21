@@ -11,7 +11,8 @@ use crate::model::Bar;
 /// between two bins touches both). `value` is the centre of the point-of-control bin, the extras `vah`
 /// and `val` the upper edge and lower edge of the value area (70 % of all counts, grown from the
 /// point of control towards the larger neighbouring bin, both on a tie). Among equally filled bins the
-/// point of control is the one closest to the centre of the range, the lower one on a further tie.
+/// point of control is the one closest to the centre of the range; of two equally close ones the one
+/// closer to the close, the lower one on a further tie.
 /// A window without range publishes the close for all three. First output: with the `lookback`-th bar.
 /// [`Indicator::reset`] clears the window.
 pub struct TpoProfileEngine {
@@ -80,12 +81,20 @@ impl Indicator for TpoProfileEngine {
             }
         }
 
-        // Point of control: the most counts, then closest to the centre, then the lower bin.
+        // Point of control: the most counts, then closest to the centre of the range, then (bins k
+        // and bins - 1 - k tie there) closest to the close, then the lower bin. The close keeps the
+        // choice mirror symmetric.
+        let centre = |k: usize| lo + (k as f64 + 0.5) * step;
         let mut poc = 0;
         let mut poc_distance = u64::MAX;
         for (k, &c) in count.iter().enumerate() {
             let distance = (2 * k as i64 - (bins as i64 - 1)).unsigned_abs();
-            if c > count[poc] || (c == count[poc] && distance < poc_distance) {
+            let better = c > count[poc]
+                || (c == count[poc]
+                    && (distance < poc_distance
+                        || (distance == poc_distance
+                            && (centre(k) - bar.close).abs() < (centre(poc) - bar.close).abs())));
+            if better {
                 poc = k;
                 poc_distance = distance;
             }
@@ -138,7 +147,7 @@ pub const TPO_PROFILE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "tpo_profile",
         aliases: &[],
-        description: "Time-at-price profile after Steidlmayer and Koy (1986) without volume: one count per bar and price bin over the window, value the point-of-control bin centre (ties toward the range centre), extras vah and val the 70 % value area edges",
+        description: "Time-at-price profile after Steidlmayer and Koy (1986) without volume: one count per bar and price bin over the window, value the point-of-control bin centre (ties toward the range centre, then toward the close), extras vah and val the 70 % value area edges",
         params: &[
             super::definition::ParamSpec::count("lookback", 48, 1, 10000)
                 .meaning("bars in the profile window"),
@@ -183,11 +192,12 @@ mod tests {
     }
 
     #[test]
-    fn poc_tie_resolves_toward_the_range_centre_then_the_lower_bin() {
+    fn poc_tie_resolves_toward_the_range_centre_then_the_close() {
         // Counts [2, 2, 0, 1]: bins 0 and 1 tie, bin 1 is closer to the centre (1.5).
         let out = feed(3, 4, &[(2.0, 0.0), (2.0, 0.0), (8.0, 8.0)]);
         assert_eq!(out.value, 3.0);
-        // Counts [3, 0, 0, 3]: bins 0 and 3 are equally far; the lower one wins.
+        // Counts [3, 0, 0, 3]: bins 0 and 3 are equally far from the centre; the close (8) is
+        // nearer bin 3.
         let out = feed(
             6,
             4,
@@ -200,9 +210,13 @@ mod tests {
                 (8.0, 7.0),
             ],
         );
-        assert_eq!(out.value, 1.0);
-        // Counts [1, 3, 3, 1]: bins 1 and 2 are equally far from the centre; the lower wins.
+        assert_eq!(out.value, 7.0);
+        // Counts [1, 3, 3, 1]: bins 1 and 2 are equally far from the centre; the close 5.5 is
+        // nearer bin 2.
         let out = feed(4, 4, &[(8.0, 0.0), (5.5, 2.5), (5.5, 2.5), (5.5, 2.5)]);
+        assert_eq!(out.value, 5.0);
+        // Counts [1, 4, 4, 1] and the close 4 exactly between both centres: the lower bin.
+        let out = feed(4, 4, &[(8.0, 0.0), (5.5, 2.5), (5.5, 2.5), (4.0, 4.0)]);
         assert_eq!(out.value, 3.0);
     }
 

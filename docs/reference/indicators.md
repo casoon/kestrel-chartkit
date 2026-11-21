@@ -1781,7 +1781,7 @@ Price/volume distribution profile with point-of-control
 
 ### `tpo_profile`
 
-Time-at-price profile after Steidlmayer and Koy (1986) without volume: one count per bar and price bin over the window, value the point-of-control bin centre (ties toward the range centre), extras vah and val the 70 % value area edges
+Time-at-price profile after Steidlmayer and Koy (1986) without volume: one count per bar and price bin over the window, value the point-of-control bin centre (ties toward the range centre, then toward the close), extras vah and val the 70 % value area edges
 
 **Not yet verified:** no independent second implementation yet.
 
