@@ -41,6 +41,7 @@ pub mod force_index;
 pub mod fractal_dimension;
 pub mod gap;
 pub mod harmonics;
+pub mod kas;
 pub(crate) mod kernels;
 pub mod kst;
 pub mod leg_character;

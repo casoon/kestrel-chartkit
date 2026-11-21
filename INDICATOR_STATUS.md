@@ -24,6 +24,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | rma | ✅ |
 | alma | ✅ |
 | jma | ✅ |
+| kestrel_adaptive_smoother | ❌ |
 | super_smoother | ✅ |
 | ultimate_smoother | ✅ |
 | mama | ✅ |

@@ -306,6 +306,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"KAS"	canonical="kestrel_adaptive_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "KELTNER"	canonical="keltner"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "KELTNER", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -314,6 +318,10 @@
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "KESTREL_ACCUMULATION_PHASE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "KESTREL_ACCUMULATION_PHASE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"KESTREL_ADAPTIVE_SMOOTHER"	canonical="kestrel_adaptive_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "KESTREL_BOTTOM_FORMATION"	canonical="kestrel_bottom_formation"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "KESTREL_BOTTOM_FORMATION", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1206,6 +1214,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"kas"	canonical="kestrel_adaptive_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "keltner"	canonical="keltner"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "keltner", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1214,6 +1226,10 @@
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "kestrel_accumulation_phase", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "kestrel_accumulation_phase", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"kestrel_adaptive_smoother"	canonical="kestrel_adaptive_smoother"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "kestrel_bottom_formation"	canonical="kestrel_bottom_formation"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "kestrel_bottom_formation", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1821,6 +1837,7 @@ entry "lsma" Bars range=Unbounded
 entry "mcginley" Bars range=Unbounded
 entry "t3" Bars range=Unbounded
 entry "vidya" Bars range=Unbounded
+entry "kestrel_adaptive_smoother" Bars range=Unbounded
 entry "alligator" Bars range=Unbounded
 entry "envelope" Bars range=Unbounded
 entry "vwap" Bars range=Unbounded

@@ -153,3 +153,63 @@ def jma_approximation(values, period, phase, power):
         jma = jma + e2
         out.append(jma)
     return out
+
+
+def kestrel_adaptive_smoother(values, period, phase, adapt):
+    """Kestrel Adaptive Smoother, from its formula: with n = (period + 1) / 2, k0 = 2 / (n + 1),
+    a = 2 / (max(n, 2) + 1), b = 2 / (max(4 n, 20) + 1), c = a / (2 - a) and d = x_t - x_(t-1),
+      v = v + a (d - v)             smoothed change, v_0 = 0
+      q = q + a (d^2 - q)           its mean square; Q = Q + b (d^2 - Q) the long-run one
+      z2 = v^2 / (c sqrt(Q_before q))   with Q_before the value of Q ahead of this bar
+      S = k0^2 / (1 - k0) z2^adapt, k = (sqrt(S^2 + 4 S) - S) / 2
+      s1 += k (x - s1), s2 += k (s1 - s2), s3 += k (s2 - s3), out = s2 + phase (s2 - s3).
+    The first value is x_0 with all three stages on it; the first change seeds q and Q. Where
+    the scale is zero, z2 is 1 for a zero v and unbounded otherwise (then k = 1); k = 1 as well
+    for k0 >= 1. One output per input."""
+    xs = list(values)
+    if not xs:
+        return []
+    n = (period + 1) / 2
+    k0 = 2 / (n + 1)
+    a = 2 / (max(n, 2) + 1)
+    b = 2 / (max(4 * n, 20) + 1)
+    c = a / (2 - a)
+
+    s1 = s2 = s3 = xs[0]
+    v = 0.0
+    q = None
+    Q = None
+    out = [xs[0]]
+    for t in range(1, len(xs)):
+        d = xs[t] - xs[t - 1]
+        d2 = d * d
+        v = v + a * (d - v)
+        q = d2 if q is None else q + a * (d2 - q)
+        Q_before = d2 if Q is None else Q
+        Q = d2 if Q is None else Q + b * (d2 - Q)
+        scale = c * math.sqrt(Q_before * q)
+        if scale > 0:
+            z2 = v * v / scale
+        elif v * v > 0:
+            z2 = math.inf
+        else:
+            z2 = 1.0
+        if k0 >= 1:
+            k = 1.0
+        else:
+            if adapt == 0:
+                zp = 1.0
+            elif z2 == math.inf:
+                zp = math.inf
+            else:
+                zp = z2 ** adapt
+            S = k0 * k0 / (1 - k0) * zp
+            if math.isinf(S):
+                k = 1.0
+            else:
+                k = (math.sqrt(S * S + 4 * S) - S) / 2
+        s1 = s1 + k * (xs[t] - s1)
+        s2 = s2 + k * (s1 - s2)
+        s3 = s3 + k * (s2 - s3)
+        out.append(s2 + phase * (s2 - s3))
+    return out

@@ -35,6 +35,7 @@ from ..smoothing import (
     ema_first_sample,
     ema_published,
     jma_approximation,
+    kestrel_adaptive_smoother,
     least_squares,
     rma,
     sma,
@@ -166,6 +167,11 @@ def alma_values(closes, period, offset, sigma):
 def jma_values(closes, period, phase, power):
     """The published approximation, one value per bar from the first close."""
     return jma_approximation(closes, period, phase, power)
+
+
+def kas_values(closes, period, phase, adapt):
+    """The Kestrel Adaptive Smoother, one value per bar from the first close."""
+    return kestrel_adaptive_smoother(closes, period, phase, adapt)
 
 
 def super_smoother_values(closes, period):
@@ -696,6 +702,21 @@ def build_blocks():
                    value_series(jma_values(SHORT, 5, 0.0, 1.0))))
     add(case_block("jma_unit", "JMA(1) is the close itself", params(period=1), ohlc(SHORT[:5]),
                    value_series(jma_values(SHORT[:5], 1, 0.0, 2.0))))
+
+    # Kestrel Adaptive Smoother
+    add(case_block("kas_defaults", "KAS(20, phase 0.5, adapt 1), the registry defaults, from bar 1",
+                   {}, ohlc(LONG[:25]), value_series(kas_values(LONG[:25], 20, 0.5, 1.0))))
+    add(case_block("kas_phase_zero", "KAS(7, phase 0, adapt 1)",
+                   params(period=7, phase=0.0, adapt=1.0), ohlc(SHORT),
+                   value_series(kas_values(SHORT, 7, 0.0, 1.0))))
+    add(case_block("kas_phase_two", "KAS(7, phase 2, adapt 1)",
+                   params(period=7, phase=2.0, adapt=1.0), ohlc(SHORT),
+                   value_series(kas_values(SHORT, 7, 2.0, 1.0))))
+    add(case_block("kas_adapt_zero", "KAS(7, phase 0.5, adapt 0): a fixed filter",
+                   params(period=7, phase=0.5, adapt=0.0), ohlc(SHORT),
+                   value_series(kas_values(SHORT, 7, 0.5, 0.0))))
+    add(case_block("kas_unit", "KAS(1) is the close itself", params(period=1), ohlc(SHORT[:5]),
+                   value_series(kas_values(SHORT[:5], 1, 0.5, 1.0))))
 
     # SuperSmoother
     add(case_block("super_smoother_defaults", "SuperSmoother(10), the registry default, "

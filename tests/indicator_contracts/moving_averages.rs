@@ -40,6 +40,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("rma"),
     Coverage::full("alma"),
     Coverage::full("jma"),
+    Coverage::full("kestrel_adaptive_smoother"),
     Coverage::full("super_smoother"),
     Coverage::full("lsma"),
     Coverage::full("mcginley"),
@@ -253,6 +254,51 @@ fn jma_power_one() {
 #[test]
 fn jma_unit() {
     assert_holds(&case("jma_unit", "jma", IndicatorUnit::Price));
+}
+
+#[test]
+fn kas_defaults() {
+    assert_holds(&case(
+        "kas_defaults",
+        "kestrel_adaptive_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn kas_phase_zero() {
+    assert_holds(&case(
+        "kas_phase_zero",
+        "kestrel_adaptive_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn kas_phase_two() {
+    assert_holds(&case(
+        "kas_phase_two",
+        "kestrel_adaptive_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn kas_adapt_zero() {
+    assert_holds(&case(
+        "kas_adapt_zero",
+        "kestrel_adaptive_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn kas_unit() {
+    assert_holds(&case(
+        "kas_unit",
+        "kestrel_adaptive_smoother",
+        IndicatorUnit::Price,
+    ));
 }
 
 #[test]
@@ -597,6 +643,16 @@ fn jma_rejects_invalid_configuration() {
     assert_rejected("jma", &[("phase", -101.0)]);
     assert_rejected("jma", &[("power", 0.5)]);
     assert_rejected("jma", &[("length", 7.0)]);
+}
+
+#[test]
+fn kas_rejects_invalid_configuration() {
+    assert_rejected("kestrel_adaptive_smoother", &[("period", 0.0)]);
+    assert_rejected("kestrel_adaptive_smoother", &[("phase", -0.1)]);
+    assert_rejected("kestrel_adaptive_smoother", &[("phase", 2.5)]);
+    assert_rejected("kestrel_adaptive_smoother", &[("adapt", -0.1)]);
+    assert_rejected("kestrel_adaptive_smoother", &[("adapt", 2.5)]);
+    assert_rejected("kestrel_adaptive_smoother", &[("length", 7.0)]);
 }
 
 #[test]
