@@ -291,18 +291,37 @@ confirmed behind its last anchor expires without an alert.
 `value` is the direction of the latest confirmed instance (`1`, `-1`, `0` before the first).
 Alerts are `bull_<kind>` / `bear_<kind>`: for the triangles, wedges and the broadening formation
 the side of the breakout, for the 1-2-3 and the Wolfe wave the swing structure, for the reversal
-family the pattern (top: bearish), for harmonics the resolution at D. `extra["pattern"]` is the kind
+family the pattern (top: bearish), for the flag the direction of its pole, for cup and handle
+bullish and for its inverse bearish, for harmonics the resolution at D. `extra["pattern"]` is the kind
 code: for `chart_patterns` 1 triangle, 2 ascending triangle, 3 descending triangle, 4 broadening,
 5 rising wedge, 6 falling wedge, 7 one-two-three, 8 Wolfe wave, 9 double top, 10 double bottom,
-11 triple top, 12 triple bottom, 13 head and shoulders, 14 inverse head and shoulders; for
+11 triple top, 12 triple bottom, 13 head and shoulders, 14 inverse head and shoulders, 15 flag,
+16 cup and handle, 17 inverse cup and handle; for
 `harmonic_patterns` the row of the ratio table (1 gartley, 2 bat, 3 butterfly, 4 crab, 5 deep crab,
 6 shark). On a confirming bar `extra` also has `level` (the line or neckline the close went
-through), `invalidation` (the pattern's extreme, the 1-2-3's second node, the far edge of the PRZ),
+through), `invalidation` (the pattern's extreme, the 1-2-3's second node, the flag's opposite
+channel line, the handle's extreme, the far edge of the PRZ),
 `fit` (chart patterns), `target` (Wolfe wave: the line through points 1 and 4) and, for harmonics,
 `prz_low`, `prz_high` and `d`; with several instances on one bar these describe the first.
 `extra["active"]` counts the instances followed, `extra["confirmed"]` those confirmed on the bar.
 The auto-fitted trendlines of the batch detector are the `trendlines` entry's. The Wolfe wave of
 `ChartPatternDetector` follows Bill Wolfe's rules: five alternating nodes where, for points 1, 3, 5 as lows (`bull_wolfe_wave`), point 3 is below point 1, point 4 is above point 1 and below point 2, line 1-3 and line 2-4 converge, and point 5 undercuts the 1-3 line projected to its time; for highs the mirror image (`bear_wolfe_wave`). `fit` is the convergence, `1 - gap(5) / gap(1)`; `tolerance_pct` plays no part.
+
+The flag is five alternating nodes: the first two are the pole, the other four a channel. For a
+bullish flag (a rising pole; mirrored for `bear_flag`) the channel makes lower highs and lower lows,
+its two lines (through the highs, through the lows) change their distance across the window by at
+most 25 % (`FLAG_PARALLEL`; a channel narrowing faster is a pennant, which is not reported), and its
+lowest node gives back at most half the pole (`FLAG_MAX_RETRACE`). How fast the pole rose is not
+tested. `fit` is the parallelism; the close beyond the channel line on the pole's side confirms, the
+close beyond the other line invalidates. Cup and handle is four alternating nodes: a high (left
+rim), a low (bottom), a high (right rim) and a low (handle). The rims match within `tolerance_pct`,
+the bottom lies more than that below the left rim, the handle low stays at or above the midpoint
+between the right rim and the bottom and comes at most half the rim-to-rim time after the right
+rim. The close above the right rim confirms, the close below the handle low invalidates; the
+inverse (`bear_inverse_cup_and_handle`) is the mirror image. The rounding of the cup is not tested:
+on swing nodes a rounded bottom and a V are the same three points. For the same reason the head and
+right shoulder of an inverse head and shoulders whose right shoulder stays in the upper half are a
+cup and handle as well, and both alerts are raised.
 
 ### kestrel_bottom_formation
 
