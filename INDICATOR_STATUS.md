@@ -25,6 +25,8 @@ is complete. The mark must match the `verification` of the entry's definition
 | alma | ✅ |
 | jma | ✅ |
 | super_smoother | ✅ |
+| ultimate_smoother | ❌ |
+| mama | ❌ |
 | tema | ✅ |
 | lsma | ✅ |
 | mcginley | ✅ |
@@ -70,6 +72,12 @@ is complete. The mark must match the `verification` of the entry's definition
 | roc_context | ✅ |
 | rsi_cycle_stats | ✅ |
 | percent_rank | ✅ |
+| roofing_filter | ❌ |
+| reflex | ❌ |
+| trendflex | ❌ |
+| correlation_trend | ❌ |
+| laguerre_rsi | ❌ |
+| cyber_cycle | ❌ |
 
 ## Volatility
 

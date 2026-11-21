@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 158 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 166 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 147 of the 158 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 147 of the 166 entries are verified, 19 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -28,6 +28,8 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `alma` | bars | verified |
 | `jma` | bars | verified |
 | `super_smoother` | bars | verified |
+| `ultimate_smoother` | bars | **not yet verified:** no independent second implementation yet |
+| `mama` | bars | **not yet verified:** no independent second implementation yet |
 | `lsma` | bars | verified |
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
@@ -72,6 +74,12 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `williams_r` | bars | verified |
 | `fisher_transform` | bars | verified |
 | `wavetrend` | bars | verified |
+| `roofing_filter` | bars | **not yet verified:** no independent second implementation yet |
+| `reflex` | bars | **not yet verified:** no independent second implementation yet |
+| `trendflex` | bars | **not yet verified:** no independent second implementation yet |
+| `correlation_trend` | bars | **not yet verified:** no independent second implementation yet |
+| `laguerre_rsi` | bars | **not yet verified:** no independent second implementation yet |
+| `cyber_cycle` | bars | **not yet verified:** no independent second implementation yet |
 | `percent_rank` | bars | verified |
 | `atr` | bars | verified |
 | `adx` | bars | verified |
@@ -344,6 +352,37 @@ Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficient
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `period` | 10 | whole number 1 – 10000 | cutoff period of the filter in bars |
+
+### `ultimate_smoother`
+
+Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/ultimate_smoother/)
+
+**Output** unit Price, range not declared · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 2 – 10000 | critical period of the filter in bars |
+
+### `mama`
+
+Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/mama/)
+
+**Output** unit Price, range not declared · **warmup** 50 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `fast_limit` | 0.5 | 0.01 – 1 | largest smoothing constant |
+| `slow_limit` | 0.05 | 0.01 – 1 | smallest smoothing constant, below fast_limit |
+
+Requires `slow_limit` to be smaller than `fast_limit`.
 
 ### `lsma`
 
@@ -960,6 +999,97 @@ WaveTrend Oscillator (wt1, wt2)
 | `n2` | 21 | whole number 1 – 10000 | average length |
 | `ob_level` | 60 | -100 – 100; threshold on the output scale | upper zone, alerts above it |
 | `os_level` | -60 | -100 – 100; threshold on the output scale | lower zone, alerts below it |
+
+### `roofing_filter`
+
+Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/roofing_filter/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 48 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `hp_period` | 48 | whole number 3 – 10000 | cutoff period of the high-pass filter in bars |
+| `lp_period` | 10 | whole number 2 – 10000 | cutoff period of the SuperSmoother in bars, shorter than hp_period |
+
+Requires `lp_period` to be smaller than `hp_period`.
+
+### `reflex`
+
+Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/reflex/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | bars the slope line spans |
+
+### `trendflex`
+
+Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/trendflex/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | bars the difference spans |
+
+### `correlation_trend`
+
+Ehlers' Correlation Trend Indicator: the Pearson correlation of the last `length` closes with a rising straight line; a window of equal closes reads 0
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/correlation_trend/)
+
+**Output** unit Unitless, range -1 – 1 · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | closes correlated with the line |
+
+### `laguerre_rsi`
+
+Ehlers' Laguerre RSI: the share of upward steps among the steps between four Laguerre stages seeded with the first close; no value until a stage has moved, and the previous value is kept while all stages are level
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/laguerre_rsi/)
+
+**Output** unit Ratio, range 0 – 1 · **warmup** 2 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `gamma` | 0.5 | 0 – 0.99 | damping of the Laguerre stages |
+| `lower` | 0.2 | 0 – 1; threshold on the output scale | lower zone, bull_extreme on a cross above it |
+| `upper` | 0.8 | 0 – 1; threshold on the output scale | upper zone, bear_extreme on a cross below it |
+
+Requires `lower` to be smaller than `upper`.
+
+### `cyber_cycle`
+
+Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`)
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/cyber_cycle/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 30 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `alpha` | 0.07 | 0.01 – 1 | smoothing constant of the cycle filter |
 
 ### `percent_rank`
 

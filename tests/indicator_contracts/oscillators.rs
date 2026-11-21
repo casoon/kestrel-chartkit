@@ -19,7 +19,14 @@ fn holds(name: &str, indicator: &str, unit: IndicatorUnit) {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[];
+pub const PENDING: &[&str] = &[
+    "roofing_filter",
+    "reflex",
+    "trendflex",
+    "correlation_trend",
+    "laguerre_rsi",
+    "cyber_cycle",
+];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("macd"),

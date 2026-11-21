@@ -110,7 +110,14 @@ fn check_bars_entry(name: &str, params: &[(&str, f64)], fields: &[(&str, Answer)
 
 #[test]
 fn smoothers_answer_with_the_reflected_level() {
-    for name in ["rma", "alma", "jma", "super_smoother"] {
+    for name in [
+        "rma",
+        "alma",
+        "jma",
+        "super_smoother",
+        "ultimate_smoother",
+        "mama",
+    ] {
         check_bars_entry(name, &[], &[("value", Answer::Reflected)]);
     }
     for (phase, power) in [(-100.0, 1.0), (100.0, 3.0)] {
@@ -125,6 +132,21 @@ fn smoothers_answer_with_the_reflected_level() {
         &[("offset", 0.3), ("sigma", 2.0)],
         &[("value", Answer::Reflected)],
     );
+}
+
+#[test]
+fn oscillators_answer_with_the_negation_or_the_complement() {
+    for name in [
+        "roofing_filter",
+        "reflex",
+        "trendflex",
+        "cyber_cycle",
+        "correlation_trend",
+    ] {
+        check_bars_entry(name, &[], &[("value", Answer::Negated)]);
+    }
+    check_bars_entry("cyber_cycle", &[], &[("trigger", Answer::Negated)]);
+    check_bars_entry("laguerre_rsi", &[], &[("value", Answer::Complement(1.0))]);
 }
 
 #[test]

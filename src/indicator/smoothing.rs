@@ -744,7 +744,12 @@ pub struct SuperSmoother {
 
 impl SuperSmoother {
     pub fn new(len: usize) -> Self {
-        let len = len.max(1) as f64;
+        Self::with_real_period(len.max(1) as f64)
+    }
+
+    /// The same filter for a period that is not a whole number (Reflex and Trendflex run it at
+    /// half their length).
+    pub(crate) fn with_real_period(len: f64) -> Self {
         let a1 = (-1.414 * std::f64::consts::PI / len).exp();
         let b1 = 2.0 * a1 * (1.414 * std::f64::consts::PI / len).cos();
         let c2 = b1;
