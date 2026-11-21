@@ -32,7 +32,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
 | `vidya` | bars | verified |
-| `kas` | bars | **not yet verified:** acceptance against the measured criteria is pending |
+| `kestrel_adaptive_smoother` | bars | **not yet verified:** acceptance against the measured criteria is pending |
 | `alligator` | bars | verified |
 | `envelope` | bars | verified |
 | `vwap` | bars | verified |
@@ -404,13 +404,13 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 | `cmo_len` | 9 | whole number 1 – 10000 | bars over which the directionality (CMO) is measured |
 | `ema_len` | 12 | whole number 1 – 10000 | base exponential smoothing that the CMO scales |
 
-### `kas`
+### `kestrel_adaptive_smoother` · alias `kas`
 
 Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move
 
 **Not yet verified:** acceptance against the measured criteria is pending.
 
-[See it in the showcase](../../../showcase/kas/)
+[See it in the showcase](../../../showcase/kestrel_adaptive_smoother/)
 
 **Output** unit Price, range not declared · **warmup** 1 bars
 

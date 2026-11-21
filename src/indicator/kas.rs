@@ -160,7 +160,7 @@ impl Kas {
 
 impl Indicator for Kas {
     fn name(&self) -> &str {
-        "kas"
+        "kestrel_adaptive_smoother"
     }
 
     fn warmup_period(&self) -> usize {
@@ -185,11 +185,11 @@ impl Indicator for Kas {
     }
 }
 
-/// Registry definition of `kas`.
+/// Registry definition of `kestrel_adaptive_smoother`; `kas` is its alias.
 pub const KAS_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "kas",
-        aliases: &[],
+        name: "kestrel_adaptive_smoother",
+        aliases: &["kas"],
         description: "Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move",
         params: &[
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning(

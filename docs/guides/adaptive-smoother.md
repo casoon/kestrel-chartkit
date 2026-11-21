@@ -1,10 +1,10 @@
 ---
 title: The adaptive smoother
-description: What kas does, how it was chosen by measurement, and where it is ahead of and behind the other smoothers of the catalog.
+description: What the Kestrel Adaptive Smoother does, how it was chosen by measurement, and where it is ahead of and behind the other smoothers of the catalog.
 order: 7
 ---
 
-`kas`, the Kestrel Adaptive Smoother, is a moving average that changes its own speed. While the
+`kestrel_adaptive_smoother`, short `kas`, is a moving average that changes its own speed. While the
 closes go back and forth it nearly rests; when they move one way by more than the market usually
 does, it follows. This page states the formula, how it was measured against every other smoother
 of the catalog, and what the numbers say, including where `kas` loses.

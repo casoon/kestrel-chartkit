@@ -104,7 +104,7 @@ pub fn kas_lines() -> Vec<Line> {
                 family: name.to_string(),
                 len,
                 run: catalog_run(
-                    "kas",
+                    "kestrel_adaptive_smoother",
                     vec![("period", len as f64), ("phase", phase), ("adapt", adapt)],
                 ),
             });
