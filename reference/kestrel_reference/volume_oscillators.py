@@ -1,9 +1,9 @@
 """Volume oscillators: volume_flow_indicator, volume_zone_oscillator, volume_price_confirmation,
-market_facilitation.
+market_facilitation, true_range_money_flow.
 
-Written from the rules (Katsanos 2004 for the flow indicator, Khalil and Steckler 2011 for the
-zone oscillator, Dormeier 2007 for the price confirmation, Williams 1995 for the facilitation
-index), independently of the Rust code. Python standard library only.
+Written from the rules (Katsanos 2004 for the flow indicator and the volume cap of the true range
+money flow, Khalil and Steckler 2011 for the zone oscillator, Dormeier 2007 for the price
+confirmation, Williams 1995 for the facilitation index), independently of the Rust code. Python standard library only.
 
 `compute(name, params, bars)` runs one indicator over `bars` (tuples `(open, high, low, close,
 volume)`) and returns one row per bar: `(None, {})` where there is no output, otherwise
@@ -15,7 +15,7 @@ volume)`) and returns one row per bar: `(None, {})` where there is no output, ot
 import math
 
 NAMES = ("volume_flow_indicator", "volume_zone_oscillator", "volume_price_confirmation",
-         "market_facilitation")
+         "market_facilitation", "true_range_money_flow")
 
 # Relative tolerance of a crossing: a crossing needs the lines to differ by more than this.
 CROSS_TOLERANCE_REL = 1e-9
@@ -209,6 +209,39 @@ def _market_facilitation(params, bars):
     return rows
 
 
+def _true_range_money_flow(params, bars):
+    _check_keys("true_range_money_flow", params, ("period", "volume_cap"))
+    period = _get_int(params, "period", 21, 1)
+    cap = _get_float(params, "volume_cap", 2.5)
+    if period > 10000:
+        raise ValueError("period must be at most 10000")
+    if not 0.0 <= cap <= 100.0:
+        raise ValueError("volume_cap must lie within 0..100")
+    values = [None] * len(bars)
+    average = money = weight = None
+    sum_money = sum_weight = 0.0
+    for i, (_, high, low, close, volume) in enumerate(bars):
+        if i == 0:
+            average = volume
+            continue
+        top, bottom = max(high, bars[i - 1][3]), min(low, bars[i - 1][3])
+        span = top - bottom
+        location = ((close - bottom) - (top - close)) / span if span > 0 else 0.0
+        counted = min(volume, cap * average) if cap > 0 else volume
+        if i <= period:
+            sum_money += counted * location
+            sum_weight += counted
+            if i == period:
+                money, weight = sum_money / period, sum_weight / period
+        else:
+            money += (counted * location - money) / period
+            weight += (counted - weight) / period
+        average += (volume - average) / period
+        if i >= period and weight > 0:
+            values[i] = money / weight
+    return [(None, a) if v is None else ((v, {}), a) for v, a in zip(values, _zero_alerts(values))]
+
+
 def compute(name, params, bars):
     params = dict(params or {})
     runner = {
@@ -216,6 +249,7 @@ def compute(name, params, bars):
         "volume_zone_oscillator": _volume_zone_oscillator,
         "volume_price_confirmation": _volume_price_confirmation,
         "market_facilitation": _market_facilitation,
+        "true_range_money_flow": _true_range_money_flow,
     }.get(name)
     if runner is None:
         raise ValueError(f"unknown indicator {name!r}")

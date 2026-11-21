@@ -722,3 +722,86 @@ fn market_facilitation_edges() {
 fn market_facilitation_rejects_invalid_configuration() {
     assert_rejected("market_facilitation", &[("period", 1.0)]);
 }
+
+// --- true_range_money_flow ---------------------------------------------------
+
+#[test]
+fn true_range_money_flow_defaults() {
+    assert_holds(&case(
+        "true_range_money_flow_defaults",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_no_cap() {
+    assert_holds(&case(
+        "true_range_money_flow_no_cap",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_two() {
+    assert_holds(&case(
+        "true_range_money_flow_two",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_one() {
+    assert_holds(&case(
+        "true_range_money_flow_one",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_spikes() {
+    assert_holds(&case(
+        "true_range_money_flow_spikes",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_gaps() {
+    assert_holds(&case(
+        "true_range_money_flow_gaps",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_zero_volume() {
+    assert_holds(&case(
+        "true_range_money_flow_zero_volume",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_high_level() {
+    assert_holds(&case(
+        "true_range_money_flow_high_level",
+        "true_range_money_flow",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn true_range_money_flow_rejects_invalid_configuration() {
+    assert_rejected("true_range_money_flow", &[("period", 0.0)]);
+    assert_rejected("true_range_money_flow", &[("period", 2.5)]);
+    assert_rejected("true_range_money_flow", &[("volume_cap", -1.0)]);
+    assert_rejected("true_range_money_flow", &[("volume_cap", 101.0)]);
+    assert_rejected("true_range_money_flow", &[("lookback", 5.0)]);
+}

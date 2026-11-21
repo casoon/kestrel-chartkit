@@ -547,6 +547,20 @@ def oscillator_cases():
                                {10: 100.0, 11: 100.0, 12: 100.0})
     equal_volume = with_volume(shaped(40, 229), {10: 700.0, 11: 700.0, 20: 0.0, 21: 0.0, 22: 800.0})
     twin = [(10.0, 11.0, 9.0, 10.0, 500.0)] * 2
+    # Volume spikes of 10 to 50 times the typical volume (about 1500): the cap binds on them.
+    spikes = with_volume(shaped(60, 257), {25: 30000.0, 26: 15000.0, 33: 75000.0, 41: 20000.0,
+                                           47: 50000.0})
+    # Gaps: the true range comes from the previous close (bars 3 and 6 lie fully above or below
+    # it); bar 5 has no range at all and sits on the previous close.
+    gaps = [(10.0, 10.5, 9.5, 10.0, 900.0), (10.0, 10.4, 9.8, 10.2, 1100.0),
+            (10.2, 10.6, 10.0, 10.4, 800.0), (11.5, 12.0, 11.4, 11.9, 1300.0),
+            (11.9, 12.1, 11.7, 11.8, 700.0), (11.8, 11.8, 11.8, 11.8, 600.0),
+            (10.5, 10.7, 10.2, 10.3, 1500.0), (10.3, 10.6, 10.1, 10.5, 1000.0),
+            (10.5, 10.9, 10.4, 10.8, 1200.0), (10.8, 11.0, 10.6, 10.7, 900.0)]
+    gaps = gaps + shaped(20, 263, start=10.7)
+    # The first bar has no volume (its average is zero, so the cap lets nothing through on bar 2),
+    # and so does a stretch of seven bars later on.
+    quiet = with_volume(shaped(40, 269), {**{0: 0.0}, **{i: 0.0 for i in range(20, 27)}})
     return [
         ("volume_flow_indicator_defaults", "VFI with the catalog defaults (130, 0.2, 2.5, 3) over "
          "300 bars", oscillator_case("volume_flow_indicator", shaped(300, 201))),
@@ -591,6 +605,28 @@ def oscillator_cases():
         ("market_facilitation_edges", "Market facilitation: equal volume and an equal index are "
          "neutral, zero volume leaves no value and restarts the state",
          oscillator_case("market_facilitation", twin + equal_volume)),
+        ("true_range_money_flow_defaults", "True range money flow with the catalog defaults (21, "
+         "2.5)", oscillator_case("true_range_money_flow", shaped(120, 255))),
+        ("true_range_money_flow_no_cap", "True range money flow (period 5, volume cap 0): the cap "
+         "is off",
+         oscillator_case("true_range_money_flow", shaped(60, 259), period=5, volume_cap=0)),
+        ("true_range_money_flow_two", "True range money flow (period 2)",
+         oscillator_case("true_range_money_flow", shaped(60, 261), period=2)),
+        ("true_range_money_flow_one", "True range money flow (period 1, volume cap 1): every bar "
+         "is its own average, volume above the previous bar's is cut",
+         oscillator_case("true_range_money_flow", shaped(40, 265), period=1, volume_cap=1)),
+        ("true_range_money_flow_spikes", "True range money flow (period 5, volume cap 2) over "
+         "volume spikes of 10 to 50 times the typical volume",
+         oscillator_case("true_range_money_flow", spikes, period=5, volume_cap=2)),
+        ("true_range_money_flow_gaps", "True range money flow (period 3): gap bars take the "
+         "range from the previous close, a bar without range has a location of zero",
+         oscillator_case("true_range_money_flow", gaps, period=3)),
+        ("true_range_money_flow_zero_volume", "True range money flow (period 3): no volume on "
+         "the first bar and in a stretch; the capped volume of the second bar is zero",
+         oscillator_case("true_range_money_flow", quiet, period=3)),
+        ("true_range_money_flow_high_level", "True range money flow (period 5) at a price level "
+         "around 1e8",
+         oscillator_case("true_range_money_flow", shaped(70, 267, start=level), period=5)),
     ]
 
 
