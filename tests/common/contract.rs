@@ -2,7 +2,7 @@
 //! fixture (`reference/kestrel_reference/fixtures/contract_*.py`).
 //!
 //! A case fixes the input bars and parameters and, for every bar, whether an output exists, its
-//! value, every `extra` field (and that there are no others), `secondary`, and the full set of
+//! value, every `extra` field (and that there are no others), `secondary`, `state`, and the full set of
 //! alerts with their strength. [`check`] runs the indicator built through the registry, repeats
 //! the run after `reset`, and returns every deviation as a line naming case, bar, timestamp,
 //! field, expected, actual and tolerance — the caller asserts the list is empty, the mutation
@@ -22,6 +22,7 @@ const BAR_SECONDS: i64 = 900;
 pub struct ExpectedOutput {
     pub value: f64,
     pub secondary: Option<f64>,
+    pub state: Option<String>,
     pub extra: BTreeMap<String, f64>,
 }
 
@@ -95,10 +96,17 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
                 let mut output = ExpectedOutput {
                     value: f64::NAN,
                     secondary: None,
+                    state: None,
                     extra: BTreeMap::new(),
                 };
                 let mut has_output = false;
                 for (column, cell) in head.iter().zip(&cells).skip(5) {
+                    if column == "state" {
+                        if *cell != "-" {
+                            output.state = Some(cell.to_string());
+                        }
+                        continue;
+                    }
                     let Some(value) = number(cell) else {
                         continue;
                     };
@@ -116,7 +124,10 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
                     }
                 }
                 assert!(
-                    has_output || (output.secondary.is_none() && output.extra.is_empty()),
+                    has_output
+                        || (output.secondary.is_none()
+                            && output.state.is_none()
+                            && output.extra.is_empty()),
                     "case {name}: row {i} has output fields without a value"
                 );
                 out.output = has_output.then_some(output);
@@ -286,6 +297,14 @@ fn compare_output(
         (None, None) => {}
         (Some(a), Some(e)) => compare_number(at, "secondary", a, e, tolerance, failures),
         (a, e) => failures.push(format!("{at}: secondary expected {e:?}, actual {a:?}")),
+    }
+    // A case that writes no state leaves it unchecked: most indicators publish none, and a few
+    // publish one their cases do not pin.
+    if expected.state.is_some() && actual.state != expected.state {
+        failures.push(format!(
+            "{at}: state expected {:?}, actual {:?}",
+            expected.state, actual.state
+        ));
     }
     for (key, expected_value) in &expected.extra {
         match actual.extra.get(key) {

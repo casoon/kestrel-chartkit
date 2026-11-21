@@ -14,12 +14,7 @@ fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[
-    "volume_flow_indicator",
-    "volume_zone_oscillator",
-    "volume_price_confirmation",
-    "market_facilitation",
-];
+pub const PENDING: &[&str] = &[];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("pvt"),
@@ -66,6 +61,10 @@ pub const COVERAGE: &[Coverage] = &[
     },
     Coverage::full("money_flow_profile"),
     Coverage::full("tpo_profile"),
+    Coverage::full("volume_flow_indicator"),
+    Coverage::full("volume_zone_oscillator"),
+    Coverage::full("volume_price_confirmation"),
+    Coverage::full("market_facilitation"),
     Coverage::full("volume"),
     Coverage {
         indicator: "rvol",
@@ -541,4 +540,185 @@ fn tpo_profile_rejects_invalid_configuration() {
     assert_rejected("tpo_profile", &[("num_bins", 0.0)]);
     assert_rejected("tpo_profile", &[("lookback", 2.5)]);
     assert_rejected("tpo_profile", &[("bins", 10.0)]);
+}
+
+// --- volume_flow_indicator ---------------------------------------------------
+
+#[test]
+fn volume_flow_indicator_defaults() {
+    assert_holds(&case(
+        "volume_flow_indicator_defaults",
+        "volume_flow_indicator",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_flow_indicator_short() {
+    assert_holds(&case(
+        "volume_flow_indicator_short",
+        "volume_flow_indicator",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_flow_indicator_no_cutoff() {
+    assert_holds(&case(
+        "volume_flow_indicator_no_cutoff",
+        "volume_flow_indicator",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_flow_indicator_zero_volume() {
+    assert_holds(&case(
+        "volume_flow_indicator_zero_volume",
+        "volume_flow_indicator",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_flow_indicator_high_level() {
+    assert_holds(&case(
+        "volume_flow_indicator_high_level",
+        "volume_flow_indicator",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_flow_indicator_rejects_invalid_configuration() {
+    assert_rejected("volume_flow_indicator", &[("period", 1.0)]);
+    assert_rejected("volume_flow_indicator", &[("period", 2.5)]);
+    assert_rejected("volume_flow_indicator", &[("coef", -0.1)]);
+    assert_rejected("volume_flow_indicator", &[("coef", 10.5)]);
+    assert_rejected("volume_flow_indicator", &[("vcoef", 0.0)]);
+    assert_rejected("volume_flow_indicator", &[("vcoef", 101.0)]);
+    assert_rejected("volume_flow_indicator", &[("smoothing", 0.0)]);
+    assert_rejected("volume_flow_indicator", &[("lookback", 5.0)]);
+}
+
+// --- volume_zone_oscillator --------------------------------------------------
+
+#[test]
+fn volume_zone_oscillator_defaults() {
+    assert_holds(&case(
+        "volume_zone_oscillator_defaults",
+        "volume_zone_oscillator",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn volume_zone_oscillator_one() {
+    assert_holds(&case(
+        "volume_zone_oscillator_one",
+        "volume_zone_oscillator",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn volume_zone_oscillator_five() {
+    assert_holds(&case(
+        "volume_zone_oscillator_five",
+        "volume_zone_oscillator",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn volume_zone_oscillator_rejects_invalid_configuration() {
+    assert_rejected("volume_zone_oscillator", &[("period", 0.0)]);
+    assert_rejected("volume_zone_oscillator", &[("period", 1.5)]);
+    assert_rejected("volume_zone_oscillator", &[("length", 14.0)]);
+}
+
+// --- volume_price_confirmation -----------------------------------------------
+
+#[test]
+fn volume_price_confirmation_defaults() {
+    assert_holds(&case(
+        "volume_price_confirmation_defaults",
+        "volume_price_confirmation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_price_confirmation_small() {
+    assert_holds(&case(
+        "volume_price_confirmation_small",
+        "volume_price_confirmation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_price_confirmation_minimal() {
+    assert_holds(&case(
+        "volume_price_confirmation_minimal",
+        "volume_price_confirmation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_price_confirmation_zero_volume() {
+    assert_holds(&case(
+        "volume_price_confirmation_zero_volume",
+        "volume_price_confirmation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_price_confirmation_high_level() {
+    assert_holds(&case(
+        "volume_price_confirmation_high_level",
+        "volume_price_confirmation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn volume_price_confirmation_rejects_invalid_configuration() {
+    assert_rejected("volume_price_confirmation", &[("short", 20.0)]);
+    assert_rejected("volume_price_confirmation", &[("short", 25.0)]);
+    assert_rejected("volume_price_confirmation", &[("short", 0.0)]);
+    assert_rejected(
+        "volume_price_confirmation",
+        &[("long", 1.0), ("short", 1.0)],
+    );
+    assert_rejected("volume_price_confirmation", &[("smoothing", 0.0)]);
+    assert_rejected("volume_price_confirmation", &[("smoothing", 2.5)]);
+    assert_rejected("volume_price_confirmation", &[("window", 5.0)]);
+}
+
+// --- market_facilitation -----------------------------------------------------
+
+#[test]
+fn market_facilitation_shaped() {
+    assert_holds(&case(
+        "market_facilitation_shaped",
+        "market_facilitation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn market_facilitation_edges() {
+    assert_holds(&case(
+        "market_facilitation_edges",
+        "market_facilitation",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn market_facilitation_rejects_invalid_configuration() {
+    assert_rejected("market_facilitation", &[("period", 1.0)]);
 }

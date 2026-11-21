@@ -27,6 +27,8 @@ Conventions the type documentation leaves open, assumed here (each also named at
   the catalog default 60 the declared warmup (1441 bars) cannot equal the first output of a
   15-minute series. A comparison day is a calendar day among the previous `days` days.
 - `money_flow_profile`: crosses use the crate's crossing tolerance (`contract_pilot`).
+- `market_facilitation` publishes its state (`green`, `fade`, `fake`, `squat`, `neutral`) in the
+  `state` column of the table; every volume oscillator comes from `kestrel_reference.volume_oscillators`.
 - Unknown volume (`NaN`) is used only where the type documents it (`rvol`, `obv`, `cmf`).
 """
 
@@ -37,6 +39,7 @@ from ..fixture import provenance, render_contract
 from ..indicators import clamp
 from ..smoothing import ema_first_sample
 from ..tpo_profile import compute as tpo_compute
+from ..volume_oscillators import compute as oscillator_compute
 from .contract_pilot import case_block, crossed_over, crossed_under
 from .volume import (_acc_dist, _cmf, _cvd, _force_index, _hires_flow, _klinger,
                      _money_flow_profile, _persistent_poc, _price_volume_trend, _profile,
@@ -511,6 +514,86 @@ def tpo_cases():
     ]
 
 
+def oscillator_case(name, bars, **params):
+    """One of the four volume oscillators, from `kestrel_reference.volume_oscillators`. The state
+    of `market_facilitation` leaves the extras and is written as the `state` of the output."""
+    params = {key: float(value) for key, value in params.items()}
+    rows = oscillator_compute(name, params, bars)
+    states = {}
+    expected = []
+    for i, (output, alerts) in enumerate(rows, start=1):
+        if output is not None and "state" in output[1]:
+            extra = dict(output[1])
+            states[i] = extra.pop("state")
+            output = (output[0], extra)
+        expected.append((output, alerts))
+    return params, bars, expected, states
+
+
+def oscillator_block(name, comment, case):
+    params, bars, expected, states = case
+    block = case_block(name, comment, params, bars, expected)
+    for i, state in states.items():
+        block[2][f"out{i}_state"] = state
+    return block
+
+
+def oscillator_cases():
+    level = 1e8
+    # Quiet bars between active ones: the volume of bars 40..46 is zero, so a period of 3 sees an
+    # average volume of zero from bar 44 on.
+    stretch = with_volume(shaped(60, 211), {i: 0.0 for i in range(39, 46)})
+    stretch_close = with_close(with_volume(shaped(24, 223), {7: 0.0, 8: 0.0, 9: 0.0}),
+                               {10: 100.0, 11: 100.0, 12: 100.0})
+    equal_volume = with_volume(shaped(40, 229), {10: 700.0, 11: 700.0, 20: 0.0, 21: 0.0, 22: 800.0})
+    twin = [(10.0, 11.0, 9.0, 10.0, 500.0)] * 2
+    return [
+        ("volume_flow_indicator_defaults", "VFI with the catalog defaults (130, 0.2, 2.5, 3) over "
+         "300 bars", oscillator_case("volume_flow_indicator", shaped(300, 201))),
+        ("volume_flow_indicator_short", "VFI (period 2, smoothing 1): the line is the raw ratio",
+         oscillator_case("volume_flow_indicator", shaped(70, 203), period=2, smoothing=1)),
+        ("volume_flow_indicator_no_cutoff", "VFI (period 5, coef 0, vcoef 1): no cutoff, volume "
+         "capped at the average",
+         oscillator_case("volume_flow_indicator", shaped(80, 207), period=5, coef=0, vcoef=1,
+                         smoothing=2)),
+        ("volume_flow_indicator_zero_volume", "VFI (period 3, smoothing 2): seven bars without "
+         "volume leave the raw ratio unpublished while the average volume is zero",
+         oscillator_case("volume_flow_indicator", stretch, period=3, smoothing=2)),
+        ("volume_flow_indicator_high_level", "VFI (period 5) at a price level around 1e8",
+         oscillator_case("volume_flow_indicator", shaped(70, 211, start=level), period=5,
+                         smoothing=2)),
+        ("volume_zone_oscillator_defaults", "VZO with the catalog default (period 14)",
+         oscillator_case("volume_zone_oscillator", shaped(80, 213))),
+        ("volume_zone_oscillator_one", "VZO(1): equal closes count as zero, zero volume leaves "
+         "no value",
+         oscillator_case("volume_zone_oscillator", stretch_close, period=1)),
+        ("volume_zone_oscillator_five", "VZO(5) over shaped bars with equal closes",
+         oscillator_case("volume_zone_oscillator", stretch_close + shaped(30, 227), period=5)),
+        ("volume_price_confirmation_defaults", "VPCI with the catalog defaults (5, 20, 20)",
+         oscillator_case("volume_price_confirmation", shaped(120, 231))),
+        ("volume_price_confirmation_small", "VPCI (2, 3, 2): short window of two bars",
+         oscillator_case("volume_price_confirmation", shaped(40, 233), short=2, long=3,
+                         smoothing=2)),
+        ("volume_price_confirmation_minimal", "VPCI (1, 2, 1): the signal is the value itself",
+         oscillator_case("volume_price_confirmation", shaped(30, 237), short=1, long=2,
+                         smoothing=1)),
+        ("volume_price_confirmation_zero_volume", "VPCI (2, 4, 3): a stretch without volume leaves "
+         "bars unpublished while either window has no volume",
+         oscillator_case("volume_price_confirmation",
+                         with_volume(shaped(40, 239), {i: 0.0 for i in range(12, 19)}),
+                         short=2, long=4, smoothing=3)),
+        ("volume_price_confirmation_high_level", "VPCI (3, 8, 4) at a price level around 1e8: the "
+         "difference of the two means keeps its precision",
+         oscillator_case("volume_price_confirmation", shaped(60, 241, start=level), short=3,
+                         long=8, smoothing=4)),
+        ("market_facilitation_shaped", "Market facilitation: all four states over shaped bars",
+         oscillator_case("market_facilitation", shaped(60, 251))),
+        ("market_facilitation_edges", "Market facilitation: equal volume and an equal index are "
+         "neutral, zero volume leaves no value and restarts the state",
+         oscillator_case("market_facilitation", twin + equal_volume)),
+    ]
+
+
 def cases():
     base = shaped(40, 7)
     spikes = with_volume(base, {24: 9000.0, 31: 6000.0, 35: 4000.0})
@@ -622,4 +705,5 @@ def build():
         "Format: see contract_pilot. Assumed conventions: see the module docstring.",
     ]
     blocks = [case_block(name, comment, *case) for name, comment, case in cases() + tpo_cases()]
+    blocks += [oscillator_block(name, comment, case) for name, comment, case in oscillator_cases()]
     return header, blocks

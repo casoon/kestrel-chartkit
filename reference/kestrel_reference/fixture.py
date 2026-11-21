@@ -30,8 +30,8 @@ def render_contract(header, blocks):
     `blocks` are `case_block` results. The scalar keys (`tolerance`, `bars`, `param_*`) stay
     `<case>_<key>=<value>` lines; the per-bar keys become a table headed
     `@<case> open high low close volume <columns...>`, one row per bar, `-` where a column has no
-    value on that bar. Columns: `value`, `secondary`, `extra:<field>` and `alert:<kind>`, each only
-    if it occurs in the case.
+    value on that bar. Columns: `value`, `secondary`, `state` (text), `extra:<field>` and
+    `alert:<kind>`, each only if it occurs in the case.
     """
     lines = [f"# {line}".rstrip() for line in header]
     for name, comment, case in blocks:
@@ -58,6 +58,7 @@ def render_contract(header, blocks):
             rows.setdefault(index, {})[column] = value
         order = (["value"] if "value" in columns else []) + \
                 (["secondary"] if "secondary" in columns else []) + \
+                (["state"] if "state" in columns else []) + \
                 sorted(c for c in columns if c.startswith("extra:")) + \
                 sorted(c for c in columns if c.startswith("alert:"))
         assert set(order) == columns, (name, columns - set(order))
@@ -65,7 +66,8 @@ def render_contract(header, blocks):
         lines.append(f"@{name} " + " ".join(head))
         for index in range(1, int(case["bars"]) + 1):
             row = rows[index]
-            lines.append(" ".join(repr(row[c]) if c in row else "-" for c in head))
+            lines.append(" ".join("-" if c not in row else row[c] if c == "state" else repr(row[c])
+                                  for c in head))
     return "\n".join(lines) + "\n"
 
 
