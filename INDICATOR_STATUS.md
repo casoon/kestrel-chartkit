@@ -135,7 +135,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | volume_zone_oscillator | ✅ |
 | volume_price_confirmation | ✅ |
 | market_facilitation | ✅ |
-| true_range_money_flow | ❌ |
+| true_range_money_flow | ✅ |
 | acc_dist | ✅ |
 | anchored_vwap | ✅ |
 | cmf | ✅ |
@@ -252,4 +252,4 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 184/196 verified** — the same 196 names `catalog()` returns.
+**Total: 185/196 verified** — the same 196 names `catalog()` returns.

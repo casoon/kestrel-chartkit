@@ -686,7 +686,7 @@ pub const TRUE_RANGE_MONEY_FLOW_DEFINITION: IndicatorDefinition = IndicatorDefin
         .bounded(-1.0, 1.0)
         .needs_real_volume()
         .range_dependent(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(TrueRangeMoneyFlow::new(
             p.count("period"),
