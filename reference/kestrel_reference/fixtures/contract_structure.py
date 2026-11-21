@@ -718,15 +718,79 @@ def trendline_bars(mirrored=False):
     return bars
 
 
-def trendlines(depth, backstep, deviation_pct, atr_len, tolerance_atr, bars):
-    """Values from `structure.trendlines` (the rule documented on `indicator::trendlines`, time
-    counted in bars): the number of lines as value, every extra field, the break alerts."""
+# Series of the trendline cases besides `trendline_bars`:
+#
+# - `TOLERANCE_CENTRES`: every bar is [centre - 1, centre + 1] with the close at the centre and
+#   the previous close inside the range, so every true range is 2 and the ATR(4) is exactly 2: a
+#   tolerance of 0.25 ATR is exactly 0.5. The lows at bars 4 and 18 (1-based; 100) make a flat
+#   support line at 100, so a touch exactly at the tolerance (bar 36, low 100.5), a close exactly
+#   on the line (bar 38) and a break (bar 39, close 99.75) are exact in floating point.
+# - `repaint_bars`: lows and highs that a more extreme one of the same kind replaces before the
+#   opposite swing confirms them.
+# - `irregular_times`: timestamps that are not evenly spaced.
+
+TOLERANCE_CENTRES = [
+    102, 102, 101.5, 101, 101.5, 102.5, 103.5, 104.5, 105.5, 106.5, 107.0, 106.0, 105.0, 104.0,
+    103.0, 102.0, 101.5, 101.0, 102.0, 103.0, 104.0, 105.0, 105.5, 105.5, 104.5, 103.5, 102.75,
+    101.75, 101.0, 102.0, 103.0, 104.0, 104.5, 103.5, 102.5, 101.5, 100.5, 100.0, 99.75, 99.0,
+    98.5, 98.5, 98.5,
+]
+
+
+def tolerance_bars(mirrored=False):
+    """Bars of `TOLERANCE_CENTRES` (high = centre + 1, low = centre - 1, open and close at the
+    centre); mirrored: every price negated."""
+    assert all(abs(b - a) <= 1.0 for a, b in zip(TOLERANCE_CENTRES, TOLERANCE_CENTRES[1:]))
+    bars = [(c, c + 1.0, c - 1.0, c, 1000.0) for c in TOLERANCE_CENTRES]
+    if mirrored:
+        bars = [(-o, -l, -h, -c, v) for o, h, l, c, v in bars]
+    return bars
+
+
+REPAINT_SEGMENTS = [(-1.0, 6), (1.0, 14), (-1.0, 10), (0.7, 4), (-1.0, 6), (1.0, 14), (-1.0, 10),
+                    (1.0, 8), (-0.7, 4), (1.0, 10), (-1.0, 10), (1.0, 4), (-1.0, 4), (1.0, 12)]
+
+
+def repaint_bars():
+    """A fall and a rise with 1 per bar, from 110: with a deviation of 4 % the low of bar 7
+    (103.3) is followed by a bounce of 14 bars to 118.5 that confirms it, a fall of 10 bars and a
+    bounce of 4 bars (too shallow to confirm a high) and a lower low 104.1 (bar 41) that takes the
+    place of the low 107.3 (bar 31) before the rise to 119.3 confirms it. On the way up from the
+    low 108.1 (bar 65) a shallow dip (3 bars of 0.7) follows the high 117.3 (bar 73), and the
+    higher high 124.5 (bar 87) replaces it before the fall that confirms it. The lines are
+    fixed on the repainted nodes: the anchors lie where the final nodes lie."""
+    return candles(path(110.0, REPAINT_SEGMENTS))
+
+
+def irregular_times(count, start=1700000400, seed=7):
+    """Timestamps in seconds: steps of 30, 60, 90 or 120 minutes, mostly an hour, and after every
+    24th bar a gap of 2 days on top, like a weekend (nothing trades on Saturday and Sunday).
+    Returns `count` strictly increasing integers."""
+    state, times, now = seed, [], start
+    steps = [3600, 3600, 3600, 1800, 5400, 7200]
+    for index in range(count):
+        state = (state * 1103515245 + 12345) % 2 ** 31
+        now += steps[(state >> 8) % len(steps)] + (172800 if index % 24 == 23 else 0)
+        times.append(now)
+    return times
+
+
+def trendlines(depth, backstep, deviation_pct, atr_len, tolerance_atr, bars, mode="percent",
+               times=None):
+    """Values from `structure.trendlines` (the rule documented on `indicator::trendlines`): the
+    number of lines as value, every extra field, the break alerts. `mode` "atr_multiple" reads
+    `deviation_pct` as a multiple of the ATR. A line is straight in time: `times` are the bar
+    timestamps in seconds (default: the case's 900 seconds apart), while `*_bars_back` count
+    bars. Returns the case and the times for `case_block`."""
+    atr_multiple = deviation_pct if mode == "atr_multiple" else None
     outputs = trendline_model([b[:4] for b in bars], depth, backstep, deviation_pct, atr_len,
-                              tolerance_atr)
+                              tolerance_atr, atr_multiple, times)
     expected = [(None, {}) if out is None else ((out[0], out[1]), out[2]) for out in outputs]
     params = {"depth": float(depth), "backstep": float(backstep), "deviation_pct": deviation_pct,
               "atr_len": float(atr_len), "tolerance_atr": tolerance_atr}
-    return params, bars, expected
+    if mode == "atr_multiple":
+        params["deviation_mode"] = 1.0
+    return params, bars, expected, times
 
 
 # --- zone_rejection --------------------------------------------------------------------------
@@ -1880,6 +1944,42 @@ def build():
         case_block("trendlines_mirrored",
                    "trendlines 3/2/1 %/14/0.25 on the negated series: support and resistance change places",
                    *trendlines(3, 2, 1.0, 14, 0.25, trendline_bars(mirrored=True))),
+        # Deviation in multiples of the ATR: 2.8 ATR leaves out the high 112 and the low 108, so
+        # the lines run through the highs 108 and 116 and the lows 100 and 103.5.
+        case_block("trendlines_atr_multiple",
+                   "trendlines 3/2/2.8 ATR/14/0.25: the ZigZag deviation in ATR multiples gives "
+                   "other nodes and so other lines than 1 %",
+                   *trendlines(3, 2, 2.8, 14, 0.25, trendline_bars(), "atr_multiple")),
+        case_block("trendlines_negated_atr_multiple",
+                   "trendlines 3/2/2.8 ATR/14/0.25 on the negated series",
+                   *trendlines(3, 2, 2.8, 14, 0.25, trendline_bars(mirrored=True),
+                               "atr_multiple")),
+        # ATR 2 and tolerance 0.5 exactly: the bar 36 touches by exactly the tolerance, the
+        # bar 28 (low 100.75) by more, bar 37 (low 99.5) from below; the close of bar 38 lies
+        # exactly on the line and breaks nothing, the close 99.75 of bar 39 does.
+        case_block("trendlines_tolerance_edge",
+                   "trendlines 2/1/2 %/4/0.25 over bars whose ATR is exactly 2: a flat support "
+                   "line at 100, a touch by exactly the tolerance, a close on the line, a break",
+                   *trendlines(2, 1, 2.0, 4, 0.25, tolerance_bars())),
+        case_block("trendlines_negated_tolerance_edge",
+                   "trendlines 2/1/2 %/4/0.25 on the negated series: a flat resistance line at -100",
+                   *trendlines(2, 1, 2.0, 4, 0.25, tolerance_bars(mirrored=True))),
+        case_block("trendlines_repaint",
+                   "trendlines 3/2/4 %/5/0.25 over a fall and a rise whose lows and highs are "
+                   "replaced by more extreme ones before they are confirmed: the anchors lie on "
+                   "the final nodes; both lines break",
+                   *trendlines(3, 2, 4.0, 5, 0.25, repaint_bars())),
+        case_block("trendlines_gapped_times",
+                   "trendlines 3/2/1 %/14/0.25 over the bars of trendlines_defaults at irregular "
+                   "timestamps with a gap of two days after every 24th bar: the lines are "
+                   "straight in time, not in the bar count",
+                   *trendlines(3, 2, 1.0, 14, 0.25, trendline_bars(),
+                               times=irregular_times(len(TRENDLINE_CLOSES)))),
+        case_block("trendlines_gapped_repaint",
+                   "trendlines 3/2/4 %/5/0.25 over the bars of trendlines_repaint at irregular "
+                   "timestamps with a gap of two days after every 24th bar",
+                   *trendlines(3, 2, 4.0, 5, 0.25, repaint_bars(),
+                               times=irregular_times(len(repaint_bars()), 1700003600, 11))),
         case_block("zone_rejection_defaults",
                    "zone_rejection 5/14/0.25/2/2: rejections at support and resistance, an outside bar, breaks",
                    *zone_rejection(5, 14, 0.25, 2.0, 2, rng)),

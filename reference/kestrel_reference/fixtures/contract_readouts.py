@@ -10,6 +10,9 @@ the first at 900.
 Conventions the documentation leaves open, assumed here:
 
 - None of these read-outs raises alerts.
+- The state label of `vwap_regime` (`slope_state`) and of `swing_structure` (`trend_quality`) is
+  written as the `state` of the output: strongly_falling, moderately_falling, flat,
+  moderately_rising, strongly_rising; weakening, stable, strengthening.
 """
 
 from ..fixture import provenance, render_contract
@@ -111,9 +114,20 @@ def opening_case(start, end, orb, offset, bars):
 
 
 def vwap_rows(bars, window, lookback):
-    """Per bar None or (VWAP, sigma, slope or None) of the rolling VWAP (the contract of `vwap`)."""
-    return [None if v[0] is None else (v[0][0], v[0][1]["sigma"], v[0][1].get("slope"))
-            for v in vwap_expected(bars, window, lookback)]
+    """Per bar None or (VWAP, sigma, slope or None) of the rolling VWAP (the contract of `vwap`).
+    A window whose bars with volume all have the same typical price has a sigma of exactly 0
+    (a window of one bar, a stretch of constant prices): the rounding left in the sum of squares
+    is no spread."""
+    rows = []
+    for i, v in enumerate(vwap_expected(bars, window, lookback)):
+        if v[0] is None:
+            rows.append(None)
+            continue
+        win = bars[max(0, i + 1 - window):i + 1]
+        typical = {(b[1] + b[2] + b[3]) / 3.0 for b in win if b[4] > 0.0}
+        sigma = 0.0 if len(typical) == 1 else v[0][1]["sigma"]
+        rows.append((v[0][0], sigma, v[0][1].get("slope")))
+    return rows
 
 
 def vwap_case(window, lookback, atr_len, regime_window, flat, strong, bars):
@@ -141,9 +155,9 @@ def vwap_case(window, lookback, atr_len, regime_window, flat, strong, bars):
 
 def _margin(readings, flat, strong):
     """No slope sits within a relative 1e-7 of a threshold: both implementations agree on the
-    state."""
+    state. A slope of exactly 0 is the documented exception: it is flat at every threshold."""
     for r in readings:
-        if r is None:
+        if r is None or r[2] == 0.0:
             continue
         for threshold in (flat, strong):
             assert abs(abs(r[2]) - threshold) > 1e-7 * max(1.0, threshold), "slope on a threshold"
@@ -158,11 +172,172 @@ def swing_case(left, right, max_swings, atr_len, bars):
     return params, bars, expected
 
 
+SLOPE_LABELS = {-2.0: "strongly_falling", -1.0: "moderately_falling", 0.0: "flat",
+                1.0: "moderately_rising", 2.0: "strongly_rising"}
+TREND_LABELS = {-1.0: "weakening", 0.0: "stable", 1.0: "strengthening"}
+
+
+def stated(block, field, labels):
+    """`block` with the `state` of every output that has the extra `field`, from `labels`."""
+    case = block[2]
+    for key in [k for k in case if k.endswith(f"_extra_{field}")]:
+        case[key.replace(f"_extra_{field}", "_state")] = labels[case[key]]
+    return block
+
+
+def vwap_block(name, comment, params, bars, expected):
+    return stated(case_block(name, comment, params, bars, expected), "slope_state", SLOPE_LABELS)
+
+
+def swing_block(name, comment, params, bars, expected):
+    return stated(case_block(name, comment, params, bars, expected), "trend_quality",
+                  TREND_LABELS)
+
+
+def exact_bars(tps, closes, volume=1000.0):
+    """Bars on a 0.25 grid whose typical price is exactly `tps[i]` and whose close is `closes[i]`:
+    the high and the low lie symmetrically about (3 tp - close) / 2, a quarter beyond the close,
+    so every sum a window of two bars forms is exact in floating point."""
+    bars = []
+    for tp, close in zip(tps, closes):
+        middle = (3.0 * tp - close) / 2.0
+        reach = abs(close - middle) + 0.5
+        assert (middle + reach + middle - reach + close) / 3.0 == tp
+        bars.append((tp, middle + reach, middle - reach, close, volume))
+    return bars
+
+
+def mirror_bars(bars, level=200.0):
+    """The same series reflected about `level`: highs and lows change places."""
+    return [(level - o, level - l, level - h, level - c, v) for o, h, l, c, v in bars]
+
+
+# Typical prices of a window of two bars; the close lies `ON_VWAP_OFFSETS[i]` above the mean of
+# the typical prices of the bar and the one before (the first bar: its own typical price). A bar
+# with offset 0 closes exactly on its VWAP; its neighbours lie above, below or on the same side.
+ON_VWAP_TPS = [100, 101, 101, 102, 102, 102, 103, 102.5, 102.5, 102, 101, 101, 100.5, 100.5, 100,
+               100, 101, 102, 103, 103.25]
+ON_VWAP_OFFSETS = [0.5, 0, 0, -0.25, 0, 0.25, 0, 0.5, -0.25, 0, 0, 0.75, 0, -0.5, 0.25, 0, 0, -0.25,
+                   0.5, 0]
+
+
+def on_vwap_bars():
+    closes = [tp + off if i == 0 else (tp + ON_VWAP_TPS[i - 1]) / 2.0 + off
+              for i, (tp, off) in enumerate(zip(ON_VWAP_TPS, ON_VWAP_OFFSETS))]
+    return exact_bars(ON_VWAP_TPS, closes)
+
+
+def flat_slope_bars():
+    """Typical prices that stand still for a while: the VWAP of two bars, and so its slope over 2
+    bars, is exactly 0, and a step of a quarter makes it small and non-zero."""
+    tps = [100.0] * 8 + [100.25] * 6 + [100.0] * 6 + [100.5] * 5 + [100.0] * 5
+    return exact_bars(tps, tps)
+
+
+def constant_bars(count, price=100.0, volume=1000.0):
+    return [(price, price, price, price, volume)] * count
+
+
+def zero_volume(bars, start, end):
+    """`bars` with no volume from the 1-based bar `start` to bar `end`."""
+    return [b[:4] + (0.0,) if start <= i + 1 <= end else b for i, b in enumerate(bars)]
+
+
 def fvg_case(max_zones, bars):
     """Value: zones still open; extras: created, filled, open_bullish, open_bearish."""
     expected = [((r[0], {"created": r[1], "filled": r[2], "open_bullish": r[3],
                          "open_bearish": r[4]}), {}) for r in ro.fvg_fill(bars, max_zones)]
     return {"max_zones": float(max_zones)}, bars, expected
+
+
+def zigzag(segments, start=100.0):
+    return candles(path(start, segments))
+
+
+# Rises and falls of one per bar, a pivot at every turn (two bars each side): the turns are the
+# 1-based bars 7, 12, 19, 24, 30, 36, 44, 48, 54, 59 (0-based index + 1).
+TURNS_SEGMENTS = [(1.0, 6), (-1.0, 5), (1.0, 7), (-0.8, 5), (1.0, 6), (-1.0, 6), (1.0, 8),
+                  (-0.5, 4), (1.0, 6), (-1.0, 5)]
+TURNS = zigzag(TURNS_SEGMENTS)
+TURN_INDEX = [sum(n for _, n in TURNS_SEGMENTS[:k]) for k in range(len(TURNS_SEGMENTS) + 1)]
+
+
+def outside_bar(bars, index, close):
+    """The 0-based bar `index` made an outside bar: its high above and its low below every bar of
+    the window of two bars each side, opening in the middle and closing at `close` above (`up`)
+    or below (`down`) the open, or at the open (`doji`)."""
+    window = bars[max(0, index - 2):index + 3]
+    high = max(b[1] for b in window) + 1.0
+    low = min(b[2] for b in window) - 1.0
+    open_ = (high + low) / 2.0
+    closes = {"up": open_ + 0.5, "down": open_ - 0.5, "doji": open_}
+    return (open_, high, low, closes[close], bars[index][4])
+
+
+def with_outside(bars, edits):
+    """`bars` with the outside bars `{turn: close kind}`: turn k is the bar where the k-th
+    segment of `TURNS_SEGMENTS` ends."""
+    out = list(bars)
+    for turn, close in edits.items():
+        out[TURN_INDEX[turn]] = outside_bar(bars, TURN_INDEX[turn], close)
+    return out
+
+
+def with_levels(bars, edits):
+    """`bars` with the 0-based bar's high and/or low replaced: `{index: (high, low)}`, None keeps."""
+    out = list(bars)
+    for index, (high, low) in edits.items():
+        o, h, l, c, v = out[index]
+        out[index] = (o, h if high is None else high, l if low is None else low, c, v)
+    return out
+
+
+# The first pivot is an outside bar: no pivot before it, so the close against the open decides
+# which of its two pivots comes first (a close above the open: the low), and a close at the open
+# gives none at all.
+OUTSIDE_LOW_FIRST = with_outside(TURNS, {1: "up"})
+OUTSIDE_HIGH_FIRST = with_outside(TURNS, {1: "down"})
+OUTSIDE_DOJI = with_outside(TURNS, {1: "doji"})
+# Outside bars after pivots: at turn 3 a high (the pivot before is a low: the high first), at turn 4
+# and 6 lows (the pivot before is a high or, after the outside bar of turn 3, the low of that bar),
+# whatever they close at.
+OUTSIDE_LATER = with_outside(TURNS, {3: "up", 4: "down", 6: "up"})
+# Equal highs: the dip between the highs of turn 9 (bar 54) and 11 (bar 65) has two bars with the
+# same low, so neither is a pivot low; the two highs are equal and the earlier one stays. At turn 5
+# the two highest bars are equal, a flat top, which is no pivot.
+TIES_SEGMENTS = TURNS_SEGMENTS + [(1.0, 6), (-1.0, 5), (1.0, 6)]
+TIES_BARS = zigzag(TIES_SEGMENTS)
+TIES_TURNS = [sum(n for _, n in TIES_SEGMENTS[:k]) for k in range(len(TIES_SEGMENTS) + 1)]
+TIES_HIGHS = with_levels(TIES_BARS, {
+    TIES_TURNS[10] + 1: (None, TIES_BARS[TIES_TURNS[10]][2]),
+    TIES_TURNS[9]: (TIES_BARS[TIES_TURNS[11]][1], None),
+    TIES_TURNS[5] + 1: (TIES_BARS[TIES_TURNS[5]][1], None)})
+
+# Equal lows, the mirror image of the highs: the rise between the lows of turn 10 (bar 59) and 12
+# (bar 70) has two bars with the same high, the two lows are equal and the earlier one stays; the
+# series ends on a pivot high, so the newest impulse leg starts at the low that stays.
+TIES_LOW_SEGMENTS = TURNS_SEGMENTS + [(1.0, 6), (-1.0, 5), (1.0, 7), (-1.0, 2)]
+TIES_LOW_BARS = zigzag(TIES_LOW_SEGMENTS)
+TIES_LOW_TURNS = [sum(n for _, n in TIES_LOW_SEGMENTS[:k]) for k in range(len(TIES_LOW_SEGMENTS) + 1)]
+TIES_LOWS = with_levels(TIES_LOW_BARS, {
+    TIES_LOW_TURNS[11] + 1: (TIES_LOW_BARS[TIES_LOW_TURNS[11]][1], None),
+    TIES_LOW_TURNS[12]: (None, TIES_LOW_BARS[TIES_LOW_TURNS[10]][2]),
+    TIES_LOW_TURNS[5] + 1: (TIES_LOW_BARS[TIES_LOW_TURNS[5]][1], None)})
+
+
+def swing_mirror_case(left, right, max_swings, atr_len, bars):
+    """The case of `bars` reflected about 200. A reflected series gives the readings of the
+    original (they are distances in ATRs), which is asserted here."""
+    original = swing_case(left, right, max_swings, atr_len, bars)
+    mirrored = swing_case(left, right, max_swings, atr_len, mirror_bars(bars))
+    assert len(original[2]) == len(mirrored[2])
+    for (a, _), (b, _) in zip(original[2], mirrored[2]):
+        assert (a is None) == (b is None)
+        if a is not None:
+            assert a[1].keys() == b[1].keys()
+            assert all(abs(a[1][k] - b[1][k]) <= 1e-9 * max(1.0, abs(a[1][k])) for k in a[1])
+            assert abs(a[0] - b[0]) <= 1e-9 * max(1.0, abs(a[0]))
+    return mirrored
 
 
 FVG_HAND = [(10.0, 9.0), (11.0, 10.0), (13.0, 12.0), (14.0, 12.0), (16.0, 13.0), (18.0, 15.0),
@@ -209,10 +384,6 @@ def regime_walk(n, seed):
     return bars
 
 
-def zigzag(segments, start=100.0):
-    return candles(path(start, segments))
-
-
 FVG_WALK = regime_walk(300, 20261121)
 UNITS = ["second", "minute", "hour", "day", "week", "month"]
 DAYS = swing_bars(250)
@@ -244,6 +415,29 @@ CLIMB = path_bars([100.0 + i for i in range(40)], 0.5)
 ZIGZAG = path_bars([100.0 + (3.0 if i % 2 else 0.0) for i in range(40)], 0.5)
 
 
+def _vwap_mirror_guard():
+    """The reflected bars of `vwap_regime_on_vwap` read as the mirror image: distance, slope and
+    z_score negated, the VWAP reflected about 200, everything else the same, and bars on the VWAP
+    stay on it."""
+    args = (2, 2, 3, 5, 0.05, 0.20)
+    original = vwap_case(*args, on_vwap_bars())[2]
+    mirrored = vwap_case(*args, mirror_bars(on_vwap_bars()))[2]
+    assert any(o[0] is not None and o[0][0] == 0.0 for o in original)
+    for (a, _), (b, _) in zip(original, mirrored):
+        assert (a is None) == (b is None)
+        if a is None:
+            continue
+        (value, extra), (mirror, mirror_extra) = a, b
+        assert extra.keys() == mirror_extra.keys()
+        assert abs(value + mirror) < 1e-9
+        assert abs(extra["vwap"] + mirror_extra["vwap"] - 200.0) < 1e-9
+        for key in ("slope_atr", "slope_state", "z_score"):
+            if key in extra:
+                assert abs(extra[key] + mirror_extra[key]) < 1e-9
+        for key in ("cross_frequency", "price_persistence"):
+            assert extra[key] == mirror_extra[key]
+
+
 def _guard():
     """The touch case really has bars on the average (the model's own arithmetic, exact on whole
     numbers)."""
@@ -251,6 +445,7 @@ def _guard():
     on_average = [i for i in range(2, len(closes))
                   if closes[i] - sum(closes[i - 2:i + 1]) / 3 == 0.0]
     assert on_average, "TOUCH has no bar on its average"
+    _vwap_mirror_guard()
 
 
 def build():
@@ -376,34 +571,95 @@ def build():
                    "drift: gaps of both kinds", *defaults(fvg_case(20, FVG_WALK))),
         case_block("fvg_fill_walk_capped", "fvg_fill, newest 3 zones kept, over the same walk",
                    *fvg_case(3, FVG_WALK)),
-        case_block("vwap_regime_defaults", "vwap_regime, defaults (390, 20, 14, 20, 0.1, 0.3) over "
+        vwap_block("vwap_regime_defaults", "vwap_regime, defaults (390, 20, 14, 20, 0.1, 0.3) over "
                    "130 wave bars: from bar 21 (the slope), mostly a flat VWAP slope",
                    *defaults(vwap_case(390, 20, 14, 20, 0.1, 0.3, WAVE_VOLUME))),
-        case_block("vwap_regime_small", "vwap_regime, window 30, slope over 5 bars, ATR 5, regime "
+        vwap_block("vwap_regime_small", "vwap_regime, window 30, slope over 5 bars, ATR 5, regime "
                    "window 8, thresholds 0.02 / 0.10 over 130 wave bars: every slope state",
                    *vwap_case(30, 5, 5, 8, *VWAP_THRESHOLDS, WAVE_VOLUME)),
-        case_block("vwap_regime_no_volume", "vwap_regime over 60 wave bars whose first six carry "
+        vwap_block("vwap_regime_no_volume", "vwap_regime over 60 wave bars whose first six carry "
                    "no volume: no VWAP before bar 7", *vwap_case(20, 3, 4, 6, *VWAP_THRESHOLDS,
                                                                  NO_VOLUME_START)),
-        case_block("vwap_regime_flat", "vwap_regime over bars without range and a constant "
+        vwap_block("vwap_regime_flat", "vwap_regime over bars without range and a constant "
                    "close: the ATR is 0, so there is no output", *vwap_case(
                        5, 2, 3, 4, 0.02, 0.10, flat_bars(14, 100.0, 0.0))),
-        case_block("swing_structure_defaults", "swing_structure, defaults (5, 5, 50, 14) over the "
+        vwap_block("vwap_regime_on_vwap", "vwap_regime, window 2, slope over 2 bars, ATR 3, regime "
+                   "window 5, thresholds 0.05 / 0.20 over 20 bars on a 0.25 grid: nine closes lie "
+                   "exactly on the VWAP, counting on neither side and not breaking a run of "
+                   "crosses; a sigma of 0 on equal typical prices has no z_score",
+                   *vwap_case(2, 2, 3, 5, 0.05, 0.20, on_vwap_bars())),
+        vwap_block("vwap_regime_mirror_on_vwap", "vwap_regime over the bars of vwap_regime_on_vwap "
+                   "reflected about 200: every reading the mirror image (distance, slope, z_score "
+                   "negated, the VWAP reflected), the same cross_frequency and price_persistence",
+                   *vwap_case(2, 2, 3, 5, 0.05, 0.20, mirror_bars(on_vwap_bars()))),
+        vwap_block("vwap_regime_slope_zero", "vwap_regime, window 2, slope over 2 bars, ATR 3, "
+                   "regime window 4, flat threshold 0: a slope of exactly 0 is flat, the "
+                   "smallest step is moderate, a larger one strong",
+                   *vwap_case(2, 2, 3, 4, 0.0, 0.1, flat_slope_bars())),
+        vwap_block("vwap_regime_constant_start", "vwap_regime, window 6, slope over 2 bars, ATR 3, "
+                   "regime window 5 over 12 bars of one constant price and then 40 wave bars: the "
+                   "ATR is 0 and nothing is published until the first true range, then output "
+                   "resumes", *vwap_case(6, 2, 3, 5, *VWAP_THRESHOLDS,
+                                         constant_bars(12) + ps.wave_series(40))),
+        vwap_block("vwap_regime_constant_stretch", "vwap_regime, window 6, slope over 2 bars, ATR "
+                   "3, regime window 5 over 30 wave bars, 30 bars of one constant price and 30 "
+                   "wave bars: the ATR only decays, so every bar publishes; once the window holds "
+                   "only the constant price its sigma is 0 (no z_score) and the slope flat",
+                   *vwap_case(6, 2, 3, 5, *VWAP_THRESHOLDS,
+                              ps.wave_series(30) + constant_bars(30) + ps.wave_series(30))),
+        vwap_block("vwap_regime_window_one", "vwap_regime with a window of 1 over 60 wave bars: "
+                   "the VWAP is the typical price, its sigma is always 0 and there is no z_score",
+                   *vwap_case(1, 3, 4, 5, *VWAP_THRESHOLDS, ps.wave_series(60))),
+        vwap_block("vwap_regime_volume_gap", "vwap_regime, window 8, slope over 3 bars, ATR 4, "
+                   "regime window 6 over 90 wave bars without volume from bar 31 to bar 50: the "
+                   "window loses its volume on bar 38 (no output), the VWAP history and the "
+                   "regime window wait and go on from bar 51",
+                   *vwap_case(8, 3, 4, 6, *VWAP_THRESHOLDS,
+                              zero_volume(ps.wave_series(90), 31, 50))),
+        swing_block("swing_structure_defaults", "swing_structure, defaults (5, 5, 50, 14) over the "
                    "staircase of five rising, six falling and three rising swings: every turn "
                    "a pivot", *defaults(swing_case(5, 5, 50, 14, structure_wave()))),
-        case_block("swing_structure_strengthening", "swing_structure (2, 2, 50, 5) over a rise "
+        swing_block("swing_structure_strengthening", "swing_structure (2, 2, 50, 5) over a rise "
                    "whose corrections shrink: strengthening", *swing_case(2, 2, 50, 5,
                                                                           STRENGTHENING)),
-        case_block("swing_structure_weakening", "swing_structure (2, 2, 50, 5) over a rise whose "
+        swing_block("swing_structure_weakening", "swing_structure (2, 2, 50, 5) over a rise whose "
                    "corrections grow: weakening", *swing_case(2, 2, 50, 5, WEAKENING)),
-        case_block("swing_structure_falling", "swing_structure (2, 2, 50, 5) over a fall whose "
+        swing_block("swing_structure_falling", "swing_structure (2, 2, 50, 5) over a fall whose "
                    "corrections shrink: the trend is down, the rises are the corrections",
                    *swing_case(2, 2, 50, 5, FALLING)),
-        case_block("swing_structure_capped", "swing_structure (2, 2, 4, 5) over a staircase: only "
+        swing_block("swing_structure_capped", "swing_structure (2, 2, 4, 5) over a staircase: only "
                    "the newest four legs count, the pivot list is cut to twelve",
                    *swing_case(2, 2, 4, 5, STAIRCASE)),
-        case_block("swing_structure_flat", "swing_structure over bars without range: the ATR is "
+        swing_block("swing_structure_flat", "swing_structure over bars without range: the ATR is "
                    "0, nothing is detected, no output", *swing_case(2, 2, 50, 3,
                                                                     flat_bars(30, 100.0, 0.0))),
+        swing_block("swing_structure_outside_low_first", "swing_structure (2, 2, 50, 5) over a "
+                    "staircase whose first pivot is an outside bar closing above its open: its "
+                    "low comes first", *swing_case(2, 2, 50, 5, OUTSIDE_LOW_FIRST)),
+        swing_block("swing_structure_outside_high_first", "swing_structure (2, 2, 50, 5) over the "
+                    "same staircase with the first outside bar closing below its open: its high "
+                    "comes first", *swing_case(2, 2, 50, 5, OUTSIDE_HIGH_FIRST)),
+        swing_block("swing_structure_outside_doji", "swing_structure (2, 2, 50, 5) over the same "
+                    "staircase with the first outside bar closing at its open: neither pivot "
+                    "counts", *swing_case(2, 2, 50, 5, OUTSIDE_DOJI)),
+        swing_block("swing_structure_outside_later", "swing_structure (2, 2, 50, 5) over the same "
+                    "staircase with outside bars at the third, fourth and sixth turn: the order "
+                    "of an outside bar's two pivots follows the pivot before it",
+                    *swing_case(2, 2, 50, 5, OUTSIDE_LATER)),
+        swing_block("swing_structure_ties_highs", "swing_structure (2, 2, 50, 5): a flat top is "
+                    "no pivot, two equal highs with no pivot low between them leave the earlier "
+                    "one standing", *swing_case(2, 2, 50, 5, TIES_HIGHS)),
+        swing_block("swing_structure_ties_lows", "swing_structure (2, 2, 50, 5): a flat top is "
+                    "no pivot, two equal lows with no pivot high between them leave the earlier "
+                    "one standing", *swing_case(2, 2, 50, 5, TIES_LOWS)),
+        swing_block("swing_structure_mirror_ties", "swing_structure over the bars of "
+                    "swing_structure_ties_highs reflected about 200: the same readings",
+                    *swing_mirror_case(2, 2, 50, 5, TIES_HIGHS)),
+        swing_block("swing_structure_mirror_outside_later", "swing_structure over the bars of "
+                    "swing_structure_outside_later reflected about 200: the same readings",
+                    *swing_mirror_case(2, 2, 50, 5, OUTSIDE_LATER)),
+        swing_block("swing_structure_mirror_outside_low_first", "swing_structure over the bars of "
+                    "swing_structure_outside_low_first reflected about 200: the same readings",
+                    *swing_mirror_case(2, 2, 50, 5, OUTSIDE_LOW_FIRST)),
     ]
     return header, blocks

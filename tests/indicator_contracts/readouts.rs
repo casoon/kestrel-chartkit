@@ -499,17 +499,99 @@ fn vwap_regime_flat() {
 }
 
 #[test]
+fn vwap_regime_on_vwap() {
+    assert_holds(&case(
+        "vwap_regime_on_vwap",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_mirror_on_vwap() {
+    assert_holds(&case(
+        "vwap_regime_mirror_on_vwap",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_slope_zero() {
+    assert_holds(&case(
+        "vwap_regime_slope_zero",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_constant_start() {
+    assert_holds(&case(
+        "vwap_regime_constant_start",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_constant_stretch() {
+    assert_holds(&case(
+        "vwap_regime_constant_stretch",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_window_one() {
+    assert_holds(&case(
+        "vwap_regime_window_one",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn vwap_regime_volume_gap() {
+    assert_holds(&case(
+        "vwap_regime_volume_gap",
+        "kestrel_vwap_regime",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
 fn vwap_regime_rejects_invalid_configuration() {
     assert_rejected("kestrel_vwap_regime", &[("window", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("window", 10001.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("window", 2.5)]);
+    assert_rejected("kestrel_vwap_regime", &[("window", f64::NAN)]);
     assert_rejected("kestrel_vwap_regime", &[("slope_lookback", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("slope_lookback", 10001.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("slope_lookback", -1.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("atr_len", 0.0)]);
     assert_rejected("kestrel_vwap_regime", &[("atr_len", 2.5)]);
+    assert_rejected("kestrel_vwap_regime", &[("atr_len", 10001.0)]);
     assert_rejected("kestrel_vwap_regime", &[("regime_window", 0.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("regime_window", 10001.0)]);
+    assert_rejected("kestrel_vwap_regime", &[("regime_window", 1.5)]);
     assert_rejected("kestrel_vwap_regime", &[("flat_threshold", -0.1)]);
+    assert_rejected("kestrel_vwap_regime", &[("flat_threshold", f64::NAN)]);
+    assert_rejected("kestrel_vwap_regime", &[("strong_threshold", -0.1)]);
+    assert_rejected("kestrel_vwap_regime", &[("strong_threshold", 1000.5)]);
+    assert_rejected("kestrel_vwap_regime", &[("strong_threshold", f64::NAN)]);
     // The flat threshold lies below the strong one.
     assert_rejected(
         "kestrel_vwap_regime",
         &[("flat_threshold", 0.3), ("strong_threshold", 0.3)],
     );
+    assert_rejected(
+        "kestrel_vwap_regime",
+        &[("flat_threshold", 0.5), ("strong_threshold", 0.3)],
+    );
+    assert_rejected("kestrel_vwap_regime", &[("flat_threshold", 0.5)]);
+    assert_rejected("kestrel_vwap_regime", &[("strong_threshold", 0.05)]);
     assert_rejected("kestrel_vwap_regime", &[("len", 14.0)]);
 }
 
@@ -570,12 +652,101 @@ fn swing_structure_flat() {
 }
 
 #[test]
+fn swing_structure_outside_low_first() {
+    assert_holds(&case(
+        "swing_structure_outside_low_first",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_outside_high_first() {
+    assert_holds(&case(
+        "swing_structure_outside_high_first",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_outside_doji() {
+    assert_holds(&case(
+        "swing_structure_outside_doji",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_outside_later() {
+    assert_holds(&case(
+        "swing_structure_outside_later",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_ties_highs() {
+    assert_holds(&case(
+        "swing_structure_ties_highs",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_ties_lows() {
+    assert_holds(&case(
+        "swing_structure_ties_lows",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_mirror_ties() {
+    assert_holds(&case(
+        "swing_structure_mirror_ties",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_mirror_outside_later() {
+    assert_holds(&case(
+        "swing_structure_mirror_outside_later",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn swing_structure_mirror_outside_low_first() {
+    assert_holds(&case(
+        "swing_structure_mirror_outside_low_first",
+        "kestrel_swing_structure",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
 fn swing_structure_rejects_invalid_configuration() {
     assert_rejected("kestrel_swing_structure", &[("left", 0.0)]);
-    assert_rejected("kestrel_swing_structure", &[("right", 0.0)]);
-    assert_rejected("kestrel_swing_structure", &[("max_swings", 3.0)]);
-    assert_rejected("kestrel_swing_structure", &[("atr_len", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("left", 1001.0)]);
     assert_rejected("kestrel_swing_structure", &[("left", 2.5)]);
+    assert_rejected("kestrel_swing_structure", &[("left", f64::NAN)]);
+    assert_rejected("kestrel_swing_structure", &[("right", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("right", 1001.0)]);
+    assert_rejected("kestrel_swing_structure", &[("right", -1.0)]);
+    assert_rejected("kestrel_swing_structure", &[("max_swings", 3.0)]);
+    assert_rejected("kestrel_swing_structure", &[("max_swings", 1001.0)]);
+    assert_rejected("kestrel_swing_structure", &[("max_swings", 4.5)]);
+    assert_rejected("kestrel_swing_structure", &[("atr_len", 0.0)]);
+    assert_rejected("kestrel_swing_structure", &[("atr_len", 10001.0)]);
+    assert_rejected("kestrel_swing_structure", &[("atr_len", 2.5)]);
     assert_rejected("kestrel_swing_structure", &[("len", 14.0)]);
 }
 

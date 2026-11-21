@@ -548,12 +548,90 @@ fn trendlines_mirrored() {
 }
 
 #[test]
+fn trendlines_atr_multiple() {
+    holds(
+        "trendlines_atr_multiple",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn trendlines_negated_atr_multiple() {
+    holds(
+        "trendlines_negated_atr_multiple",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn trendlines_tolerance_edge() {
+    holds(
+        "trendlines_tolerance_edge",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn trendlines_negated_tolerance_edge() {
+    holds(
+        "trendlines_negated_tolerance_edge",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn trendlines_repaint() {
+    holds("trendlines_repaint", "trendlines", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendlines_gapped_times() {
+    holds(
+        "trendlines_gapped_times",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn trendlines_gapped_repaint() {
+    holds(
+        "trendlines_gapped_repaint",
+        "trendlines",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
 fn trendlines_rejects_invalid_configuration() {
     assert_rejected("trendlines", &[("depth", 0.0)]);
+    assert_rejected("trendlines", &[("depth", 10001.0)]);
+    assert_rejected("trendlines", &[("depth", 2.5)]);
+    assert_rejected("trendlines", &[("backstep", -1.0)]);
+    assert_rejected("trendlines", &[("backstep", 10001.0)]);
+    assert_rejected("trendlines", &[("backstep", 1.5)]);
     assert_rejected("trendlines", &[("deviation_pct", 0.0)]);
+    assert_rejected("trendlines", &[("deviation_pct", 0.0005)]);
+    assert_rejected("trendlines", &[("deviation_pct", f64::NAN)]);
+    // In percent the deviation ends at 100, in ATR multiples at 1000.
+    assert_rejected("trendlines", &[("deviation_pct", 100.5)]);
+    assert_rejected(
+        "trendlines",
+        &[("deviation_mode", 1.0), ("deviation_pct", 1000.5)],
+    );
     assert_rejected("trendlines", &[("atr_len", 0.0)]);
+    assert_rejected("trendlines", &[("atr_len", 10001.0)]);
+    assert_rejected("trendlines", &[("atr_len", 2.5)]);
     assert_rejected("trendlines", &[("tolerance_atr", -0.1)]);
+    assert_rejected("trendlines", &[("tolerance_atr", 100.5)]);
+    assert_rejected("trendlines", &[("tolerance_atr", f64::NAN)]);
     assert_rejected("trendlines", &[("deviation_mode", 2.0)]);
+    assert_rejected("trendlines", &[("deviation_mode", 0.5)]);
+    assert_rejected("trendlines", &[("deviation_mode", -1.0)]);
     assert_rejected("trendlines", &[("tolerance", 0.25)]);
 }
 

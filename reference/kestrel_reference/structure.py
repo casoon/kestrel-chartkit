@@ -189,10 +189,12 @@ def wilder_atr(bars, length):
     return values
 
 
-def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr_mult=None):
+def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr_mult=None,
+               times=None):
     """Support and resistance line through confirmed ZigZag nodes, as documented on
-    `indicator::trendlines`. Time is the bar index. Returns per bar `None` or
-    `(value, extra, alerts)`.
+    `indicator::trendlines`. Time is the bar's timestamp, `times[i]` (the bar index if `times` is
+    None): a line is straight in time and its slope is per time unit, while `*_bars_back` count
+    bars. Returns per bar `None` or `(value, extra, alerts)`.
 
     Per side a segment of the nodes confirmed since the line last broke, beginning with a node of
     the side's kind (lows for support). A newly confirmed node of the kind fixes the line through
@@ -210,9 +212,12 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
     state = {"support": {"segment": [], "line": None}, "resistance": {"segment": [], "line": None}}
     outputs = []
 
+    clock = list(range(len(bars))) if times is None else times
+
     def at_time(line, time):
         a, c = line["a"], line["c"]
-        return a["price"] + (c["price"] - a["price"]) / (c["bar"] - a["bar"]) * (time - a["bar"])
+        return a["price"] + (c["price"] - a["price"]) / (clock[c["bar"]] - clock[a["bar"]]) \
+            * (time - clock[a["bar"]])
 
     for t, (_, high, low, close) in enumerate(bars):
         atr = atrs[t]
@@ -238,23 +243,23 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                 for a in kind[:-1]:
                     line = {"a": a, "c": node}
                     inner = [k for k in kind if a["bar"] < k["bar"] < node["bar"]]
-                    if all(sign * (k["price"] - at_time(line, k["bar"])) >= -tolerance
+                    if all(sign * (k["price"] - at_time(line, clock[k["bar"]])) >= -tolerance
                            for k in inner):
                         break
                 del segment[:segment.index(a)]
                 kind = [k for k in segment if k["is_high"] == wants_high]
                 line.update(nodes=len(kind), touches=0,
                             node_touches=sum(1 for k in kind
-                                             if abs(k["price"] - at_time(line, k["bar"])) <= tolerance))
+                                             if abs(k["price"] - at_time(line, clock[k["bar"]])) <= tolerance))
                 side["line"] = line
                 formed = True
             line = side["line"]
             if line is None:
                 continue
-            others = [sign * (k["price"] - at_time(line, k["bar"]))
+            others = [sign * (k["price"] - at_time(line, clock[k["bar"]]))
                       for k in side["segment"] if k["is_high"] != wants_high]
             width = max(others) if others and max(others) > 0.0 else None
-            value = at_time(line, t)
+            value = at_time(line, clock[t])
             extreme = high if wants_high else low
             touch = abs(extreme - value) <= tolerance
             broke = close > value if wants_high else close < value

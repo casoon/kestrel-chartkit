@@ -200,14 +200,18 @@ def order_block_case():
 
 # --- Rendering -------------------------------------------------------------------------------
 
-def case_block(name, comment, params, bars, expected):
+def case_block(name, comment, params, bars, expected, times=None):
+    """A case; `times` are the bar timestamps in seconds, by default 900 apart from 900 on."""
     assert len(bars) == len(expected), name
+    assert times is None or len(times) == len(bars), name
     case = {"tolerance": TOLERANCE, "bars": float(len(bars))}
     for key, value in params.items():
         case[f"param_{key}"] = value
     for i, (o, h, l, c, v) in enumerate(bars, start=1):
         case.update({f"bar{i}_open": o, f"bar{i}_high": h, f"bar{i}_low": l,
                      f"bar{i}_close": c, f"bar{i}_volume": v})
+        if times is not None:
+            case[f"bar{i}_time"] = float(times[i - 1])
     for i, (output, alerts) in enumerate(expected, start=1):
         if output is not None:
             value, extra = output

@@ -15,7 +15,7 @@ use kestrel_chartkit::indicator::{Indicator, IndicatorOutput};
 use kestrel_chartkit::model::Bar;
 use kestrel_chartkit::{output_unit, IndicatorUnit};
 
-/// Spacing of the case bars, in seconds; only the order matters to the pilot indicators.
+/// Spacing of the case bars, in seconds, for a case without a `time` column.
 const BAR_SECONDS: i64 = 900;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,8 +46,9 @@ pub struct ContractCase {
 /// The case `name` from `fixture`, for `indicator` with the declared output `unit`.
 ///
 /// Scalar lines `<case>_tolerance`, `<case>_bars`, `<case>_param_<key>`; then the table headed
-/// `@<case> open high low close volume <columns...>` with one row per bar and `-` for an absent
-/// column (format written by `render_contract` in `reference/kestrel_reference/fixture.py`).
+/// `@<case> open high low close volume [time] <columns...>` with one row per bar and `-` for an
+/// absent column; a case without `time` has its bars `BAR_SECONDS` apart from `BAR_SECONDS` on
+/// (format written by `render_contract` in `reference/kestrel_reference/fixture.py`).
 /// Every scalar key under the case prefix and every column must be understood; anything else
 /// panics, so a generator typo or a case name that prefixes another cannot drop expectations.
 pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
@@ -69,6 +70,7 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
                 "case {name}: table must start with the bar columns"
             );
             let rows = count.unwrap_or_else(|| panic!("case {name}: table before `bars`"));
+            let timed = head.get(5).is_some_and(|column| column == "time");
             for i in 1..=rows {
                 let row = lines
                     .next()
@@ -85,7 +87,14 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
                     number(cells[k]).unwrap_or_else(|| panic!("case {name}: row {i} bar field"))
                 };
                 bars.push(Bar::new(
-                    i as i64 * BAR_SECONDS,
+                    if timed {
+                        cells[5]
+                            .parse::<f64>()
+                            .unwrap_or_else(|_| panic!("case {name}: row {i}: time"))
+                            as i64
+                    } else {
+                        i as i64 * BAR_SECONDS
+                    },
                     bar(0),
                     bar(1),
                     bar(2),
@@ -100,7 +109,7 @@ pub fn load(fixture: &str, name: &str, indicator: &str, unit: IndicatorUnit) -> 
                     extra: BTreeMap::new(),
                 };
                 let mut has_output = false;
-                for (column, cell) in head.iter().zip(&cells).skip(5) {
+                for (column, cell) in head.iter().zip(&cells).skip(5 + usize::from(timed)) {
                     if column == "state" {
                         if *cell != "-" {
                             output.state = Some(cell.to_string());
