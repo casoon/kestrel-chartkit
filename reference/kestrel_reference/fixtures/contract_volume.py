@@ -36,6 +36,7 @@ from statistics import NormalDist
 from ..fixture import provenance, render_contract
 from ..indicators import clamp
 from ..smoothing import ema_first_sample
+from ..tpo_profile import compute as tpo_compute
 from .contract_pilot import case_block, crossed_over, crossed_under
 from .volume import (_acc_dist, _cmf, _cvd, _force_index, _hires_flow, _klinger,
                      _money_flow_profile, _persistent_poc, _price_volume_trend, _profile,
@@ -477,6 +478,39 @@ def trending(n, seed, drift):
 
 # --- Cases -----------------------------------------------------------------------------------
 
+def tpo_case(bars, **params):
+    """The time-at-price profile, from `kestrel_reference.tpo_profile`."""
+    params = {key: float(value) for key, value in params.items()}
+    return params, bars, tpo_compute(params, bars)
+
+
+def tpo_cases():
+    # Two bars of equal weight at the ends of a range 0..4 in four bins: every bin holds one
+    # bar, the two middle bins tie at the same distance from the centre of the range, and the
+    # close of the last bar decides (3.4 lies nearer the third bin, 0.6 the second).
+    tie_high = [(0.5, 1.0, 0.0, 0.8, 1000.0), (3.5, 4.0, 3.0, 3.4, 1000.0)]
+    tie_low = [(3.5, 4.0, 3.0, 3.2, 1000.0), (0.5, 1.0, 0.0, 0.6, 1000.0)]
+    flat = [(10.0, 10.0, 10.0, 10.0, 500.0)] * 4 + [(10.0, 10.5, 9.5, 10.2, 500.0)] + \
+           [(10.0, 10.0, 10.0, 10.0, 500.0)] * 3
+    return [
+        ("tpo_profile_defaults", "TPO profile with the catalog defaults (48, 30) over 90 bars",
+         tpo_case(shaped(90, 103))),
+        ("tpo_profile_short", "TPO profile (8, 5) over 40 bars: few bins, a short window",
+         tpo_case(shaped(40, 7), lookback=8, num_bins=5)),
+        ("tpo_profile_tie_high", "TPO profile (2, 4): the middle bins tie at equal distance from "
+         "the range centre, a close in the upper half picks the third bin",
+         tpo_case(tie_high, lookback=2, num_bins=4)),
+        ("tpo_profile_tie_low", "TPO profile (2, 4): the same tie with a close in the lower half "
+         "picks the second bin",
+         tpo_case(tie_low, lookback=2, num_bins=4)),
+        ("tpo_profile_one_bin", "TPO profile (3, 1): one bin holds every bar",
+         tpo_case(shaped(12, 17), lookback=3, num_bins=1)),
+        ("tpo_profile_flat", "TPO profile (3, 5): windows without range publish the close for "
+         "all three values",
+         tpo_case(flat, lookback=3, num_bins=5)),
+    ]
+
+
 def cases():
     base = shaped(40, 7)
     spikes = with_volume(base, {24: 9000.0, 31: 6000.0, 35: 4000.0})
@@ -587,5 +621,5 @@ def build():
         "",
         "Format: see contract_pilot. Assumed conventions: see the module docstring.",
     ]
-    blocks = [case_block(name, comment, *case) for name, comment, case in cases()]
+    blocks = [case_block(name, comment, *case) for name, comment, case in cases() + tpo_cases()]
     return header, blocks

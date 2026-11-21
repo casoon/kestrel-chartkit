@@ -27,8 +27,10 @@ from ..point_and_figure import chart as pnf_chart
 from ..indicators import rsi_lines
 from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
+from ..structure_patterns import compute as pattern_compute
 from ..structure import trendlines as trendline_model
 from .contract_pilot import case_block
+from .contract_volatility import swing_bars
 
 NAME = "contract_structure"
 RENDER = render_contract
@@ -1895,7 +1897,7 @@ def build():
         case_block("wyckoff_short_lookback",
                    "wyckoff, range_lookback 10: the window is full before the ATR(14) exists",
                    *wyckoff(textbook, range_lookback=10)),
-    ] + candle_cases()
+    ] + candle_cases() + pattern_cases()
     return header, blocks
 
 
@@ -1935,3 +1937,126 @@ def candle_cases():
     return [case_block(f"candle_classification_{name}", f"candle_classification: {comment}",
                        *candle_classification(bars, **params))
             for name, comment, bars, params in pairs]
+
+
+# --- setup_countdown, narrow_range, williams_fractals ----------------------------------------
+# Second implementation: `kestrel_reference.structure_patterns`, written from the rules.
+
+def around(closes, spread=1.0, highs=None, lows=None):
+    """Bars opening and closing at `closes`, the high and low `spread` away unless overridden
+    (0-based indices)."""
+    highs, lows = highs or {}, lows or {}
+    return [(float(c), float(highs.get(i, c + spread)), float(lows.get(i, c - spread)), float(c),
+             1000.0) for i, c in enumerate(closes)]
+
+
+def mirrored(bars, centre=400.0):
+    """The bars reflected at `centre`: highs and lows swap."""
+    return [(2 * centre - o, 2 * centre - l, 2 * centre - h, 2 * centre - c, v)
+            for o, h, l, c, v in bars]
+
+
+def integer_walk(n, seed, start=400):
+    """Bars on integer prices from a small linear congruential generator: many equal closes,
+    highs and lows."""
+    state, price, bars = seed, start, []
+
+    def draw(count):
+        nonlocal state
+        state = (state * 1103515245 + 12345) % 2147483648
+        return (state >> 16) % count
+
+    for _ in range(n):
+        open_ = price
+        close = open_ + draw(7) - 3
+        bars.append((float(open_), float(max(open_, close) + draw(4)),
+                     float(min(open_, close) - draw(4)), float(close), 1000.0))
+        price = close
+    return bars
+
+
+def pattern_case(name, params, bars):
+    """One of the count and range patterns, as `(params, bars, expected)`."""
+    params = {key: float(value) for key, value in params.items()}
+    return params, bars, pattern_compute(name, params, bars)
+
+
+def pattern_cases():
+    # A rise of 11 bars, then a drop and 22 bars of decline: the buy setup completes on bar 20
+    # (index 19), the countdown counts every bar, its 13th on bar 32 (index 31).
+    rise = [100 + i for i in range(11)]
+    fall = [100 - k for k in range(22)]
+    closes = rise + fall
+    # The 13th count is deferred: after the 12th (index 30) four bars bounce, and bar 34's close
+    # reaches the low of two bars before but its low 87 stays above the close of the 8th count
+    # (85); bar 35 qualifies with a low of 79.
+    deferred = around(closes[:31] + [90, 91, 88, 80], highs={31: 91, 32: 92, 33: 89, 34: 81},
+                      lows={31: 88, 32: 89, 33: 87, 34: 79})
+    # The buy countdown stands at 6 when a rise completes a sell setup: it is cancelled and the
+    # sell countdown begins.
+    cancelled = around(closes[:25] + [80 + 2 * k for k in range(1, 20)])
+    # Equality: bar 17 closes at the close four bars before, which ends the buy setup at 6 and
+    # leaves no price flip for the bars after it.
+    equality = around([100 + i for i in range(10)] + [104, 103, 102, 101, 100, 99, 102, 95, 94])
+    # A monotone decline never has a price flip: nothing starts.
+    no_flip = around([200 - i for i in range(30)])
+    # Range 5, 4, 6, 3, 5, 4, 2, 6, 1, 3 (bar 1 first): NR7 on bar 7 (range 2) and bar 9.
+    ranges = [5, 4, 6, 3, 5, 4, 2, 6, 1, 3]
+    narrow = [(100.0, 100.0 + r, 100.0, 100.0, 1000.0) for r in ranges]
+    equal_ranges = [(100.0, 103.0, 100.0, 100.0, 1000.0)] * 9
+    # Inside bars (high at most and low at least those of the bar before): equal edges count.
+    inside = [(5.0, h, l, 5.0, 1000.0)
+              for h, l in [(10, 0), (9, 1), (9, 1), (10, 1), (11, 2), (9, 3), (9, 3.5), (8, 3.5)]]
+    # Bar 2 is an up fractal and bar 3 a down fractal (the first output, on bar 4). Bars 7 and 8
+    # share the high 10: no up fractal there, however high. Bar 10's low 3.5 is a down fractal,
+    # bar 5 and bar 14 up fractals.
+    equal_highs = [(5.0, h, l, 5.0, 1000.0) for h, l in
+                   [(6, 4), (9, 5), (7, 4.5), (8, 5), (9, 5.5), (8, 5), (10, 5), (10, 5),
+                    (8, 4), (7, 3.5), (6, 4.2), (7, 5), (8, 6), (9, 5), (8, 4)]]
+    sw = swing_bars(90)
+    walk = integer_walk(500, 20261121)
+    return [
+        case_block("setup_countdown_buy", "setup_countdown: a buy setup of nine from a price flip "
+                   "(bar 20), then the countdown counts one per bar to its 13th on bar 32",
+                   *pattern_case("setup_countdown", {}, around(closes))),
+        case_block("setup_countdown_sell", "setup_countdown: the mirror image, a sell setup and "
+                   "its countdown",
+                   *pattern_case("setup_countdown", {}, mirrored(around(closes)))),
+        case_block("setup_countdown_deferred", "setup_countdown: the 13th count waits because the "
+                   "low stays above the close of the 8th until bar 35",
+                   *pattern_case("setup_countdown", {}, deferred)),
+        case_block("setup_countdown_cancelled", "setup_countdown: a completed sell setup cancels "
+                   "the buy countdown and starts a sell countdown",
+                   *pattern_case("setup_countdown", {}, cancelled)),
+        case_block("setup_countdown_equality", "setup_countdown: an equal close ends the setup, "
+                   "and with no price flip the next ones do not start",
+                   *pattern_case("setup_countdown", {}, equality)),
+        case_block("setup_countdown_no_flip", "setup_countdown: a monotone decline has no price "
+                   "flip, nothing starts",
+                   *pattern_case("setup_countdown", {}, no_flip)),
+        case_block("setup_countdown_walk", "setup_countdown over 500 bars of an integer random "
+                   "walk (many equal closes)",
+                   *pattern_case("setup_countdown", {}, walk)),
+        case_block("narrow_range_defaults", "narrow_range(7): a range narrower than the six before "
+                   "it, equal ranges do not count",
+                   *pattern_case("narrow_range", {}, narrow)),
+        case_block("narrow_range_period4", "narrow_range(4) over the same bars",
+                   *pattern_case("narrow_range", {"period": 4}, narrow)),
+        case_block("narrow_range_equal", "narrow_range(7): equal ranges are no narrowest range",
+                   *pattern_case("narrow_range", {}, equal_ranges)),
+        case_block("narrow_range_inside", "narrow_range(2): inside bars, equal edges included",
+                   *pattern_case("narrow_range", {"period": 2}, inside)),
+        case_block("narrow_range_walk", "narrow_range(7) over 500 bars of an integer random walk",
+                   *pattern_case("narrow_range", {}, walk)),
+        case_block("williams_fractals_defaults", "williams_fractals(2) over 90 swing bars: levels "
+                   "held, alerts two bars after the pivot",
+                   *pattern_case("williams_fractals", {}, sw)),
+        case_block("williams_fractals_span1", "williams_fractals(1): a three-bar pattern",
+                   *pattern_case("williams_fractals", {"span": 1}, sw)),
+        case_block("williams_fractals_equal_highs", "williams_fractals(1): equal highs are no up "
+                   "fractal, a down fractal and a later up fractal still are",
+                   *pattern_case("williams_fractals", {"span": 1}, equal_highs)),
+        case_block("williams_fractals_walk", "williams_fractals(3) over 500 bars of an integer "
+                   "random walk",
+                   *pattern_case("williams_fractals", {"span": 3}, walk)),
+    ]

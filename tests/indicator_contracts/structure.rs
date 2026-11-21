@@ -17,7 +17,7 @@ fn holds(name: &str, indicator: &str, unit: IndicatorUnit) {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &["setup_countdown", "narrow_range", "williams_fractals"];
+pub const PENDING: &[&str] = &[];
 
 const DIVERGENCE_OSCILLATORS: &str =
     "oscillators RSI (0) and Williams %R (3); WaveTrend, Stochastic RSI and CCI not specified";
@@ -82,6 +82,9 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage::full("wyckoff"),
+    Coverage::full("setup_countdown"),
+    Coverage::full("narrow_range"),
+    Coverage::full("williams_fractals"),
     Coverage {
         indicator: "chart_patterns",
         values: Status::Partial(PATTERN_SCENARIOS),
@@ -948,4 +951,159 @@ fn harmonic_patterns_rejects_invalid_configuration() {
     assert_rejected("harmonic_patterns", &[("min_prz_share", 1.5)]);
     assert_rejected("harmonic_patterns", &[("pending_swings", 101.0)]);
     assert_rejected("harmonic_patterns", &[("tolerance_pct", 2.0)]);
+}
+
+// --- setup_countdown ---------------------------------------------------------------
+
+#[test]
+fn setup_countdown_buy() {
+    holds(
+        "setup_countdown_buy",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_sell() {
+    holds(
+        "setup_countdown_sell",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_deferred() {
+    holds(
+        "setup_countdown_deferred",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_cancelled() {
+    holds(
+        "setup_countdown_cancelled",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_equality() {
+    holds(
+        "setup_countdown_equality",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_no_flip() {
+    holds(
+        "setup_countdown_no_flip",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_walk() {
+    holds(
+        "setup_countdown_walk",
+        "setup_countdown",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn setup_countdown_rejects_invalid_configuration() {
+    assert_rejected("setup_countdown", &[("period", 9.0)]);
+    assert_rejected("setup_countdown", &[("len", 4.0)]);
+}
+
+// --- narrow_range ---------------------------------------------------------------
+
+#[test]
+fn narrow_range_defaults() {
+    holds(
+        "narrow_range_defaults",
+        "narrow_range",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn narrow_range_period4() {
+    holds("narrow_range_period4", "narrow_range", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn narrow_range_equal() {
+    holds("narrow_range_equal", "narrow_range", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn narrow_range_inside() {
+    holds("narrow_range_inside", "narrow_range", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn narrow_range_walk() {
+    holds("narrow_range_walk", "narrow_range", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn narrow_range_rejects_invalid_configuration() {
+    assert_rejected("narrow_range", &[("period", 1.0)]);
+    assert_rejected("narrow_range", &[("period", 0.0)]);
+    assert_rejected("narrow_range", &[("period", 2.5)]);
+    assert_rejected("narrow_range", &[("len", 7.0)]);
+}
+
+// --- williams_fractals ---------------------------------------------------------------
+
+#[test]
+fn williams_fractals_defaults() {
+    holds(
+        "williams_fractals_defaults",
+        "williams_fractals",
+        IndicatorUnit::Price,
+    );
+}
+
+#[test]
+fn williams_fractals_span1() {
+    holds(
+        "williams_fractals_span1",
+        "williams_fractals",
+        IndicatorUnit::Price,
+    );
+}
+
+#[test]
+fn williams_fractals_equal_highs() {
+    holds(
+        "williams_fractals_equal_highs",
+        "williams_fractals",
+        IndicatorUnit::Price,
+    );
+}
+
+#[test]
+fn williams_fractals_walk() {
+    holds(
+        "williams_fractals_walk",
+        "williams_fractals",
+        IndicatorUnit::Price,
+    );
+}
+
+#[test]
+fn williams_fractals_rejects_invalid_configuration() {
+    assert_rejected("williams_fractals", &[("span", 0.0)]);
+    assert_rejected("williams_fractals", &[("span", 1.5)]);
+    assert_rejected("williams_fractals", &[("period", 2.0)]);
 }

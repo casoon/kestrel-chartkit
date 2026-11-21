@@ -14,7 +14,7 @@ fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &["tpo_profile"];
+pub const PENDING: &[&str] = &[];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("pvt"),
@@ -60,6 +60,7 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Specified,
     },
     Coverage::full("money_flow_profile"),
+    Coverage::full("tpo_profile"),
     Coverage::full("volume"),
     Coverage {
         indicator: "rvol",
@@ -471,4 +472,68 @@ fn money_flow_profile_rejects_invalid_configuration() {
     assert_rejected("money_flow_profile", &[("va_pct", 1.5)]);
     assert_rejected("money_flow_profile", &[("va_pct", -0.1)]);
     assert_rejected("money_flow_profile", &[("num_bins", 25.0)]);
+}
+
+// --- tpo_profile -----------------------------------------------------------------------
+
+#[test]
+fn tpo_profile_defaults() {
+    assert_holds(&case(
+        "tpo_profile_defaults",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_short() {
+    assert_holds(&case(
+        "tpo_profile_short",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_tie_high() {
+    assert_holds(&case(
+        "tpo_profile_tie_high",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_tie_low() {
+    assert_holds(&case(
+        "tpo_profile_tie_low",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_one_bin() {
+    assert_holds(&case(
+        "tpo_profile_one_bin",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_flat() {
+    assert_holds(&case(
+        "tpo_profile_flat",
+        "tpo_profile",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn tpo_profile_rejects_invalid_configuration() {
+    assert_rejected("tpo_profile", &[("lookback", 0.0)]);
+    assert_rejected("tpo_profile", &[("num_bins", 0.0)]);
+    assert_rejected("tpo_profile", &[("lookback", 2.5)]);
+    assert_rejected("tpo_profile", &[("bins", 10.0)]);
 }
