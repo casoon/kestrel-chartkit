@@ -46,6 +46,7 @@ from ..ehlers import compute as ehlers_compute
 from ..exact import central_squares, sqrt as exact_sqrt, to_decimal
 from ..fixture import provenance, render_contract
 from ..indicators import clamp, raw_rsi
+from ..momentum_lines import compute as momentum_compute
 from ..smoothing import ema_first_sample
 from .contract_pilot import case_block, crossed_over, crossed_under, wave
 from .oscillators import (
@@ -592,6 +593,21 @@ def ehlers_case(name, bars, **params):
     return params, bars, ehlers_compute(name, params, bars)
 
 
+def momentum_case(name, bars, **params):
+    """One of the momentum entries, from `kestrel_reference.momentum_lines`."""
+    params = _floats(params)
+    return params, bars, momentum_compute(name, params, bars)
+
+
+def squeeze_release_bars():
+    """A narrow stretch with small swings followed by wide ones and a calm end: the bands move
+    inside the channel, break out of it and return."""
+    calm = wave(50, 100.0, [0.1, -0.12, 0.08, -0.06])
+    wide = wave(30, calm[-1], [1.6, -1.1, 1.4, -1.9, 1.2])
+    tail = wave(30, wide[-1], [0.1, -0.1, 0.12, -0.08])
+    return shaped(calm + wide + tail)
+
+
 def laguerre_hold_bars():
     """Six equal closes, a move, then a flat stretch: with gamma 0 all four stages are level again
     after four flat bars, and the previous value is kept."""
@@ -808,5 +824,57 @@ def build():
                    *ehlers_case("cyber_cycle", swing20, alpha=1.0)),
         case_block("cyber_cycle_flat", "Constant median price: cycle and trigger 0",
                    *ehlers_case("cyber_cycle", flat_bars(12), alpha=0.5)),
+        case_block("schaff_trend_cycle_defaults", "Schaff trend cycle(23, 50, 10, 0.5) over the trend "
+                   "series: published from bar 50", *momentum_case("schaff_trend_cycle", trend)),
+        case_block("schaff_trend_cycle_short", "Schaff trend cycle(3, 7, 4, 0.3, 20/80) over the "
+                   "swing series", *momentum_case("schaff_trend_cycle", swing60, fast=3, slow=7,
+                                                   cycle=4, factor=0.3, lower=20, upper=80)),
+        case_block("schaff_trend_cycle_minimal", "Schaff trend cycle(1, 2, 2, 1.0): the smallest "
+                   "periods", *momentum_case("schaff_trend_cycle", swing20, fast=1, slow=2,
+                                              cycle=2, factor=1.0)),
+        case_block("schaff_trend_cycle_flat", "Constant closes: both stochastic stages hold",
+                   *momentum_case("schaff_trend_cycle", flat_bars(20), fast=3, slow=6, cycle=3)),
+
+        case_block("qqe_defaults", "QQE(14, 5, 4.236) over the trend series: published from bar "
+                   "16, alerts on every change of trend (the label up/down/undecided is not a "
+                   "column of the contract)", *momentum_case("qqe", trend)),
+        case_block("qqe_short", "QQE(5, 3, 2) over the swing series",
+                   *momentum_case("qqe", swing60, rsi_len=5, smoothing=3, factor=2.0)),
+        case_block("qqe_minimal", "QQE(2, 1, 1): the smallest periods",
+                   *momentum_case("qqe", swing20, rsi_len=2, smoothing=1, factor=1.0)),
+        case_block("qqe_flat", "Constant closes: the trend stays undecided",
+                   *momentum_case("qqe", flat_bars(20), rsi_len=4, smoothing=2)),
+
+        case_block("demarker_defaults", "DeMarker(14, 0.3/0.7) over the trend series",
+                   *momentum_case("demarker", trend)),
+        case_block("demarker_short", "DeMarker(5, 0.2/0.8) over the swing series",
+                   *momentum_case("demarker", swing60, period=5, lower=0.2, upper=0.8)),
+        case_block("demarker_minimal", "DeMarker(1): one bar of range moves",
+                   *momentum_case("demarker", swing20, period=1)),
+        case_block("demarker_flat", "Constant highs and lows: 0.5",
+                   *momentum_case("demarker", flat_bars(10), period=4)),
+
+        case_block("relative_momentum_index_defaults", "Relative momentum index(20, 5, 30/70) over "
+                   "the trend series", *momentum_case("relative_momentum_index", trend)),
+        case_block("relative_momentum_index_short", "Relative momentum index(5, 3, 25/75) over "
+                   "the swing series", *momentum_case("relative_momentum_index", swing60, length=5,
+                                                       momentum=3, lower=25, upper=75)),
+        case_block("relative_momentum_index_minimal", "Relative momentum index(1, 1): the "
+                   "one-bar momentum", *momentum_case("relative_momentum_index", swing20,
+                                                       length=1, momentum=1)),
+        case_block("relative_momentum_index_flat", "Constant closes: 50",
+                   *momentum_case("relative_momentum_index", flat_bars(12), length=3, momentum=2)),
+
+        case_block("squeeze_momentum_defaults", "Squeeze momentum(20, 2, 20, 1.5) over a calm "
+                   "stretch that breaks out: squeeze on, fired and off again",
+                   *momentum_case("squeeze_momentum", squeeze_release_bars())),
+        case_block("squeeze_momentum_short", "Squeeze momentum(5, 1.5, 6, 1) over the swing series",
+                   *momentum_case("squeeze_momentum", swing60, length=5, bb_mult=1.5,
+                                  kc_length=6, kc_mult=1.0)),
+        case_block("squeeze_momentum_minimal", "Squeeze momentum(2, 2, 2, 1.5): the smallest "
+                   "windows", *momentum_case("squeeze_momentum", swing20, length=2, bb_mult=2.0,
+                                              kc_length=2, kc_mult=1.5)),
+        case_block("squeeze_momentum_flat", "Constant closes: the bands sit inside the channel",
+                   *momentum_case("squeeze_momentum", flat_bars(16), length=4, kc_length=4)),
     ]
     return header, blocks

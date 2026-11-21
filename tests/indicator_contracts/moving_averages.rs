@@ -19,16 +19,7 @@ fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[
-    "zlema",
-    "frama",
-    "nadaraya_watson",
-    "range_filter",
-    "most",
-    "ott",
-    "halftrend",
-    "ssl_channel",
-];
+pub const PENDING: &[&str] = &[];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage {
@@ -118,6 +109,14 @@ pub const COVERAGE: &[Coverage] = &[
     },
     Coverage::full("ultimate_smoother"),
     Coverage::full("mama"),
+    Coverage::full("zlema"),
+    Coverage::full("frama"),
+    Coverage::full("nadaraya_watson"),
+    Coverage::full("range_filter"),
+    Coverage::full("most"),
+    Coverage::full("ott"),
+    Coverage::full("halftrend"),
+    Coverage::full("ssl_channel"),
 ];
 
 #[test]
@@ -885,4 +884,307 @@ fn mama_rejects_invalid_configuration() {
     assert_rejected("mama", &[("fast_limit", 0.3), ("slow_limit", 0.3)]);
     assert_rejected("mama", &[("fast_limit", 0.2), ("slow_limit", 0.4)]);
     assert_rejected("mama", &[("period", 20.0)]);
+}
+
+// --- zlema --------------------------------------------------------------------------
+
+#[test]
+fn zlema_defaults() {
+    assert_holds(&case("zlema_defaults", "zlema", IndicatorUnit::Price));
+}
+
+#[test]
+fn zlema_short() {
+    assert_holds(&case("zlema_short", "zlema", IndicatorUnit::Price));
+}
+
+#[test]
+fn zlema_minimal() {
+    assert_holds(&case("zlema_minimal", "zlema", IndicatorUnit::Price));
+}
+
+#[test]
+fn zlema_flat() {
+    assert_holds(&case("zlema_flat", "zlema", IndicatorUnit::Price));
+}
+
+#[test]
+fn zlema_rejects_invalid_configuration() {
+    assert_rejected("zlema", &[("period", 0.0)]);
+    assert_rejected("zlema", &[("period", 2.5)]);
+    assert_rejected("zlema", &[("period", f64::NAN)]);
+    assert_rejected("zlema", &[("length", 20.0)]);
+}
+
+// --- frama --------------------------------------------------------------------------
+
+#[test]
+fn frama_defaults() {
+    assert_holds(&case("frama_defaults", "frama", IndicatorUnit::Price));
+}
+
+#[test]
+fn frama_custom() {
+    assert_holds(&case("frama_custom", "frama", IndicatorUnit::Price));
+}
+
+#[test]
+fn frama_minimal() {
+    assert_holds(&case("frama_minimal", "frama", IndicatorUnit::Price));
+}
+
+#[test]
+fn frama_flat() {
+    assert_holds(&case("frama_flat", "frama", IndicatorUnit::Price));
+}
+
+#[test]
+fn frama_points() {
+    assert_holds(&case("frama_points", "frama", IndicatorUnit::Price));
+}
+
+#[test]
+fn frama_rejects_invalid_configuration() {
+    assert_rejected("frama", &[("period", 2.0)]);
+    assert_rejected("frama", &[("period", 15.0)]);
+    assert_rejected("frama", &[("period", f64::NAN)]);
+    assert_rejected("frama", &[("length", 16.0)]);
+}
+
+// --- nadaraya_watson ----------------------------------------------------------------
+
+#[test]
+fn nadaraya_watson_defaults() {
+    assert_holds(&case(
+        "nadaraya_watson_defaults",
+        "nadaraya_watson",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn nadaraya_watson_custom() {
+    assert_holds(&case(
+        "nadaraya_watson_custom",
+        "nadaraya_watson",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn nadaraya_watson_minimal() {
+    assert_holds(&case(
+        "nadaraya_watson_minimal",
+        "nadaraya_watson",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn nadaraya_watson_flat() {
+    assert_holds(&case(
+        "nadaraya_watson_flat",
+        "nadaraya_watson",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn nadaraya_watson_rejects_invalid_configuration() {
+    assert_rejected("nadaraya_watson", &[("bandwidth", 0.0)]);
+    assert_rejected("nadaraya_watson", &[("lookback", 1.0)]);
+    assert_rejected("nadaraya_watson", &[("mult", -1.0)]);
+    assert_rejected("nadaraya_watson", &[("lookback", 2.5)]);
+    assert_rejected("nadaraya_watson", &[("period", 50.0)]);
+}
+
+// --- range_filter -------------------------------------------------------------------
+
+#[test]
+fn range_filter_defaults() {
+    assert_holds(&case(
+        "range_filter_defaults",
+        "range_filter",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn range_filter_short() {
+    assert_holds(&case(
+        "range_filter_short",
+        "range_filter",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn range_filter_minimal() {
+    assert_holds(&case(
+        "range_filter_minimal",
+        "range_filter",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn range_filter_flat() {
+    assert_holds(&case(
+        "range_filter_flat",
+        "range_filter",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn range_filter_rejects_invalid_configuration() {
+    assert_rejected("range_filter", &[("period", 0.0)]);
+    assert_rejected("range_filter", &[("mult", 0.0)]);
+    assert_rejected("range_filter", &[("period", 2.5)]);
+    assert_rejected("range_filter", &[("length", 100.0)]);
+}
+
+// --- most ---------------------------------------------------------------------------
+
+#[test]
+fn most_defaults() {
+    assert_holds(&case("most_defaults", "most", IndicatorUnit::Price));
+}
+
+#[test]
+fn most_custom() {
+    assert_holds(&case("most_custom", "most", IndicatorUnit::Price));
+}
+
+#[test]
+fn most_minimal() {
+    assert_holds(&case("most_minimal", "most", IndicatorUnit::Price));
+}
+
+#[test]
+fn most_flat() {
+    assert_holds(&case("most_flat", "most", IndicatorUnit::Price));
+}
+
+#[test]
+fn most_rejects_invalid_configuration() {
+    assert_rejected("most", &[("length", 0.0)]);
+    assert_rejected("most", &[("percent", 0.0)]);
+    assert_rejected("most", &[("percent", 100.0)]);
+    assert_rejected("most", &[("period", 3.0)]);
+}
+
+// --- ott ----------------------------------------------------------------------------
+
+#[test]
+fn ott_defaults() {
+    assert_holds(&case("ott_defaults", "ott", IndicatorUnit::Price));
+}
+
+#[test]
+fn ott_custom() {
+    assert_holds(&case("ott_custom", "ott", IndicatorUnit::Price));
+}
+
+#[test]
+fn ott_minimal() {
+    assert_holds(&case("ott_minimal", "ott", IndicatorUnit::Price));
+}
+
+#[test]
+fn ott_flat() {
+    assert_holds(&case("ott_flat", "ott", IndicatorUnit::Price));
+}
+
+#[test]
+fn ott_rejects_invalid_configuration() {
+    assert_rejected("ott", &[("length", 0.0)]);
+    assert_rejected("ott", &[("percent", 0.0)]);
+    assert_rejected("ott", &[("percent", 100.0)]);
+    assert_rejected("ott", &[("cmo_len", 0.0)]);
+    assert_rejected("ott", &[("period", 2.0)]);
+}
+
+// --- halftrend ----------------------------------------------------------------------
+
+#[test]
+fn halftrend_defaults() {
+    assert_holds(&case(
+        "halftrend_defaults",
+        "halftrend",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn halftrend_custom() {
+    assert_holds(&case("halftrend_custom", "halftrend", IndicatorUnit::Price));
+}
+
+#[test]
+fn halftrend_minimal() {
+    assert_holds(&case(
+        "halftrend_minimal",
+        "halftrend",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn halftrend_flat() {
+    assert_holds(&case("halftrend_flat", "halftrend", IndicatorUnit::Price));
+}
+
+#[test]
+fn halftrend_rejects_invalid_configuration() {
+    assert_rejected("halftrend", &[("amplitude", 0.0)]);
+    assert_rejected("halftrend", &[("deviation", -1.0)]);
+    assert_rejected("halftrend", &[("atr_len", 0.0)]);
+    assert_rejected("halftrend", &[("amplitude", 2.5)]);
+    assert_rejected("halftrend", &[("period", 2.0)]);
+}
+
+// --- ssl_channel --------------------------------------------------------------------
+
+#[test]
+fn ssl_channel_defaults() {
+    assert_holds(&case(
+        "ssl_channel_defaults",
+        "ssl_channel",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ssl_channel_custom() {
+    assert_holds(&case(
+        "ssl_channel_custom",
+        "ssl_channel",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ssl_channel_minimal() {
+    assert_holds(&case(
+        "ssl_channel_minimal",
+        "ssl_channel",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ssl_channel_flat() {
+    assert_holds(&case(
+        "ssl_channel_flat",
+        "ssl_channel",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ssl_channel_rejects_invalid_configuration() {
+    assert_rejected("ssl_channel", &[("period", 0.0)]);
+    assert_rejected("ssl_channel", &[("period", 2.5)]);
+    assert_rejected("ssl_channel", &[("length", 10.0)]);
 }
