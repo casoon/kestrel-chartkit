@@ -782,8 +782,6 @@ impl Indicator for SqueezeMomentumEngine {
 // Definitions
 // ---------------------------------------------------------------------------------------------
 
-const OPEN: Verification = Verification::Open("acceptance against a second implementation pending");
-
 /// Registry definition of `schaff_trend_cycle`.
 pub const SCHAFF_TREND_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "schaff_trend_cycle",
@@ -812,7 +810,7 @@ pub const SCHAFF_TREND_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefiniti
         },
     ],
     facts: IndicatorFacts::ratio().bounded(0.0, 100.0),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(SchaffTrendCycleEngine::new(
             p.count("fast"),
@@ -837,7 +835,7 @@ pub const QQE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::ratio().bounded(0.0, 100.0),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(QqeEngine::new(
             p.count("rsi_len"),
@@ -866,7 +864,7 @@ pub const DEMARKER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         upper: "upper",
     }],
     facts: IndicatorFacts::ratio().bounded(0.0, 1.0).range_dependent(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(DemarkerEngine::new(
             p.count("period"),
@@ -896,7 +894,7 @@ pub const RELATIVE_MOMENTUM_INDEX_DEFINITION: IndicatorDefinition = IndicatorDef
         upper: "upper",
     }],
     facts: IndicatorFacts::ratio().bounded(0.0, 100.0),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(RelativeMomentumIndexEngine::new(
             p.count("length"),
@@ -920,7 +918,7 @@ pub const SQUEEZE_MOMENTUM_DEFINITION: IndicatorDefinition = IndicatorDefinition
     ],
     checks: &[],
     facts: IndicatorFacts::unitless().centered(0.0).range_dependent(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(SqueezeMomentumEngine::new(
             p.count("length"),

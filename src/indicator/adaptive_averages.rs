@@ -16,8 +16,6 @@ use super::momentum_oscillators::{push_capped, SeededEma};
 use super::registry::RegistryError;
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-const OPEN: Verification = Verification::Open("acceptance against a second implementation pending");
-
 // ---------------------------------------------------------------------------------------------
 // Zero-lag EMA
 // ---------------------------------------------------------------------------------------------
@@ -287,11 +285,11 @@ impl Indicator for NadarayaWatsonEngine {
 pub const ZLEMA_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "zlema",
     aliases: &[],
-    description: "Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 2 bars, seeded with its first input; with a period of 1 or 2 it is the plain EMA. Published from bar lag + 1.",
+    description: "Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 2 bars, seeded with its first input; with a period of 1 or 2 it is the plain EMA. Published from bar floor((period - 1) / 2) + 1.",
     params: &[ParamSpec::count("period", 20, 1, 10000).meaning("bars of the EMA")],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(ZlemaEngine::new(p.count("period")))),
 };
 
@@ -303,7 +301,7 @@ pub const FRAMA_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     params: &[ParamSpec::count("period", 16, 4, 10000).meaning("bars of the window, even")],
     checks: &[],
     facts: IndicatorFacts::price().range_dependent(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         let period = p.count("period");
         if period % 2 != 0 {
@@ -329,7 +327,7 @@ pub const NADARAYA_WATSON_DEFINITION: IndicatorDefinition = IndicatorDefinition 
     ],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(NadarayaWatsonEngine::new(
             p.number("bandwidth"),

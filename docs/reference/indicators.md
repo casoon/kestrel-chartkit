@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 155 of the 180 entries are verified, 25 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 168 of the 180 entries are verified, 12 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -30,14 +30,14 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `super_smoother` | bars | verified |
 | `ultimate_smoother` | bars | verified |
 | `mama` | bars | verified |
-| `zlema` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `frama` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `nadaraya_watson` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `range_filter` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `most` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `ott` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `halftrend` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `ssl_channel` | bars | **not yet verified:** acceptance against a second implementation pending |
+| `zlema` | bars | verified |
+| `frama` | bars | verified |
+| `nadaraya_watson` | bars | verified |
+| `range_filter` | bars | verified |
+| `most` | bars | verified |
+| `ott` | bars | verified |
+| `halftrend` | bars | verified |
+| `ssl_channel` | bars | verified |
 | `lsma` | bars | verified |
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
@@ -89,11 +89,11 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `correlation_trend` | bars | verified |
 | `laguerre_rsi` | bars | verified |
 | `cyber_cycle` | bars | verified |
-| `schaff_trend_cycle` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `qqe` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `demarker` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `relative_momentum_index` | bars | **not yet verified:** acceptance against a second implementation pending |
-| `squeeze_momentum` | bars | **not yet verified:** acceptance against a second implementation pending |
+| `schaff_trend_cycle` | bars | verified |
+| `qqe` | bars | verified |
+| `demarker` | bars | verified |
+| `relative_momentum_index` | bars | verified |
+| `squeeze_momentum` | bars | verified |
 | `percent_rank` | bars | verified |
 | `atr` | bars | verified |
 | `adx` | bars | verified |
@@ -396,9 +396,7 @@ Requires `slow_limit` to be smaller than `fast_limit`.
 
 ### `zlema`
 
-Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 2 bars, seeded with its first input; with a period of 1 or 2 it is the plain EMA. Published from bar lag + 1.
-
-**Not yet verified:** acceptance against a second implementation pending.
+Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 2 bars, seeded with its first input; with a period of 1 or 2 it is the plain EMA. Published from bar floor((period - 1) / 2) + 1.
 
 [See it in the showcase](../../../showcase/zlema/)
 
@@ -412,8 +410,6 @@ Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 
 
 Fractal adaptive moving average of the median price: the smoothing constant follows the fractal dimension of the last `period` bars (extra `dimension`, 1 to 2 on usual data). The average equals the median price up to bar period and a window without range keeps the previous dimension. Odd periods are rejected; published from bar period + 1.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/frama/)
 
 **Output** unit Price, range not declared · **warmup** 17 bars
@@ -425,8 +421,6 @@ Fractal adaptive moving average of the median price: the smoothing constant foll
 ### `nadaraya_watson`
 
 Gaussian kernel regression of the close at the newest bar, with an envelope of `mult` mean absolute errors (extras `upper`, `lower`). Only past bars are used, so a value never changes later. Published from bar 2 * lookback - 1.
-
-**Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/nadaraya_watson/)
 
@@ -442,8 +436,6 @@ Gaussian kernel regression of the close at the newest bar, with an envelope of `
 
 Range Filter: a line that follows the close only when it leaves a band of `mult` times the double-smoothed absolute close-to-close change (extras `upper`, `lower`, `direction`). The direction is the sign of the line's last move beyond a relative 1e-9 and starts at 0. Published from bar 2.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/range_filter/)
 
 **Output** unit Price, range not declared · **warmup** 2 bars
@@ -457,8 +449,6 @@ Range Filter: a line that follows the close only when it leaves a band of `mult`
 
 MOST, a moving stop: a trailing stop whose distance is a percent of the level on the EMA of the close (extras `ema`, `direction`). The direction starts undecided instead of up and nothing is published until it is decided. The distances are a percent of the level, so prices scaled by a factor scale the line by it.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/most/)
 
 **Output** unit Price, range not declared · **warmup** 2 bars
@@ -471,8 +461,6 @@ MOST, a moving stop: a trailing stop whose distance is a percent of the level on
 ### `ott`
 
 Optimized Trend Tracker: a trailing stop whose distance is a percent of the level on a variable average of the close, shifted by half the percent to the side the average lies on (extras `var`, `stop`, `direction`). The average starts at the first close, the momentum sums use the bars available at the start and the direction starts undecided; the line is not shifted, and the alerts compare the average with the line two bars earlier.
-
-**Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/ott/)
 
@@ -488,8 +476,6 @@ Optimized Trend Tracker: a trailing stop whose distance is a percent of the leve
 
 HalfTrend: a trend line from the extremes and averages of the last `amplitude` bars, with an ATR envelope (extras `trend`, `atr_high`, `atr_low`). It starts undecided and watches both sides instead of starting up; the first line is seeded with the extreme that decided it. Published once decided from bar atr_len.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/halftrend/)
 
 **Output** unit Price, range not declared · **warmup** 100 bars
@@ -503,8 +489,6 @@ HalfTrend: a trend line from the extremes and averages of the last `amplitude` b
 ### `ssl_channel`
 
 SSL channel: the SMA of the highs and of the lows, ordered by which side the close last broke out of (extras `ssl_down`, `hlv`). `hlv` starts undecided instead of up and nothing is published until it is decided. Published from bar period.
-
-**Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/ssl_channel/)
 
@@ -1229,8 +1213,6 @@ Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component wi
 
 Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1). A stage without range repeats its previous stochastic; at the start the first stage reads 50 and the second the smoothed value itself, so a flat series stays at 50, a steady fall reads 0 and a steady rise 100.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/schaff_trend_cycle/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 50 bars
@@ -1252,8 +1234,6 @@ Requires `lower` to be smaller than `upper`.
 
 Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extra `trail`, state `up`/`down`/`undecided`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/qqe/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 16 bars
@@ -1267,8 +1247,6 @@ Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `
 ### `demarker`
 
 DeMarker: the sum of the rises of the high over the sum of the rises of the high and the falls of the low across `period` bars; 0 to 1, and 0.5 on a window without rises or falls. Published from bar period + 1.
-
-**Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/demarker/)
 
@@ -1286,8 +1264,6 @@ Requires `lower` to be smaller than `upper`.
 
 Relative Momentum Index: the RSI form over the change across `momentum` bars instead of one, Wilder-averaged over `length` from the first change; 0 to 100, equal to the RSI with momentum 1. Published from bar momentum + length.
 
-**Not yet verified:** acceptance against a second implementation pending.
-
 [See it in the showcase](../../../showcase/relative_momentum_index/)
 
 **Output** unit Ratio, range 0 – 100 · **warmup** 25 bars
@@ -1304,8 +1280,6 @@ Requires `lower` to be smaller than `upper`.
 ### `squeeze_momentum`
 
 Volatility squeeze with a linear-regression momentum: the endpoint of the least-squares line through the close's distance to the mean of the window midrange and its average (a price difference, extra `squeeze` +1 on, -1 off, 0 between). The Bollinger bands use bb_mult and the Keltner channel kc_mult. Published from bar max(2 * kc_length - 1, length).
-
-**Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/squeeze_momentum/)
 

@@ -15,8 +15,6 @@ use super::momentum_oscillators::{push_capped, window_mean, Atr, SeededEma, Stat
 use super::smoothing::{crossed_over, crossed_under};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
-const OPEN: Verification = Verification::Open("acceptance against a second implementation pending");
-
 fn extras(pairs: &[(&str, f64)]) -> HashMap<String, f64> {
     pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
 }
@@ -619,7 +617,7 @@ pub const RANGE_FILTER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(RangeFilterEngine::new(p.count("period"), p.number("mult")))),
 };
 
@@ -634,7 +632,7 @@ pub const MOST_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(MostEngine::new(p.count("length"), p.number("percent")))),
 };
 
@@ -650,7 +648,7 @@ pub const OTT_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(OttEngine::new(
             p.count("length"),
@@ -672,7 +670,7 @@ pub const HALFTREND_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::price().range_dependent(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(HalfTrendEngine::new(
             p.count("amplitude"),
@@ -690,7 +688,7 @@ pub const SSL_CHANNEL_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     params: &[ParamSpec::count("period", 10, 1, 10000).meaning("bars of the averages")],
     checks: &[],
     facts: IndicatorFacts::price().range_dependent(),
-    verification: OPEN,
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(SslChannelEngine::new(p.count("period")))),
 };
 
