@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Pages:** the guide [How entries are verified](https://casoon.github.io/kestrel-chartkit/docs/guides/verification/) says what the mark means, which acceptance every entry passes and which tests keep it true.
+
 ## [0.49.0] - 2026-11-21
 
 ### Changed
