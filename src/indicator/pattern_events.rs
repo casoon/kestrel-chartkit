@@ -666,9 +666,7 @@ pub const CHART_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         .roll_sensitive()
         .adjustment_sensitive()
         .range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(ChartPatternsEngine::new(
             p.count("depth"),
@@ -699,9 +697,7 @@ pub const HARMONIC_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinitio
         .roll_sensitive()
         .adjustment_sensitive()
         .range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(HarmonicPatternsEngine::new(
             p.count("depth"),

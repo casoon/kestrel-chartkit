@@ -11,7 +11,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Changed
 
-- **Catalog:** `correlation`, `relative_strength`, `intrabar_cvd`, `gap`, `point_and_figure`, `fvg_fill`, `kestrel_vwap_regime`, `kestrel_swing_structure` and `trendlines` are now verified against a second implementation; 196 entries in all, 194 of them verified.
+- **Catalog:** `correlation`, `relative_strength`, `intrabar_cvd`, `gap`, `point_and_figure`, `fvg_fill`, `kestrel_vwap_regime`, `kestrel_swing_structure`, `trendlines`, `chart_patterns` and `harmonic_patterns` are now verified against a second implementation; 196 entries in all, all verified.
 - **Catalog:** the descriptions of `kestrel_adaptive_smoother`, `kestrel_swing_structure`, `fvg_fill`, `super_smoother`, `alma`, `r_squared` and `fractal_dimension` also state the purpose of the entry, what it is used for and a caveat; they show in the indicator reference and the showcase.
 
 ### Fixed

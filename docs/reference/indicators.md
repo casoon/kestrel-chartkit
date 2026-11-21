@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 194 of the 196 entries are verified, 2 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 196 of the 196 entries are verified, 0 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -177,8 +177,8 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `period_midpoint` | bars | verified |
 | `kestrel_swing_structure` | bars | verified |
 | `fvg_fill` | bars | verified |
-| `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
-| `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
+| `chart_patterns` | bars | verified |
+| `harmonic_patterns` | bars | verified |
 | `setup_countdown` | bars | verified |
 | `narrow_range` | bars | verified |
 | `williams_fractals` | bars | verified |
@@ -2439,8 +2439,6 @@ Fair value gaps followed as zones until a later bar trades back into them: the n
 
 Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse, flag, cup and handle and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-17), level, invalidation, target, fit, active, confirmed
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/chart_patterns/)
 
 **Output** unit Unitless, range not declared · **warmup** 7 bars
@@ -2459,8 +2457,6 @@ Chart patterns from ZigZag swings as they confirm, one event per pattern instanc
 ### `harmonic_patterns`
 
 Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from ZigZag swings as they confirm, one event per structure on the close out of its potential reversal zone. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<name> and bear_<name>; extras pattern (table row 1-6), prz_low, prz_high, d, invalidation, active, confirmed
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/harmonic_patterns/)
 

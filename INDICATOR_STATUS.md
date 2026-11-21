@@ -229,8 +229,8 @@ is complete. The mark must match the `verification` of the entry's definition
 | opening_range | ✅ |
 | kestrel_swing_structure | ✅ |
 | fvg_fill | ✅ |
-| chart_patterns | ❌ |
-| harmonic_patterns | ❌ |
+| chart_patterns | ✅ |
+| harmonic_patterns | ✅ |
 | setup_countdown | ✅ |
 | narrow_range | ✅ |
 | williams_fractals | ✅ |
@@ -252,4 +252,4 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 194/196 verified** — the same 196 names `catalog()` returns.
+**Total: 196/196 verified** — the same 196 names `catalog()` returns.
