@@ -1,6 +1,6 @@
 # Indicator Status
 
-As of: 2026-11-10
+As of: 2026-11-21
 
 Overview of all indicators/detectors from `src/indicator/registry.rs`: name and whether it has
 been verified (✅) or is still open (❌). Only the verification status — not what it was
@@ -21,11 +21,13 @@ is complete. The mark must match the `verification` of the entry's definition
 | hma | ✅ |
 | dema | ✅ |
 | kama | ✅ |
-| rma | ❌ |
-| alma | ❌ |
-| jma | ❌ |
+| rma | ✅ |
+| alma | ✅ |
+| jma | ✅ |
 | kestrel_adaptive_smoother | ❌ |
-| super_smoother | ❌ |
+| super_smoother | ✅ |
+| ultimate_smoother | ✅ |
+| mama | ✅ |
 | tema | ✅ |
 | lsma | ✅ |
 | mcginley | ✅ |
@@ -70,7 +72,13 @@ is complete. The mark must match the `verification` of the entry's definition
 | overextension_risk | ✅ |
 | roc_context | ✅ |
 | rsi_cycle_stats | ✅ |
-| percent_rank | ❌ |
+| percent_rank | ✅ |
+| roofing_filter | ✅ |
+| reflex | ✅ |
+| trendflex | ✅ |
+| correlation_trend | ✅ |
+| laguerre_rsi | ✅ |
+| cyber_cycle | ✅ |
 
 ## Volatility
 
@@ -132,13 +140,13 @@ is complete. The mark must match the `verification` of the entry's definition
 |---|---|
 | alligator | ✅ |
 | efficiency | ✅ |
-| fractal_dimension | ❌ |
-| r_squared | ❌ |
-| cycle_length | ❌ |
+| fractal_dimension | ✅ |
+| r_squared | ✅ |
+| cycle_length | ✅ |
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |
-| price_location | ❌ |
+| price_location | ✅ |
 | zscore | ✅ |
 | smoothed_supertrend | ✅ |
 
@@ -191,8 +199,8 @@ is complete. The mark must match the `verification` of the entry's definition
 | compression_zones | ✅ |
 | tradability_filter | ✅ |
 | market_state_chain | ✅ |
-| period_midpoint | ❌ |
-| opening_range | ❌ |
+| period_midpoint | ✅ |
+| opening_range | ✅ |
 | swing_structure | ❌ |
 | fvg_fill | ❌ |
 | chart_patterns | ❌ |
@@ -208,9 +216,9 @@ intrabar (`build_intrabar_checked`).
 |---|---|
 | correlation | ❌ |
 | relative_strength | ❌ |
-| rolling_beta | ❌ |
-| pair_spread | ❌ |
-| heikin_ashi | ❌ |
+| rolling_beta | ✅ |
+| pair_spread | ✅ |
+| heikin_ashi | ✅ |
 | intrabar_cvd | ❌ |
 
 ---

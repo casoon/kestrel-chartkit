@@ -31,5 +31,11 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::williams_r::WILLIAMS_R_DEFINITION,
     &crate::indicator::fisher_transform::FISHER_TRANSFORM_DEFINITION,
     &crate::indicator::wavetrend::WAVETREND_DEFINITION,
+    &crate::indicator::ehlers::ROOFING_FILTER_DEFINITION,
+    &crate::indicator::ehlers::REFLEX_DEFINITION,
+    &crate::indicator::ehlers::TRENDFLEX_DEFINITION,
+    &crate::indicator::ehlers::CORRELATION_TREND_DEFINITION,
+    &crate::indicator::ehlers::LAGUERRE_RSI_DEFINITION,
+    &crate::indicator::ehlers::CYBER_CYCLE_DEFINITION,
     &crate::indicator::rolling_measures::PERCENT_RANK_DEFINITION,
 ];

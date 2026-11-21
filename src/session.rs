@@ -266,7 +266,7 @@ impl Indicator for OpeningRangeEngine {
 pub const OPENING_RANGE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "opening_range",
     aliases: &[],
-    description: "Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours",
+    description: "Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours; a session whose first bar opens after its opening window gives no output",
     params: &[
         ParamSpec::count("start_hour", 0, 0, 23).meaning("session start, hour of the local time"),
         ParamSpec::count("start_minute", 0, 0, 59).meaning("session start, minute"),
@@ -282,9 +282,7 @@ pub const OPENING_RANGE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     facts: crate::indicator::definition::IndicatorFacts::unitless()
         .non_negative()
         .range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         let config = SessionConfig {
             start_hour: p.count("start_hour") as u8,

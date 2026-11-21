@@ -16,6 +16,8 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::moving_averages::ALMA_DEFINITION,
     &crate::indicator::moving_averages::JMA_DEFINITION,
     &crate::indicator::moving_averages::SUPER_SMOOTHER_DEFINITION,
+    &crate::indicator::ehlers::ULTIMATE_SMOOTHER_DEFINITION,
+    &crate::indicator::ehlers::MAMA_DEFINITION,
     &crate::indicator::lsma::LSMA_DEFINITION,
     &crate::indicator::mcginley::MCGINLEY_DEFINITION,
     &crate::indicator::t3::T3_DEFINITION,

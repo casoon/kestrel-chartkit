@@ -42,6 +42,7 @@ Conventions assumed where the type documentation leaves them open:
 
 from fractions import Fraction
 
+from ..ehlers import compute as ehlers_compute
 from ..exact import central_squares, sqrt as exact_sqrt, to_decimal
 from ..fixture import provenance, render_contract
 from ..indicators import clamp, raw_rsi
@@ -585,6 +586,19 @@ def zscore_case(period, bars):
     return _floats({"period": period}), bars, single(period - 1, values)
 
 
+def ehlers_case(name, bars, **params):
+    """One of the Ehlers entries, from `kestrel_reference.ehlers` (see its docstring)."""
+    params = _floats(params)
+    return params, bars, ehlers_compute(name, params, bars)
+
+
+def laguerre_hold_bars():
+    """Six equal closes, a move, then a flat stretch: with gamma 0 all four stages are level again
+    after four flat bars, and the previous value is kept."""
+    moves = [51.0, 52.5, 51.5, 53.0, 52.0, 54.0, 55.0, 54.0]
+    return shaped([50.0] * 6 + moves + [54.0] * 8)
+
+
 # --- Cases -------------------------------------------------------------------------------------
 
 def build():
@@ -740,5 +754,59 @@ def build():
         case_block("zscore_offset", "Z-score(5) of closes near 10000 moving in cents",
                    *zscore_case(5, offset_bars())),
         case_block("zscore_flat", "Constant closes: no deviation, 0", *zscore_case(3, flat_bars(6))),
+        case_block("roofing_filter_defaults", "Roofing filter(48, 10) over the trend series",
+                   *ehlers_case("roofing_filter", trend)),
+        case_block("roofing_filter_short", "Roofing filter(12, 5) over the swing series",
+                   *ehlers_case("roofing_filter", swing60, hp_period=12, lp_period=5)),
+        case_block("roofing_filter_minimal", "Roofing filter(3, 2): the smallest periods",
+                   *ehlers_case("roofing_filter", swing20, hp_period=3, lp_period=2)),
+        case_block("roofing_filter_flat", "Constant closes: the band-pass stays 0",
+                   *ehlers_case("roofing_filter", flat_bars(20), hp_period=6, lp_period=3)),
+
+        case_block("reflex_defaults", "Reflex(20) over the trend series",
+                   *ehlers_case("reflex", trend)),
+        case_block("reflex_short", "Reflex(5) over the swing series",
+                   *ehlers_case("reflex", swing60, length=5)),
+        case_block("reflex_minimal", "Reflex(2): the shortest length",
+                   *ehlers_case("reflex", swing20, length=2)),
+        case_block("reflex_flat", "Constant closes: no deviation, 0",
+                   *ehlers_case("reflex", flat_bars(12), length=4)),
+
+        case_block("trendflex_defaults", "Trendflex(20) over the trend series",
+                   *ehlers_case("trendflex", trend)),
+        case_block("trendflex_short", "Trendflex(5) over the swing series",
+                   *ehlers_case("trendflex", swing60, length=5)),
+        case_block("trendflex_minimal", "Trendflex(2): the shortest length",
+                   *ehlers_case("trendflex", swing20, length=2)),
+        case_block("trendflex_flat", "Constant closes: no deviation, 0",
+                   *ehlers_case("trendflex", flat_bars(12), length=4)),
+
+        case_block("correlation_trend_defaults", "Correlation trend(20) over the trend series",
+                   *ehlers_case("correlation_trend", trend)),
+        case_block("correlation_trend_short", "Correlation trend(5) over the swing series",
+                   *ehlers_case("correlation_trend", swing60, length=5)),
+        case_block("correlation_trend_minimal", "Correlation trend(2): +1 or -1 on every bar",
+                   *ehlers_case("correlation_trend", swing20, length=2)),
+        case_block("correlation_trend_flat", "A window of equal closes reads 0",
+                   *ehlers_case("correlation_trend", flat_bars(8), length=4)),
+
+        case_block("laguerre_rsi_defaults", "Laguerre RSI(0.5, 0.2/0.8) over the swing series",
+                   *ehlers_case("laguerre_rsi", swing60)),
+        case_block("laguerre_rsi_custom", "Laguerre RSI(0.8) with zones 0.3/0.7 over the trend series",
+                   *ehlers_case("laguerre_rsi", trend, gamma=0.8, lower=0.3, upper=0.7)),
+        case_block("laguerre_rsi_hold",
+                   "Laguerre RSI(0): no value on the flat start, the value is kept once all stages are level",
+                   *ehlers_case("laguerre_rsi", laguerre_hold_bars(), gamma=0.0)),
+        case_block("laguerre_rsi_flat", "Constant closes: no stage ever moves, no value",
+                   *ehlers_case("laguerre_rsi", flat_bars(8))),
+
+        case_block("cyber_cycle_defaults", "Cyber cycle(0.07) over the swing series",
+                   *ehlers_case("cyber_cycle", swing60)),
+        case_block("cyber_cycle_fast", "Cyber cycle(0.3) over the swing series",
+                   *ehlers_case("cyber_cycle", swing60, alpha=0.3)),
+        case_block("cyber_cycle_unit", "Cyber cycle(1.0): the shortest warm-up (7 bars)",
+                   *ehlers_case("cyber_cycle", swing20, alpha=1.0)),
+        case_block("cyber_cycle_flat", "Constant median price: cycle and trigger 0",
+                   *ehlers_case("cyber_cycle", flat_bars(12), alpha=0.5)),
     ]
     return header, blocks

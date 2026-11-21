@@ -25,6 +25,7 @@ Conventions the type documentation leaves open, assumed here and stated per indi
 import math
 from fractions import Fraction
 
+from ..ehlers import compute as ehlers_compute
 from ..exact import bollinger as exact_bollinger
 from ..fixture import provenance, render_contract
 from ..indicators import keltner as keltner_last
@@ -607,6 +608,11 @@ def simple(name, comment, period, closes, values):
 
 LONG = wave(45, 100.0, [1.2, -0.7, 0.9, 1.5, -1.1, 0.4, -0.6, 1.0, -1.4, 0.8, 0.3])
 SHORT = wave(14, 20.0, [0.5, -0.25, 1.0, -0.75, 0.25])
+_CYCLE_A = [1.2, 0.9, 1.4, 0.6, 1.1, 0.8, -0.4, -1.3, -1.0, -1.6, -0.7, -1.2, -0.5]
+_CYCLE_B = [1.5, 1.0, -0.8, -1.7, -1.1, 0.6, 0.9]
+# A cycle of 13 bars that turns into one of 7 with a drift: the adaptive period has to move.
+CYCLES = wave(60, 100.0, _CYCLE_A)
+CYCLES = CYCLES + wave(45, CYCLES[-1] + _CYCLE_A[(len(CYCLES) - 1) % len(_CYCLE_A)], _CYCLE_B)
 FLAT_THEN_MOVE = [50.0] * 8 + [51.0, 52.5, 51.5, 53.0]
 UP_DOWN_UP = (wave(20, 100.0, [1.4, 0.8, -0.5, 1.1, 0.6])
               + wave(20, 112.0, [-1.3, -0.7, 0.4, -1.2, -0.5])
@@ -859,9 +865,40 @@ def build_blocks():
     return blocks
 
 
+def ehlers_case(name, bars, **kw):
+    """One of the Ehlers entries, from `kestrel_reference.ehlers` (see its docstring)."""
+    kw = params(**kw)
+    return kw, bars, ehlers_compute(name, kw, bars)
+
+
+def ehlers_blocks():
+    cycles = ohlc(CYCLES)
+    flat = [(p, p + 0.5, p - 0.5, p, 1000.0) for p in [100.0] * 60]
+    return [
+        case_block("ultimate_smoother_defaults", "UltimateSmoother(20): the first three values "
+                   "are the closes, published from bar 20", *ehlers_case(
+                       "ultimate_smoother", ohlc(LONG))),
+        case_block("ultimate_smoother_short", "UltimateSmoother(5)",
+                   *ehlers_case("ultimate_smoother", ohlc(SHORT), period=5)),
+        case_block("ultimate_smoother_minimal", "UltimateSmoother(2): published from bar 2",
+                   *ehlers_case("ultimate_smoother", ohlc(SHORT), period=2)),
+        case_block("ultimate_smoother_flat", "Constant closes: unity gain at zero frequency",
+                   *ehlers_case("ultimate_smoother", ohlc([50.0] * 10), period=4)),
+
+        case_block("mama_defaults", "MAMA(0.5, 0.05) over a cycle that shortens: published from "
+                   "bar 50, with fama and period", *ehlers_case("mama", cycles)),
+        case_block("mama_custom", "MAMA(0.3, 0.03)",
+                   *ehlers_case("mama", cycles, fast_limit=0.3, slow_limit=0.03)),
+        case_block("mama_wide", "MAMA(1.0, 0.01): the widest limits",
+                   *ehlers_case("mama", cycles, fast_limit=1.0, slow_limit=0.01)),
+        case_block("mama_flat", "A constant median price: no cycle, mama = fama = price",
+                   *ehlers_case("mama", flat)),
+    ]
+
+
 def build():
     header = provenance("contract_moving_averages") + [
         "",
         "Format: see contract_pilot (one table per case, `-` = absent).",
     ]
-    return header, build_blocks()
+    return header, build_blocks() + ehlers_blocks()

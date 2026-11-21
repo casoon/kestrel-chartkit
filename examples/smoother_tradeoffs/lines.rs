@@ -1,4 +1,4 @@
-//! The lines that are measured: every smoother of the catalog over a sweep of lengths, `kas` at
+//! The lines that are measured: the smoothers of the catalog over a sweep of lengths, `kas` at
 //! several settings, and the candidate formulas.
 
 use crate::candidates::{self, Config, Core, Driver, Map};
@@ -51,8 +51,9 @@ fn catalog_params(name: &str, len: usize) -> Vec<(&'static str, f64)> {
     }
 }
 
-/// The comparison set: every smoother of the catalog that reads one close series.
-pub const CATALOG: [&str; 15] = [
+/// The comparison set: every smoother of the catalog that reads one close series and has a
+/// length.
+pub const CATALOG: [&str; 16] = [
     "sma",
     "ema",
     "wma",
@@ -68,6 +69,7 @@ pub const CATALOG: [&str; 15] = [
     "rma",
     "super_smoother",
     "jma",
+    "ultimate_smoother",
 ];
 
 pub fn catalog_lines() -> Vec<Line> {

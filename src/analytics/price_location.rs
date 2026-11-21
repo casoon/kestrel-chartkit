@@ -269,9 +269,7 @@ pub const PRICE_LOCATION_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     ],
     checks: &[],
     facts: crate::indicator::definition::IndicatorFacts::unitless().centered(0.0).range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(PriceLocationIndicator::new(PriceLocationConfig {
             atr_len: p.count("atr_len"),

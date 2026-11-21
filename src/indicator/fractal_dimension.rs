@@ -5,7 +5,8 @@
 //!
 //! - `halves` (Ehlers' estimate, the one behind FRAMA): with `half = max(period / 2, 2)`, `r1` is
 //!   the high-low range of the newest `half` bars, `r2` that of the `half` bars before them and
-//!   `r3` that of the whole window of `period` bars, each divided by its bar count;
+//!   `r3` that of the whole window of `period` bars, each divided by its bar count (for an odd `period` the two halves cover `period - 1` bars and
+//!   leave out the oldest);
 //!   `D = (ln(r1 + r2) - ln(r3)) / ln 2`, clamped to `1..=2`. `1.5` when `r1 + r2` or `r3` is not
 //!   positive. First output with the `period`-th bar.
 //! - `path`: `D = 1 + ln(path / range) / ln(period)`, with `path` the sum of the `period`
@@ -88,9 +89,7 @@ pub const FRACTAL_DIMENSION_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::unitless().range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(FractalDimensionEngine::new(
                 p.count("period"),

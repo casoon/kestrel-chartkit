@@ -1,4 +1,4 @@
-//! Measures the trade between lag and smoothness of every smoother of the catalog, of `kas` at
+//! Measures the trade between lag and smoothness of the smoothers of the catalog, of `kas` at
 //! several settings and, with `--candidates`, of the candidate formulas `kas` was chosen from.
 //!
 //! ```bash

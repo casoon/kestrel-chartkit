@@ -107,6 +107,8 @@ pub const COVERAGE: &[Coverage] = &[
         alerts: Specified,
         configuration: Specified,
     },
+    Coverage::full("ultimate_smoother"),
+    Coverage::full("mama"),
 ];
 
 #[test]
@@ -800,4 +802,78 @@ fn bollinger_rejects_invalid_configuration() {
     assert_rejected("bollinger", &[("mult", f64::NAN)]);
     assert_rejected("bollinger", &[("variance", 1.0)]);
     assert_rejected("bollinger", &[("period", 20.0)]);
+}
+
+#[test]
+fn ultimate_smoother_defaults() {
+    assert_holds(&case(
+        "ultimate_smoother_defaults",
+        "ultimate_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ultimate_smoother_short() {
+    assert_holds(&case(
+        "ultimate_smoother_short",
+        "ultimate_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ultimate_smoother_minimal() {
+    assert_holds(&case(
+        "ultimate_smoother_minimal",
+        "ultimate_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ultimate_smoother_flat() {
+    assert_holds(&case(
+        "ultimate_smoother_flat",
+        "ultimate_smoother",
+        IndicatorUnit::Price,
+    ));
+}
+
+#[test]
+fn ultimate_smoother_rejects_invalid_configuration() {
+    assert_rejected("ultimate_smoother", &[("period", 1.0)]);
+    assert_rejected("ultimate_smoother", &[("period", 2.5)]);
+    assert_rejected("ultimate_smoother", &[("period", f64::NAN)]);
+    assert_rejected("ultimate_smoother", &[("length", 20.0)]);
+}
+
+#[test]
+fn mama_defaults() {
+    assert_holds(&case("mama_defaults", "mama", IndicatorUnit::Price));
+}
+
+#[test]
+fn mama_custom() {
+    assert_holds(&case("mama_custom", "mama", IndicatorUnit::Price));
+}
+
+#[test]
+fn mama_wide() {
+    assert_holds(&case("mama_wide", "mama", IndicatorUnit::Price));
+}
+
+#[test]
+fn mama_flat() {
+    assert_holds(&case("mama_flat", "mama", IndicatorUnit::Price));
+}
+
+#[test]
+fn mama_rejects_invalid_configuration() {
+    assert_rejected("mama", &[("fast_limit", 0.0)]);
+    assert_rejected("mama", &[("slow_limit", 0.005)]);
+    assert_rejected("mama", &[("fast_limit", 1.5)]);
+    assert_rejected("mama", &[("fast_limit", 0.3), ("slow_limit", 0.3)]);
+    assert_rejected("mama", &[("fast_limit", 0.2), ("slow_limit", 0.4)]);
+    assert_rejected("mama", &[("period", 20.0)]);
 }

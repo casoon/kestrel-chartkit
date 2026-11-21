@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 159 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 167 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 133 of the 159 entries are verified, 26 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 155 of the 167 entries are verified, 12 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -24,10 +24,12 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `dema` | bars | verified |
 | `tema` | bars | verified |
 | `kama` | bars | verified |
-| `rma` | bars | **not yet verified:** no independent second implementation yet |
-| `alma` | bars | **not yet verified:** no independent second implementation yet |
-| `jma` | bars | **not yet verified:** no independent second implementation yet |
-| `super_smoother` | bars | **not yet verified:** no independent second implementation yet |
+| `rma` | bars | verified |
+| `alma` | bars | verified |
+| `jma` | bars | verified |
+| `super_smoother` | bars | verified |
+| `ultimate_smoother` | bars | verified |
+| `mama` | bars | verified |
 | `lsma` | bars | verified |
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
@@ -73,7 +75,13 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `williams_r` | bars | verified |
 | `fisher_transform` | bars | verified |
 | `wavetrend` | bars | verified |
-| `percent_rank` | bars | **not yet verified:** no independent second implementation yet |
+| `roofing_filter` | bars | verified |
+| `reflex` | bars | verified |
+| `trendflex` | bars | verified |
+| `correlation_trend` | bars | verified |
+| `laguerre_rsi` | bars | verified |
+| `cyber_cycle` | bars | verified |
+| `percent_rank` | bars | verified |
 | `atr` | bars | verified |
 | `adx` | bars | verified |
 | `dmi` | bars | verified |
@@ -93,9 +101,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `efficiency` | bars | verified |
 | `cusum` | bars | verified |
 | `volatility_regime` | bars | verified |
-| `fractal_dimension` | bars | **not yet verified:** no independent second implementation yet |
-| `r_squared` | bars | **not yet verified:** no independent second implementation yet |
-| `cycle_length` | bars | **not yet verified:** no independent second implementation yet |
+| `fractal_dimension` | bars | verified |
+| `r_squared` | bars | verified |
+| `cycle_length` | bars | verified |
 | `pvt` | bars | verified |
 | `efi` | bars | verified |
 | `rvat` | bars | verified |
@@ -138,9 +146,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `wyckoff` | bars | verified |
 | `zigzag_advanced` | bars | verified |
 | `trendlines` | bars | **not yet verified:** verification not completed |
-| `price_location` | bars | **not yet verified:** no independent second implementation yet |
-| `opening_range` | bars | **not yet verified:** no independent second implementation yet |
-| `period_midpoint` | bars | **not yet verified:** no independent second implementation yet |
+| `price_location` | bars | verified |
+| `opening_range` | bars | verified |
+| `period_midpoint` | bars | verified |
 | `swing_structure` | bars | **not yet verified:** no independent second implementation yet |
 | `fvg_fill` | bars | **not yet verified:** no independent second implementation yet |
 | `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
@@ -170,9 +178,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `multi_factor` | bars | verified |
 | `correlation` | two series | **not yet verified:** no independent second implementation yet |
 | `relative_strength` | two series | **not yet verified:** no independent second implementation yet |
-| `rolling_beta` | two series | **not yet verified:** no independent second implementation yet |
-| `pair_spread` | two series | **not yet verified:** no independent second implementation yet |
-| `heikin_ashi` | candle transform | **not yet verified:** no independent second implementation yet |
+| `rolling_beta` | two series | verified |
+| `pair_spread` | two series | verified |
+| `heikin_ashi` | candle transform | verified |
 | `intrabar_cvd` | intrabar | **not yet verified:** no independent second implementation yet |
 
 ## Moving averages, bands and trend lines
@@ -298,8 +306,6 @@ Requires `fast_period` to be smaller than `slow_period`.
 
 Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the first period closes)
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/rma/)
 
 **Output** unit Price, range not declared · **warmup** 14 bars
@@ -310,9 +316,7 @@ Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the 
 
 ### `alma`
 
-Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes)
-
-**Not yet verified:** no independent second implementation yet.
+Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar
 
 [See it in the showcase](../../../showcase/alma/)
 
@@ -326,9 +330,7 @@ Arnaud Legoux Moving Average (Gaussian-weighted average of the last period close
 
 ### `jma`
 
-An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values
-
-**Not yet verified:** no independent second implementation yet.
+An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values. It starts at the first close, and power is a fixed exponent (no volatility adaptation)
 
 [See it in the showcase](../../../showcase/jma/)
 
@@ -342,9 +344,7 @@ An approximation of the Jurik moving average, following an openly published form
 
 ### `super_smoother`
 
-Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar
 
 [See it in the showcase](../../../showcase/super_smoother/)
 
@@ -353,6 +353,33 @@ Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `period` | 10 | whole number 1 – 10000 | cutoff period of the filter in bars |
+
+### `ultimate_smoother`
+
+Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
+
+[See it in the showcase](../../../showcase/ultimate_smoother/)
+
+**Output** unit Price, range not declared · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 2 – 10000 | critical period of the filter in bars |
+
+### `mama`
+
+Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar. The price smoothing starts from the first closes and the Hilbert transform from the 7th bar, MAMA and FAMA from the price (Ehlers' listing starts every series from 0)
+
+[See it in the showcase](../../../showcase/mama/)
+
+**Output** unit Price, range not declared · **warmup** 50 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `fast_limit` | 0.5 | 0.01 – 1 | largest smoothing constant |
+| `slow_limit` | 0.05 | 0.01 – 1 | smallest smoothing constant, below fast_limit |
+
+Requires `slow_limit` to be smaller than `fast_limit`.
 
 ### `lsma`
 
@@ -986,11 +1013,88 @@ WaveTrend Oscillator (wt1, wt2)
 | `ob_level` | 60 | -100 – 100; threshold on the output scale | upper zone, alerts above it |
 | `os_level` | -60 | -100 – 100; threshold on the output scale | lower zone, alerts below it |
 
+### `roofing_filter`
+
+Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar. The high-pass is 0 on the first two bars and the SuperSmoother starts from it. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
+
+[See it in the showcase](../../../showcase/roofing_filter/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 48 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `hp_period` | 48 | whole number 3 – 10000 | cutoff period of the high-pass filter in bars |
+| `lp_period` | 10 | whole number 2 – 10000 | cutoff period of the SuperSmoother in bars, shorter than hp_period |
+
+Requires `lp_period` to be smaller than `hp_period`.
+
+### `reflex`
+
+Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
+
+[See it in the showcase](../../../showcase/reflex/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | bars the slope line spans |
+
+### `trendflex`
+
+Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
+
+[See it in the showcase](../../../showcase/trendflex/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | bars the difference spans |
+
+### `correlation_trend`
+
+Ehlers' Correlation Trend Indicator: the Pearson correlation of the last `length` closes with a rising straight line; a window of equal closes reads 0
+
+[See it in the showcase](../../../showcase/correlation_trend/)
+
+**Output** unit Unitless, range -1 – 1 · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | closes correlated with the line |
+
+### `laguerre_rsi`
+
+Ehlers' Laguerre RSI: the share of upward steps among the steps between four Laguerre stages seeded with the first close; no value until a stage has moved, and the previous value is kept while all stages are level
+
+[See it in the showcase](../../../showcase/laguerre_rsi/)
+
+**Output** unit Ratio, range 0 – 1 · **warmup** 2 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `gamma` | 0.5 | 0 – 0.99 | damping of the Laguerre stages |
+| `lower` | 0.2 | 0 – 1; threshold on the output scale | lower zone, bull_extreme on a cross above it |
+| `upper` | 0.8 | 0 – 1; threshold on the output scale | upper zone, bear_extreme on a cross below it |
+
+Requires `lower` to be smaller than `upper`.
+
+### `cyber_cycle`
+
+Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`); the first six bars carry the plain second difference of the price / 4, as in Ehlers' listing
+
+[See it in the showcase](../../../showcase/cyber_cycle/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 30 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `alpha` | 0.07 | 0.01 – 1 | smoothing constant of the cycle filter |
+
 ### `percent_rank`
 
 Percent rank of the close among the previous period closes: the share, in percent, at or below the current close
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/percent_rank/)
 
@@ -1249,8 +1353,6 @@ Volatility Regime & Squeeze Detector
 
 Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped)
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/fractal_dimension/)
 
 **Output** unit Unitless, range not declared · **warmup** 30 bars
@@ -1264,8 +1366,6 @@ Fractal dimension of the price path over a trailing window, 1 for a straight lin
 
 R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/r_squared/)
 
 **Output** unit Ratio, range 0 – 1 · **warmup** 20 bars
@@ -1276,9 +1376,7 @@ R-squared of a least-squares line through the last period closes, 1 for a clean 
 
 ### `cycle_length`
 
-Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); extra bars_since_crossing counts the swing in progress
-
-**Not yet verified:** no independent second implementation yet.
+Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); the stretch before the first crossing counts as the first swing; extra bars_since_crossing counts the swing in progress
 
 [See it in the showcase](../../../showcase/cycle_length/)
 
@@ -1886,8 +1984,6 @@ Trendlines through confirmed zigzag_advanced nodes: a support line through the l
 
 Where the close stands against its own recent history: the stretch (close - EMA) / ATR as value, with atr, ema, range_position (0 low .. 1 high of the range), sma, sma_prior and vol_tercile (0..2) as extras
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/price_location/)
 
 **Output** unit Unitless, range open, centred on 0 · **warmup** 20 bars
@@ -1904,9 +2000,7 @@ Where the close stands against its own recent history: the stretch (close - EMA)
 
 ### `opening_range`
 
-Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours
-
-**Not yet verified:** no independent second implementation yet.
+Opening range of a recurring session: the width of the high-low range of its first orb_duration_mins as value, with orb_high, orb_low, in_orb_window and new_session as extras; start equal to end means a session of 24 hours; a session whose first bar opens after its opening window gives no output
 
 [See it in the showcase](../../../showcase/opening_range/)
 
@@ -1923,9 +2017,7 @@ Opening range of a recurring session: the width of the high-low range of its fir
 
 ### `period_midpoint`
 
-Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to Mondays (week) and to the calendar (month: multiples of count from January)
-
-**Not yet verified:** no independent second implementation yet.
+Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to a grid of count weeks from Monday 1969-12-29, the start of ISO week 1 of 1970 (week), and to a grid of count calendar months that runs on across years (month: a count dividing 12 starts every year in January)
 
 [See it in the showcase](../../../showcase/period_midpoint/)
 
@@ -2428,9 +2520,7 @@ Return difference and price ratio of a series against a reference series
 
 #### `rolling_beta`
 
-Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared
-
-**Not yet verified:** no independent second implementation yet.
+Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared; a return against a zero close is left out and keeps the window as it was
 
 **Output** unit Ratio, range not declared · **warmup** 61 paired bars
 
@@ -2440,9 +2530,7 @@ Rolling beta of the simple returns of a close series against a reference series,
 
 #### `pair_spread`
 
-Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation
-
-**Not yet verified:** no independent second implementation yet.
+Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation; the spread is close - hedge ratio · reference close without intercept, its deviation the population one
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 60 paired bars
 
@@ -2456,9 +2544,7 @@ Residual z-score of the spread between a close series and a reference series, wi
 
 #### `heikin_ashi`
 
-Heikin-Ashi candles: averaged open, high, low and close derived from observed bars
-
-**Not yet verified:** no independent second implementation yet.
+Heikin-Ashi candles: averaged open, high, low and close derived from observed bars; the first open is (open + close) / 2
 
 **Output** unit Price, range not declared
 

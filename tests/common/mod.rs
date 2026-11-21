@@ -19,6 +19,8 @@ pub mod contract;
 /// - `swing_structure`: waits for four confirmed pivots and two impulse and two correction legs.
 /// - `opening_range`: waits for the first bar of a session inside its opening window, which
 ///   depends on the timestamps.
+/// - `laguerre_rsi`: waits for the first bar on which a stage has moved, so a series that starts
+///   flat publishes later than the second bar.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "leg_character",
     "structure_zones",
@@ -27,6 +29,7 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "opening_range",
     "vwap_regime",
     "swing_structure",
+    "laguerre_rsi",
 ];
 
 /// Indicators that publish only while the data holds a confirmed structure, so how many bars have

@@ -29,6 +29,7 @@ pub mod divergence;
 pub mod double_pattern;
 pub mod dpo;
 pub mod efficiency;
+pub mod ehlers;
 pub mod elliott;
 pub mod envelope;
 pub mod eom;

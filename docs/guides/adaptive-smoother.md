@@ -6,7 +6,7 @@ order: 7
 
 `kestrel_adaptive_smoother`, short `kas`, is a moving average that changes its own speed. While the
 closes go back and forth it nearly rests; when they move one way by more than the market usually
-does, it follows. This page states the formula, how it was measured against every other smoother
+does, it follows. This page states the formula, how it was measured against the other smoothers
 of the catalog, and what the numbers say, including where `kas` loses.
 
 ## Why an adaptive smoother at all
@@ -65,8 +65,8 @@ cargo run --release --example smoother_tradeoffs -- summary rows.csv
 ```
 
 - **Comparison set:** `sma`, `ema`, `wma`, `hma`, `dema`, `tema`, `kama`, `vidya`, `t3`,
-  `mcginley`, `lsma`, `alma`, `rma`, `super_smoother` and `jma`, each swept over 22 lengths from
-  3 to 200.
+  `mcginley`, `lsma`, `alma`, `rma`, `super_smoother`, `jma` and `ultimate_smoother`, each swept
+  over 22 lengths from 3 to 200. `mama` has no length to sweep and is not part of the set.
 - **Equal smoothness, not equal length.** A length means something different for every smoother.
   So each one is read along its whole sweep at the point where it is as smooth as the others,
   and the table states what it costs there.
@@ -151,7 +151,8 @@ deviation; errors are root mean square against the noise-free signal.
 
 The other smoothers of the catalog reach this number of direction
 changes only at lengths where they need 13 to 144 bars for half of the step (`kama`, `vidya`,
-`sma`, `rma`, `mcginley`, `alma`), or not at all (`ema`, `wma`, `dema`, `tema`, `lsma`).
+`sma`, `rma`, `mcginley`, `alma`), or not at all (`ema`, `wma`, `dema`, `tema`, `lsma`,
+`ultimate_smoother`).
 
 Overshoot at a step, the largest value over all lengths, in percent of the step:
 
@@ -165,6 +166,7 @@ Overshoot at a step, the largest value over all lengths, in percent of the step:
 | `super_smoother` | 4.5 | 4.8 |
 | `jma` | 10.7 | 10.6 |
 | `t3` | 16.2 | 16.2 |
+| `ultimate_smoother` | 26.2 | 26.2 |
 | `hma` | 28.2 | 28.4 |
 | `ema`, `sma`, `wma`, `kama`, `alma` | 0.0 | 1.0 to 1.6 |
 

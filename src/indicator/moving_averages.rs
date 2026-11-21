@@ -787,9 +787,7 @@ pub const RMA_DEFINITION: super::definition::IndicatorDefinition =
             .meaning("bars of the Wilder average")],
         checks: &[],
         facts: super::definition::IndicatorFacts::price(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RmaEngine::new(p.count("period")))),
     };
 
@@ -799,7 +797,7 @@ pub const ALMA_DEFINITION: super::definition::IndicatorDefinition =
         name: "alma",
         aliases: &[],
         description:
-            "Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes)",
+            "Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar",
         params: &[
             super::definition::ParamSpec::count("period", 9, 1, 10000)
                 .meaning("bars in the weighting window"),
@@ -810,9 +808,7 @@ pub const ALMA_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::price(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(AlmaEngine::new(
                 p.count("period"),
@@ -827,7 +823,7 @@ pub const JMA_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "jma",
         aliases: &[],
-        description: "An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values",
+        description: "An approximation of the Jurik moving average, following an openly published formula; it is not the product of Jurik Research, whose original is not public, and does not reproduce its values. It starts at the first close, and power is a fixed exponent (no volatility adaptation)",
         params: &[
             super::definition::ParamSpec::count("period", 14, 1, 10000)
                 .meaning("length: the larger, the smoother and the later"),
@@ -838,9 +834,7 @@ pub const JMA_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::price(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(JmaEngine::new(
                 p.count("period"),
@@ -855,13 +849,11 @@ pub const SUPER_SMOOTHER_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "super_smoother",
         aliases: &[],
-        description: "Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter",
+        description: "Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar",
         params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
             .meaning("cutoff period of the filter in bars")],
         checks: &[],
         facts: super::definition::IndicatorFacts::price(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(SuperSmootherEngine::new(p.count("period")))),
     };

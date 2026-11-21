@@ -11,8 +11,13 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Added
 
-- **Indicator `kestrel_adaptive_smoother`:** the Kestrel Adaptive Smoother as a catalog entry (alias `kas`, type `Kas`): a cascade of three exponential stages whose common gain follows a score of how directed and how unusual the recent movement is. `period` (default 20), `phase` (0..2, default 0.5: lead against overshoot, 0 cannot overshoot), `adapt` (0..2, default 1: 0 is a fixed filter); valid from the first bar. Marked as not yet accepted; formula, measurements and the candidates it was chosen from: [The adaptive smoother](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/). The catalog now has 159 entries.
-- **Example `smoother_tradeoffs`:** measures lag, overshoot, residual error, roughness and direction changes of every smoother of the catalog on deterministic test signals and on close series read from files (`cargo run --release --example smoother_tradeoffs -- synthetic out.csv`), and prints the comparison at equal smoothness (`summary`).
+- **Catalog:** `ultimate_smoother`, `roofing_filter`, `reflex`, `trendflex`, `correlation_trend`, `laguerre_rsi`, `cyber_cycle` and `mama` (Ehlers' filters and oscillators) are verified catalog entries; 166 entries in all, 155 of them verified. Where they start differently from Ehlers' listings (from the price instead of from 0), the description says so.
+- **Indicator `kestrel_adaptive_smoother`:** the Kestrel Adaptive Smoother as a catalog entry (alias `kas`, type `Kas`): a cascade of three exponential stages whose common gain follows a score of how directed and how unusual the recent movement is. `period` (default 20), `phase` (0..2, default 0.5: lead against overshoot, 0 cannot overshoot), `adapt` (0..2, default 1: 0 is a fixed filter); valid from the first bar. Marked as not yet accepted; formula, measurements and the candidates it was chosen from: [The adaptive smoother](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/). With it the catalog has 167 entries.
+- **Example `smoother_tradeoffs`:** measures lag, overshoot, residual error, roughness and direction changes of the smoothers of the catalog that have a length on deterministic test signals and on close series read from files (`cargo run --release --example smoother_tradeoffs -- synthetic out.csv`), and prints the comparison at equal smoothness (`summary`).
+
+### Changed
+
+- **Catalog:** `rma`, `alma`, `jma`, `super_smoother`, `percent_rank`, `fractal_dimension`, `r_squared`, `cycle_length`, `price_location`, `period_midpoint`, `opening_range`, `rolling_beta`, `pair_spread` and `heikin_ashi` are verified. Their descriptions state the conventions a formula leaves open, such as the start values, the unrounded `alma` peak and the week and month grid of `period_midpoint`.
 
 ## [0.43.0] - 2026-11-20
 
