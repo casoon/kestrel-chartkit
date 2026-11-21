@@ -85,24 +85,9 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("setup_countdown"),
     Coverage::full("narrow_range"),
     Coverage::full("williams_fractals"),
-    Coverage {
-        indicator: "chart_patterns",
-        values: Status::Partial(PATTERN_SCENARIOS),
-        alerts: Status::Partial(PATTERN_SCENARIOS),
-        configuration: Status::Specified,
-    },
-    Coverage {
-        indicator: "harmonic_patterns",
-        values: Status::Partial(PATTERN_SCENARIOS),
-        alerts: Status::Partial(PATTERN_SCENARIOS),
-        configuration: Status::Specified,
-    },
+    Coverage::full("chart_patterns"),
+    Coverage::full("harmonic_patterns"),
 ];
-
-const PATTERN_SCENARIOS: &str =
-    "fixed by hand-counted scenario series in tests/scenario_reference_pattern_events.rs (every \
-     geometry and harmonic row, near misses, invalidation, expiry, mirror image), not by a \
-     generated fixture: the reference generator has no second implementation of the detectors";
 
 const FESTE_OSZILLATOREN: &str =
     "oscillator_pivot_divergence fixed to WaveTrend / Stochastic RSI; the reference generator has \
@@ -1091,28 +1076,1545 @@ fn candle_classification_rejects_invalid_configuration() {
     assert_rejected("candle_classification", &[("pin_wick", 0.55)]);
 }
 
-// --- chart_patterns and harmonic_patterns ----------------------------------------------------
+// --- chart_patterns --------------------------------------------------------------------------
+
+#[test]
+fn chart_patterns_double_top() {
+    holds(
+        "chart_patterns_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_double_top() {
+    holds(
+        "chart_patterns_negated_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_double_bottom() {
+    holds(
+        "chart_patterns_double_bottom",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_double_bottom() {
+    holds(
+        "chart_patterns_negated_double_bottom",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_triple_top() {
+    holds(
+        "chart_patterns_triple_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_triple_top() {
+    holds(
+        "chart_patterns_negated_triple_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_triple_bottom() {
+    holds(
+        "chart_patterns_triple_bottom",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_triple_bottom() {
+    holds(
+        "chart_patterns_negated_triple_bottom",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_head_and_shoulders() {
+    holds(
+        "chart_patterns_head_and_shoulders",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_head_and_shoulders() {
+    holds(
+        "chart_patterns_negated_head_and_shoulders",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_inverse_head_and_shoulders() {
+    holds(
+        "chart_patterns_inverse_head_and_shoulders",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_inverse_head_and_shoulders() {
+    holds(
+        "chart_patterns_negated_inverse_head_and_shoulders",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_one_two_three() {
+    holds(
+        "chart_patterns_one_two_three",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_one_two_three() {
+    holds(
+        "chart_patterns_negated_one_two_three",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_wolfe_wave() {
+    holds(
+        "chart_patterns_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_wolfe_wave() {
+    holds(
+        "chart_patterns_negated_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_triangle_up() {
+    holds(
+        "chart_patterns_triangle_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_triangle_up() {
+    holds(
+        "chart_patterns_negated_triangle_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_triangle_down() {
+    holds(
+        "chart_patterns_triangle_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_triangle_down() {
+    holds(
+        "chart_patterns_negated_triangle_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_ascending_triangle() {
+    holds(
+        "chart_patterns_ascending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_ascending_triangle() {
+    holds(
+        "chart_patterns_negated_ascending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_descending_triangle() {
+    holds(
+        "chart_patterns_descending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_descending_triangle() {
+    holds(
+        "chart_patterns_negated_descending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_broadening_up() {
+    holds(
+        "chart_patterns_broadening_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_broadening_up() {
+    holds(
+        "chart_patterns_negated_broadening_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_broadening_down() {
+    holds(
+        "chart_patterns_broadening_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_broadening_down() {
+    holds(
+        "chart_patterns_negated_broadening_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_rising_wedge() {
+    holds(
+        "chart_patterns_rising_wedge",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_rising_wedge() {
+    holds(
+        "chart_patterns_negated_rising_wedge",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_falling_wedge() {
+    holds(
+        "chart_patterns_falling_wedge",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_falling_wedge() {
+    holds(
+        "chart_patterns_negated_falling_wedge",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_flag_breakout() {
+    holds(
+        "chart_patterns_flag_breakout",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_flag_breakout() {
+    holds(
+        "chart_patterns_negated_flag_breakout",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_cup_and_handle() {
+    holds(
+        "chart_patterns_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_downward_ascending_triangle() {
+    holds(
+        "chart_patterns_downward_ascending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_downward_ascending_triangle() {
+    holds(
+        "chart_patterns_negated_downward_ascending_triangle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_near_miss_double_top() {
+    holds(
+        "chart_patterns_near_miss_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_loose_near_miss_double_top() {
+    holds(
+        "chart_patterns_loose_near_miss_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_loose_near_miss_double_top() {
+    holds(
+        "chart_patterns_negated_loose_near_miss_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_channel() {
+    holds(
+        "chart_patterns_channel",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_channel() {
+    holds(
+        "chart_patterns_negated_channel",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_flat_range() {
+    holds(
+        "chart_patterns_flat_range",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_flat_range() {
+    holds(
+        "chart_patterns_negated_flat_range",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_unflat_range() {
+    holds(
+        "chart_patterns_unflat_range",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_leaning_top() {
+    holds(
+        "chart_patterns_leaning_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_leaning_top() {
+    holds(
+        "chart_patterns_negated_leaning_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_unflat_leaning_top() {
+    holds(
+        "chart_patterns_unflat_leaning_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_apex_up() {
+    holds(
+        "chart_patterns_apex_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_apex_up() {
+    holds(
+        "chart_patterns_negated_apex_up",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_apex_down() {
+    holds(
+        "chart_patterns_apex_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_apex_down() {
+    holds(
+        "chart_patterns_negated_apex_down",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_given_up_one_two_three() {
+    holds(
+        "chart_patterns_given_up_one_two_three",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_given_up_one_two_three() {
+    holds(
+        "chart_patterns_negated_given_up_one_two_three",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_jump_wolfe_wave() {
+    holds(
+        "chart_patterns_jump_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_jump_wolfe_wave() {
+    holds(
+        "chart_patterns_negated_jump_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_reverting_jump_wolfe_wave() {
+    holds(
+        "chart_patterns_reverting_jump_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_reverting_jump_wolfe_wave() {
+    holds(
+        "chart_patterns_negated_reverting_jump_wolfe_wave",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_given_up_double_top() {
+    holds(
+        "chart_patterns_given_up_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_given_up_double_top() {
+    holds(
+        "chart_patterns_negated_given_up_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_shallow_triple_top() {
+    holds(
+        "chart_patterns_shallow_triple_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_shallow_triple_top() {
+    holds(
+        "chart_patterns_negated_shallow_triple_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_flat_head() {
+    holds(
+        "chart_patterns_flat_head",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_flat_head() {
+    holds(
+        "chart_patterns_negated_flat_head",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_wide_flag() {
+    holds(
+        "chart_patterns_wide_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_wide_flag() {
+    holds(
+        "chart_patterns_negated_wide_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_deep_flag() {
+    holds(
+        "chart_patterns_deep_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_deep_flag() {
+    holds(
+        "chart_patterns_negated_deep_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_limit_flag() {
+    holds(
+        "chart_patterns_limit_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_limit_flag() {
+    holds(
+        "chart_patterns_negated_limit_flag",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_gapped_cup_and_handle() {
+    holds(
+        "chart_patterns_gapped_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_gapped_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_gapped_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_slow_cup_and_handle() {
+    holds(
+        "chart_patterns_slow_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_slow_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_slow_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_gapped_slow_cup_and_handle() {
+    holds(
+        "chart_patterns_gapped_slow_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_gapped_slow_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_gapped_slow_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_limit_cup_and_handle() {
+    holds(
+        "chart_patterns_limit_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_limit_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_limit_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_late_cup_and_handle() {
+    holds(
+        "chart_patterns_late_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_late_cup_and_handle() {
+    holds(
+        "chart_patterns_negated_late_cup_and_handle",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_pending_swings_1() {
+    holds(
+        "chart_patterns_pending_swings_1",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_pending_swings_2() {
+    holds(
+        "chart_patterns_pending_swings_2",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_pending_swings_3() {
+    holds(
+        "chart_patterns_pending_swings_3",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_pending_swings_4() {
+    holds(
+        "chart_patterns_pending_swings_4",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_pending_swings_10() {
+    holds(
+        "chart_patterns_pending_swings_10",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_pending_swings_4() {
+    holds(
+        "chart_patterns_negated_pending_swings_4",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_shared_timestamp() {
+    holds(
+        "chart_patterns_shared_timestamp",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_shared_timestamp() {
+    holds(
+        "chart_patterns_negated_shared_timestamp",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_atr_double_top() {
+    holds(
+        "chart_patterns_atr_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_atr_double_top() {
+    holds(
+        "chart_patterns_negated_atr_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_atr_late_double_top() {
+    holds(
+        "chart_patterns_atr_late_double_top",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_atr_flat_prices() {
+    holds(
+        "chart_patterns_atr_flat_prices",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_flat_prices() {
+    holds(
+        "chart_patterns_flat_prices",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_defaults() {
+    holds(
+        "chart_patterns_walk_defaults",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_negated_walk_defaults() {
+    holds(
+        "chart_patterns_negated_walk_defaults",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_fine() {
+    holds(
+        "chart_patterns_walk_fine",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_atr_multiple() {
+    holds(
+        "chart_patterns_walk_atr_multiple",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_wide_levels() {
+    holds(
+        "chart_patterns_walk_wide_levels",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_minimal_levels() {
+    holds(
+        "chart_patterns_walk_minimal_levels",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn chart_patterns_walk_widest_deviation() {
+    holds(
+        "chart_patterns_walk_widest_deviation",
+        "chart_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
 
 #[test]
 fn chart_patterns_rejects_invalid_configuration() {
     assert_rejected("chart_patterns", &[("depth", 0.0)]);
+    assert_rejected("chart_patterns", &[("depth", 10001.0)]);
+    assert_rejected("chart_patterns", &[("depth", 2.5)]);
+    assert_rejected("chart_patterns", &[("backstep", -1.0)]);
+    assert_rejected("chart_patterns", &[("backstep", 10001.0)]);
+    assert_rejected("chart_patterns", &[("backstep", 1.5)]);
     assert_rejected("chart_patterns", &[("deviation_pct", 0.0)]);
-    assert_rejected("chart_patterns", &[("tolerance_pct", 0.0)]);
-    assert_rejected("chart_patterns", &[("tolerance_pct", 51.0)]);
-    assert_rejected("chart_patterns", &[("flat_pct", -1.0)]);
+    assert_rejected("chart_patterns", &[("deviation_pct", 0.0005)]);
+    assert_rejected("chart_patterns", &[("deviation_pct", f64::NAN)]);
+    assert_rejected("chart_patterns", &[("deviation_pct", 100.5)]);
+    assert_rejected("chart_patterns", &[("deviation_mode", 2.0)]);
+    assert_rejected("chart_patterns", &[("deviation_mode", 0.5)]);
+    assert_rejected("chart_patterns", &[("deviation_mode", -1.0)]);
+    assert_rejected("chart_patterns", &[("atr_len", 0.0)]);
+    assert_rejected("chart_patterns", &[("atr_len", 10001.0)]);
+    assert_rejected("chart_patterns", &[("atr_len", 2.5)]);
     assert_rejected("chart_patterns", &[("pending_swings", 0.0)]);
+    assert_rejected("chart_patterns", &[("pending_swings", 101.0)]);
     assert_rejected("chart_patterns", &[("pending_swings", 2.5)]);
+    // In percent the deviation ends at 100, in ATR multiples at 1000.
+    assert_rejected(
+        "chart_patterns",
+        &[("deviation_mode", 1.0), ("deviation_pct", 1000.5)],
+    );
+    assert_rejected("chart_patterns", &[("tolerance_pct", 0.0)]);
+    assert_rejected("chart_patterns", &[("tolerance_pct", 0.0005)]);
+    assert_rejected("chart_patterns", &[("tolerance_pct", 50.5)]);
+    assert_rejected("chart_patterns", &[("tolerance_pct", f64::NAN)]);
+    assert_rejected("chart_patterns", &[("flat_pct", -1.0)]);
+    assert_rejected("chart_patterns", &[("flat_pct", 100.5)]);
+    assert_rejected("chart_patterns", &[("flat_pct", f64::NAN)]);
     assert_rejected("chart_patterns", &[("ratio_tolerance", 0.03)]);
+}
+
+// --- harmonic_patterns -----------------------------------------------------------------------
+
+#[test]
+fn harmonic_patterns_gartley() {
+    holds(
+        "harmonic_patterns_gartley",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_gartley() {
+    holds(
+        "harmonic_patterns_negated_gartley",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_bat() {
+    holds(
+        "harmonic_patterns_bat",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_bat() {
+    holds(
+        "harmonic_patterns_negated_bat",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_butterfly() {
+    holds(
+        "harmonic_patterns_butterfly",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_butterfly() {
+    holds(
+        "harmonic_patterns_negated_butterfly",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_crab() {
+    holds(
+        "harmonic_patterns_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_crab() {
+    holds(
+        "harmonic_patterns_negated_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_deep_crab() {
+    holds(
+        "harmonic_patterns_deep_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_deep_crab() {
+    holds(
+        "harmonic_patterns_negated_deep_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_shark() {
+    holds(
+        "harmonic_patterns_shark",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_shark() {
+    holds(
+        "harmonic_patterns_negated_shark",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_gartley() {
+    holds(
+        "harmonic_patterns_edge_inside_gartley",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_gartley() {
+    holds(
+        "harmonic_patterns_edge_outside_gartley",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_gartley() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_gartley",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_bat() {
+    holds(
+        "harmonic_patterns_edge_inside_bat",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_bat() {
+    holds(
+        "harmonic_patterns_edge_outside_bat",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_bat() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_bat",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_butterfly() {
+    holds(
+        "harmonic_patterns_edge_inside_butterfly",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_butterfly() {
+    holds(
+        "harmonic_patterns_edge_outside_butterfly",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_butterfly() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_butterfly",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_crab() {
+    holds(
+        "harmonic_patterns_edge_inside_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_crab() {
+    holds(
+        "harmonic_patterns_edge_outside_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_crab() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_deep_crab() {
+    holds(
+        "harmonic_patterns_edge_inside_deep_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_deep_crab() {
+    holds(
+        "harmonic_patterns_edge_outside_deep_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_deep_crab() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_deep_crab",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_inside_shark() {
+    holds(
+        "harmonic_patterns_edge_inside_shark",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_edge_outside_shark() {
+    holds(
+        "harmonic_patterns_edge_outside_shark",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_edge_outside_shark() {
+    holds(
+        "harmonic_patterns_negated_edge_outside_shark",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_between_rows() {
+    holds(
+        "harmonic_patterns_between_rows",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_between_rows() {
+    holds(
+        "harmonic_patterns_negated_between_rows",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_default_tolerance_b_leg() {
+    holds(
+        "harmonic_patterns_default_tolerance_b_leg",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_default_tolerance_b_leg() {
+    holds(
+        "harmonic_patterns_negated_default_tolerance_b_leg",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_zero_tolerance_b_leg() {
+    holds(
+        "harmonic_patterns_zero_tolerance_b_leg",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_zero_tolerance_rows() {
+    holds(
+        "harmonic_patterns_zero_tolerance_rows",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_zero_tolerance_rows() {
+    holds(
+        "harmonic_patterns_negated_zero_tolerance_rows",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_zero_tolerance_edge() {
+    holds(
+        "harmonic_patterns_zero_tolerance_edge",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_zero_tolerance_edge() {
+    holds(
+        "harmonic_patterns_negated_zero_tolerance_edge",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_wide_zone() {
+    holds(
+        "harmonic_patterns_wide_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_wide_zone() {
+    holds(
+        "harmonic_patterns_negated_wide_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_narrow_zone() {
+    holds(
+        "harmonic_patterns_narrow_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_atr_multiple() {
+    holds(
+        "harmonic_patterns_atr_multiple",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_rally_from_bat_zone() {
+    holds(
+        "harmonic_patterns_rally_from_bat_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_rally_from_bat_zone() {
+    holds(
+        "harmonic_patterns_negated_rally_from_bat_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_given_up_bat_zone() {
+    holds(
+        "harmonic_patterns_given_up_bat_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_given_up_bat_zone() {
+    holds(
+        "harmonic_patterns_negated_given_up_bat_zone",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_pending_swings_2() {
+    holds(
+        "harmonic_patterns_pending_swings_2",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_pending_swings_2() {
+    holds(
+        "harmonic_patterns_negated_pending_swings_2",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_pending_swings_3() {
+    holds(
+        "harmonic_patterns_pending_swings_3",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_pending_swings_4() {
+    holds(
+        "harmonic_patterns_pending_swings_4",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_pending_swings_5() {
+    holds(
+        "harmonic_patterns_pending_swings_5",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_pending_swings_5() {
+    holds(
+        "harmonic_patterns_negated_pending_swings_5",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_defaults() {
+    holds(
+        "harmonic_patterns_walk_defaults",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_wide_tolerance() {
+    holds(
+        "harmonic_patterns_walk_wide_tolerance",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_negated_walk_wide_tolerance() {
+    holds(
+        "harmonic_patterns_negated_walk_wide_tolerance",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_atr_multiple() {
+    holds(
+        "harmonic_patterns_walk_atr_multiple",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_third_tolerance() {
+    holds(
+        "harmonic_patterns_walk_third_tolerance",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_minimal_levels() {
+    holds(
+        "harmonic_patterns_walk_minimal_levels",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_widest_levels() {
+    holds(
+        "harmonic_patterns_walk_widest_levels",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_walk_widest_deviation() {
+    holds(
+        "harmonic_patterns_walk_widest_deviation",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn harmonic_patterns_flat_prices() {
+    holds(
+        "harmonic_patterns_flat_prices",
+        "harmonic_patterns",
+        IndicatorUnit::Unitless,
+    );
 }
 
 #[test]
 fn harmonic_patterns_rejects_invalid_configuration() {
+    assert_rejected("harmonic_patterns", &[("depth", 0.0)]);
+    assert_rejected("harmonic_patterns", &[("depth", 10001.0)]);
+    assert_rejected("harmonic_patterns", &[("depth", 2.5)]);
     assert_rejected("harmonic_patterns", &[("backstep", -1.0)]);
+    assert_rejected("harmonic_patterns", &[("backstep", 10001.0)]);
+    assert_rejected("harmonic_patterns", &[("backstep", 1.5)]);
+    assert_rejected("harmonic_patterns", &[("deviation_pct", 0.0)]);
+    assert_rejected("harmonic_patterns", &[("deviation_pct", 0.0005)]);
+    assert_rejected("harmonic_patterns", &[("deviation_pct", f64::NAN)]);
+    assert_rejected("harmonic_patterns", &[("deviation_pct", 100.5)]);
+    assert_rejected("harmonic_patterns", &[("deviation_mode", 2.0)]);
+    assert_rejected("harmonic_patterns", &[("deviation_mode", 0.5)]);
+    assert_rejected("harmonic_patterns", &[("deviation_mode", -1.0)]);
     assert_rejected("harmonic_patterns", &[("atr_len", 0.0)]);
-    assert_rejected("harmonic_patterns", &[("ratio_tolerance", -0.01)]);
-    assert_rejected("harmonic_patterns", &[("ratio_tolerance", 0.6)]);
-    assert_rejected("harmonic_patterns", &[("min_prz_share", 1.5)]);
+    assert_rejected("harmonic_patterns", &[("atr_len", 10001.0)]);
+    assert_rejected("harmonic_patterns", &[("atr_len", 2.5)]);
+    assert_rejected("harmonic_patterns", &[("pending_swings", 0.0)]);
     assert_rejected("harmonic_patterns", &[("pending_swings", 101.0)]);
+    assert_rejected("harmonic_patterns", &[("pending_swings", 2.5)]);
+    // In percent the deviation ends at 100, in ATR multiples at 1000.
+    assert_rejected(
+        "harmonic_patterns",
+        &[("deviation_mode", 1.0), ("deviation_pct", 1000.5)],
+    );
+    assert_rejected("harmonic_patterns", &[("ratio_tolerance", -0.01)]);
+    assert_rejected("harmonic_patterns", &[("ratio_tolerance", 0.51)]);
+    assert_rejected("harmonic_patterns", &[("ratio_tolerance", f64::NAN)]);
+    assert_rejected("harmonic_patterns", &[("min_prz_share", -0.1)]);
+    assert_rejected("harmonic_patterns", &[("min_prz_share", 1.5)]);
+    assert_rejected("harmonic_patterns", &[("min_prz_share", f64::NAN)]);
     assert_rejected("harmonic_patterns", &[("tolerance_pct", 2.0)]);
 }
 

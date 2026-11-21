@@ -29,6 +29,7 @@ from ..smoothing import rma
 from ..structure import advanced_zigzag, liquidity_pools, pivot_structure_scores
 from ..structure_patterns import compute as pattern_compute
 from ..structure import trendlines as trendline_model
+from .contract_patterns import pattern_event_cases
 from .contract_pilot import case_block
 from .contract_volatility import swing_bars
 
@@ -2071,7 +2072,7 @@ def build():
         case_block("wyckoff_short_lookback",
                    "wyckoff, range_lookback 10: the window is full before the ATR(14) exists",
                    *wyckoff(textbook, range_lookback=10)),
-    ] + candle_cases() + pattern_cases()
+    ] + candle_cases() + pattern_cases() + pattern_event_cases()
     return header, blocks
 
 
