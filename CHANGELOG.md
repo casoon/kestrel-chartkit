@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-11-21
+
 ### Added
 
 - **Catalog:** `true_range_money_flow` (alias `trmf`) is a verified catalog entry; 196 entries in all, 185 of them verified. It is a money flow ratio like `cmf`: the close located in the true range (previous close included, so gaps count), weighted by volume, with Wilder averages instead of window sums and each bar's volume capped at `volume_cap` times the average volume before it (after Katsanos, 2004).
