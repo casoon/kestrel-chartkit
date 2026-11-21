@@ -8,9 +8,10 @@
 //! bar or to the later bar on which the detector's rule is first met.
 //!
 //! Harmonic zone prices are the documented projections evaluated outside the crate from the ratio
-//! table: the XA retracement of the row's `d` centre, the BC extension of the row's `cd` centre
-//! and the AB=CD projection (Gartley: 120 - 0.785 * 20 = 104.3, 113.92 - 1.374 * 6.28 =
-//! 105.29128, 113.92 + (107.64 - 120) = 101.56). Detector wiring, not the detector rules, is what
+//! table: the projection of the row's `d` interval widened by the default tolerance 0.03 (from
+//! the row's basis, XA or XC), the BC extension of the row's `cd` centre and the AB=CD projection;
+//! the zone is the span of all of them (Gartley: 120 - 0.72 * 20 = 105.6 and 120 - 0.85 * 20 =
+//! 103, 113.92 - 1.374 * 6.28 = 105.29128, 113.92 + (107.64 - 120) = 101.56). Detector wiring, not the detector rules, is what
 //! these scenarios fix: the rules themselves are the `ChartPatternDetector` and `HarmonicDetector`
 //! module tests.
 
@@ -623,6 +624,66 @@ fn an_instance_expires_after_pending_swings_confirmed_nodes() {
     );
 }
 
+#[test]
+fn an_instance_expires_after_exactly_pending_swings_further_nodes() {
+    // Same series as above. The double top is found with the node of bar 30 (bar 43); the nodes of
+    // the bars 40, 50 and 60 are confirmed on the bars 53, 63 and 73, and the close under the
+    // neckline comes on bar 77. Three further nodes have been confirmed by then: with
+    // `pending_swings` 3 the instance has expired on bar 73, with 4 it is still followed.
+    let series: Waypoints = &[
+        (0, 100.0),
+        (10, 120.0),
+        (20, 105.0),
+        (30, 120.5),
+        (40, 108.0),
+        (50, 114.0),
+        (60, 109.0),
+        (70, 113.0),
+        (80, 100.0),
+        (90, 110.0),
+    ];
+    let on_77 = |pending: f64| {
+        events(&run(CHART, &[("pending_swings", pending)], &bars(series)))
+            .iter()
+            .any(|(bar, kinds)| *bar == 77 && kinds.iter().any(|k| k == "bear_double_top"))
+    };
+    assert!(!on_77(3.0));
+    assert!(on_77(4.0));
+}
+
+#[test]
+fn the_cup_rule_counts_bars_not_seconds() {
+    // The cup of CUP_AND_HANDLE with a gap of 1 000 000 s in the timestamps between the right rim
+    // (bar 50) and the handle (bar 58): 8 bars against a cup of 40, as without the gap.
+    let gap = |series: Vec<Bar>| -> Vec<Bar> {
+        series
+            .into_iter()
+            .enumerate()
+            .map(|(i, b)| {
+                let shift = if i >= 54 { 1_000_000 } else { 0 };
+                Bar::new(
+                    b.timestamp + shift,
+                    b.open,
+                    b.high,
+                    b.low,
+                    b.close,
+                    b.volume,
+                )
+            })
+            .collect()
+    };
+    let cup = |kind: &str, series: &[Bar]| {
+        events(&run(CHART, &[], series))
+            .iter()
+            .any(|(bar, kinds)| *bar == 73 && kinds.iter().any(|k| k == kind))
+    };
+    assert!(cup("bull_cup_and_handle", &gap(bars(CUP_AND_HANDLE))));
+    assert!(cup(
+        "bear_inverse_cup_and_handle",
+        &gap(mirrored(&bars(CUP_AND_HANDLE)))
+    ));
+}
+
 // --- harmonic patterns -----------------------------------------------------------------------
 
 const HARMONIC: &str = "harmonic_patterns";
@@ -645,15 +706,15 @@ fn xabcd(b: f64, c: f64, d: f64) -> Vec<Bar> {
 }
 
 /// (kind, code, B, C, D, PRZ low, PRZ high): ratios inside the row of the table on every leg.
-/// The zone is the span of the XA retracement at the row's `d` centre, the BC extension at its
-/// `cd` centre and the AB=CD projection.
+/// The zone is the span of the projection of the row's `d` interval widened by 0.03 (XC basis for
+/// the shark), the BC extension at the `cd` centre and the AB=CD projection.
 const ROWS: &[(&str, f64, f64, f64, f64, f64, f64)] = &[
-    ("gartley", 1.0, 107.64, 113.92, 104.3, 101.56, 105.29128),
-    ("bat", 2.0, 111.18, 117.33, 102.3, 102.3, 108.51),
-    ("butterfly", 3.0, 104.3, 111.29, 94.96, 92.52, 96.48518),
-    ("crab", 4.0, 108.82, 117.32, 88.0, 88.0, 106.14),
-    ("deep_crab", 5.0, 102.3, 110.18, 89.0, 87.09948, 92.48),
-    ("shark", 6.0, 110.0, 122.52, 100.2, 98.36892, 112.52),
+    ("gartley", 1.0, 107.64, 113.92, 104.3, 101.56, 105.6),
+    ("bat", 2.0, 111.18, 117.33, 102.3, 101.0, 108.51),
+    ("butterfly", 3.0, 104.3, 111.29, 94.96, 87.04, 96.48518),
+    ("crab", 4.0, 108.82, 117.32, 88.0, 85.4, 106.14),
+    ("deep_crab", 5.0, 102.3, 110.18, 89.0, 85.4, 92.48),
+    ("shark", 6.0, 110.0, 122.52, 100.2, 96.3968, 112.52),
 ];
 
 #[test]
@@ -712,9 +773,10 @@ fn the_ratio_tolerance_decides_whether_the_pattern_exists() {
 
 #[test]
 fn a_close_through_the_zone_gives_the_structure_up() {
-    // Bat with D at 101.2 (0.94 of XA, inside the widened 0.85..0.92), below the zone 102.3..108.51.
-    // With the rally to 125 it confirms; when the swing after D reaches only 102.25 every close
-    // since D has stayed under the zone and the rule gives the structure up.
+    // Bat with D at 101.2 (0.94 of XA, inside the widened 0.85..0.92 and so inside its zone
+    // 101.0..108.51). With the rally to 125 it confirms; when the swing after D reaches only 102.25
+    // no close leaves the zone upward, and the fall to 95 afterwards closes through its low edge
+    // and gives the structure up.
     let waypoints = |e: f64| -> Vec<Bar> {
         let w = vec![
             (0, 110.0),

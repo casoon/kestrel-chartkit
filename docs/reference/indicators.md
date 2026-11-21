@@ -2458,7 +2458,7 @@ Chart patterns from ZigZag swings as they confirm, one event per pattern instanc
 | `deviation_mode` | `percent` | `percent`, `atr_multiple` (f64 map: 0 – 1) | unit of the swing deviation: percent of price or multiples of the ATR |
 | `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move that confirms a swing, in the unit of deviation_mode |
 | `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR of the ZigZag |
-| `tolerance_pct` | 2 | 0.001 – 50 | percent within which two swing prices count as one level |
+| `tolerance_pct` | 2 | 0.001 – 50 | percent of the swing price within which two swing prices count as one level |
 | `flat_pct` | 1.5 | 0 – 100 | percent of the opening gap a boundary may move and still count as flat |
 | `pending_swings` | 2 | whole number 1 – 100 | swings confirmed behind a pattern's last anchor after which an unconfirmed pattern is dropped |
 
@@ -2480,7 +2480,7 @@ Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from Z
 | `deviation_pct` | 1 | 0.001 – 100 (deviation_mode = percent); 0.001 – 1000 (deviation_mode = atr_multiple) | minimum move that confirms a swing, in the unit of deviation_mode |
 | `atr_len` | 14 | whole number 1 – 10000 | bars in the ATR of the ZigZag |
 | `ratio_tolerance` | 0.03 | 0 – 0.5 | absolute widening of every ratio interval of the pattern table |
-| `min_prz_share` | 0.005 | 0 – 1 | minimum half-width of the reversal zone as a share of the XA leg |
+| `min_prz_share` | 0.005 | 0 – 1 | minimum width of the whole reversal zone as a share of the XA leg |
 | `pending_swings` | 2 | whole number 1 – 100 | swings confirmed behind a pattern's last anchor after which an unconfirmed pattern is dropped |
 
 ### `setup_countdown`

@@ -27,7 +27,8 @@
 //! # Output
 //!
 //! `value` is the direction of the most recently confirmed instance (`1` bullish, `-1` bearish,
-//! `0` while none has confirmed). `extra` has `active` (instances followed after the bar) and
+//! `0` while none has confirmed); the last direction is carried forward on every later bar until
+//! the next instance confirms. `extra` has `active` (instances followed after the bar) and
 //! `confirmed` (instances confirmed on this bar). On a bar that confirms instances one alert per
 //! instance is raised, in the order the instances were found, and the further `extra` keys
 //! describe the first of them:
@@ -52,9 +53,22 @@
 //! Alerts are `bull_<kind>` and `bear_<kind>` with the kind spelled as in the code table
 //! (`bear_double_top`, `bull_inverse_head_and_shoulders`, `bull_gartley`). For the triangle
 //! family, the wedges and the broadening formation the direction is the side the close broke out
-//! on (above the upper boundary checked first); for the 1-2-3 and the Wolfe wave it follows the
+//! on: bullish only above both boundaries, bearish only below both (past the apex, where the lines
+//! have crossed, a close between them is no breakout); for the 1-2-3 and the Wolfe wave it follows the
 //! swing structure, for the reversal family the pattern (top: bearish), for the flag the pole's
 //! direction, for cup and handle bullish and for its inverse bearish, and for harmonics the pattern's resolution at D.
+//!
+//! # Levels and zones
+//!
+//! The level tolerance of `chart_patterns` (`tolerance_pct`) is a percentage of a node's price,
+//! so the allowed distance grows with the price level and the patterns are not shift invariant:
+//! adding a constant to every price changes which swings count as one level. The cup and handle
+//! rule compares durations in bars, so gaps in the timestamps do not change a verdict.
+//!
+//! `harmonic_patterns` measures D against XA for every row but the shark, which measures it as a
+//! retracement of XC. The reversal zone always contains the projection of the row's D interval,
+//! widened by `ratio_tolerance`, so a D that passes the ratio test never lies outside its own
+//! zone; the BC and AB=CD projections widen it where they fall outside.
 //!
 //! The ZigZag parameters are those of `zigzag_advanced`, with the same defaults.
 
@@ -82,12 +96,17 @@ struct SwingFeed {
     depth: usize,
     bars: VecDeque<Bar>,
     seen: usize,
+    /// Bars fed so far.
     fed: usize,
+    /// Bar index of each of the newest [`WINDOW`] confirmed nodes.
+    node_bars: VecDeque<i64>,
 }
 
 /// A node that has just confirmed: the newest [`WINDOW`] confirmed nodes ending at it.
 struct Confirmed {
     tail: Vec<ZigZagNode>,
+    /// The bar index of each node of `tail`.
+    clock: Vec<i64>,
 }
 
 impl SwingFeed {
@@ -98,6 +117,7 @@ impl SwingFeed {
             bars: VecDeque::new(),
             seen: 0,
             fed: 0,
+            node_bars: VecDeque::new(),
         }
     }
 
@@ -107,11 +127,25 @@ impl SwingFeed {
         self.fed += 1;
         let ready = self.fed > 2 * self.depth;
         self.bars.push_back(bar.clone());
+        let first_bar = self.fed - self.bars.len();
         let nodes = self.zigzag.nodes();
         let confirmed = nodes.iter().take_while(|n| n.confirmed).count();
         let new: Vec<Confirmed> = (self.seen..confirmed)
-            .map(|index| Confirmed {
-                tail: nodes[(index + 1).saturating_sub(WINDOW)..=index].to_vec(),
+            .map(|index| {
+                // A node is confirmed while its bar is still kept (see `keep_from` below).
+                let at = self
+                    .bars
+                    .iter()
+                    .position(|b| b.timestamp == nodes[index].timestamp)
+                    .expect("the bar of a node that has just confirmed is still kept");
+                self.node_bars.push_back((first_bar + at) as i64);
+                if self.node_bars.len() > WINDOW {
+                    self.node_bars.pop_front();
+                }
+                Confirmed {
+                    tail: nodes[(index + 1).saturating_sub(WINDOW)..=index].to_vec(),
+                    clock: self.node_bars.iter().copied().collect(),
+                }
             })
             .collect();
         self.seen = confirmed;
@@ -152,6 +186,7 @@ impl SwingFeed {
         self.bars.clear();
         self.seen = 0;
         self.fed = 0;
+        self.node_bars.clear();
     }
 }
 
@@ -246,15 +281,11 @@ fn chart_event(c: &ChartPatternCandidate, bar: &Bar) -> Event {
         | ChartPatternKind::FallingWedge => {
             let upper = c.upper_line.expect("a boundary pattern has both lines");
             let lower = c.lower_line.expect("a boundary pattern has both lines");
-            let up = bar.close > upper.value_at(ts);
-            extra.push((
-                "level",
-                if up {
-                    upper.value_at(ts)
-                } else {
-                    lower.value_at(ts)
-                },
-            ));
+            // Past the apex the lines have crossed: bullish only above both, bearish only below
+            // both (the rule confirms nothing in between).
+            let (u, l) = (upper.value_at(ts), lower.value_at(ts));
+            let up = bar.close > u.max(l);
+            extra.push(("level", if up { u.max(l) } else { u.min(l) }));
             up
         }
         ChartPatternKind::ReversalOneTwoThree => {
@@ -389,7 +420,7 @@ impl Indicator for ChartPatternsEngine {
         for (offset, node) in confirmed.iter().flatten().enumerate() {
             let index = first_new + offset;
             let last = node.tail.last().expect("a confirmed node");
-            for mut candidate in self.detector.scan_unranked(&node.tail) {
+            for mut candidate in self.detector.scan_unranked_on(&node.tail, &node.clock) {
                 if candidate.nodes.last().map(|n| n.timestamp) != Some(last.timestamp) {
                     continue;
                 }
@@ -416,7 +447,7 @@ impl Indicator for ChartPatternsEngine {
         }
         let pending = self.pending_swings;
         self.live
-            .retain(|live| count.saturating_sub(1 + live.last) <= pending);
+            .retain(|live| count.saturating_sub(1 + live.last) < pending);
         confirmed?;
         if let Some(last) = events.last() {
             self.direction = last.direction;
@@ -563,7 +594,7 @@ impl Indicator for HarmonicPatternsEngine {
         }
         let pending = self.pending_swings;
         self.live
-            .retain(|live| count.saturating_sub(1 + live.last) <= pending);
+            .retain(|live| count.saturating_sub(1 + live.last) < pending);
 
         confirmed?;
         if let Some(last) = events.last() {
@@ -618,7 +649,7 @@ pub const CHART_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     description: "Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse, flag, cup and handle and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-17), level, invalidation, target, fit, active, confirmed",
     params: zigzag_params![
         ParamSpec::number("tolerance_pct", 2.0, 0.001, 50.0)
-            .meaning("percent within which two swing prices count as one level"),
+            .meaning("percent of the swing price within which two swing prices count as one level"),
         ParamSpec::number("flat_pct", 1.5, 0.0, 100.0)
             .meaning("percent of the opening gap a boundary may move and still count as flat"),
     ],
@@ -653,7 +684,7 @@ pub const HARMONIC_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinitio
         ParamSpec::number("ratio_tolerance", 0.03, 0.0, 0.5)
             .meaning("absolute widening of every ratio interval of the pattern table"),
         ParamSpec::number("min_prz_share", 0.005, 0.0, 1.0)
-            .meaning("minimum half-width of the reversal zone as a share of the XA leg"),
+            .meaning("minimum width of the whole reversal zone as a share of the XA leg"),
     ],
     checks: &[],
     facts: crate::indicator::definition::IndicatorFacts::unitless()

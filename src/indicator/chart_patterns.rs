@@ -183,9 +183,10 @@ impl ChartPatternCandidate {
             | ChartPatternKind::RisingWedge
             | ChartPatternKind::FallingWedge => match (&self.upper_line, &self.lower_line) {
                 (Some(upper), Some(lower)) => {
-                    if bar.close > upper.value_at(bar.timestamp)
-                        || bar.close < lower.value_at(bar.timestamp)
-                    {
+                    // Beyond both lines: past the apex the lines have crossed and a close between
+                    // them has broken out of nothing.
+                    let (u, l) = (upper.value_at(bar.timestamp), lower.value_at(bar.timestamp));
+                    if bar.close > u.max(l) || bar.close < u.min(l) {
                         PatternState::Confirmed
                     } else {
                         PatternState::Forming
@@ -399,6 +400,18 @@ impl ChartPatternDetector {
     /// candidate per window and kind, before overlap eviction. [`Self::scan`] ranks and evicts
     /// these; the `chart_patterns` catalog entry follows each of them on its own.
     pub(crate) fn scan_unranked(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let clock: Vec<i64> = nodes.iter().map(|n| n.timestamp).collect();
+        self.scan_unranked_on(nodes, &clock)
+    }
+
+    /// [`Self::scan_unranked`] with the position of every node on the caller's clock, one entry
+    /// per node: the bar index when the nodes come from a bar feed. Only the cup rule compares
+    /// durations; [`Self::scan`] measures them in node timestamps, the catalog entry in bars.
+    pub(crate) fn scan_unranked_on(
+        &self,
+        nodes: &[ZigZagNode],
+        clock: &[i64],
+    ) -> Vec<ChartPatternCandidate> {
         let mut candidates = Vec::new();
         candidates.extend(self.scan_triangles_and_wedges(nodes));
         candidates.extend(self.scan_reversal_one_two_three(nodes));
@@ -407,7 +420,7 @@ impl ChartPatternDetector {
         candidates.extend(self.scan_triple_extremes(nodes));
         candidates.extend(self.scan_head_and_shoulders(nodes));
         candidates.extend(self.scan_flags(nodes));
-        candidates.extend(self.scan_cups_with_handle(nodes));
+        candidates.extend(self.scan_cups_with_handle(nodes, clock));
         candidates
     }
 
@@ -529,16 +542,21 @@ impl ChartPatternDetector {
 
             let convergence = 1.0 - (gap_end / gap_start);
 
+            // Both boundaries flat is a range, not a triangle or a wedge.
+            if upper_flat && lower_flat {
+                continue;
+            }
+
             // Order matters: the flat cases are the narrower conditions and are tested first, or
-            // a flat-topped triangle would be reported as symmetrical.
-            let kind = if upper.slope() > 0.0 && lower.slope() > 0.0 {
+            // a flat-topped triangle would be reported as a wedge or as symmetrical.
+            let kind = if upper_flat && !lower_flat && lower.slope() > 0.0 {
+                ChartPatternKind::AscendingTriangle
+            } else if lower_flat && !upper_flat && upper.slope() < 0.0 {
+                ChartPatternKind::DescendingTriangle
+            } else if upper.slope() > 0.0 && lower.slope() > 0.0 {
                 ChartPatternKind::RisingWedge
             } else if upper.slope() < 0.0 && lower.slope() < 0.0 {
                 ChartPatternKind::FallingWedge
-            } else if upper_flat && lower.slope() > 0.0 {
-                ChartPatternKind::AscendingTriangle
-            } else if lower_flat && upper.slope() < 0.0 {
-                ChartPatternKind::DescendingTriangle
             } else if upper.slope() <= 0.0 && lower.slope() >= 0.0 {
                 ChartPatternKind::Triangle
             } else {
@@ -557,10 +575,9 @@ impl ChartPatternDetector {
         out
     }
 
-    /// A 1-2-3 reversal: three consecutive nodes where the middle one is a failed extreme (did
-    /// not extend the trend) and the third breaks past the first's level in the opposite
-    /// direction — e.g. bearish: low(1) < high(2) fails to make a new high vs. the prior trend,
-    /// then low(3) < low(1).
+    /// A 1-2-3 reversal: three consecutive alternating nodes where the third lies beyond the
+    /// first — bearish: low(1), high(2), low(3) with low(3) < low(1); bullish: the mirror. Node 2
+    /// is not compared with anything before the window.
     fn scan_reversal_one_two_three(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
         let mut out = Vec::new();
         for window in nodes.windows(3) {
@@ -589,6 +606,10 @@ impl ChartPatternDetector {
     }
 
     /// How close two prices have to be to count as "the same level" here.
+    ///
+    /// `tolerance_pct` is a percentage of `scale`, which the callers set to a node's price, so the
+    /// allowed distance grows with the price level and the patterns are not shift invariant:
+    /// adding a constant to every price changes which prices count as one level.
     ///
     /// `tolerance_pct` is a percentage, as everywhere else in this module. It is the single number
     /// that decides how many of these patterns exist: at two percent one finds few double tops, at
@@ -664,7 +685,9 @@ impl ChartPatternDetector {
                 continue;
             }
             let (n2, n4) = (&window[1], &window[3]);
-            if self.within_tolerance(n1.price, n2.price, n1.price) {
+            if self.within_tolerance(n1.price, n2.price, n1.price)
+                || self.within_tolerance(n1.price, n4.price, n1.price)
+            {
                 continue;
             }
 
@@ -898,7 +921,9 @@ impl ChartPatternDetector {
     ///    the midpoint between the right rim and the bottom. A deeper pullback is a different
     ///    formation.
     /// 3. The handle is short against the cup: from the right rim to the handle's extreme takes
-    ///    at most half the time from rim to rim.
+    ///    at most half the time from rim to rim, counted in bars in the catalog entry (a gap in
+    ///    the timestamps, such as a weekend, does not change the verdict) and in node timestamps
+    ///    in [`Self::scan`].
     ///
     /// The rounding of the cup is not tested: on swing nodes a rounded bottom and a V have the
     /// same three points, and which of the two the swings come from is the swing definition's
@@ -907,9 +932,13 @@ impl ChartPatternDetector {
     /// and a handle. `confidence` is how well the rims match. The breakout level is the right
     /// rim, held horizontally (`upper_line` for the cup, `lower_line` for the inverse). Confirmed
     /// on a close beyond the right rim, invalidated on a close beyond the handle's extreme.
-    fn scan_cups_with_handle(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+    fn scan_cups_with_handle(
+        &self,
+        nodes: &[ZigZagNode],
+        clock: &[i64],
+    ) -> Vec<ChartPatternCandidate> {
         let mut out = Vec::new();
-        for window in nodes.windows(4) {
+        for (start, window) in nodes.windows(4).enumerate() {
             let alternating = window.windows(2).all(|p| p[0].is_high != p[1].is_high);
             if !alternating {
                 continue;
@@ -926,8 +955,8 @@ impl ChartPatternDetector {
             if sign * (handle.price - (right.price + bottom.price) / 2.0) < 0.0 {
                 continue;
             }
-            let cup_time = right.timestamp - left.timestamp;
-            if 2 * (handle.timestamp - right.timestamp) > cup_time {
+            let cup_time = clock[start + 2] - clock[start];
+            if 2 * (clock[start + 3] - clock[start + 2]) > cup_time {
                 continue;
             }
 
@@ -1673,5 +1702,180 @@ mod tests {
         assert_eq!(up.update_state(&above), PatternState::Confirmed);
         let below = Bar::new(55, 111.5, 111.5, 111.5, 111.5, 0.0);
         assert_eq!(down.update_state(&below), PatternState::Invalidated);
+    }
+
+    fn negated(nodes: &[ZigZagNode]) -> Vec<ZigZagNode> {
+        nodes
+            .iter()
+            .map(|n| node(n.timestamp, -n.price, !n.is_high))
+            .collect()
+    }
+
+    fn kinds(nodes: &[ZigZagNode], detector: &ChartPatternDetector) -> Vec<ChartPatternKind> {
+        detector
+            .scan_unranked(nodes)
+            .iter()
+            .map(|c| c.kind)
+            .collect()
+    }
+
+    #[test]
+    fn test_past_the_apex_a_close_between_the_lines_breaks_nothing_in_either_mirror() {
+        // Highs 110 / 106 fall 0.2 a tick, lows 100 / 102 rise 0.1: the lines cross at tick 36.7.
+        // At tick 50 the upper line is at 100 and the lower at 104.
+        let nodes = vec![
+            node(0, 110.0, true),
+            node(10, 100.0, false),
+            node(20, 106.0, true),
+            node(30, 102.0, false),
+        ];
+        let bar = |close: f64| Bar::new(50, close, close, close, close, 0.0);
+        for nodes in [nodes.clone(), negated(&nodes)] {
+            let sign = if nodes[0].is_high { 1.0 } else { -1.0 };
+            let triangle = |nodes: &[ZigZagNode]| {
+                ChartPatternDetector::new(2.0)
+                    .scan_unranked(nodes)
+                    .into_iter()
+                    .find(|c| c.kind == ChartPatternKind::Triangle)
+                    .expect("a triangle")
+            };
+            let mut between = triangle(&nodes);
+            assert_eq!(
+                between.update_state(&bar(sign * 102.0)),
+                PatternState::Forming
+            );
+            let mut above = triangle(&nodes);
+            assert_eq!(
+                above.update_state(&bar(sign * 106.0)),
+                PatternState::Confirmed
+            );
+            let mut below = triangle(&nodes);
+            assert_eq!(
+                below.update_state(&bar(sign * 98.0)),
+                PatternState::Confirmed
+            );
+        }
+    }
+
+    #[test]
+    fn test_two_flat_boundaries_are_a_range_not_a_triangle_or_wedge() {
+        // Top flat at 110, bottom rising 0.5 over the window: flat inside a 10 % threshold, so
+        // both boundaries are flat: a range, no candidate of the triangle or wedge family, in the series and in the mirror.
+        let nodes = vec![
+            node(0, 110.0, true),
+            node(10, 100.0, false),
+            node(20, 110.0, true),
+            node(30, 100.5, false),
+        ];
+        let detector = ChartPatternDetector::new(2.0).with_flat_pct(10.0);
+        for nodes in [nodes.clone(), negated(&nodes)] {
+            let found = kinds(&nodes, &detector);
+            for kind in [
+                ChartPatternKind::Triangle,
+                ChartPatternKind::AscendingTriangle,
+                ChartPatternKind::DescendingTriangle,
+                ChartPatternKind::RisingWedge,
+                ChartPatternKind::FallingWedge,
+                ChartPatternKind::Broadening,
+            ] {
+                assert!(!found.contains(&kind), "{kind:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_a_flat_top_is_tested_before_the_wedge_whichever_way_it_leans() {
+        // The top leans up by 0.4 (1.6 % of the opening gap 25) or down by 0.4, inside a 3 %
+        // threshold; the bottom rises clearly. Flat first: an ascending triangle both times, and
+        // the slightly rising top is no rising wedge.
+        for top in [110.4, 109.6] {
+            let nodes = vec![
+                node(0, 110.0, true),
+                node(10, 90.0, false),
+                node(20, top, true),
+                node(30, 100.0, false),
+            ];
+            let found = kinds(&nodes, &ChartPatternDetector::new(2.0).with_flat_pct(3.0));
+            assert!(
+                found.contains(&ChartPatternKind::AscendingTriangle),
+                "top {top}"
+            );
+            assert!(!found.contains(&ChartPatternKind::RisingWedge), "top {top}");
+            assert!(
+                !found.contains(&ChartPatternKind::FallingWedge),
+                "top {top}"
+            );
+        }
+        // The mirror images are descending triangles, never falling wedges.
+        for top in [110.4, 109.6] {
+            let nodes = negated(&[
+                node(0, 110.0, true),
+                node(10, 90.0, false),
+                node(20, top, true),
+                node(30, 100.0, false),
+            ]);
+            let found = kinds(&nodes, &ChartPatternDetector::new(2.0).with_flat_pct(3.0));
+            assert!(
+                found.contains(&ChartPatternKind::DescendingTriangle),
+                "top {top}"
+            );
+            assert!(!found.contains(&ChartPatternKind::RisingWedge), "top {top}");
+            assert!(
+                !found.contains(&ChartPatternKind::FallingWedge),
+                "top {top}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_a_triple_needs_both_counter_swings_off_the_level() {
+        let triple = |n4: f64| {
+            vec![
+                node(0, 120.0, true),
+                node(600, 108.0, false),
+                node(1200, 119.5, true),
+                node(1800, n4, false),
+                node(2400, 120.4, true),
+            ]
+        };
+        let detector = ChartPatternDetector::new(2.0);
+        assert!(kinds(&triple(109.0), &detector).contains(&ChartPatternKind::TripleTop));
+        assert!(
+            kinds(&negated(&triple(109.0)), &detector).contains(&ChartPatternKind::TripleBottom)
+        );
+        // 119.0 is within 2 % of 120: a third plateau, not a counter-swing.
+        assert!(!kinds(&triple(119.0), &detector).contains(&ChartPatternKind::TripleTop));
+        assert!(
+            !kinds(&negated(&triple(119.0)), &detector).contains(&ChartPatternKind::TripleBottom)
+        );
+    }
+
+    #[test]
+    fn test_the_cup_rule_counts_positions_on_the_given_clock_not_timestamps() {
+        // A weekend between the right rim and the handle: 1 000 000 s in the timestamps, 8 bars on
+        // the clock. The cup took 40 bars, the handle 8.
+        let nodes = vec![
+            node(0, 120.0, true),
+            node(20, 100.0, false),
+            node(40, 119.0, true),
+            node(1_000_048, 112.0, false),
+        ];
+        let detector = ChartPatternDetector::new(2.0);
+        let is_cup = |c: &ChartPatternCandidate| c.kind == ChartPatternKind::CupAndHandle;
+        assert!(!detector.scan_unranked(&nodes).iter().any(is_cup));
+        assert!(detector
+            .scan_unranked_on(&nodes, &[0, 20, 40, 48])
+            .iter()
+            .any(is_cup));
+        // The same on the clock, mirrored: the inverse cup.
+        assert!(detector
+            .scan_unranked_on(&negated(&nodes), &[0, 20, 40, 48])
+            .iter()
+            .any(|c| c.kind == ChartPatternKind::InverseCupAndHandle));
+        // A handle that is long in bars is still rejected.
+        assert!(!detector
+            .scan_unranked_on(&nodes, &[0, 20, 40, 65])
+            .iter()
+            .any(is_cup));
     }
 }
