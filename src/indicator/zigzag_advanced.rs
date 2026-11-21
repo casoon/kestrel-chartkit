@@ -65,9 +65,9 @@ pub struct ZigZagNode {
 /// every low below the node before it. A series and its mirror image (highs for lows, every
 /// price negated) give mirrored nodes.
 ///
-/// `value`: the price of the newest node, or the middle bar's close before any; `state`:
-/// `"running"` while the newest node is unconfirmed, `"confirmed"` otherwise. First output with
-/// bar `2 · depth + 1`.
+/// `value`: the price of the newest node; `state`: always `"running"`, the newest node being
+/// unconfirmed and able to move. There is no output before the first node: the first output is the
+/// first bar after the first node is set, at the earliest bar `2 · depth + 1`.
 pub struct AdvancedZigZagEngine {
     depth: usize,
     backstep: usize,
@@ -312,14 +312,8 @@ impl Indicator for AdvancedZigZagEngine {
             );
         }
 
-        let leg_price = self.nodes.last().map(|n| n.price).unwrap_or(mid_bar.close);
-        Some(
-            IndicatorOutput::new(leg_price).with_state(if self.current_leg().is_some() {
-                "running"
-            } else {
-                "confirmed"
-            }),
-        )
+        let leg_price = self.nodes.last()?.price;
+        Some(IndicatorOutput::new(leg_price).with_state("running"))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -472,6 +466,27 @@ mod tests {
                 Bar::new(i as i64 * 60, price, price + 1.0, price - 1.0, price, 100.0)
             })
             .collect()
+    }
+
+    #[test]
+    fn test_no_output_before_the_first_node() {
+        let mut engine = AdvancedZigZagEngine::new(2, 1, ZigZagDeviationMode::Percent(1.0), 5);
+        // Flat highs and lows: every bar ties as a pivot high and low, so no node starts.
+        for i in 0..8 {
+            let bar = Bar::new(i * 60, 100.0, 101.0, 99.0, 100.0, 100.0);
+            assert!(engine.on_bar(&bar).is_none());
+        }
+        assert!(engine.nodes().is_empty());
+        let mut first = None;
+        for bar in sine_bars(40) {
+            if let Some(out) = engine.on_bar(&bar) {
+                first = Some(out);
+                break;
+            }
+        }
+        let out = first.expect("output once a node exists");
+        assert_eq!(out.value, engine.nodes().last().unwrap().price);
+        assert_eq!(out.state.as_deref(), Some("running"));
     }
 
     #[test]

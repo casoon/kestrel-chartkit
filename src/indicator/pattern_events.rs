@@ -82,6 +82,7 @@ struct SwingFeed {
     depth: usize,
     bars: VecDeque<Bar>,
     seen: usize,
+    fed: usize,
 }
 
 /// A node that has just confirmed: the newest [`WINDOW`] confirmed nodes ending at it.
@@ -96,12 +97,15 @@ impl SwingFeed {
             depth,
             bars: VecDeque::new(),
             seen: 0,
+            fed: 0,
         }
     }
 
-    /// Feeds one bar. `None` before the ZigZag has enough bars for a first output.
+    /// Feeds one bar. `None` before the ZigZag has its first full window of `2 · depth + 1` bars.
     fn push(&mut self, bar: &Bar) -> Option<Vec<Confirmed>> {
-        let ready = self.zigzag.on_bar(bar).is_some();
+        self.zigzag.on_bar(bar);
+        self.fed += 1;
+        let ready = self.fed > 2 * self.depth;
         self.bars.push_back(bar.clone());
         let nodes = self.zigzag.nodes();
         let confirmed = nodes.iter().take_while(|n| n.confirmed).count();
@@ -147,6 +151,7 @@ impl SwingFeed {
         self.zigzag.reset();
         self.bars.clear();
         self.seen = 0;
+        self.fed = 0;
     }
 }
 

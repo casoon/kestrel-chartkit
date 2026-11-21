@@ -104,7 +104,7 @@ def advanced_zigzag(bars, depth, backstep, deviation_pct=None, atr_mult=None, at
     bar that is both a pivot high and a pivot low the pivot of the running node's kind comes
     first, and before the first node such a bar starts none.
 
-    Returns `(value, running)` per output, the kinds of the swings confirmed, oldest first ("low"
+    Returns `(value, running)` per output (`(None, False)` before the first node: nothing is published), the kinds of the swings confirmed, oldest first ("low"
     when a pivot high confirms the running low, "high" the other way), and the nodes as
     `(price, is_high, confirmed, bar index, index of the confirming bar or None)`."""
     depth = max(depth, 1)
@@ -166,8 +166,7 @@ def advanced_zigzag(bars, depth, backstep, deviation_pct=None, atr_mult=None, at
                               "bar": mid_index, "at": None})
                 last_confirmation = mid_index
                 confirmations.append("low" if is_high else "high")
-        value = nodes[-1]["price"] if nodes else mid[3]
-        outputs.append((value, bool(nodes) and not nodes[-1]["confirmed"]))
+        outputs.append((nodes[-1]["price"], True) if nodes else (None, False))
     return outputs, confirmations, [(n["price"], n["is_high"], n["confirmed"], n["bar"], n["at"])
                                     for n in nodes]
 

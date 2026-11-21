@@ -16,6 +16,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Fixed
 
+- **zigzag_advanced:** bars before the first swing node publish nothing, instead of the middle bar's close with the state `confirmed`; the state of every output is `running`.
 - **kestrel_vwap_regime:** a close exactly on the VWAP counts on neither side of it, and a slope of 0 is flat at every threshold, so a series reflected about a level gives mirrored readings. An ATR of 0 now publishes nothing and a sigma of 0 no `z_score`, instead of 0.0.
 - **relative_strength:** a bar where one of the four closes used is not finite or not positive publishes nothing; before, such a return counted as 0 and the ratio as 1.
 - **Swing structure:** `kestrel_swing_structure` keeps its pivots strictly alternating (a pivot of the same kind continues the swing and the more extreme one stays), orders the two pivots of an outside bar by the alternation instead of always high first, and reads the trend of an undecided structure from the newest leg; a series reflected about a level now gives the same readings, which it did not on series with equal highs and lows or outside bars. Readings on such series change.

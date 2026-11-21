@@ -17,6 +17,7 @@ pub mod contract;
 /// - `vwap_regime`: waits for the VWAP slope and the ATR, and a bar without volume delays the
 ///   VWAP.
 /// - `swing_structure`: waits for four confirmed pivots and two impulse and two correction legs.
+/// - `zigzag_advanced`: waits for the first swing node, which depends on the data.
 /// - `opening_range`: waits for the first bar of a session inside its opening window, which
 ///   depends on the timestamps.
 /// - `laguerre_rsi`: waits for the first bar on which a stage has moved, so a series that starts
@@ -35,6 +36,7 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "opening_range",
     "kestrel_vwap_regime",
     "kestrel_swing_structure",
+    "zigzag_advanced",
     "laguerre_rsi",
     "most",
     "ott",

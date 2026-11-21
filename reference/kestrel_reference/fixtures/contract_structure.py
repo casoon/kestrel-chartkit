@@ -683,7 +683,7 @@ def zigzag_advanced(depth, backstep, deviation_pct, atr_len, bars):
         for kind in confirmed[seen:]:
             alerts["bull_swing_confirmed" if kind == "low" else "bear_swing_confirmed"] = 0.6
         seen = len(confirmed)
-        expected.append(((value, {}), alerts))
+        expected.append((None, {}) if value is None else ((value, {}), alerts))
     params = {"depth": float(depth), "backstep": float(backstep), "deviation_pct": deviation_pct,
               "atr_len": float(atr_len)}
     return params, bars, expected
