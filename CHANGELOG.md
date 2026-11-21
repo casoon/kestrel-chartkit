@@ -9,9 +9,15 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-11-21
+
 ### Added
 
 - **Catalog:** `volume_flow_indicator` (after Katsanos, 2004), `volume_zone_oscillator` (Khalil and Steckler, 2011), `volume_price_confirmation` (Dormeier, 2007) and `market_facilitation` (Williams, 1995) are verified catalog entries; 195 entries in all, 184 of them verified. The volume price confirmation takes the difference of the volume weighted and the plain mean from deviations from the current close, so it keeps its precision at high price levels.
+
+### Changed
+
+- **Contributors:** a contract case can pin the published state as a text column; it is compared when the case writes it.
 
 ## [0.46.0] - 2026-11-21
 
