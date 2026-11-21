@@ -311,7 +311,8 @@ pub const VOLUME_ZONE_OSCILLATOR_DEFINITION: IndicatorDefinition = IndicatorDefi
 
 /// Volume price confirmation indicator. Over a window of `n` bars `vwma = sum(close * volume) /
 /// sum(volume)` (nothing for zero volume) and `sma` are the plain means. `vpc = vwma_long -
-/// sma_long(close)`, `vpr = vwma_short / sma_short(close)`, `vm = sma_short(volume) /
+/// sma_long(close)`, computed from the deviations of each close from the current close so that the
+/// difference keeps its precision at high price levels, `vpr = vwma_short / sma_short(close)`, `vm = sma_short(volume) /
 /// sma_long(volume)`; **`value = vpc * vpr * vm`**, defined from bar `long`. extra `signal` is the mean of
 /// the last `smoothing` defined values; a bar publishes once the signal exists. Alerts `bull` /
 /// `bear` when `value` crosses above / below `signal`. First output: with bar number
@@ -339,16 +340,20 @@ impl VolumePriceConfirmation {
         }
     }
 
-    /// `(vwma, sma of close, sma of volume)` of the last `n` bars; `None` for zero volume.
-    fn stats(&self, n: usize) -> Option<(f64, f64, f64)> {
+    /// `(vwma - sma of close, vwma, sma of close, sma of volume)` of the last `n` bars; `None` for
+    /// zero volume. The difference is taken over the deviations from `reference`: subtracting two
+    /// means near a high price level would cancel most of their digits.
+    fn stats(&self, n: usize, reference: f64) -> Option<(f64, f64, f64, f64)> {
         let skip = self.window.len() - n;
-        let (mut cv, mut v, mut c) = (0.0, 0.0, 0.0);
+        let (mut cv, mut v, mut c, mut dv, mut d) = (0.0, 0.0, 0.0, 0.0, 0.0);
         for (close, volume) in self.window.iter().skip(skip) {
             cv += close * volume;
             v += volume;
             c += close;
+            dv += (close - reference) * volume;
+            d += close - reference;
         }
-        (v > 0.0).then(|| (cv / v, c / n as f64, v / n as f64))
+        (v > 0.0).then(|| (dv / v - d / n as f64, cv / v, c / n as f64, v / n as f64))
     }
 }
 
@@ -375,12 +380,13 @@ impl Indicator for VolumePriceConfirmation {
             self.window.pop_front();
         }
         if self.window.len() == self.long {
-            let vpci = self.stats(self.long).zip(self.stats(self.short)).and_then(
-                |((vwma_l, sma_l, vol_l), (vwma_s, sma_s, vol_s))| {
-                    let v = (vwma_l - sma_l) * (vwma_s / sma_s) * (vol_s / vol_l);
+            let vpci = self
+                .stats(self.long, bar.close)
+                .zip(self.stats(self.short, bar.close))
+                .and_then(|((vpc, _, _, vol_l), (_, vwma_s, sma_s, vol_s))| {
+                    let v = vpc * (vwma_s / sma_s) * (vol_s / vol_l);
                     v.is_finite().then_some(v)
-                },
-            );
+                });
             if let Some(v) = vpci {
                 self.values.push_back(v);
                 if self.values.len() > self.smoothing {
