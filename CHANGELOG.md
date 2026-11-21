@@ -11,7 +11,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Breaking
 
-- **Catalog:** the 25 own constructions carry the `kestrel_` prefix (`kestrel_trend_quality`, `kestrel_swing_structure`, `kestrel_vwap_regime` and so on; the [indicator guide](docs/guides/indicators.md) says which). The old names stay aliases for building and lookup; `Indicator::name()` and the catalog report the new name, so code that compares stored names against `name()` has to resolve them through `canonical_name`.
+- **Catalog:** the 25 own constructions carry the `kestrel_` prefix (`kestrel_trend_quality`, `kestrel_swing_structure`, `kestrel_vwap_regime` and so on; the [indicator guide](https://casoon.github.io/kestrel-chartkit/docs/guides/indicators/) says which). The old names stay aliases for building and lookup; `Indicator::name()` and the catalog report the new name, so code that compares stored names against `name()` has to resolve them through `canonical_name`.
 
 ### Added
 
@@ -23,7 +23,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Fixed
 
-- **Catalog:** `output_unit` and `output_range` resolve aliases like `definition` does; before, an alias (`wpr`, `srsi`, `vp`) answered `Unitless` and `Unbounded`.
+- **Catalog:** `output_unit`, `output_range` and `threshold_params` resolve aliases like `definition` does; before, an alias (`wpr`, `srsi`, `vp`) answered `Unitless` and `Unbounded`.
 
 ## [0.43.0] - 2026-11-20
 

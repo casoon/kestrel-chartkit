@@ -130,7 +130,7 @@ pub fn threshold_params(name: &str) -> &'static [&'static str] {
                 .map(|d| (d.name, d.threshold_params()))
                 .collect()
         })
-        .get(name)
+        .get(canonical_name(name).as_str())
         .map_or(&[], Vec::as_slice)
 }
 

@@ -5,7 +5,9 @@ mod common;
 
 use common::wave_series;
 use kestrel_chartkit::indicator::definition::definition;
-use kestrel_chartkit::indicator::registry::{build_checked, canonical_name, catalog, output_range};
+use kestrel_chartkit::indicator::registry::{
+    build_checked, canonical_name, catalog, output_range, threshold_params,
+};
 use kestrel_chartkit::indicator::unit::output_unit;
 use kestrel_chartkit::indicator::Indicator;
 use std::collections::{BTreeMap, HashMap};
@@ -74,6 +76,7 @@ fn old_names_resolve_to_the_prefixed_entry() {
         assert_eq!(definition(&new).expect(&new).name, new, "{new}");
         assert_eq!(output_unit(old), output_unit(&new), "{old}");
         assert_eq!(output_range(old), output_range(&new), "{old}");
+        assert_eq!(threshold_params(old), threshold_params(&new), "{old}");
     }
 }
 
