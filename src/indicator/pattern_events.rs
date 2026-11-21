@@ -420,7 +420,14 @@ impl Indicator for ChartPatternsEngine {
             let index = first_new + offset;
             let last = node.tail.last().expect("a confirmed node");
             for mut candidate in self.detector.scan_unranked_on(&node.tail, &node.clock) {
-                if candidate.nodes.last().map(|n| n.timestamp) != Some(last.timestamp) {
+                // The window must end at this node. A bar that is both a pivot high and a pivot
+                // low gives two adjacent nodes with one timestamp, so the timestamp alone would let
+                // the window ending at the earlier of the two through a second time.
+                let ends_here = candidate
+                    .nodes
+                    .last()
+                    .is_some_and(|n| n.timestamp == last.timestamp && n.is_high == last.is_high);
+                if !ends_here {
                     continue;
                 }
                 let mut state = PatternState::Forming;
