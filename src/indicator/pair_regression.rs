@@ -88,11 +88,11 @@ impl PairIndicator for RollingBetaEngine {
 pub const ROLLING_BETA_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinition {
     name: "rolling_beta",
     aliases: &[],
-    description: "Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared",
+    description: "Rolling beta of the simple returns of a close series against a reference series, with alpha, correlation and R-squared; a return against a zero close is left out and keeps the window as it was",
     params: &[ParamSpec::count("len", 60, 3, 10000).meaning("return pairs in the rolling window")],
     checks: &[],
     facts: IndicatorFacts::ratio().same_adjustment_and_session(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_rolling_beta,
 };
 
@@ -167,13 +167,13 @@ impl PairIndicator for PairSpreadEngine {
 pub const PAIR_SPREAD_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinition {
     name: "pair_spread",
     aliases: &[],
-    description: "Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation",
+    description: "Residual z-score of the spread between a close series and a reference series, with hedge ratio, spread, mean and deviation; the spread is close - hedge ratio · reference close without intercept, its deviation the population one",
     params: &[ParamSpec::count("len", 60, 3, 10000).meaning("paired closes in the rolling window")],
     checks: &[],
     facts: IndicatorFacts::ratio()
         .centered(0.0)
         .same_adjustment_and_session(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_pair_spread,
 };
 

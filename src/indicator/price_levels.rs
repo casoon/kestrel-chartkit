@@ -227,7 +227,7 @@ impl Indicator for PeriodMidpointEngine {
 pub const PERIOD_MIDPOINT_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "period_midpoint",
     aliases: &[],
-    description: "Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to Mondays (week) and to the calendar (month: multiples of count from January)",
+    description: "Midpoint (high + low) / 2 of the last completed period of count units, held until the next period completes; extra new_period is 1 on the bar that completed one. Periods align to the epoch (second, minute, hour, day), to a grid of count weeks from Monday 1969-12-29, the start of ISO week 1 of 1970 (week), and to a grid of count calendar months that runs on across years (month: a count dividing 12 starts every year in January)",
     params: &[
         ParamSpec::choice(
             "unit",
@@ -242,9 +242,7 @@ pub const PERIOD_MIDPOINT_DEFINITION: IndicatorDefinition = IndicatorDefinition 
     ],
     checks: &[],
     facts: crate::indicator::definition::IndicatorFacts::price().range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         let count = p.count("count") as u32;
         let period_tf = match p.choice("unit") {

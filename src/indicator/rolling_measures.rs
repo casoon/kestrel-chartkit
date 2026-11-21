@@ -57,9 +57,7 @@ pub const R_SQUARED_DEFINITION: super::definition::IndicatorDefinition =
             .meaning("closes the line is fitted to")],
         checks: &[],
         facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 1.0),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(RSquaredEngine::new(p.count("period")))),
     };
 
@@ -110,9 +108,7 @@ pub const PERCENT_RANK_DEFINITION: super::definition::IndicatorDefinition =
             .meaning("previous closes the current one is ranked against")],
         checks: &[],
         facts: super::definition::IndicatorFacts::ratio().bounded(0.0, 100.0),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(PercentRankEngine::new(p.count("period")))),
     };
 
@@ -123,8 +119,8 @@ pub const PERCENT_RANK_DEFINITION: super::definition::IndicatorDefinition =
 /// belongs to the swing in progress and does not change the side. This is an empirical measure of
 /// the swing length, not a spectral or Hilbert-transform estimate of a dominant cycle.
 ///
-/// The detrended series starts with the `period`-th bar; the first output comes with the first
-/// crossing after it, so the first output bar depends on the data (never before bar `period + 1`).
+/// The detrended series starts with the `period`-th bar; the bars from there to the first crossing
+/// count as the first completed swing, so the first output comes with the first crossing after it, so the first output bar depends on the data (never before bar `period + 1`).
 /// [`Indicator::reset`] starts over.
 #[derive(Debug, Clone)]
 pub struct CycleLengthEngine {
@@ -177,7 +173,7 @@ pub const CYCLE_LENGTH_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "cycle_length",
         aliases: &[],
-        description: "Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); extra bars_since_crossing counts the swing in progress",
+        description: "Mean bars between the close's crossings of its simple average over the last history swings (zero-crossing swing length, not a spectral cycle estimate); the stretch before the first crossing counts as the first swing; extra bars_since_crossing counts the swing in progress",
         params: &[
             super::definition::ParamSpec::count("period", 20, 1, 10000)
                 .meaning("bars of the simple average the close is detrended against"),
@@ -186,9 +182,7 @@ pub const CYCLE_LENGTH_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::unitless().non_negative(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(CycleLengthEngine::new(
                 p.count("period"),

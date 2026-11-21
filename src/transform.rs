@@ -138,11 +138,11 @@ pub const HEIKIN_ASHI_DEFINITION: TransformDefinition = TransformDefinition {
     name: "heikin_ashi",
     aliases: &[],
     description:
-        "Heikin-Ashi candles: averaged open, high, low and close derived from observed bars",
+        "Heikin-Ashi candles: averaged open, high, low and close derived from observed bars; the first open is (open + close) / 2",
     params: &[],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_heikin_ashi,
 };
 
