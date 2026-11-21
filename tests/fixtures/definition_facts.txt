@@ -866,10 +866,18 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"TRMF"	canonical="true_range_money_flow"	range=Bounded { min: -1.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: true, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "TRMF", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "TRMF", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "TRUE_RANGE"	canonical="true_range"	range=NonNegative	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "TRUE_RANGE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "TRUE_RANGE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"TRUE_RANGE_MONEY_FLOW"	canonical="true_range_money_flow"	range=Bounded { min: -1.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: true, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "TRUE_RANGE_MONEY_FLOW", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "TRUE_RANGE_MONEY_FLOW", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "TSI"	canonical="tsi"	range=Bounded { min: -100.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
@@ -1902,10 +1910,18 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"trmf"	canonical="true_range_money_flow"	range=Bounded { min: -1.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: true, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "trmf", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "trmf", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "true_range"	canonical="true_range"	range=NonNegative	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "true_range", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "true_range", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"true_range_money_flow"	canonical="true_range_money_flow"	range=Bounded { min: -1.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: true, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "true_range_money_flow", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "true_range_money_flow", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "tsi"	canonical="tsi"	range=Bounded { min: -100.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
@@ -2195,6 +2211,7 @@ entry "volume_flow_indicator" Bars range=Unbounded
 entry "volume_zone_oscillator" Bars range=Bounded { min: -100.0, max: 100.0 }
 entry "volume_price_confirmation" Bars range=Unbounded
 entry "market_facilitation" Bars range=NonNegative
+entry "true_range_money_flow" Bars range=Bounded { min: -1.0, max: 1.0 }
 entry "eom" Bars range=Centered { center: 0.0 }
 entry "nvi" Bars range=Unbounded
 entry "pvi" Bars range=Unbounded

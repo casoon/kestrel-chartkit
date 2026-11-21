@@ -14,7 +14,7 @@ fn case(name: &str, indicator: &str, unit: IndicatorUnit) -> ContractCase {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[];
+pub const PENDING: &[&str] = &["true_range_money_flow"];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("pvt"),

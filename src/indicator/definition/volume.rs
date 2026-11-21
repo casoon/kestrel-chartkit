@@ -23,6 +23,7 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::volume_oscillators::VOLUME_ZONE_OSCILLATOR_DEFINITION,
     &crate::indicator::volume_oscillators::VOLUME_PRICE_CONFIRMATION_DEFINITION,
     &crate::indicator::volume_oscillators::MARKET_FACILITATION_DEFINITION,
+    &crate::indicator::volume_oscillators::TRUE_RANGE_MONEY_FLOW_DEFINITION,
     &crate::indicator::eom::EOM_DEFINITION,
     &crate::indicator::nvi_pvi::NVI_DEFINITION,
     &crate::indicator::nvi_pvi::PVI_DEFINITION,

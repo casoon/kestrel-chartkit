@@ -848,3 +848,64 @@ fn n5_market_facilitation_is_mirror_invariant() {
     }
     assert!(seen > 0);
 }
+
+#[test]
+fn n6_true_range_money_flow_negates_and_swaps_its_alerts() {
+    check_bars_entry("true_range_money_flow", &[], &[("value", Answer::Negated)]);
+    check_bars_entry(
+        "true_range_money_flow",
+        &[("period", 5.0), ("volume_cap", 0.0)],
+        &[("value", Answer::Negated)],
+    );
+    let mut seen = 0;
+    for (_, bars) in series() {
+        seen += check_alerts_mirrored(
+            "true_range_money_flow",
+            &[("period", 5.0)],
+            &bars,
+            &[("bull", "bear"), ("bear", "bull")],
+        );
+    }
+    assert!(seen > 0);
+}
+
+#[test]
+fn n6_true_range_money_flow_ignores_price_scale_price_shift_and_volume_scale() {
+    // The location in the true range is a ratio of price differences, the value a ratio of volumes.
+    check_scaled("true_range_money_flow", 3.0, 1.0, |_| 1.0, 100);
+    check_scaled("true_range_money_flow", 1.0, 3.0, |_| 1.0, 100);
+    for (label, bars) in series() {
+        let shifted: Vec<Bar> = bars
+            .iter()
+            .map(|b| {
+                Bar::new(
+                    b.timestamp,
+                    b.open + 1000.0,
+                    b.high + 1000.0,
+                    b.low + 1000.0,
+                    b.close + 1000.0,
+                    b.volume,
+                )
+            })
+            .collect();
+        let mut a = build_checked("true_range_money_flow", &HashMap::new()).unwrap();
+        let mut b = build_checked("true_range_money_flow", &HashMap::new()).unwrap();
+        let mut published = 0;
+        for (i, (x, y)) in bars.iter().zip(&shifted).enumerate() {
+            match (a.on_bar(x), b.on_bar(y)) {
+                (None, None) => {}
+                (Some(oa), Some(ob)) => {
+                    published += 1;
+                    assert!(
+                        (oa.value - ob.value).abs() <= 1e-9 * oa.value.abs().max(1.0),
+                        "{label}@{i}: {} against {}",
+                        oa.value,
+                        ob.value
+                    );
+                }
+                _ => panic!("{label}@{i}: output on one side only"),
+            }
+        }
+        assert!(published >= 100, "{label} published {published}");
+    }
+}

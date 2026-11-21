@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 195 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 196 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 184 of the 195 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 184 of the 196 entries are verified, 12 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -144,6 +144,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `volume_zone_oscillator` | bars | verified |
 | `volume_price_confirmation` | bars | verified |
 | `market_facilitation` | bars | verified |
+| `true_range_money_flow` | bars | **not yet verified:** no independent second implementation yet |
 | `eom` | bars | verified |
 | `nvi` | bars | verified |
 | `pvi` | bars | verified |
@@ -1936,6 +1937,21 @@ Market facilitation index (Williams, 1995): the bar's range per unit of volume, 
 [See it in the showcase](../../../showcase/market_facilitation/)
 
 **Output** unit Unitless, range 0 and above · **warmup** 1 bars · needs real volume
+
+### `true_range_money_flow` · alias `trmf`
+
+True range money flow, a money flow ratio like cmf: the close located in the true range (previous close included, so gaps count), weighted by volume. Volume and weighted volume are Wilder averages, so no bar drops out of a window. Each bar's volume is capped at volume_cap times the Wilder average volume before the bar (after Katsanos, 2004), so a single spike cannot dominate; 0 turns the cap off. Nothing is published while the averaged volume is zero
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/true_range_money_flow/)
+
+**Output** unit Ratio, range -1 – 1 · **warmup** 22 bars · needs real volume
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 21 | whole number 1 – 10000 | length of the Wilder averages |
+| `volume_cap` | 2.5 | 0 – 100 | cap on a bar's volume, in average volumes before the bar; 0 switches it off |
 
 ### `eom`
 

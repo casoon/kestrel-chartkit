@@ -1,6 +1,6 @@
 //! Volume oscillators: the volume flow indicator (Katsanos, 2004), the volume zone oscillator
 //! (Khalil and Steckler, 2011), the volume price confirmation indicator (Dormeier, 2007) and the
-//! market facilitation index (Williams, 1995).
+//! market facilitation index (Williams, 1995), and the true range money flow.
 
 use std::collections::{HashMap, VecDeque};
 
@@ -544,6 +544,157 @@ pub const MARKET_FACILITATION_DEFINITION: IndicatorDefinition = IndicatorDefinit
     build: |_| Ok(Box::new(MarketFacilitation::new())),
 };
 
+/// True range money flow. `A` is the Wilder average of the raw volume (`A_0 = V_0`, then
+/// `A += (V - A) / period`). From the second bar the close is located in the true range (the
+/// previous close included): `loc = ((C - TRL) - (TRH - C)) / TR`, zero where `TR` is zero. A
+/// bar's volume counts as `vc = min(V, volume_cap * A_prev)` (`A_prev` being the average before
+/// the bar; no cap for `volume_cap = 0`). `N` and `D` are the Wilder averages of `vc * loc` and of
+/// `vc`, each seeded with the plain mean of its first `period` inputs (bars 1 to `period`) and then
+/// `W += (input - W) / period`; **`value = N / D`**, published only for `D > 0`, in -1..1. Alerts
+/// `bull` / `bear` when `value` crosses zero. First output: with bar number `period + 1`.
+pub struct TrueRangeMoneyFlow {
+    period: usize,
+    volume_cap: f64,
+    bars: usize,
+    prev_close: f64,
+    avg_volume: f64,
+    seed_n: f64,
+    seed_d: f64,
+    seeded: usize,
+    avg_n: f64,
+    avg_d: f64,
+    prev_value: Option<f64>,
+    alerts: Vec<IndicatorAlert>,
+}
+
+impl TrueRangeMoneyFlow {
+    pub fn new(period: usize, volume_cap: f64) -> Self {
+        Self {
+            period: period.max(1),
+            volume_cap,
+            bars: 0,
+            prev_close: 0.0,
+            avg_volume: 0.0,
+            seed_n: 0.0,
+            seed_d: 0.0,
+            seeded: 0,
+            avg_n: 0.0,
+            avg_d: 0.0,
+            prev_value: None,
+            alerts: Vec::new(),
+        }
+    }
+}
+
+impl Indicator for TrueRangeMoneyFlow {
+    fn name(&self) -> &str {
+        "true_range_money_flow"
+    }
+
+    fn warmup_period(&self) -> usize {
+        self.period + 1
+    }
+
+    fn reset(&mut self) {
+        *self = Self::new(self.period, self.volume_cap);
+    }
+
+    fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
+        self.alerts.clear();
+        let n = self.period as f64;
+        if self.bars == 0 {
+            self.bars = 1;
+            self.prev_close = bar.close;
+            self.avg_volume = bar.volume;
+            return None;
+        }
+        let prev_close = self.prev_close;
+        let avg_before = self.avg_volume;
+        self.prev_close = bar.close;
+        self.avg_volume += (bar.volume - self.avg_volume) / n;
+        self.bars += 1;
+
+        let high = bar.high.max(prev_close);
+        let low = bar.low.min(prev_close);
+        let range = high - low;
+        let loc = if range > 0.0 {
+            ((bar.close - low) - (high - bar.close)) / range
+        } else {
+            0.0
+        };
+        let vc = if self.volume_cap > 0.0 {
+            bar.volume.min(self.volume_cap * avg_before)
+        } else {
+            bar.volume
+        };
+        let x = vc * loc;
+
+        if self.seeded < self.period {
+            self.seed_n += x;
+            self.seed_d += vc;
+            self.seeded += 1;
+            if self.seeded < self.period {
+                return None;
+            }
+            self.avg_n = self.seed_n / n;
+            self.avg_d = self.seed_d / n;
+        } else {
+            self.avg_n += (x - self.avg_n) / n;
+            self.avg_d += (vc - self.avg_d) / n;
+        }
+        if self.avg_d <= 0.0 {
+            self.prev_value = None;
+            return None;
+        }
+        let value = self.avg_n / self.avg_d;
+        if let Some(prev) = self.prev_value {
+            if crossed_over(prev, 0.0, value, 0.0) {
+                self.alerts.push(IndicatorAlert::new(
+                    "bull",
+                    "money flow crossed above zero",
+                    1.0,
+                ));
+            }
+            if crossed_under(prev, 0.0, value, 0.0) {
+                self.alerts.push(IndicatorAlert::new(
+                    "bear",
+                    "money flow crossed below zero",
+                    1.0,
+                ));
+            }
+        }
+        self.prev_value = Some(value);
+        Some(IndicatorOutput::new(value))
+    }
+
+    fn alerts(&self) -> Vec<IndicatorAlert> {
+        self.alerts.clone()
+    }
+}
+
+pub const TRUE_RANGE_MONEY_FLOW_DEFINITION: IndicatorDefinition = IndicatorDefinition {
+    name: "true_range_money_flow",
+    aliases: &["trmf"],
+    description: "True range money flow, a money flow ratio like cmf: the close located in the true range (previous close included, so gaps count), weighted by volume. Volume and weighted volume are Wilder averages, so no bar drops out of a window. Each bar's volume is capped at volume_cap times the Wilder average volume before the bar (after Katsanos, 2004), so a single spike cannot dominate; 0 turns the cap off. Nothing is published while the averaged volume is zero",
+    params: &[
+        ParamSpec::count("period", 21, 1, 10000).meaning("length of the Wilder averages"),
+        ParamSpec::number("volume_cap", 2.5, 0.0, 100.0)
+            .meaning("cap on a bar's volume, in average volumes before the bar; 0 switches it off"),
+    ],
+    checks: &[],
+    facts: IndicatorFacts::ratio()
+        .bounded(-1.0, 1.0)
+        .needs_real_volume()
+        .range_dependent(),
+    verification: Verification::Open("no independent second implementation yet"),
+    build: |p| {
+        Ok(Box::new(TrueRangeMoneyFlow::new(
+            p.count("period"),
+            p.number("volume_cap"),
+        )))
+    },
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -629,6 +780,104 @@ mod tests {
         // sma_l = 12, vpc = 1/3; vpr = 1; vm = 400 / 300; value = 0.4444 against signal 0.2622.
         assert_eq!(kinds[3], ["bull"]);
         assert_eq!(kinds[2], Vec::<String>::new());
+    }
+
+    fn trmf_values(period: usize, cap: f64, bars: &[Bar]) -> Vec<Option<f64>> {
+        let mut t = TrueRangeMoneyFlow::new(period, cap);
+        bars.iter().map(|b| t.on_bar(b).map(|o| o.value)).collect()
+    }
+
+    #[test]
+    fn trmf_matches_the_hand_computed_values_without_a_cap() {
+        // n = 2, no cap. Bar 0 close 10. Bar 1: H 12, L 10, C 11, V 100: loc 0, x 0.
+        // Bar 2 gaps up: H 15, L 14, C 14, prev close 11: TRH 15, TRL 11, loc = (3 - 1) / 4 = 0.5,
+        // V 200, x 100. Seeds N = 50, D = 150: value 1/3.
+        // Bar 3: H 14, L 14, C 14 (TR from the previous close 14 is zero): loc 0, V 100, x 0:
+        // N = 50 + (0 - 50) / 2 = 25, D = 150 + (100 - 150) / 2 = 125: value 0.2.
+        // Bar 4: H 14, L 12, C 12, V 50: TR 2, loc = (0 - 2) / 2 = -1, x -50:
+        // N = 25 + (-50 - 25) / 2 = -12.5, D = 125 + (50 - 125) / 2 = 87.5: value -1/7.
+        let bars = [
+            bar(0, 10.0, 10.0, 10.0, 999.0),
+            bar(1, 12.0, 10.0, 11.0, 100.0),
+            bar(2, 15.0, 14.0, 14.0, 200.0),
+            bar(3, 14.0, 14.0, 14.0, 100.0),
+            bar(4, 14.0, 12.0, 12.0, 50.0),
+        ];
+        let v = trmf_values(2, 0.0, &bars);
+        assert_eq!(v[0], None);
+        assert_eq!(v[1], None);
+        assert!((v[2].unwrap() - 1.0 / 3.0).abs() < 1e-12);
+        assert!((v[3].unwrap() - 0.2).abs() < 1e-12);
+        assert!((v[4].unwrap() + 1.0 / 7.0).abs() < 1e-12);
+        assert_eq!(TrueRangeMoneyFlow::new(2, 0.0).warmup_period(), 3);
+    }
+
+    #[test]
+    fn trmf_caps_a_volume_spike_at_the_average_before_the_bar() {
+        // n = 2, cap 2.5. Volumes 100, 100, 100, 4000: A_0 = 100, A_1 = 100, A_2 = 100.
+        // Bars 1 and 2 close at the top of their range (loc 1): vc = 100; seeds N = D = 100: value 1.
+        // Bar 3 closes at the bottom of its range (loc -1), V 4000 capped at 2.5 * 100 = 250:
+        // N = 100 + (-250 - 100) / 2 = -75, D = 100 + (250 - 100) / 2 = 175: value -3/7.
+        let bars = [
+            bar(0, 10.0, 10.0, 10.0, 100.0),
+            bar(1, 11.0, 10.0, 11.0, 100.0),
+            bar(2, 12.0, 11.0, 12.0, 100.0),
+            bar(3, 12.0, 11.0, 11.0, 4000.0),
+        ];
+        let v = trmf_values(2, 2.5, &bars);
+        assert!((v[2].unwrap() - 1.0).abs() < 1e-12);
+        assert!((v[3].unwrap() + 3.0 / 7.0).abs() < 1e-12);
+        // Without the cap the spike dominates: N = 100 + (-4000 - 100) / 2 = -1950,
+        // D = 100 + (4000 - 100) / 2 = 2050.
+        let v = trmf_values(2, 0.0, &bars);
+        assert!((v[3].unwrap() + 1950.0 / 2050.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn trmf_publishes_nothing_while_the_volume_is_zero() {
+        // n = 2: the first inputs have volume 0, so D = 0 on bar 2.
+        let bars = [
+            bar(0, 10.0, 10.0, 10.0, 0.0),
+            bar(1, 11.0, 10.0, 11.0, 0.0),
+            bar(2, 12.0, 11.0, 12.0, 0.0),
+            bar(3, 13.0, 12.0, 13.0, 50.0),
+            bar(4, 13.0, 12.0, 12.0, 50.0),
+        ];
+        // No cap: bar 3 has vc = 50 and loc 1: N = 0 + 50 / 2 = 25, D = 25: value 1.
+        let v = trmf_values(2, 0.0, &bars);
+        assert_eq!(v[2], None);
+        assert!((v[3].unwrap() - 1.0).abs() < 1e-12);
+        // Capped: the average volume before bar 3 is 0, so vc stays 0 and nothing is published; the
+        // average A is 25 after bar 3, so bar 4 has vc = min(50, 62.5) = 50 and x = -50:
+        // N = 0 + (-50 - 0) / 2 = -25, D = 0 + 50 / 2 = 25: value -1.
+        let v = trmf_values(2, 2.5, &bars);
+        assert_eq!((v[2], v[3]), (None, None));
+        assert!((v[4].unwrap() + 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn trmf_alerts_on_zero_crosses_only_after_a_published_bar() {
+        // n = 1, no cap: the value is the location of each bar.
+        let mut t = TrueRangeMoneyFlow::new(1, 0.0);
+        let mut kinds = Vec::new();
+        for (i, (h, l, c)) in [
+            (10.0, 10.0, 10.0),
+            (11.0, 10.0, 10.5),
+            (12.0, 10.0, 11.5),
+            (11.5, 9.0, 9.5),
+            (10.0, 9.0, 10.0),
+        ]
+        .iter()
+        .enumerate()
+        {
+            t.on_bar(&bar(i as i64, *h, *l, *c, 100.0));
+            kinds.push(alert_kinds(&t));
+        }
+        // Bar 1 value 0 (first published, no alert), bar 2 loc +0.5, bar 3 loc -0.6, bar 4 loc +1.
+        assert_eq!(kinds[1], Vec::<String>::new());
+        assert_eq!(kinds[2], ["bull"]);
+        assert_eq!(kinds[3], ["bear"]);
+        assert_eq!(kinds[4], ["bull"]);
     }
 
     #[test]
