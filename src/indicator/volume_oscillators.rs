@@ -198,7 +198,7 @@ pub const VOLUME_FLOW_INDICATOR_DEFINITION: IndicatorDefinition = IndicatorDefin
     facts: IndicatorFacts::unitless()
         .needs_real_volume()
         .range_dependent(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(VolumeFlowIndicator::new(
             p.count("period"),
@@ -305,7 +305,7 @@ pub const VOLUME_ZONE_OSCILLATOR_DEFINITION: IndicatorDefinition = IndicatorDefi
     facts: IndicatorFacts::ratio()
         .bounded(-100.0, 100.0)
         .needs_real_volume(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(VolumeZoneOscillator::new(p.count("period")))),
 };
 
@@ -443,7 +443,7 @@ pub const VOLUME_PRICE_CONFIRMATION_DEFINITION: IndicatorDefinition = IndicatorD
         upper: "long",
     }],
     facts: IndicatorFacts::unitless().needs_real_volume(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(VolumePriceConfirmation::new(
             p.count("short"),
@@ -540,7 +540,7 @@ pub const MARKET_FACILITATION_DEFINITION: IndicatorDefinition = IndicatorDefinit
         .non_negative()
         .needs_real_volume()
         .range_dependent(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |_| Ok(Box::new(MarketFacilitation::new())),
 };
 

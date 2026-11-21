@@ -131,10 +131,10 @@ is complete. The mark must match the `verification` of the entry's definition
 | vwap | ✅ |
 | volume_profile | ✅ |
 | tpo_profile | ✅ |
-| volume_flow_indicator | ❌ |
-| volume_zone_oscillator | ❌ |
-| volume_price_confirmation | ❌ |
-| market_facilitation | ❌ |
+| volume_flow_indicator | ✅ |
+| volume_zone_oscillator | ✅ |
+| volume_price_confirmation | ✅ |
+| market_facilitation | ✅ |
 | acc_dist | ✅ |
 | anchored_vwap | ✅ |
 | cmf | ✅ |
@@ -251,4 +251,4 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 180/195 verified** — the same 195 names `catalog()` returns.
+**Total: 184/195 verified** — the same 195 names `catalog()` returns.
