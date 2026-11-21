@@ -258,9 +258,7 @@ pub const PARKINSON_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::ratio()
             .non_negative()
             .range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(ParkinsonVolatilityEngine::new(
                 p.count("period"),
@@ -284,9 +282,7 @@ pub const ROGERS_SATCHELL_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::ratio()
             .non_negative()
             .range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(RogersSatchellVolatilityEngine::new(
                 p.count("period"),
@@ -310,9 +306,7 @@ pub const YANG_ZHANG_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::ratio()
             .non_negative()
             .range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(YangZhangVolatilityEngine::new(
                 p.count("period"),

@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 168 of the 187 entries are verified, 19 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 176 of the 187 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -42,7 +42,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
 | `vidya` | bars | verified |
-| `kestrel_adaptive_smoother` | bars | **not yet verified:** acceptance against the measured criteria is pending |
+| `kestrel_adaptive_smoother` | bars | verified |
 | `alligator` | bars | verified |
 | `envelope` | bars | verified |
 | `vwap` | bars | verified |
@@ -106,9 +106,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `true_range` | bars | verified |
 | `historical_volatility` | bars | verified |
 | `garman_klass` | bars | verified |
-| `parkinson` | bars | **not yet verified:** no independent second implementation yet |
-| `rogers_satchell` | bars | **not yet verified:** no independent second implementation yet |
-| `yang_zhang` | bars | **not yet verified:** no independent second implementation yet |
+| `parkinson` | bars | verified |
+| `rogers_satchell` | bars | verified |
+| `yang_zhang` | bars | verified |
 | `mass_index` | bars | verified |
 | `chande_kroll` | bars | verified |
 | `chandelier_exit` | bars | verified |
@@ -120,10 +120,10 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `fractal_dimension` | bars | verified |
 | `r_squared` | bars | verified |
 | `cycle_length` | bars | verified |
-| `variance_ratio` | bars | **not yet verified:** no independent second implementation yet |
-| `autocorrelation` | bars | **not yet verified:** no independent second implementation yet |
-| `hurst_rs` | bars | **not yet verified:** no independent second implementation yet |
-| `ar1_half_life` | bars | **not yet verified:** no independent second implementation yet |
+| `variance_ratio` | bars | verified |
+| `autocorrelation` | bars | verified |
+| `hurst_rs` | bars | verified |
+| `ar1_half_life` | bars | verified |
 | `pvt` | bars | verified |
 | `efi` | bars | verified |
 | `rvat` | bars | verified |
@@ -558,8 +558,6 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 ### `kestrel_adaptive_smoother` · alias `kas`
 
 Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move
-
-**Not yet verified:** acceptance against the measured criteria is pending.
 
 [See it in the showcase](../../../showcase/kestrel_adaptive_smoother/)
 
@@ -1451,8 +1449,6 @@ Garman-Klass Volatility Estimator
 
 Parkinson volatility estimator (Parkinson 1980): the mean squared high-low log range over the window, scaled by 4 ln 2, rooted and annualised with periods_per_year, in percent; a window with a non-positive high or low publishes nothing
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/parkinson/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 20 bars
@@ -1466,8 +1462,6 @@ Parkinson volatility estimator (Parkinson 1980): the mean squared high-low log r
 
 Rogers-Satchell volatility estimator (Rogers and Satchell 1991), independent of the drift of the price: the mean of ln(H/O) ln(H/C) + ln(L/O) ln(L/C) over the window, floored at zero, rooted and annualised with periods_per_year, in percent; a window with a non-positive price publishes nothing
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/rogers_satchell/)
 
 **Output** unit Ratio, range 0 and above · **warmup** 20 bars
@@ -1480,8 +1474,6 @@ Rogers-Satchell volatility estimator (Rogers and Satchell 1991), independent of 
 ### `yang_zhang`
 
 Yang-Zhang volatility estimator (Yang and Zhang 2000): the overnight variance, the open-to-close variance and the Rogers-Satchell variance combined, rooted and annualised with periods_per_year, in percent; needs the close before the window, so the first value comes one bar after the period, and a window with a non-positive price publishes nothing
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/yang_zhang/)
 
@@ -1641,9 +1633,7 @@ Mean bars between the close's crossings of its simple average over the last hist
 
 ### `variance_ratio`
 
-Lo-MacKinlay variance ratio (1988) of the log price: the variance of overlapping lag-bar returns over the variance of one-bar returns, both bias-corrected; above 1 the returns are positively autocorrelated, below 1 negatively, 1 is a random walk; extra z is the homoskedastic test statistic and can be negative
-
-**Not yet verified:** no independent second implementation yet.
+Lo-MacKinlay variance ratio (1988) of the log price, the returns being logarithms of price ratios: the variance of overlapping lag-bar returns over the variance of one-bar returns, both bias-corrected; above 1 the returns are positively autocorrelated, below 1 negatively, 1 is a random walk; extra z is the homoskedastic test statistic and can be negative
 
 [See it in the showcase](../../../showcase/variance_ratio/)
 
@@ -1660,8 +1650,6 @@ Requires 2 times `lag` not to exceed `period`.
 
 Rolling sample autocorrelation of one-bar log returns at a lag, as in Box and Jenkins: the denominator runs over all returns of the window with no small-sample adjustment; -1..1
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/autocorrelation/)
 
 **Output** unit Ratio, range -1 – 1 · **warmup** 51 bars
@@ -1677,8 +1665,6 @@ Requires `lag` to be smaller than `period`.
 
 Hurst exponent by rescaled-range analysis (Hurst 1951, Mandelbrot and Wallis 1969) of the one-bar log returns: about 0.5 for a random walk, above for persistent and below for anti-persistent returns; the plain R/S estimator has no small-sample correction and is biased upward on short chunks
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/hurst_rs/)
 
 **Output** unit Unitless, range not declared · **warmup** 129 bars
@@ -1693,8 +1679,6 @@ Requires 2 times `min_chunk` not to exceed `period`.
 ### `ar1_half_life`
 
 Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or within 1e-9 of 1
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/ar1_half_life/)
 

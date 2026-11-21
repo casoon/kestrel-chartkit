@@ -108,9 +108,9 @@ is complete. The mark must match the `verification` of the entry's definition
 | donchian | ✅ |
 | envelope | ✅ |
 | garman_klass | ✅ |
-| parkinson | ❌ |
-| rogers_satchell | ❌ |
-| yang_zhang | ❌ |
+| parkinson | ✅ |
+| rogers_satchell | ✅ |
+| yang_zhang | ✅ |
 | historical_volatility | ✅ |
 | keltner | ✅ |
 | mass_index | ✅ |
@@ -159,10 +159,10 @@ is complete. The mark must match the `verification` of the entry's definition
 | fractal_dimension | ✅ |
 | r_squared | ✅ |
 | cycle_length | ✅ |
-| variance_ratio | ❌ |
-| autocorrelation | ❌ |
-| hurst_rs | ❌ |
-| ar1_half_life | ❌ |
+| variance_ratio | ✅ |
+| autocorrelation | ✅ |
+| hurst_rs | ✅ |
+| ar1_half_life | ✅ |
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |

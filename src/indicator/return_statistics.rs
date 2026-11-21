@@ -385,7 +385,7 @@ pub const VARIANCE_RATIO_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "variance_ratio",
         aliases: &[],
-        description: "Lo-MacKinlay variance ratio (1988) of the log price: the variance of overlapping lag-bar returns over the variance of one-bar returns, both bias-corrected; above 1 the returns are positively autocorrelated, below 1 negatively, 1 is a random walk; extra z is the homoskedastic test statistic and can be negative",
+        description: "Lo-MacKinlay variance ratio (1988) of the log price, the returns being logarithms of price ratios: the variance of overlapping lag-bar returns over the variance of one-bar returns, both bias-corrected; above 1 the returns are positively autocorrelated, below 1 negatively, 1 is a random walk; extra z is the homoskedastic test statistic and can be negative",
         params: &[
             super::definition::ParamSpec::count("period", 100, 4, 10000)
                 .meaning("one-bar returns in the window"),
@@ -398,9 +398,7 @@ pub const VARIANCE_RATIO_DEFINITION: super::definition::IndicatorDefinition =
             limit: "period",
         }],
         facts: super::definition::IndicatorFacts::unitless(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(VarianceRatioEngine::new(
                 p.count("period"),
@@ -425,9 +423,7 @@ pub const AUTOCORRELATION_DEFINITION: super::definition::IndicatorDefinition =
             upper: "period",
         }],
         facts: super::definition::IndicatorFacts::ratio().bounded(-1.0, 1.0),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(AutocorrelationEngine::new(
                 p.count("period"),
@@ -453,9 +449,7 @@ pub const HURST_RS_DEFINITION: super::definition::IndicatorDefinition =
             limit: "period",
         }],
         facts: super::definition::IndicatorFacts::unitless(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(HurstRsEngine::new(
                 p.count("period"),
@@ -473,9 +467,7 @@ pub const AR1_HALF_LIFE_DEFINITION: super::definition::IndicatorDefinition =
             .meaning("closes in the window of the fit")],
         checks: &[],
         facts: super::definition::IndicatorFacts::unitless().non_negative(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(Ar1HalfLifeEngine::new(p.count("period")))),
     };
 
