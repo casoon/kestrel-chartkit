@@ -21,6 +21,8 @@ pub mod contract;
 ///   depends on the timestamps.
 /// - `laguerre_rsi`: waits for the first bar on which a stage has moved, so a series that starts
 ///   flat publishes later than the second bar.
+/// - `most`, `ott`, `halftrend`, `ssl_channel`: publish once their direction is decided, which
+///   depends on the data.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "kestrel_leg_character",
     "kestrel_structure_zones",
@@ -30,6 +32,10 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "kestrel_vwap_regime",
     "kestrel_swing_structure",
     "laguerre_rsi",
+    "most",
+    "ott",
+    "halftrend",
+    "ssl_channel",
 ];
 
 /// Indicators that publish only while the data holds a confirmed structure, so how many bars have

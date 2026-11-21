@@ -28,6 +28,14 @@ is complete. The mark must match the `verification` of the entry's definition
 | super_smoother | ✅ |
 | ultimate_smoother | ✅ |
 | mama | ✅ |
+| zlema | ✅ |
+| frama | ✅ |
+| nadaraya_watson | ✅ |
+| range_filter | ✅ |
+| most | ✅ |
+| ott | ✅ |
+| halftrend | ✅ |
+| ssl_channel | ✅ |
 | tema | ✅ |
 | lsma | ✅ |
 | mcginley | ✅ |
@@ -79,6 +87,11 @@ is complete. The mark must match the `verification` of the entry's definition
 | correlation_trend | ✅ |
 | laguerre_rsi | ✅ |
 | cyber_cycle | ✅ |
+| schaff_trend_cycle | ✅ |
+| qqe | ✅ |
+| demarker | ✅ |
+| relative_momentum_index | ✅ |
+| squeeze_momentum | ✅ |
 
 ## Volatility
 
@@ -223,6 +236,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 156/167 verified** — the same 167 names `catalog()` returns: 115 indicators (the first
+**Total: 169/180 verified** — the same 180 names `catalog()` returns: 128 indicators (the first
 five groups), 5 composite scores, 41 structure/pattern detectors and 6 entries of other input
 kinds.

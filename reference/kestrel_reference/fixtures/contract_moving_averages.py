@@ -29,6 +29,8 @@ from ..ehlers import compute as ehlers_compute
 from ..exact import bollinger as exact_bollinger
 from ..fixture import provenance, render_contract
 from ..indicators import keltner as keltner_last
+from ..momentum_lines import compute as momentum_compute
+from ..trailing_lines import compute as trailing_compute
 from ..indicators import true_ranges
 from ..smoothing import (
     alma_window,
@@ -896,9 +898,113 @@ def ehlers_blocks():
     ]
 
 
+def line_case(compute, name, bars, **kw):
+    """One of the adaptive and trailing lines, from `kestrel_reference.momentum_lines` or
+    `kestrel_reference.trailing_lines`."""
+    kw = params(**kw)
+    return kw, bars, compute(name, kw, bars)
+
+
+def _drifting(parts):
+    closes, price = [], 100.0
+    for count, steps in parts:
+        for i in range(count):
+            closes.append(price)
+            price += steps[i % len(steps)]
+    return closes
+
+
+# Long runs in both directions with pullbacks, longer than the defaults' warm-ups.
+DRIFTS = _drifting([(70, [1.1, 0.7, -0.4, 1.3, 0.9]), (70, [-1.2, -0.6, 0.5, -1.4, -0.8]),
+                    (60, [0.9, 1.2, -0.7, 0.6])])
+
+
+def line_blocks():
+    drifts = ohlc(DRIFTS)
+    cycles = ohlc(CYCLES)
+    short = ohlc(SHORT)
+    flat = ohlc([50.0] * 20)
+    points = [(50.0, 50.0, 50.0, 50.0, 1000.0)] * 20
+    m = momentum_compute
+    t = trailing_compute
+    return [
+        case_block("zlema_defaults", "ZLEMA(20): published from bar 10, crossings of the close "
+                   "over the line", *line_case(m, "zlema", cycles)),
+        case_block("zlema_short", "ZLEMA(5)", *line_case(m, "zlema", short, period=5)),
+        case_block("zlema_minimal", "ZLEMA(1): no lag, the line is the close",
+                   *line_case(m, "zlema", short, period=1)),
+        case_block("zlema_flat", "Constant closes: the line stays on them",
+                   *line_case(m, "zlema", flat, period=6)),
+
+        case_block("frama_defaults", "FRAMA(16) over a cycle that shortens: published from bar 17, "
+                   "with the dimension", *line_case(m, "frama", cycles)),
+        case_block("frama_custom", "FRAMA(8)", *line_case(m, "frama", cycles, period=8)),
+        case_block("frama_minimal", "FRAMA(4): the smallest period",
+                   *line_case(m, "frama", cycles, period=4)),
+        case_block("frama_flat", "Bars with a constant range: dimension 1, the smoothing factor "
+                   "clamped to 1", *line_case(m, "frama", flat, period=4)),
+        case_block("frama_points", "Bars without any range: the dimension keeps its default",
+                   *line_case(m, "frama", points, period=4)),
+
+        case_block("nadaraya_watson_defaults", "Nadaraya-Watson(8, 50, 3): published from bar 99, "
+                   "with both bands", *line_case(m, "nadaraya_watson", drifts)),
+        case_block("nadaraya_watson_custom", "Nadaraya-Watson(3, 10, 0.5)",
+                   *line_case(m, "nadaraya_watson", cycles, bandwidth=3, lookback=10, mult=0.5)),
+        case_block("nadaraya_watson_minimal", "Nadaraya-Watson(1, 2, 0): bands on the line",
+                   *line_case(m, "nadaraya_watson", short, bandwidth=1, lookback=2, mult=0)),
+        case_block("nadaraya_watson_flat", "Constant closes: the bands collapse on the line",
+                   *line_case(m, "nadaraya_watson", flat, bandwidth=2, lookback=4, mult=1.5)),
+
+        case_block("range_filter_defaults", "Range filter(100, 3) over a long drifting series",
+                   *line_case(t, "range_filter", drifts)),
+        case_block("range_filter_short", "Range filter(5, 1.5)",
+                   *line_case(t, "range_filter", cycles, period=5, mult=1.5)),
+        case_block("range_filter_minimal", "Range filter(1, 0.5): published from bar 2",
+                   *line_case(t, "range_filter", short, period=1, mult=0.5)),
+        case_block("range_filter_flat", "Constant closes: the filter stays, direction 0",
+                   *line_case(t, "range_filter", flat, period=3, mult=1.0)),
+
+        case_block("most_defaults", "MOST(3, 2) over a long drifting series",
+                   *line_case(t, "most", drifts)),
+        case_block("most_custom", "MOST(5, 5)",
+                   *line_case(t, "most", cycles, length=5, percent=5)),
+        case_block("most_minimal", "MOST(1, 0.5)",
+                   *line_case(t, "most", short, length=1, percent=0.5)),
+        case_block("most_flat", "Constant closes: no direction is ever decided",
+                   *line_case(t, "most", flat, length=3, percent=2)),
+
+        case_block("ott_defaults", "OTT(2, 1.4, 9) over a long drifting series",
+                   *line_case(t, "ott", drifts)),
+        case_block("ott_custom", "OTT(5, 3, 4)",
+                   *line_case(t, "ott", cycles, length=5, percent=3, cmo_len=4)),
+        case_block("ott_minimal", "OTT(1, 0.5, 1)",
+                   *line_case(t, "ott", short, length=1, percent=0.5, cmo_len=1)),
+        case_block("ott_flat", "Constant closes: no direction is ever decided",
+                   *line_case(t, "ott", flat, length=3, percent=2, cmo_len=3)),
+
+        case_block("halftrend_defaults", "HalfTrend(2, 2, 100) over a long drifting series: "
+                   "published from bar 100", *line_case(t, "halftrend", drifts)),
+        case_block("halftrend_custom", "HalfTrend(4, 1, 10)",
+                   *line_case(t, "halftrend", cycles, amplitude=4, deviation=1, atr_len=10)),
+        case_block("halftrend_minimal", "HalfTrend(1, 0, 1): no band offset",
+                   *line_case(t, "halftrend", short, amplitude=1, deviation=0, atr_len=1)),
+        case_block("halftrend_flat", "Constant closes: no trend is ever decided",
+                   *line_case(t, "halftrend", flat, amplitude=3, deviation=2, atr_len=4)),
+
+        case_block("ssl_channel_defaults", "SSL channel(10) over a long drifting series",
+                   *line_case(t, "ssl_channel", drifts)),
+        case_block("ssl_channel_custom", "SSL channel(4)",
+                   *line_case(t, "ssl_channel", cycles, period=4)),
+        case_block("ssl_channel_minimal", "SSL channel(1): the close never passes its own high or low, no side is taken",
+                   *line_case(t, "ssl_channel", short, period=1)),
+        case_block("ssl_channel_flat", "Constant closes: neither side is ever taken",
+                   *line_case(t, "ssl_channel", flat, period=3)),
+    ]
+
+
 def build():
     header = provenance("contract_moving_averages") + [
         "",
         "Format: see contract_pilot (one table per case, `-` = absent).",
     ]
-    return header, build_blocks() + ehlers_blocks()
+    return header, build_blocks() + ehlers_blocks() + line_blocks()

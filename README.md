@@ -8,14 +8,14 @@ such as [chartlet](https://casoon.github.io/chartlet/) (static) or
 
 **Website and documentation:** [casoon.github.io/kestrel-chartkit](https://casoon.github.io/kestrel-chartkit/)
 
-The crate is at **0.44**, pre-1.0. Root-level re-exports are the preferred consumer API;
+The crate is at **0.45**, pre-1.0. Root-level re-exports are the preferred consumer API;
 lower-level modules remain public for advanced composition but may change before 1.0. Breaking
 changes are marked with `!` in the commit subject and raise the minor version. The crate is under
 active development: names, parameters and outputs can still change fundamentally between versions.
 
 ## Features
 
-- **167 Streaming Indicators and Detectors:** 116 technical indicators, 4 composite scores, 41 structure/pattern detectors and 6 entries with another input (two series, candle transform, intrabar), all built by name, the bar indicators streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
+- **180 Streaming Indicators and Detectors:** 129 technical indicators, 4 composite scores, 41 structure/pattern detectors and 6 entries with another input (two series, candle transform, intrabar), all built by name, the bar indicators streamed through the same `Indicator` trait: RSI, MACD, ATR, ADX, Bollinger Bands, TRIX, VIDYA, Tillson T3, Chande Kroll Stop, Elder's Force Index, Volume Profile, VWAP, Ichimoku, Supertrend, Stochastic RSI, Order Block detection, Liquidity FVG, Pivots Structure, and more (see `catalog()` for the full, validated list and [`INDICATOR_STATUS.md`](INDICATOR_STATUS.md) for the grouping).
 - **Dynamic Catalog Registry:** Parameter validation and dynamic instantiation via `catalog()` and `build_checked(name, params)`.
 - **Market Regime Alignment:** Automatic regime classification (`BullishExpansion`, `BearishExpansion`, `Consolidation`, `Transition`) with permission grading (`ClearToTrade`, `Caution`, `Veto`).
 - **Composite Signal Scoring:** Weighted multi-indicator scoring, risk management parameter generation (entry, stop-loss, take-profit targets), and semantic neutral signal cleanup.
@@ -88,10 +88,10 @@ coupon dates, business-day adjustment and sensitivities.
 
 ```toml
 [dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.44.0" }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.45.0" }
 ```
 
-or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.44.0`.
+or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.45.0`.
 Requires Rust 1.87 or newer.
 
 > **Note on the registry.** crates.io and docs.rs still carry 0.11.3, many minor versions
@@ -142,7 +142,7 @@ The default `serde` feature derives `Serialize` and `Deserialize` for public DTO
 smaller dependency graph:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.44.0", default-features = false }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.45.0", default-features = false }
 ```
 
 The optional `calendar` feature adds `src/calendar.rs` (`ExchangeCalendar`): IANA-timezone/DST-aware
@@ -151,7 +151,7 @@ crate carries no timezone-database dependency. It is about *trading hours*; the 
 a bond schedule needs are supplied as a `BusinessCalendar` instead:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.44.0", features = ["calendar"] }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.45.0", features = ["calendar"] }
 ```
 
 ## Testing & Quality

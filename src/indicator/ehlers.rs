@@ -28,14 +28,14 @@ fn two_pole_coefficients(period: f64) -> (f64, f64, f64) {
 /// crate's crossing tolerance ([`crossed_over`], [`crossed_under`]) so that rounding noise between
 /// two nearly equal lines never fires an alert.
 #[derive(Debug, Clone, Copy, Default)]
-struct Crossing {
+pub(crate) struct Crossing {
     prev: Option<(f64, f64)>,
-    up: bool,
-    down: bool,
+    pub(crate) up: bool,
+    pub(crate) down: bool,
 }
 
 impl Crossing {
-    fn update(&mut self, a: f64, b: f64) {
+    pub(crate) fn update(&mut self, a: f64, b: f64) {
         match self.prev {
             Some((pa, pb)) => {
                 self.up = crossed_over(pa, pb, a, b);
@@ -49,7 +49,7 @@ impl Crossing {
         self.prev = Some((a, b));
     }
 
-    fn alerts(&self, up: (&str, &str), down: (&str, &str)) -> Vec<IndicatorAlert> {
+    pub(crate) fn alerts(&self, up: (&str, &str), down: (&str, &str)) -> Vec<IndicatorAlert> {
         let mut out = Vec::new();
         if self.up {
             out.push(IndicatorAlert {

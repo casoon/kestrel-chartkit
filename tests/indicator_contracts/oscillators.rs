@@ -89,6 +89,11 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("correlation_trend"),
     Coverage::full("laguerre_rsi"),
     Coverage::full("cyber_cycle"),
+    Coverage::full("schaff_trend_cycle"),
+    Coverage::full("qqe"),
+    Coverage::full("demarker"),
+    Coverage::full("relative_momentum_index"),
+    Coverage::full("squeeze_momentum"),
 ];
 
 // --- macd --------------------------------------------------------------------------------------
@@ -963,4 +968,214 @@ fn cyber_cycle_rejects_invalid_configuration() {
     assert_rejected("cyber_cycle", &[("alpha", 1.5)]);
     assert_rejected("cyber_cycle", &[("alpha", f64::NAN)]);
     assert_rejected("cyber_cycle", &[("period", 10.0)]);
+}
+
+// --- schaff_trend_cycle -------------------------------------------------------------
+
+#[test]
+fn schaff_trend_cycle_defaults() {
+    holds(
+        "schaff_trend_cycle_defaults",
+        "schaff_trend_cycle",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn schaff_trend_cycle_short() {
+    holds(
+        "schaff_trend_cycle_short",
+        "schaff_trend_cycle",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn schaff_trend_cycle_minimal() {
+    holds(
+        "schaff_trend_cycle_minimal",
+        "schaff_trend_cycle",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn schaff_trend_cycle_flat() {
+    holds(
+        "schaff_trend_cycle_flat",
+        "schaff_trend_cycle",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn schaff_trend_cycle_rejects_invalid_configuration() {
+    assert_rejected("schaff_trend_cycle", &[("fast", 0.0)]);
+    assert_rejected("schaff_trend_cycle", &[("slow", 1.0)]);
+    assert_rejected("schaff_trend_cycle", &[("cycle", 1.0)]);
+    assert_rejected("schaff_trend_cycle", &[("factor", 0.0)]);
+    assert_rejected("schaff_trend_cycle", &[("factor", 1.5)]);
+    assert_rejected("schaff_trend_cycle", &[("lower", 80.0), ("upper", 70.0)]);
+    assert_rejected("schaff_trend_cycle", &[("fast", 10.0), ("slow", 10.0)]);
+    assert_rejected("schaff_trend_cycle", &[("period", 10.0)]);
+}
+
+// --- qqe ----------------------------------------------------------------------------
+
+#[test]
+fn qqe_defaults() {
+    holds("qqe_defaults", "qqe", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn qqe_short() {
+    holds("qqe_short", "qqe", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn qqe_minimal() {
+    holds("qqe_minimal", "qqe", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn qqe_flat() {
+    holds("qqe_flat", "qqe", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn qqe_rejects_invalid_configuration() {
+    assert_rejected("qqe", &[("rsi_len", 1.0)]);
+    assert_rejected("qqe", &[("smoothing", 0.0)]);
+    assert_rejected("qqe", &[("factor", 0.0)]);
+    assert_rejected("qqe", &[("rsi_len", 2.5)]);
+    assert_rejected("qqe", &[("period", 14.0)]);
+}
+
+// --- demarker -----------------------------------------------------------------------
+
+#[test]
+fn demarker_defaults() {
+    holds("demarker_defaults", "demarker", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn demarker_short() {
+    holds("demarker_short", "demarker", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn demarker_minimal() {
+    holds("demarker_minimal", "demarker", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn demarker_flat() {
+    holds("demarker_flat", "demarker", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn demarker_rejects_invalid_configuration() {
+    assert_rejected("demarker", &[("period", 0.0)]);
+    assert_rejected("demarker", &[("period", 2.5)]);
+    assert_rejected("demarker", &[("lower", 0.7), ("upper", 0.3)]);
+    assert_rejected("demarker", &[("upper", 1.5)]);
+    assert_rejected("demarker", &[("length", 14.0)]);
+}
+
+// --- relative_momentum_index --------------------------------------------------------
+
+#[test]
+fn relative_momentum_index_defaults() {
+    holds(
+        "relative_momentum_index_defaults",
+        "relative_momentum_index",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn relative_momentum_index_short() {
+    holds(
+        "relative_momentum_index_short",
+        "relative_momentum_index",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn relative_momentum_index_minimal() {
+    holds(
+        "relative_momentum_index_minimal",
+        "relative_momentum_index",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn relative_momentum_index_flat() {
+    holds(
+        "relative_momentum_index_flat",
+        "relative_momentum_index",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn relative_momentum_index_rejects_invalid_configuration() {
+    assert_rejected("relative_momentum_index", &[("length", 0.0)]);
+    assert_rejected("relative_momentum_index", &[("momentum", 0.0)]);
+    assert_rejected(
+        "relative_momentum_index",
+        &[("lower", 70.0), ("upper", 30.0)],
+    );
+    assert_rejected("relative_momentum_index", &[("upper", 101.0)]);
+    assert_rejected("relative_momentum_index", &[("period", 14.0)]);
+}
+
+// --- squeeze_momentum ---------------------------------------------------------------
+
+#[test]
+fn squeeze_momentum_defaults() {
+    holds(
+        "squeeze_momentum_defaults",
+        "squeeze_momentum",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn squeeze_momentum_short() {
+    holds(
+        "squeeze_momentum_short",
+        "squeeze_momentum",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn squeeze_momentum_minimal() {
+    holds(
+        "squeeze_momentum_minimal",
+        "squeeze_momentum",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn squeeze_momentum_flat() {
+    holds(
+        "squeeze_momentum_flat",
+        "squeeze_momentum",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn squeeze_momentum_rejects_invalid_configuration() {
+    assert_rejected("squeeze_momentum", &[("length", 1.0)]);
+    assert_rejected("squeeze_momentum", &[("bb_mult", 0.0)]);
+    assert_rejected("squeeze_momentum", &[("kc_length", 1.0)]);
+    assert_rejected("squeeze_momentum", &[("kc_mult", 0.0)]);
+    assert_rejected("squeeze_momentum", &[("length", 2.5)]);
+    assert_rejected("squeeze_momentum", &[("period", 20.0)]);
 }

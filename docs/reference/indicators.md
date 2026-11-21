@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 167 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 180 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 156 of the 167 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 169 of the 180 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -30,6 +30,14 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `super_smoother` | bars | verified |
 | `ultimate_smoother` | bars | verified |
 | `mama` | bars | verified |
+| `zlema` | bars | verified |
+| `frama` | bars | verified |
+| `nadaraya_watson` | bars | verified |
+| `range_filter` | bars | verified |
+| `most` | bars | verified |
+| `ott` | bars | verified |
+| `halftrend` | bars | verified |
+| `ssl_channel` | bars | verified |
 | `lsma` | bars | verified |
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
@@ -81,6 +89,11 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `correlation_trend` | bars | verified |
 | `laguerre_rsi` | bars | verified |
 | `cyber_cycle` | bars | verified |
+| `schaff_trend_cycle` | bars | verified |
+| `qqe` | bars | verified |
+| `demarker` | bars | verified |
+| `relative_momentum_index` | bars | verified |
+| `squeeze_momentum` | bars | verified |
 | `percent_rank` | bars | verified |
 | `atr` | bars | verified |
 | `adx` | bars | verified |
@@ -380,6 +393,110 @@ Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA 
 | `slow_limit` | 0.05 | 0.01 – 1 | smallest smoothing constant, below fast_limit |
 
 Requires `slow_limit` to be smaller than `fast_limit`.
+
+### `zlema`
+
+Zero-lag EMA: the EMA of the close plus its change over the last (period - 1) / 2 bars, seeded with its first input; with a period of 1 or 2 it is the plain EMA. Published from bar floor((period - 1) / 2) + 1.
+
+[See it in the showcase](../../../showcase/zlema/)
+
+**Output** unit Price, range not declared · **warmup** 10 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | bars of the EMA |
+
+### `frama`
+
+Fractal adaptive moving average of the median price: the smoothing constant follows the fractal dimension of the last `period` bars (extra `dimension`, 1 to 2 on usual data). The average equals the median price up to bar period and a window without range keeps the previous dimension. Odd periods are rejected; published from bar period + 1.
+
+[See it in the showcase](../../../showcase/frama/)
+
+**Output** unit Price, range not declared · **warmup** 17 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 16 | whole number 4 – 10000 | bars of the window, even |
+
+### `nadaraya_watson`
+
+Gaussian kernel regression of the close at the newest bar, with an envelope of `mult` mean absolute errors (extras `upper`, `lower`). Only past bars are used, so a value never changes later. Published from bar 2 * lookback - 1.
+
+[See it in the showcase](../../../showcase/nadaraya_watson/)
+
+**Output** unit Price, range not declared · **warmup** 99 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `bandwidth` | 8 | 0.000000001 – 10000 | width of the Gaussian kernel in bars |
+| `lookback` | 50 | whole number 2 – 10000 | bars the kernel spans |
+| `mult` | 3 | 0 – 1000 | envelope width in mean absolute errors |
+
+### `range_filter`
+
+Range Filter: a line that follows the close only when it leaves a band of `mult` times the double-smoothed absolute close-to-close change (extras `upper`, `lower`, `direction`). The direction is the sign of the line's last move beyond a relative 1e-9 and starts at 0. Published from bar 2.
+
+[See it in the showcase](../../../showcase/range_filter/)
+
+**Output** unit Price, range not declared · **warmup** 2 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 100 | whole number 1 – 10000 | bars of the first smoothing of the change |
+| `mult` | 3 | 0.000000001 – 1000 | band width in smoothed changes |
+
+### `most`
+
+MOST, a moving stop: a trailing stop whose distance is a percent of the level on the EMA of the close (extras `ema`, `direction`). The direction starts undecided instead of up and nothing is published until it is decided. The distances are a percent of the level, so prices scaled by a factor scale the line by it.
+
+[See it in the showcase](../../../showcase/most/)
+
+**Output** unit Price, range not declared · **warmup** 2 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 3 | whole number 1 – 10000 | bars of the EMA |
+| `percent` | 2 | 0.000000001 – 99.999999999 | stop distance in percent of the level |
+
+### `ott`
+
+Optimized Trend Tracker: a trailing stop whose distance is a percent of the level on a variable average of the close, shifted by half the percent to the side the average lies on (extras `var`, `stop`, `direction`). The average starts at the first close, the momentum sums use the bars available at the start and the direction starts undecided; the line is not shifted, and the alerts compare the average with the line two bars earlier.
+
+[See it in the showcase](../../../showcase/ott/)
+
+**Output** unit Price, range not declared · **warmup** 10 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 2 | whole number 1 – 10000 | bars of the variable average |
+| `percent` | 1.4 | 0.000000001 – 99.999999999 | stop distance in percent of the level |
+| `cmo_len` | 9 | whole number 1 – 10000 | bars of the momentum ratio that scales the average |
+
+### `halftrend`
+
+HalfTrend: a trend line from the extremes and averages of the last `amplitude` bars, with an ATR envelope (extras `trend`, `atr_high`, `atr_low`). It starts undecided and watches both sides instead of starting up; the first line is seeded with the extreme that decided it. Published once decided from bar atr_len.
+
+[See it in the showcase](../../../showcase/halftrend/)
+
+**Output** unit Price, range not declared · **warmup** 100 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `amplitude` | 2 | whole number 1 – 10000 | bars of the extremes and averages |
+| `deviation` | 2 | 0 – 100 | envelope half-width in half ATRs |
+| `atr_len` | 100 | whole number 1 – 10000 | bars of the ATR |
+
+### `ssl_channel`
+
+SSL channel: the SMA of the highs and of the lows, ordered by which side the close last broke out of (extras `ssl_down`, `hlv`). `hlv` starts undecided instead of up and nothing is published until it is decided. Published from bar period.
+
+[See it in the showcase](../../../showcase/ssl_channel/)
+
+**Output** unit Price, range not declared · **warmup** 10 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 10 | whole number 1 – 10000 | bars of the averages |
 
 ### `lsma`
 
@@ -1089,6 +1206,89 @@ Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component wi
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `alpha` | 0.07 | 0.01 – 1 | smoothing constant of the cycle filter |
+
+### `schaff_trend_cycle`
+
+Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1). A stage without range repeats its previous stochastic; at the start the first stage reads 50 and the second the smoothed value itself, so a flat series stays at 50, a steady fall reads 0 and a steady rise 100.
+
+[See it in the showcase](../../../showcase/schaff_trend_cycle/)
+
+**Output** unit Ratio, range 0 – 100 · **warmup** 50 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `fast` | 23 | whole number 1 – 10000 | bars of the fast EMA in the MACD line |
+| `slow` | 50 | whole number 2 – 10000 | bars of the slow EMA in the MACD line, above fast |
+| `cycle` | 10 | whole number 2 – 10000 | bars of each stochastic window |
+| `factor` | 0.5 | 0.000000001 – 1 | smoothing factor of each stage |
+| `lower` | 25 | 0 – 100; threshold on the output scale | lower zone, bull on a cross above it |
+| `upper` | 75 | 0 – 100; threshold on the output scale | upper zone, bear on a cross below it |
+
+Requires `fast` to be smaller than `slow`.
+
+Requires `lower` to be smaller than `upper`.
+
+### `qqe`
+
+Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extra `trail`, state `up`/`down`/`undecided`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.
+
+[See it in the showcase](../../../showcase/qqe/)
+
+**Output** unit Ratio, range 0 – 100 · **warmup** 16 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `rsi_len` | 14 | whole number 2 – 10000 | bars of the RSI |
+| `smoothing` | 5 | whole number 1 – 10000 | bars of the EMA over the RSI |
+| `factor` | 4.236 | 0.000000001 – 1000 | band width in smoothed mean changes of the line |
+
+### `demarker`
+
+DeMarker: the sum of the rises of the high over the sum of the rises of the high and the falls of the low across `period` bars; 0 to 1, and 0.5 on a window without rises or falls. Published from bar period + 1.
+
+[See it in the showcase](../../../showcase/demarker/)
+
+**Output** unit Ratio, range 0 – 1 · **warmup** 15 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 14 | whole number 1 – 10000 | bars summed |
+| `lower` | 0.3 | 0 – 1; threshold on the output scale | lower zone, bull on a cross above it |
+| `upper` | 0.7 | 0 – 1; threshold on the output scale | upper zone, bear on a cross below it |
+
+Requires `lower` to be smaller than `upper`.
+
+### `relative_momentum_index`
+
+Relative Momentum Index: the RSI form over the change across `momentum` bars instead of one, Wilder-averaged over `length` from the first change; 0 to 100, equal to the RSI with momentum 1. Published from bar momentum + length.
+
+[See it in the showcase](../../../showcase/relative_momentum_index/)
+
+**Output** unit Ratio, range 0 – 100 · **warmup** 25 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 1 – 10000 | bars of the Wilder averages |
+| `momentum` | 5 | whole number 1 – 10000 | bars the change spans |
+| `lower` | 30 | 0 – 100; threshold on the output scale | lower zone, bull on a cross above it |
+| `upper` | 70 | 0 – 100; threshold on the output scale | upper zone, bear on a cross below it |
+
+Requires `lower` to be smaller than `upper`.
+
+### `squeeze_momentum`
+
+Volatility squeeze with a linear-regression momentum: the endpoint of the least-squares line through the close's distance to the mean of the window midrange and its average (a price difference, extra `squeeze` +1 on, -1 off, 0 between). The Bollinger bands use bb_mult and the Keltner channel kc_mult. Published from bar max(2 * kc_length - 1, length).
+
+[See it in the showcase](../../../showcase/squeeze_momentum/)
+
+**Output** unit Unitless, range open, centred on 0 · **warmup** 39 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `length` | 20 | whole number 2 – 10000 | bars of the Bollinger bands |
+| `bb_mult` | 2 | 0.000000001 – 100 | Bollinger width in population deviations |
+| `kc_length` | 20 | whole number 2 – 10000 | bars of the Keltner channel and of the momentum |
+| `kc_mult` | 1.5 | 0.000000001 – 100 | Keltner width in average true ranges |
 
 ### `percent_rank`
 

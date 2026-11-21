@@ -149,6 +149,161 @@ fn oscillators_answer_with_the_negation_or_the_complement() {
     check_bars_entry("laguerre_rsi", &[], &[("value", Answer::Complement(1.0))]);
 }
 
+/// Like `check_bars_entry`, for a pair of lines that swap places: the original's `field` is the
+/// reflected `mirrored_field` of the mirrored series (an upper line becomes the reflected lower one).
+fn check_bars_swapped_pair(name: &str, params: &[(&str, f64)], field: &str, mirrored_field: &str) {
+    let params: HashMap<String, f64> = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+    for (label, bars) in series() {
+        let mirrored = mirror(&bars);
+        let mut a = build_checked(name, &params).unwrap();
+        let mut b = build_checked(name, &params).unwrap();
+        for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
+            let pick = |o: &Option<kestrel_chartkit::IndicatorOutput>, f: &str| {
+                o.as_ref().and_then(|o| {
+                    if f == "value" {
+                        Some(o.value)
+                    } else {
+                        o.extra.get(f).copied()
+                    }
+                })
+            };
+            let (oa, ob) = (a.on_bar(x), b.on_bar(y));
+            assert_mirrored(
+                name,
+                &format!("{field}<->{mirrored_field}"),
+                Answer::Reflected,
+                pick(&oa, field),
+                pick(&ob, mirrored_field),
+                format!("{label}@{i}"),
+            );
+        }
+    }
+}
+
+#[test]
+fn n2_trend_lines_answer_with_the_reflected_level() {
+    for name in [
+        "zlema",
+        "range_filter",
+        "halftrend",
+        "ssl_channel",
+        "nadaraya_watson",
+    ] {
+        check_bars_entry(name, &[], &[("value", Answer::Reflected)]);
+    }
+    check_bars_entry("frama", &[], &[("value", Answer::Reflected)]);
+    check_bars_entry("frama", &[], &[("dimension", Answer::Same)]);
+    check_bars_entry("ssl_channel", &[], &[("ssl_down", Answer::Reflected)]);
+    // Short settings, so that the directions decide inside the series.
+    let short = [("amplitude", 2.0), ("atr_len", 5.0)];
+    check_bars_entry("halftrend", &short, &[("value", Answer::Reflected)]);
+    check_bars_entry("halftrend", &short, &[("trend", Answer::Negated)]);
+    check_bars_entry(
+        "range_filter",
+        &[("period", 5.0)],
+        &[("direction", Answer::Negated)],
+    );
+    check_bars_entry("ssl_channel", &[], &[("hlv", Answer::Negated)]);
+    check_bars_swapped_pair("range_filter", &[], "upper", "lower");
+    check_bars_swapped_pair("range_filter", &[], "lower", "upper");
+    check_bars_swapped_pair("halftrend", &short, "atr_high", "atr_low");
+    check_bars_swapped_pair("halftrend", &short, "atr_low", "atr_high");
+    check_bars_swapped_pair("nadaraya_watson", &[], "upper", "lower");
+    check_bars_swapped_pair("nadaraya_watson", &[], "lower", "upper");
+}
+
+#[test]
+fn n2_oscillators_answer_with_the_negation_or_the_complement() {
+    check_bars_entry("squeeze_momentum", &[], &[("value", Answer::Negated)]);
+    check_bars_entry("squeeze_momentum", &[], &[("squeeze", Answer::Same)]);
+    check_bars_entry(
+        "schaff_trend_cycle",
+        &[],
+        &[("value", Answer::Complement(100.0))],
+    );
+    check_bars_entry(
+        "qqe",
+        &[],
+        &[
+            ("value", Answer::Complement(100.0)),
+            ("trail", Answer::Complement(100.0)),
+        ],
+    );
+    // The trend is a state label: the reflected series is up where the original is down.
+    for (label, bars) in series() {
+        let mirrored = mirror(&bars);
+        let mut a = build_checked("qqe", &HashMap::new()).unwrap();
+        let mut b = build_checked("qqe", &HashMap::new()).unwrap();
+        for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
+            let (sa, sb) = (
+                a.on_bar(x).and_then(|o| o.state),
+                b.on_bar(y).and_then(|o| o.state),
+            );
+            let opposite = sa.as_deref().map(|s| match s {
+                "up" => "down",
+                "down" => "up",
+                other => other,
+            });
+            assert_eq!(sb.as_deref(), opposite, "qqe state {label}@{i}");
+        }
+    }
+    check_bars_entry(
+        "relative_momentum_index",
+        &[],
+        &[("value", Answer::Complement(100.0))],
+    );
+    check_bars_entry("demarker", &[], &[("value", Answer::Complement(1.0))]);
+}
+
+/// MOST and OTT keep their distances as a percent of the level: no mirror, but scaling every
+/// price by `k` scales the price outputs by `k` and leaves the direction alone.
+#[test]
+fn most_and_ott_are_scale_invariant() {
+    let scaled = |bars: &[Bar], k: f64| -> Vec<Bar> {
+        bars.iter()
+            .map(|b| {
+                Bar::new(
+                    b.timestamp,
+                    k * b.open,
+                    k * b.high,
+                    k * b.low,
+                    k * b.close,
+                    b.volume,
+                )
+            })
+            .collect()
+    };
+    for (name, price_fields) in [("most", &["ema"][..]), ("ott", &["var", "stop"][..])] {
+        for (label, bars) in series() {
+            let big = scaled(&bars, 2.0);
+            let mut a = build_checked(name, &HashMap::new()).unwrap();
+            let mut b = build_checked(name, &HashMap::new()).unwrap();
+            for (i, (x, y)) in bars.iter().zip(&big).enumerate() {
+                let (oa, ob) = (a.on_bar(x), b.on_bar(y));
+                match (oa, ob) {
+                    (None, None) => {}
+                    (Some(oa), Some(ob)) => {
+                        let at = format!("{name} {label}@{i}");
+                        assert!(
+                            (2.0 * oa.value - ob.value).abs() <= 1e-9 * ob.value.abs().max(1.0),
+                            "{at}"
+                        );
+                        for f in price_fields {
+                            assert!(
+                                (2.0 * oa.extra[*f] - ob.extra[*f]).abs()
+                                    <= 1e-9 * ob.extra[*f].abs().max(1.0),
+                                "{at} {f}"
+                            );
+                        }
+                        assert_eq!(oa.extra["direction"], ob.extra["direction"], "{at}");
+                    }
+                    _ => panic!("{name} {label}@{i}: output on one side only"),
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn shape_measures_read_the_same_on_both_sides() {
     check_bars_entry("r_squared", &[], &[("value", Answer::Same)]);
