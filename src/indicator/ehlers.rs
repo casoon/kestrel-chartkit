@@ -12,6 +12,7 @@ use crate::model::Bar;
 
 use super::definition::{Check, IndicatorDefinition, IndicatorFacts, ParamSpec, Verification};
 use super::smoothing::SuperSmoother;
+use super::smoothing::{crossed_over, crossed_under};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
 
 use std::f64::consts::PI;
@@ -23,8 +24,9 @@ fn two_pole_coefficients(period: f64) -> (f64, f64, f64) {
     (a1, 2.0 * a1 * (1.414 * PI / period).cos(), -(a1 * a1))
 }
 
-/// The crossings of one line over another between two consecutive published bars, exactly as
-/// `prev_a <= prev_b and a > b` (up) and `prev_a >= prev_b and a < b` (down).
+/// The crossings of one line over another between two consecutive published bars, with the
+/// crate's crossing tolerance ([`crossed_over`], [`crossed_under`]) so that rounding noise between
+/// two nearly equal lines never fires an alert.
 #[derive(Debug, Clone, Copy, Default)]
 struct Crossing {
     prev: Option<(f64, f64)>,
@@ -36,8 +38,8 @@ impl Crossing {
     fn update(&mut self, a: f64, b: f64) {
         match self.prev {
             Some((pa, pb)) => {
-                self.up = pa <= pb && a > b;
-                self.down = pa >= pb && a < b;
+                self.up = crossed_over(pa, pb, a, b);
+                self.down = crossed_under(pa, pb, a, b);
             }
             None => {
                 self.up = false;
@@ -542,8 +544,8 @@ impl Indicator for LaguerreRsiEngine {
         }
         let value = self.value?;
         if let Some(prev) = self.prev_value {
-            self.bull = prev <= self.lower && self.lower < value;
-            self.bear = prev >= self.upper && self.upper > value;
+            self.bull = crossed_over(prev, self.lower, value, self.lower);
+            self.bear = crossed_under(prev, self.upper, value, self.upper);
         }
         self.prev_value = Some(value);
         Some(IndicatorOutput::new(value))

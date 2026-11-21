@@ -19,14 +19,7 @@ fn holds(name: &str, indicator: &str, unit: IndicatorUnit) {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[
-    "roofing_filter",
-    "reflex",
-    "trendflex",
-    "correlation_trend",
-    "laguerre_rsi",
-    "cyber_cycle",
-];
+pub const PENDING: &[&str] = &[];
 
 pub const COVERAGE: &[Coverage] = &[
     Coverage::full("macd"),
@@ -90,6 +83,12 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("bop"),
     Coverage::full("bbtrend"),
     Coverage::full("zscore"),
+    Coverage::full("roofing_filter"),
+    Coverage::full("reflex"),
+    Coverage::full("trendflex"),
+    Coverage::full("correlation_trend"),
+    Coverage::full("laguerre_rsi"),
+    Coverage::full("cyber_cycle"),
 ];
 
 // --- macd --------------------------------------------------------------------------------------
@@ -733,4 +732,235 @@ fn zscore_rejects_invalid_configuration() {
     assert_rejected("zscore", &[("period", 1.0)]);
     assert_rejected("zscore", &[("period", 20.5)]);
     assert_rejected("zscore", &[("len", 20.0)]);
+}
+
+// --- roofing_filter --------------------------------------------------------------------
+
+#[test]
+fn roofing_filter_defaults() {
+    holds(
+        "roofing_filter_defaults",
+        "roofing_filter",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn roofing_filter_short() {
+    holds(
+        "roofing_filter_short",
+        "roofing_filter",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn roofing_filter_minimal() {
+    holds(
+        "roofing_filter_minimal",
+        "roofing_filter",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn roofing_filter_flat() {
+    holds(
+        "roofing_filter_flat",
+        "roofing_filter",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn roofing_filter_rejects_invalid_configuration() {
+    assert_rejected("roofing_filter", &[("hp_period", 2.0)]);
+    assert_rejected("roofing_filter", &[("lp_period", 1.0)]);
+    assert_rejected("roofing_filter", &[("hp_period", 3.5)]);
+    assert_rejected(
+        "roofing_filter",
+        &[("hp_period", 10.0), ("lp_period", 10.0)],
+    );
+    assert_rejected(
+        "roofing_filter",
+        &[("hp_period", 10.0), ("lp_period", 12.0)],
+    );
+    assert_rejected("roofing_filter", &[("period", 10.0)]);
+}
+
+// --- reflex ----------------------------------------------------------------------------
+
+#[test]
+fn reflex_defaults() {
+    holds("reflex_defaults", "reflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn reflex_short() {
+    holds("reflex_short", "reflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn reflex_minimal() {
+    holds("reflex_minimal", "reflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn reflex_flat() {
+    holds("reflex_flat", "reflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn reflex_rejects_invalid_configuration() {
+    assert_rejected("reflex", &[("length", 1.0)]);
+    assert_rejected("reflex", &[("length", 2.5)]);
+    assert_rejected("reflex", &[("length", f64::NAN)]);
+    assert_rejected("reflex", &[("len", 20.0)]);
+}
+
+// --- trendflex -------------------------------------------------------------------------
+
+#[test]
+fn trendflex_defaults() {
+    holds("trendflex_defaults", "trendflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendflex_short() {
+    holds("trendflex_short", "trendflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendflex_minimal() {
+    holds("trendflex_minimal", "trendflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendflex_flat() {
+    holds("trendflex_flat", "trendflex", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn trendflex_rejects_invalid_configuration() {
+    assert_rejected("trendflex", &[("length", 1.0)]);
+    assert_rejected("trendflex", &[("length", 2.5)]);
+    assert_rejected("trendflex", &[("length", f64::NAN)]);
+    assert_rejected("trendflex", &[("len", 20.0)]);
+}
+
+// --- correlation_trend -----------------------------------------------------------------
+
+#[test]
+fn correlation_trend_defaults() {
+    holds(
+        "correlation_trend_defaults",
+        "correlation_trend",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn correlation_trend_short() {
+    holds(
+        "correlation_trend_short",
+        "correlation_trend",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn correlation_trend_minimal() {
+    holds(
+        "correlation_trend_minimal",
+        "correlation_trend",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn correlation_trend_flat() {
+    holds(
+        "correlation_trend_flat",
+        "correlation_trend",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn correlation_trend_rejects_invalid_configuration() {
+    assert_rejected("correlation_trend", &[("length", 1.0)]);
+    assert_rejected("correlation_trend", &[("length", 2.5)]);
+    assert_rejected("correlation_trend", &[("length", f64::NAN)]);
+    assert_rejected("correlation_trend", &[("len", 20.0)]);
+}
+
+// --- laguerre_rsi ----------------------------------------------------------------------
+
+#[test]
+fn laguerre_rsi_defaults() {
+    holds(
+        "laguerre_rsi_defaults",
+        "laguerre_rsi",
+        IndicatorUnit::Ratio,
+    );
+}
+
+#[test]
+fn laguerre_rsi_custom() {
+    holds("laguerre_rsi_custom", "laguerre_rsi", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn laguerre_rsi_hold() {
+    holds("laguerre_rsi_hold", "laguerre_rsi", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn laguerre_rsi_flat() {
+    holds("laguerre_rsi_flat", "laguerre_rsi", IndicatorUnit::Ratio);
+}
+
+#[test]
+fn laguerre_rsi_rejects_invalid_configuration() {
+    assert_rejected("laguerre_rsi", &[("gamma", -0.1)]);
+    assert_rejected("laguerre_rsi", &[("gamma", 1.0)]);
+    assert_rejected("laguerre_rsi", &[("lower", -0.1)]);
+    assert_rejected("laguerre_rsi", &[("upper", 1.1)]);
+    assert_rejected("laguerre_rsi", &[("lower", 0.8), ("upper", 0.8)]);
+    assert_rejected("laguerre_rsi", &[("lower", 0.9), ("upper", 0.2)]);
+    assert_rejected("laguerre_rsi", &[("alpha", 0.5)]);
+}
+
+// --- cyber_cycle -----------------------------------------------------------------------
+
+#[test]
+fn cyber_cycle_defaults() {
+    holds(
+        "cyber_cycle_defaults",
+        "cyber_cycle",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn cyber_cycle_fast() {
+    holds("cyber_cycle_fast", "cyber_cycle", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn cyber_cycle_unit() {
+    holds("cyber_cycle_unit", "cyber_cycle", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn cyber_cycle_flat() {
+    holds("cyber_cycle_flat", "cyber_cycle", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn cyber_cycle_rejects_invalid_configuration() {
+    assert_rejected("cyber_cycle", &[("alpha", 0.0)]);
+    assert_rejected("cyber_cycle", &[("alpha", 1.5)]);
+    assert_rejected("cyber_cycle", &[("alpha", f64::NAN)]);
+    assert_rejected("cyber_cycle", &[("period", 10.0)]);
 }
