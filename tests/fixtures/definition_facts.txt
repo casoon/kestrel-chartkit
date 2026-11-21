@@ -542,6 +542,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"NARROW_RANGE"	canonical="narrow_range"	range=Bounded { min: 0.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "NARROW_RANGE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "NARROW_RANGE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "NVI"	canonical="nvi"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: true, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
@@ -746,6 +750,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"SETUP_COUNTDOWN"	canonical="setup_countdown"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "SMA"	canonical="sma"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
@@ -822,6 +830,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"TPO_PROFILE"	canonical="tpo_profile"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "TPO_PROFILE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "TPO_PROFILE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "TRADABILITY_FILTER"	canonical="kestrel_tradability_filter"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "TRADABILITY_FILTER", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -938,6 +950,10 @@
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "WAVETREND_DIVERGENCE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "WAVETREND_DIVERGENCE", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"WILLIAMS_FRACTALS"	canonical="williams_fractals"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "WILLIAMS_FRACTALS", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "WILLIAMS_FRACTALS", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "WILLIAMS_R"	canonical="williams_r"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "WILLIAMS_R", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1530,6 +1546,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"narrow_range"	canonical="narrow_range"	range=Bounded { min: 0.0, max: 1.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "narrow_range", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "narrow_range", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "nope"	canonical="nope"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: err UnknownIndicator("nope")
 	source Open: err UnknownIndicator("nope")
@@ -1734,6 +1754,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"setup_countdown"	canonical="setup_countdown"	range=Unbounded	unit=Unitless	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: ok differs from without source
+	source Hlc3: ok differs from without source
 "sma"	canonical="sma"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
@@ -1814,6 +1838,10 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
+"tpo_profile"	canonical="tpo_profile"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "tpo_profile", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "tpo_profile", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "tradability_filter"	canonical="kestrel_tradability_filter"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "tradability_filter", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -1930,6 +1958,10 @@
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "wavetrend_divergence", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "wavetrend_divergence", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+"williams_fractals"	canonical="williams_fractals"	range=Unbounded	unit=Price	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+	source Close: ok same as without source
+	source Open: err IncompatibleParameter { parameter: "source", indicator: "williams_fractals", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
+	source Hlc3: err IncompatibleParameter { parameter: "source", indicator: "williams_fractals", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
 "williams_r"	canonical="williams_r"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: err IncompatibleParameter { parameter: "source", indicator: "williams_r", reason: "range/OHLC-dependent indicator; SourceMapped would collapse its true range to zero" }
@@ -2094,6 +2126,7 @@ entry "hires_volume_flow" Bars range=Unbounded
 entry "extended_volume_profile" Bars range=Unbounded
 entry "persistent_volume_profile" Bars range=Unbounded
 entry "volume_profile" Bars range=Unbounded
+entry "tpo_profile" Bars range=Unbounded
 entry "money_flow_profile" Bars range=Unbounded
 entry "volume" Bars range=NonNegative
 entry "rvol" Bars range=NonNegative
@@ -2136,6 +2169,9 @@ entry "kestrel_swing_structure" Bars range=Unbounded
 entry "fvg_fill" Bars range=Unbounded
 entry "chart_patterns" Bars range=Unbounded
 entry "harmonic_patterns" Bars range=Unbounded
+entry "setup_countdown" Bars range=Unbounded
+entry "narrow_range" Bars range=Bounded { min: 0.0, max: 1.0 }
+entry "williams_fractals" Bars range=Unbounded
 entry "kestrel_flow_exhaustion" Bars range=Unbounded
 entry "kestrel_overextension_risk" Bars range=Unbounded
 entry "smoothed_supertrend" Bars range=Unbounded

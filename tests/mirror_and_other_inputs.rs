@@ -587,3 +587,146 @@ fn ar1_half_life_reads_the_same_on_both_sides() {
         &[("value", Answer::Same), ("phi", Answer::Same)],
     );
 }
+
+/// Compares the alerts of every bar of a series with those of its mirror: each kind of the
+/// original answers as the kind `pairs` maps it to. Returns how many alerts were compared.
+fn check_alerts_mirrored(
+    name: &str,
+    params: &[(&str, f64)],
+    bars: &[Bar],
+    pairs: &[(&str, &str)],
+) -> usize {
+    let params: HashMap<String, f64> = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+    let mirrored = mirror(bars);
+    let mut a = build_checked(name, &params).unwrap();
+    let mut b = build_checked(name, &params).unwrap();
+    let mut seen = 0;
+    for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
+        a.on_bar(x);
+        b.on_bar(y);
+        let mut want: Vec<String> = a
+            .alerts()
+            .iter()
+            .map(|alert| {
+                pairs
+                    .iter()
+                    .find(|(from, _)| *from == alert.kind)
+                    .unwrap_or_else(|| panic!("{name}@{i}: unexpected alert {}", alert.kind))
+                    .1
+                    .to_string()
+            })
+            .collect();
+        let mut got: Vec<String> = b.alerts().iter().map(|alert| alert.kind.clone()).collect();
+        want.sort();
+        got.sort();
+        assert_eq!(want, got, "{name}@{i}");
+        seen += want.len();
+    }
+    seen
+}
+
+/// A buy setup with its countdown (see the unit tests of `setup_countdown`): a rise of five bars, a
+/// fall that completes the setup on bar 13, a countdown with a deferred thirteenth.
+fn setup_countdown_series() -> Vec<Bar> {
+    let mut c = vec![110.0, 111.0, 112.0, 113.0, 114.0];
+    c.extend((0..9).map(|k| 109.0 - k as f64));
+    c.extend((0..11).map(|k| 100.0 - k as f64));
+    c.extend([100.0, 100.0, 99.5, 94.0, 94.0]);
+    c.iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let high = if i == 28 { c + 1.0 } else { c + 0.5 };
+            Bar::new(i as i64 * 3600, *c, high, c - 0.5, *c, 100.0)
+        })
+        .collect()
+}
+
+#[test]
+fn n4_setup_countdown_negates_and_swaps_its_alerts() {
+    check_bars_entry(
+        "setup_countdown",
+        &[],
+        &[("value", Answer::Negated), ("countdown", Answer::Negated)],
+    );
+    let pairs = [
+        ("buy_setup", "sell_setup"),
+        ("sell_setup", "buy_setup"),
+        ("buy_countdown", "sell_countdown"),
+        ("sell_countdown", "buy_countdown"),
+    ];
+    let mut seen = check_alerts_mirrored("setup_countdown", &[], &setup_countdown_series(), &pairs);
+    assert_eq!(seen, 2, "buy setup and buy countdown of the crafted series");
+    for (_, bars) in series() {
+        seen += check_alerts_mirrored("setup_countdown", &[], &bars, &pairs);
+    }
+    assert!(seen > 2, "the generated series complete setups too");
+}
+
+#[test]
+fn n4_narrow_range_is_mirror_invariant() {
+    check_bars_entry(
+        "narrow_range",
+        &[],
+        &[("value", Answer::Same), ("inside", Answer::Same)],
+    );
+    let mut seen = 0;
+    for (_, bars) in series() {
+        seen += check_alerts_mirrored(
+            "narrow_range",
+            &[],
+            &bars,
+            &[("narrow_range", "narrow_range")],
+        );
+    }
+    assert!(seen > 0);
+}
+
+#[test]
+fn n4_williams_fractals_swap_their_levels_and_alerts() {
+    check_bars_swapped_pair("williams_fractals", &[], "value", "down_level");
+    check_bars_swapped_pair("williams_fractals", &[], "down_level", "value");
+    let mut seen = 0;
+    for (_, bars) in series() {
+        seen += check_alerts_mirrored(
+            "williams_fractals",
+            &[],
+            &bars,
+            &[
+                ("up_fractal", "down_fractal"),
+                ("down_fractal", "up_fractal"),
+            ],
+        );
+    }
+    assert!(seen > 0);
+}
+
+/// The generated series are not used here: on them equally filled bins sometimes tie, and the tie
+/// rule (lower bin) is not mirror symmetric by design. These windows are exact in binary floating
+/// point (halves, a step of 2) and have a unique point of control.
+#[test]
+fn n4_tpo_profile_reflects_its_value_and_swaps_its_area_edges() {
+    let hl = |h: f64, l: f64, i: i64| Bar::new(i, l, h, l, h, 0.0);
+    // Counts [2, 3, 2, 1] on lo 396, hi 404; the mirror has [1, 2, 3, 2].
+    let bars = [
+        hl(404.0, 396.0, 0),
+        hl(400.0, 398.0, 1),
+        hl(399.5, 399.0, 2),
+    ];
+    let params = HashMap::from([("lookback".to_string(), 3.0), ("num_bins".to_string(), 4.0)]);
+    let run = |bars: &[Bar]| {
+        let mut engine = build_checked("tpo_profile", &params).unwrap();
+        let mut last = None;
+        for b in bars {
+            last = engine.on_bar(b);
+        }
+        last.unwrap()
+    };
+    let (a, b) = (run(&bars), run(&mirror(&bars)));
+    assert_eq!(
+        (a.value, a.extra["val"], a.extra["vah"]),
+        (399.0, 396.0, 402.0)
+    );
+    assert_eq!(b.value, 2.0 * LEVEL - a.value);
+    assert_eq!(b.extra["vah"], 2.0 * LEVEL - a.extra["val"]);
+    assert_eq!(b.extra["val"], 2.0 * LEVEL - a.extra["vah"]);
+}

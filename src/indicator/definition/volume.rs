@@ -10,6 +10,7 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::volume_profile_extended::EXTENDED_VOLUME_PROFILE_DEFINITION,
     &crate::indicator::volume_profile_persistent::PERSISTENT_VOLUME_PROFILE_DEFINITION,
     &crate::indicator::volume_profile::VOLUME_PROFILE_DEFINITION,
+    &crate::indicator::tpo_profile::TPO_PROFILE_DEFINITION,
     &crate::indicator::money_flow_profile::MONEY_FLOW_PROFILE_DEFINITION,
     &crate::indicator::volume_indicators::VOLUME_DEFINITION,
     &crate::indicator::volume_indicators::RVOL_DEFINITION,

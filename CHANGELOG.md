@@ -11,6 +11,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Added
 
+- **Catalog:** `setup_countdown` (setup of nine and countdown of thirteen after DeMark, 1994), `narrow_range` (NR4/NR7 and inside bar after Crabel, 1990), `williams_fractals` (confirmed fractal levels after Williams, 1995) and `tpo_profile` (time-at-price profile without volume after Steidlmayer and Koy, 1986) are new catalog entries, open (not yet verified); 191 entries in all, 176 of them verified.
 - **Catalog:** the volatility estimators `parkinson`, `rogers_satchell` and `yang_zhang` and the return statistics `variance_ratio`, `autocorrelation`, `hurst_rs` and `ar1_half_life` are verified catalog entries; 187 entries in all, 176 of them verified. Where they follow a convention (annualised percent, log returns as logarithms of price ratios, no small-sample correction, nothing published for a coefficient at most 0 or within 1e-9 of 1), the description says so.
 - **Parameter relations:** a relation between parameters can now also be written as "`times` times `value` at most `limit`" (`Check::AtMost`).
 - **Chart patterns:** `ChartPatternDetector` and `chart_patterns` find the flag (`Flag`, code 15) and cup and handle with its inverse (`CupAndHandle`, `InverseCupAndHandle`, codes 16 and 17); new constants `FLAG_PARALLEL` and `FLAG_MAX_RETRACE`. Rules and limits: [structure and events guide](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/).

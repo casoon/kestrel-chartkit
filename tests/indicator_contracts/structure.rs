@@ -17,7 +17,7 @@ fn holds(name: &str, indicator: &str, unit: IndicatorUnit) {
 
 /// Indicators of this family whose contract is not yet written. Moved into [`COVERAGE`] once
 /// their cases exist; a name in neither list fails the matrix.
-pub const PENDING: &[&str] = &[];
+pub const PENDING: &[&str] = &["setup_countdown", "narrow_range", "williams_fractals"];
 
 const DIVERGENCE_OSCILLATORS: &str =
     "oscillators RSI (0) and Williams %R (3); WaveTrend, Stochastic RSI and CCI not specified";

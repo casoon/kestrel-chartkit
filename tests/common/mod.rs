@@ -23,6 +23,8 @@ pub mod contract;
 ///   flat publishes later than the second bar.
 /// - `most`, `ott`, `halftrend`, `ssl_channel`: publish once their direction is decided, which
 ///   depends on the data.
+/// - `williams_fractals`: waits for the first confirmed fractal of both kinds, which depends on
+///   the data.
 /// - `ar1_half_life`: publishes only where the fitted coefficient lies strictly between 0 and 1,
 ///   which depends on the data.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
@@ -39,12 +41,14 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "halftrend",
     "ssl_channel",
     "ar1_half_life",
+    "williams_fractals",
 ];
 
 /// Indicators that publish only while the data holds a confirmed structure, so how many bars have
 /// an output depends on the series: `swing_structure` needs strict pivots, and the tied peaks of
-/// the sine series (two bars of equal high) leave most of them out.
-pub const SPARSE_OUTPUT: &[&str] = &["kestrel_swing_structure"];
+/// the sine series (two bars of equal high) leave most of them out. `williams_fractals` compares
+/// strictly and publishes only once both kinds are confirmed, which the tied peaks delay.
+pub const SPARSE_OUTPUT: &[&str] = &["kestrel_swing_structure", "williams_fractals"];
 
 /// Generiert eine Flachpreis-Serie mit konstantem Preis und Volumen.
 pub fn generate_flat_bars(count: usize, price: f64, volume: f64) -> Vec<Bar> {

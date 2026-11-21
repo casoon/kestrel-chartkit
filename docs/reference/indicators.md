@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 187 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 191 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 176 of the 187 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 176 of the 191 entries are verified, 15 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -131,6 +131,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `extended_volume_profile` | bars | verified |
 | `persistent_volume_profile` | bars | verified |
 | `volume_profile` | bars | verified |
+| `tpo_profile` | bars | **not yet verified:** no independent second implementation yet |
 | `money_flow_profile` | bars | verified |
 | `volume` | bars | verified |
 | `rvol` | bars | verified |
@@ -173,6 +174,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `fvg_fill` | bars | **not yet verified:** no independent second implementation yet |
 | `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
 | `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
+| `setup_countdown` | bars | **not yet verified:** no independent second implementation yet |
+| `narrow_range` | bars | **not yet verified:** no independent second implementation yet |
+| `williams_fractals` | bars | **not yet verified:** no independent second implementation yet |
 | `kestrel_flow_exhaustion` | bars | verified |
 | `kestrel_overextension_risk` | bars | verified |
 | `smoothed_supertrend` | bars | verified |
@@ -1775,6 +1779,21 @@ Price/volume distribution profile with point-of-control
 | `lookback` | 70 | whole number 1 – 10000 | bars in the profile window |
 | `num_bins` | 30 | whole number 1 – 1000 | price bins across the window's range |
 
+### `tpo_profile`
+
+Time-at-price profile after Steidlmayer and Koy (1986) without volume: one count per bar and price bin over the window, value the point-of-control bin centre (ties toward the range centre), extras vah and val the 70 % value area edges
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/tpo_profile/)
+
+**Output** unit Price, range not declared · **warmup** 48 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `lookback` | 48 | whole number 1 – 10000 | bars in the profile window |
+| `num_bins` | 30 | whole number 1 – 1000 | price bins across the window's range |
+
 ### `money_flow_profile` · alias `mfp`
 
 Volume-by-price profile binned by dollar volume (volume x price) instead of raw volume, plus an aggregate bull/bear flow-bias percentage
@@ -2402,6 +2421,44 @@ Harmonic XABCD patterns (gartley, bat, butterfly, crab, deep crab, shark) from Z
 | `ratio_tolerance` | 0.03 | 0 – 0.5 | absolute widening of every ratio interval of the pattern table |
 | `min_prz_share` | 0.005 | 0 – 1 | minimum half-width of the reversal zone as a share of the XA leg |
 | `pending_swings` | 2 | whole number 1 – 100 | swings confirmed behind a pattern's last anchor after which an unconfirmed pattern is dropped |
+
+### `setup_countdown`
+
+Setup (9) and countdown (13) exhaustion count after DeMark (1994): consecutive closes against the close four bars earlier from a price flip, then thirteen closes against the low or high two bars earlier; value is the signed setup count, extra countdown the signed countdown count, equal closes break a setup
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/setup_countdown/)
+
+**Output** unit Unitless, range not declared · **warmup** 6 bars
+
+### `narrow_range`
+
+Narrowest range of the last period bars (NR4, NR7) after Crabel (1990): 1 when the bar's high-low range is strictly smaller than each of the period - 1 bars before it; extra inside marks a bar within the previous bar's range
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/narrow_range/)
+
+**Output** unit Ratio, range 0 – 1 · **warmup** 7 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 7 | whole number 2 – 10000 | bars compared, the bar itself included |
+
+### `williams_fractals`
+
+Confirmed fractal highs and lows after Williams (1995): a bar whose high (low) is strictly above (below) those of span bars on each side, confirmed span bars later; value is the latest up-fractal high, extra down_level the latest down-fractal low, published once both exist
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/williams_fractals/)
+
+**Output** unit Price, range not declared · **warmup** 5 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `span` | 2 | whole number 1 – 1000 | bars on each side of a fractal (2 is the five-bar pattern) |
 
 ## Composite read-outs, part 1
 

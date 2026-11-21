@@ -32,4 +32,7 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::smart_money_structure::FVG_FILL_DEFINITION,
     &crate::indicator::pattern_events::CHART_PATTERNS_DEFINITION,
     &crate::indicator::pattern_events::HARMONIC_PATTERNS_DEFINITION,
+    &crate::indicator::setup_countdown::SETUP_COUNTDOWN_DEFINITION,
+    &crate::indicator::narrow_range::NARROW_RANGE_DEFINITION,
+    &crate::indicator::williams_fractals::WILLIAMS_FRACTALS_DEFINITION,
 ];

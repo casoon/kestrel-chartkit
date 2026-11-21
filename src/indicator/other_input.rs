@@ -308,7 +308,7 @@ mod tests {
                 declared_unit_range(entry.name).unwrap().1
             );
         }
-        assert_eq!(catalog_of(IndicatorInput::Bars).len(), 181);
+        assert_eq!(catalog_of(IndicatorInput::Bars).len(), 185);
     }
 
     fn build_pair_name(name: &str) -> bool {

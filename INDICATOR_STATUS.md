@@ -130,6 +130,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | twap | ✅ |
 | vwap | ✅ |
 | volume_profile | ✅ |
+| tpo_profile | ❌ |
 | acc_dist | ✅ |
 | anchored_vwap | ✅ |
 | cmf | ✅ |
@@ -225,6 +226,9 @@ is complete. The mark must match the `verification` of the entry's definition
 | fvg_fill | ❌ |
 | chart_patterns | ❌ |
 | harmonic_patterns | ❌ |
+| setup_countdown | ❌ |
+| narrow_range | ❌ |
+| williams_fractals | ❌ |
 
 ## Other Input Kinds
 
@@ -243,6 +247,4 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 169/180 verified** — the same 180 names `catalog()` returns: 128 indicators (the first
-five groups), 5 composite scores, 41 structure/pattern detectors and 6 entries of other input
-kinds.
+**Total: 176/191 verified** — the same 191 names `catalog()` returns.
