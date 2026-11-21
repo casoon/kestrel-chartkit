@@ -49,6 +49,13 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("efficiency"),
     Coverage::full("volatility_regime"),
     Coverage::full("cusum"),
+    Coverage::full("parkinson"),
+    Coverage::full("rogers_satchell"),
+    Coverage::full("yang_zhang"),
+    Coverage::full("variance_ratio"),
+    Coverage::full("autocorrelation"),
+    Coverage::full("hurst_rs"),
+    Coverage::full("ar1_half_life"),
 ];
 
 // --- ADX -------------------------------------------------------------------------------------
@@ -612,4 +619,327 @@ fn cusum_rejects_invalid_configuration() {
     assert_rejected("cusum", &[("k", -0.1)]);
     assert_rejected("cusum", &[("h", 0.0)]);
     assert_rejected("cusum", &[("period", 20.0)]);
+}
+
+// --- parkinson -----------------------------------------------------------------------
+
+#[test]
+fn parkinson_defaults() {
+    assert_holds(&case(
+        "parkinson_defaults",
+        "parkinson",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn parkinson_short() {
+    assert_holds(&case("parkinson_short", "parkinson", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn parkinson_nonpositive() {
+    assert_holds(&case(
+        "parkinson_nonpositive",
+        "parkinson",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn parkinson_flat() {
+    assert_holds(&case("parkinson_flat", "parkinson", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn parkinson_rejects_invalid_configuration() {
+    assert_rejected("parkinson", &[("period", 0.0)]);
+    assert_rejected("parkinson", &[("period", 2.5)]);
+    assert_rejected("parkinson", &[("periods_per_year", 0.0)]);
+    assert_rejected("parkinson", &[("len", 20.0)]);
+}
+
+// --- rogers_satchell -----------------------------------------------------------------
+
+#[test]
+fn rogers_satchell_defaults() {
+    assert_holds(&case(
+        "rogers_satchell_defaults",
+        "rogers_satchell",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn rogers_satchell_short() {
+    assert_holds(&case(
+        "rogers_satchell_short",
+        "rogers_satchell",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn rogers_satchell_nonpositive() {
+    assert_holds(&case(
+        "rogers_satchell_nonpositive",
+        "rogers_satchell",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn rogers_satchell_flat() {
+    assert_holds(&case(
+        "rogers_satchell_flat",
+        "rogers_satchell",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn rogers_satchell_rejects_invalid_configuration() {
+    assert_rejected("rogers_satchell", &[("period", 0.0)]);
+    assert_rejected("rogers_satchell", &[("period", 2.5)]);
+    assert_rejected("rogers_satchell", &[("periods_per_year", 0.0)]);
+    assert_rejected("rogers_satchell", &[("len", 20.0)]);
+}
+
+// --- yang_zhang ----------------------------------------------------------------------
+
+#[test]
+fn yang_zhang_defaults() {
+    assert_holds(&case(
+        "yang_zhang_defaults",
+        "yang_zhang",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn yang_zhang_short() {
+    assert_holds(&case(
+        "yang_zhang_short",
+        "yang_zhang",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn yang_zhang_nonpositive() {
+    assert_holds(&case(
+        "yang_zhang_nonpositive",
+        "yang_zhang",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn yang_zhang_flat() {
+    assert_holds(&case("yang_zhang_flat", "yang_zhang", IndicatorUnit::Ratio));
+}
+
+#[test]
+fn yang_zhang_rejects_invalid_configuration() {
+    assert_rejected("yang_zhang", &[("period", 1.0)]);
+    assert_rejected("yang_zhang", &[("period", 2.5)]);
+    assert_rejected("yang_zhang", &[("periods_per_year", 0.0)]);
+    assert_rejected("yang_zhang", &[("len", 20.0)]);
+}
+
+// --- variance_ratio ------------------------------------------------------------------
+
+#[test]
+fn variance_ratio_defaults() {
+    assert_holds(&case(
+        "variance_ratio_defaults",
+        "variance_ratio",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn variance_ratio_short() {
+    assert_holds(&case(
+        "variance_ratio_short",
+        "variance_ratio",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn variance_ratio_half_period() {
+    assert_holds(&case(
+        "variance_ratio_half_period",
+        "variance_ratio",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn variance_ratio_flat() {
+    assert_holds(&case(
+        "variance_ratio_flat",
+        "variance_ratio",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn variance_ratio_rejects_invalid_configuration() {
+    assert_rejected("variance_ratio", &[("period", 3.0)]);
+    assert_rejected("variance_ratio", &[("lag", 1.0)]);
+    assert_rejected("variance_ratio", &[("period", 4.0), ("lag", 3.0)]);
+    assert_rejected("variance_ratio", &[("period", 100.0), ("lag", 51.0)]);
+    assert_rejected("variance_ratio", &[("lag", 2.5)]);
+    assert_rejected("variance_ratio", &[("len", 100.0)]);
+}
+
+// --- autocorrelation -----------------------------------------------------------------
+
+#[test]
+fn autocorrelation_defaults() {
+    assert_holds(&case(
+        "autocorrelation_defaults",
+        "autocorrelation",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn autocorrelation_short() {
+    assert_holds(&case(
+        "autocorrelation_short",
+        "autocorrelation",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn autocorrelation_minimal() {
+    assert_holds(&case(
+        "autocorrelation_minimal",
+        "autocorrelation",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn autocorrelation_flat() {
+    assert_holds(&case(
+        "autocorrelation_flat",
+        "autocorrelation",
+        IndicatorUnit::Ratio,
+    ));
+}
+
+#[test]
+fn autocorrelation_rejects_invalid_configuration() {
+    assert_rejected("autocorrelation", &[("period", 2.0)]);
+    assert_rejected("autocorrelation", &[("lag", 0.0)]);
+    assert_rejected("autocorrelation", &[("period", 10.0), ("lag", 10.0)]);
+    assert_rejected("autocorrelation", &[("lag", 2.5)]);
+    assert_rejected("autocorrelation", &[("len", 50.0)]);
+}
+
+// --- hurst_rs ------------------------------------------------------------------------
+
+#[test]
+fn hurst_rs_defaults() {
+    assert_holds(&case(
+        "hurst_rs_defaults",
+        "hurst_rs",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn hurst_rs_short() {
+    assert_holds(&case("hurst_rs_short", "hurst_rs", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn hurst_rs_two_sizes() {
+    assert_holds(&case(
+        "hurst_rs_two_sizes",
+        "hurst_rs",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn hurst_rs_flat() {
+    assert_holds(&case("hurst_rs_flat", "hurst_rs", IndicatorUnit::Unitless));
+}
+
+#[test]
+fn hurst_rs_rejects_invalid_configuration() {
+    assert_rejected("hurst_rs", &[("period", 7.0)]);
+    assert_rejected("hurst_rs", &[("min_chunk", 3.0)]);
+    assert_rejected("hurst_rs", &[("period", 15.0), ("min_chunk", 8.0)]);
+    assert_rejected("hurst_rs", &[("period", 130.5)]);
+    assert_rejected("hurst_rs", &[("len", 128.0)]);
+}
+
+// --- ar1_half_life -------------------------------------------------------------------
+
+#[test]
+fn ar1_half_life_defaults() {
+    assert_holds(&case(
+        "ar1_half_life_defaults",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_short() {
+    assert_holds(&case(
+        "ar1_half_life_short",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_minimal() {
+    assert_holds(&case(
+        "ar1_half_life_minimal",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_line() {
+    assert_holds(&case(
+        "ar1_half_life_line",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_negative() {
+    assert_holds(&case(
+        "ar1_half_life_negative",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_flat() {
+    assert_holds(&case(
+        "ar1_half_life_flat",
+        "ar1_half_life",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn ar1_half_life_rejects_invalid_configuration() {
+    assert_rejected("ar1_half_life", &[("period", 2.0)]);
+    assert_rejected("ar1_half_life", &[("period", 2.5)]);
+    assert_rejected("ar1_half_life", &[("len", 100.0)]);
 }

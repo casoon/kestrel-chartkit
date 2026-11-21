@@ -14,6 +14,9 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::volatility_indicators::TRUE_RANGE_DEFINITION,
     &crate::indicator::volatility_indicators::HISTORICAL_VOLATILITY_DEFINITION,
     &crate::indicator::volatility_indicators::GARMAN_KLASS_DEFINITION,
+    &crate::indicator::range_volatility::PARKINSON_DEFINITION,
+    &crate::indicator::range_volatility::ROGERS_SATCHELL_DEFINITION,
+    &crate::indicator::range_volatility::YANG_ZHANG_DEFINITION,
     &crate::indicator::mass_index::MASS_INDEX_DEFINITION,
     &crate::indicator::chande_kroll::CHANDE_KROLL_DEFINITION,
     &crate::indicator::chandelier_exit::CHANDELIER_EXIT_DEFINITION,
@@ -25,4 +28,8 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::fractal_dimension::FRACTAL_DIMENSION_DEFINITION,
     &crate::indicator::rolling_measures::R_SQUARED_DEFINITION,
     &crate::indicator::rolling_measures::CYCLE_LENGTH_DEFINITION,
+    &crate::indicator::return_statistics::VARIANCE_RATIO_DEFINITION,
+    &crate::indicator::return_statistics::AUTOCORRELATION_DEFINITION,
+    &crate::indicator::return_statistics::HURST_RS_DEFINITION,
+    &crate::indicator::return_statistics::AR1_HALF_LIFE_DEFINITION,
 ];

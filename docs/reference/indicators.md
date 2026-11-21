@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 180 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 187 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 169 of the 180 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 176 of the 187 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -106,6 +106,9 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `true_range` | bars | verified |
 | `historical_volatility` | bars | verified |
 | `garman_klass` | bars | verified |
+| `parkinson` | bars | verified |
+| `rogers_satchell` | bars | verified |
+| `yang_zhang` | bars | verified |
 | `mass_index` | bars | verified |
 | `chande_kroll` | bars | verified |
 | `chandelier_exit` | bars | verified |
@@ -117,6 +120,10 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `fractal_dimension` | bars | verified |
 | `r_squared` | bars | verified |
 | `cycle_length` | bars | verified |
+| `variance_ratio` | bars | verified |
+| `autocorrelation` | bars | verified |
+| `hurst_rs` | bars | verified |
+| `ar1_half_life` | bars | verified |
 | `pvt` | bars | verified |
 | `efi` | bars | verified |
 | `rvat` | bars | verified |
@@ -1438,6 +1445,45 @@ Garman-Klass Volatility Estimator
 |---|---|---|---|
 | `period` | 20 | whole number 1 – 10000 | bars averaged in the open-high-low-close variance estimate |
 
+### `parkinson`
+
+Parkinson volatility estimator (Parkinson 1980): the mean squared high-low log range over the window, scaled by 4 ln 2, rooted and annualised with periods_per_year, in percent; a window with a non-positive high or low publishes nothing
+
+[See it in the showcase](../../../showcase/parkinson/)
+
+**Output** unit Ratio, range 0 and above · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | bars averaged in the high-low variance estimate |
+| `periods_per_year` | 252 | whole number 1 – 100000 | bars per year the volatility is annualised with |
+
+### `rogers_satchell`
+
+Rogers-Satchell volatility estimator (Rogers and Satchell 1991), independent of the drift of the price: the mean of ln(H/O) ln(H/C) + ln(L/O) ln(L/C) over the window, floored at zero, rooted and annualised with periods_per_year, in percent; a window with a non-positive price publishes nothing
+
+[See it in the showcase](../../../showcase/rogers_satchell/)
+
+**Output** unit Ratio, range 0 and above · **warmup** 20 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 1 – 10000 | bars averaged in the open-high-low-close variance estimate |
+| `periods_per_year` | 252 | whole number 1 – 100000 | bars per year the volatility is annualised with |
+
+### `yang_zhang`
+
+Yang-Zhang volatility estimator (Yang and Zhang 2000): the overnight variance, the open-to-close variance and the Rogers-Satchell variance combined, rooted and annualised with periods_per_year, in percent; needs the close before the window, so the first value comes one bar after the period, and a window with a non-positive price publishes nothing
+
+[See it in the showcase](../../../showcase/yang_zhang/)
+
+**Output** unit Ratio, range 0 and above · **warmup** 21 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 20 | whole number 2 – 10000 | bars in the three variance estimates |
+| `periods_per_year` | 252 | whole number 1 – 100000 | bars per year the volatility is annualised with |
+
 ### `mass_index`
 
 Mass Index Reversal Detector
@@ -1584,6 +1630,63 @@ Mean bars between the close's crossings of its simple average over the last hist
 |---|---|---|---|
 | `period` | 20 | whole number 1 – 10000 | bars of the simple average the close is detrended against |
 | `history` | 8 | whole number 1 – 10000 | completed swings the mean is taken over |
+
+### `variance_ratio`
+
+Lo-MacKinlay variance ratio (1988) of the log price, the returns being logarithms of price ratios: the variance of overlapping lag-bar returns over the variance of one-bar returns, both bias-corrected; above 1 the returns are positively autocorrelated, below 1 negatively, 1 is a random walk; extra z is the homoskedastic test statistic and can be negative
+
+[See it in the showcase](../../../showcase/variance_ratio/)
+
+**Output** unit Unitless, range not declared · **warmup** 101 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 100 | whole number 4 – 10000 | one-bar returns in the window |
+| `lag` | 4 | whole number 2 – 5000 | bars in the overlapping returns |
+
+Requires 2 times `lag` not to exceed `period`.
+
+### `autocorrelation`
+
+Rolling sample autocorrelation of one-bar log returns at a lag, as in Box and Jenkins: the denominator runs over all returns of the window with no small-sample adjustment; -1..1
+
+[See it in the showcase](../../../showcase/autocorrelation/)
+
+**Output** unit Ratio, range -1 – 1 · **warmup** 51 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 50 | whole number 3 – 10000 | one-bar returns in the window |
+| `lag` | 1 | whole number 1 – 10000 | bars between the returns that are correlated |
+
+Requires `lag` to be smaller than `period`.
+
+### `hurst_rs`
+
+Hurst exponent by rescaled-range analysis (Hurst 1951, Mandelbrot and Wallis 1969) of the one-bar log returns: about 0.5 for a random walk, above for persistent and below for anti-persistent returns; the plain R/S estimator has no small-sample correction and is biased upward on short chunks
+
+[See it in the showcase](../../../showcase/hurst_rs/)
+
+**Output** unit Unitless, range not declared · **warmup** 129 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 128 | whole number 8 – 10000 | one-bar returns in the window |
+| `min_chunk` | 8 | whole number 4 – 5000 | returns in the shortest chunk the range is rescaled over |
+
+Requires 2 times `min_chunk` not to exceed `period`.
+
+### `ar1_half_life`
+
+Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or within 1e-9 of 1
+
+[See it in the showcase](../../../showcase/ar1_half_life/)
+
+**Output** unit Unitless, range 0 and above · **warmup** 100 bars
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 100 | whole number 3 – 10000 | closes in the window of the fit |
 
 ## Volume
 

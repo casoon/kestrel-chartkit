@@ -9,6 +9,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Catalog:** the volatility estimators `parkinson`, `rogers_satchell` and `yang_zhang` and the return statistics `variance_ratio`, `autocorrelation`, `hurst_rs` and `ar1_half_life` are verified catalog entries; 187 entries in all, 176 of them verified. Where they follow a convention (annualised percent, log returns as logarithms of price ratios, no small-sample correction, nothing published for a coefficient at most 0 or within 1e-9 of 1), the description says so.
+- **Parameter relations:** a relation between parameters can now also be written as "`times` times `value` at most `limit`" (`Check::AtMost`).
+
 ## [0.45.1] - 2026-11-21
 
 ### Changed

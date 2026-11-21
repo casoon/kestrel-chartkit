@@ -519,3 +519,71 @@ fn heikin_ashi_survives_degenerate_input_and_resets_cleanly() {
         );
     }
 }
+
+/// The N3 statistics and volatility estimators work on ratios of prices: multiplying every price
+/// by `k` leaves every value and extra unchanged. `ar1_half_life` regresses raw prices on raw
+/// prices, so reflecting the series about a level leaves its value and `phi` unchanged too.
+#[test]
+fn n3_entries_are_scale_invariant() {
+    let scaled = |bars: &[Bar], k: f64| -> Vec<Bar> {
+        bars.iter()
+            .map(|b| {
+                Bar::new(
+                    b.timestamp,
+                    k * b.open,
+                    k * b.high,
+                    k * b.low,
+                    k * b.close,
+                    b.volume,
+                )
+            })
+            .collect()
+    };
+    for name in [
+        "parkinson",
+        "rogers_satchell",
+        "yang_zhang",
+        "variance_ratio",
+        "autocorrelation",
+        "hurst_rs",
+        "ar1_half_life",
+    ] {
+        for (label, bars) in series() {
+            let big = scaled(&bars, 3.0);
+            let mut a = build_checked(name, &HashMap::new()).unwrap();
+            let mut b = build_checked(name, &HashMap::new()).unwrap();
+            let mut published = 0;
+            for (i, (x, y)) in bars.iter().zip(&big).enumerate() {
+                let at = format!("{name} {label}@{i}");
+                match (a.on_bar(x), b.on_bar(y)) {
+                    (None, None) => {}
+                    (Some(oa), Some(ob)) => {
+                        published += 1;
+                        assert!(
+                            (oa.value - ob.value).abs() <= 1e-9 * ob.value.abs().max(1.0),
+                            "{at}"
+                        );
+                        assert_eq!(oa.extra.len(), ob.extra.len(), "{at}");
+                        for (key, va) in &oa.extra {
+                            assert!(
+                                (va - ob.extra[key]).abs() <= 1e-9 * ob.extra[key].abs().max(1.0),
+                                "{at} {key}"
+                            );
+                        }
+                    }
+                    _ => panic!("{at}: output on one side only"),
+                }
+            }
+            assert!(published > 0, "{name} {label} never published");
+        }
+    }
+}
+
+#[test]
+fn ar1_half_life_reads_the_same_on_both_sides() {
+    check_bars_entry(
+        "ar1_half_life",
+        &[("period", 20.0)],
+        &[("value", Answer::Same), ("phi", Answer::Same)],
+    );
+}

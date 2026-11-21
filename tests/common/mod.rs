@@ -23,6 +23,8 @@ pub mod contract;
 ///   flat publishes later than the second bar.
 /// - `most`, `ott`, `halftrend`, `ssl_channel`: publish once their direction is decided, which
 ///   depends on the data.
+/// - `ar1_half_life`: publishes only where the fitted coefficient lies strictly between 0 and 1,
+///   which depends on the data.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "kestrel_leg_character",
     "kestrel_structure_zones",
@@ -36,6 +38,7 @@ pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
     "ott",
     "halftrend",
     "ssl_channel",
+    "ar1_half_life",
 ];
 
 /// Indicators that publish only while the data holds a confirmed structure, so how many bars have
