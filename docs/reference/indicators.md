@@ -445,7 +445,7 @@ Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows ho
 |---|---|---|---|
 | `period` | 20 | whole number 1 – 10000 | length: at phase 0 without adaptation the line lags a straight trend as much as an exponential average of this period |
 | `phase` | 0.5 | 0 – 2 | lead: 0 cannot overshoot, 2 follows a straight trend without lag and overshoots a step by a quarter |
-| `adapt` | 1 | 0 – 2 | strength of the adaptation: 0 is a fixed filter, higher values rest more and jump more |
+| `adapt` | 0.5 | 0 – 2 | strength of the adaptation: 0 is a fixed filter, higher values rest more and jump more |
 
 ### `alligator`
 

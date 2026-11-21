@@ -89,7 +89,7 @@ impl Kas {
     }
 
     pub fn with_defaults() -> Self {
-        Self::new(20, 0.5, 1.0)
+        Self::new(20, 0.5, 0.5)
     }
 
     pub fn phase(&self) -> f64 {
@@ -198,7 +198,7 @@ pub const KAS_DEFINITION: super::definition::IndicatorDefinition =
             super::definition::ParamSpec::number("phase", 0.5, 0.0, 2.0).meaning(
                 "lead: 0 cannot overshoot, 2 follows a straight trend without lag and overshoots a step by a quarter",
             ),
-            super::definition::ParamSpec::number("adapt", 1.0, 0.0, 2.0).meaning(
+            super::definition::ParamSpec::number("adapt", 0.5, 0.0, 2.0).meaning(
                 "strength of the adaptation: 0 is a fixed filter, higher values rest more and jump more",
             ),
         ],

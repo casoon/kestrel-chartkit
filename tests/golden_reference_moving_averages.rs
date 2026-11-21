@@ -761,6 +761,7 @@ fn test_golden_kas_reference_values() {
         ("phase0", 0.0, 1.0),
         ("phase2", 2.0, 1.0),
         ("adapt0", 0.5, 0.0),
+        ("adapt1", 0.5, 1.0),
         ("adapt2", 0.5, 2.0),
     ] {
         let values = catalog_values(

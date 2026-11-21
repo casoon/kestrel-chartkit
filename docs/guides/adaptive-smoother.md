@@ -92,45 +92,48 @@ The other half, and all 15 minute and daily series, were not used for choosing.
 
 Each number is a ratio to the best smoother of the catalog at the same smoothness: below 1,
 `kas` is closer to the price than anything in the catalog; above 1, it is further away.
-`kas_a0` and `kas_a50` are `kas` at `adapt` 0 and 0.5.
+`kas` is the default, `adapt = 0.5`; `kas_a100` and `kas_a0` are `kas` at `adapt` 1 and 0.
 
 | series | family | distance at 100 turns | at 50 turns | at 25 turns | yardstick error at 50 turns | distance at roughness 0.1 | at roughness 0.03 |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 15 minutes (24) | `kas` | 0.64 | 0.67 | 0.70 | 0.65 | 1.51 | 1.55 |
-| | `kas_a50` | 0.81 | 0.81 | 0.82 | 0.79 | 1.21 | 1.26 |
+| 15 minutes (24) | `kas` | 0.81 | 0.81 | 0.82 | 0.79 | 1.21 | 1.26 |
+| | `kas_a100` | 0.64 | 0.67 | 0.70 | 0.65 | 1.51 | 1.55 |
 | | `kas_a0` | 1.09 | 1.06 | 1.05 | 1.09 | 1.01 | 1.00 |
-| 1 hour (36) | `kas` | 0.66 | 0.69 | 0.71 | 0.67 | 1.45 | 1.55 |
-| | `kas_a50` | 0.81 | 0.83 | 0.84 | 0.80 | 1.19 | 1.27 |
+| 1 hour (36) | `kas` | 0.81 | 0.83 | 0.84 | 0.80 | 1.19 | 1.27 |
+| | `kas_a100` | 0.66 | 0.69 | 0.71 | 0.67 | 1.45 | 1.55 |
 | | `kas_a0` | 1.09 | 1.06 | 1.05 | 1.10 | 1.01 | 1.00 |
-| 4 hours (71) | `kas` | 0.69 | 0.72 | 0.73 | 0.69 | 1.42 | 1.58 |
-| | `kas_a50` | 0.84 | 0.85 | 0.85 | 0.82 | 1.18 | 1.29 |
+| 4 hours (71) | `kas` | 0.84 | 0.85 | 0.85 | 0.82 | 1.18 | 1.29 |
+| | `kas_a100` | 0.69 | 0.72 | 0.73 | 0.69 | 1.42 | 1.58 |
 | | `kas_a0` | 1.09 | 1.07 | 1.06 | 1.10 | 1.01 | 1.00 |
-| 1 day (70) | `kas` | 0.72 | 0.74 | 0.75 | 0.72 | 1.44 | 1.56 |
-| | `kas_a50` | 0.86 | 0.86 | 0.86 | 0.84 | 1.19 | 1.29 |
+| 1 day (70) | `kas` | 0.86 | 0.86 | 0.86 | 0.84 | 1.19 | 1.29 |
+| | `kas_a100` | 0.72 | 0.74 | 0.75 | 0.72 | 1.44 | 1.56 |
 | | `kas_a0` | 1.09 | 1.06 | 1.04 | 1.10 | 1.01 | 0.99 |
-| random walks (3) | `kas` | 0.71 | 0.72 | 0.72 | 0.69 | 1.42 | 1.52 |
+| random walks (3) | `kas` | 0.85 | 0.85 | 0.84 | 0.83 | 1.18 | 1.29 |
+| | `kas_a100` | 0.71 | 0.72 | 0.72 | 0.69 | 1.42 | 1.52 |
 
 The best smoother of the catalog is `t3`, `jma` or `super_smoother` in every column, with `alma`
 and `hma` in a few cells.
 
-Read by asset class, the picture does not change: over the 20 cells of class and timeframe the
-distance at 50 turns lies between 0.65 and 0.77, the distance at roughness 0.03 between 1.53
-and 1.70.
+Read by asset class, the picture does not change: over the 16 cells of class and timeframe the
+distance at 50 turns lies between 0.80 and 0.88, the distance at roughness 0.03 between 1.25
+and 1.33. With `adapt = 1` the two ranges are 0.65 to 0.77 and 1.53 to 1.70.
 
 Three things follow.
 
-1. **At equal direction changes `kas` is a quarter to a third closer to the price** than the
-   best smoother of the catalog, on every timeframe and in every asset class. Put the other way
-   round: at the same distance it turns about half as often.
-2. **At equal roughness it is half as far again.** The line rests and then moves, and that
-   change of pace is itself roughness. Whoever wants the smoothest curve is better served by
-   `super_smoother`, `jma` or `t3`, or by `kas` with `adapt = 0`, which matches them.
+1. **At equal direction changes `kas` is 14 to 19 % closer to the price** than the best smoother
+   of the catalog, on every timeframe and in every asset class. With `adapt = 1` it is a quarter
+   to a third closer; put the other way round, at the same distance it then turns about half as
+   often.
+2. **At equal roughness it is about a quarter further away,** and half as far again with
+   `adapt = 1`. The line rests and then moves, and that change of pace is itself roughness.
+   Whoever wants the smoothest curve is better served by `super_smoother`, `jma` or `t3`, or by
+   `kas` with `adapt = 0`, which matches them.
 3. **The random walks show the same numbers.** The advantage does not come from anything
    predictable in the markets. It is a property of the filter, and it says nothing about where
    the price goes next.
 
-`adapt` moves between the two: 0.5 gives up about half of the first advantage for about half of
-the second cost.
+`adapt` moves between the two: the default 0.5 takes about half of the advantage of `adapt = 1`
+for about half of its cost.
 
 ## Synthetic signals
 
@@ -144,9 +147,9 @@ deviation; errors are root mean square against the noise-free signal.
 | `jma` | 21.8 | 3.5 | 7.1 | 3.5 | 7.2 | 3.1 | 0.91 | 0.612 | 0.776 | 0.914 | 0.027 |
 | `t3` | 7.1 | 3.2 | 6.4 | 3.3 | 6.5 | 2.7 | 0.82 | 0.615 | 0.817 | 0.903 | 0.030 |
 | `hma` | 29.8 | 3.4 | 6.5 | 3.5 | 6.6 | 1.1 | 0.69 | 0.666 | 0.842 | 0.985 | 0.029 |
-| `kas` | 11.0 | 0.6 | 8.3 | 2.7 | 11.4 | 5.3 | 1.18 | 0.640 | 0.844 | 0.819 | 0.055 |
-| `kas` phase 1 | 11.7 | 0.4 | 4.5 | 2.1 | 8.0 | 3.1 | 0.89 | 0.629 | 0.857 | 0.790 | 0.061 |
-| `kas` adapt 0.5 | 14.0 | 2.8 | 11.8 | 4.3 | 13.3 | 6.1 | 1.39 | 0.651 | 0.737 | 0.919 | 0.032 |
+| `kas` | 14.0 | 2.8 | 11.8 | 4.3 | 13.3 | 6.1 | 1.39 | 0.651 | 0.737 | 0.919 | 0.032 |
+| `kas` phase 1 | 15.3 | 2.3 | 8.0 | 3.6 | 10.1 | 4.0 | 1.06 | 0.632 | 0.728 | 0.874 | 0.036 |
+| `kas` adapt 1 | 11.0 | 0.6 | 8.3 | 2.7 | 11.4 | 5.3 | 1.18 | 0.640 | 0.844 | 0.819 | 0.055 |
 | `kas` adapt 0 | 22.3 | 6.4 | 15.7 | 6.4 | 16.2 | 7.9 | 1.90 | 0.707 | 0.734 | 1.139 | 0.017 |
 
 The other smoothers of the catalog reach this number of direction
@@ -158,11 +161,12 @@ Overshoot at a step, the largest value over all lengths, in percent of the step:
 
 | family | clean step | step of 10 in noise |
 |---|---:|---:|
-| `kas` (phase 0.5) | 0.0 | 1.7 |
-| `kas` phase 0 | 0.0 | 1.3 |
+| `kas` (phase 0.5) | 0.0 | 1.4 |
+| `kas` phase 0 | 0.0 | 1.2 |
 | `kas` phase 1 | 0.0 | 6.1 |
-| `kas` phase 1.5 | 0.0 | 15.2 |
-| `kas` phase 2 | 0.0 | 26.1 |
+| `kas` phase 1.5 | 0.0 | 15.3 |
+| `kas` phase 2 | 0.0 | 26.3 |
+| `kas` adapt 1 | 0.0 | 1.7 |
 | `super_smoother` | 4.5 | 4.8 |
 | `jma` | 10.7 | 10.6 |
 | `t3` | 16.2 | 16.2 |
@@ -176,24 +180,26 @@ alone leaves in the measure.
 
 What the signals say:
 
-- **A large step:** `kas` is at half of a step of 10 standard deviations within one bar, where
-  the best of the catalog needs three to four. Reaching 90 % takes 8 bars against 6 to 7.5,
-  unless `phase` is raised.
+- **A large step:** `kas` is at half of a step of 10 standard deviations after 2.8 bars, where
+  the best of the catalog needs 3.2 to 3.6. Reaching 90 % takes 12 bars against 6 to 7.5,
+  unless `phase` is raised. With `adapt = 1` half of the step is reached within one bar.
 - **A small step, a slow trend, a trend with turns:** behind. A trend of a fifth of a standard
   deviation per bar is not directed enough for the score to rise much, and `hma`, `t3` and `jma`
-  follow it more closely. They pay for it with 11 to 28 % overshoot; `phase = 1` closes most of
-  the gap at 6 %.
-- **A random walk in noise:** 4 % behind at equal direction changes, 50 % behind at equal
+  follow it more closely. They pay for it with 11 to 28 % overshoot; `phase = 1` brings `kas`
+  level with `super_smoother` at 6 %, still behind the other three.
+- **A random walk in noise:** 6 % behind at equal direction changes, 21 % behind at equal
   roughness. On a signal that is mostly noise an adaptive gain has nothing to hold on to.
-- **Volatility switches:** when the signal starts to move, `kas` has about 10 % less error than the
-  best of the catalog. When only the noise grows, it has 9 % more: for some bars a burst of
-  noise looks like a move.
+- **Volatility switches:** when only the noise grows, `kas` has about 4 % less error than the
+  best of the catalog; when the signal starts to move, it is level with them (2 % more). With
+  `adapt = 1` the two change sides: 10 % less error when the signal starts to move, 9 % more
+  when only the noise grows, because for some bars a burst of noise looks like a move.
 
 ## The candidates
 
 The formula was the end of four rounds. The table gives the 4 hour series (ratios as above); all
-candidates use the cascade of `kas` at `phase = 1`, so the row to compare with is `kas` at
-`phase = 1`: 0.69 and 1.60.
+candidates use the cascade of `kas` at `phase = 1`, and all but `cand_velocity_half_strength` the
+full strength `adapt = 1`. So the row to compare with is `kas` at `phase = 1` and `adapt = 1`,
+0.69 and 1.60, and for the candidate at half strength `kas` at `phase = 1`: 0.80 and 1.27.
 
 | candidate | what drives the gain | distance at 50 turns | distance at roughness 0.03 |
 |---|---|---:|---:|
@@ -226,7 +232,8 @@ candidates use the cascade of `kas` at `phase = 1`, so the row to compare with i
 
 ## When to use which
 
-- For a line that should turn rarely and still stay near the price: `kas`.
+- For a line that should turn rarely and still stay near the price: `kas`, and more so with
+  `adapt = 1`, at the price of a rougher curve.
 - For the smoothest curve, or the least error against a noisy but steady signal:
   `super_smoother`, `jma`, `t3`, or `kas` with `adapt = 0`.
 - For the least lag on a steady trend, accepting overshoot: `hma`, or `kas` with a higher

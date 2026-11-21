@@ -55,9 +55,9 @@
 #                  power 1; a phase beyond 100 is clamped to 100, a power below 1 to 1.
 #   KAS            Kestrel Adaptive Smoother: a cascade of three exponential stages whose common
 #                  gain follows a score of how directed and how unusual the recent movement is,
-#                  the first value the close; period 5 with phase 0.5 / adapt 1 (the defaults
-#                  but for the period), phase 0, phase 2, adapt 0 and adapt 2; period 1 is the
-#                  close itself.
+#                  the first value the close; period 5 with phase 0.5 / adapt 0.5 (the defaults
+#                  but for the period), phase 0 and phase 2 at adapt 1, adapt 0, adapt 1 and
+#                  adapt 2; period 1 is the close itself.
 #   SuperSmoother  Ehlers' 2-pole low-pass started from the price, period 5, over the same series;
 #                  the indicator publishes from the period-th bar (period 3: the third value).
 
@@ -122,10 +122,11 @@ jma5_clamped_last=15.54350422675199
 jma5_first=10.0
 
 # Kestrel Adaptive Smoother, period 5
-kas5_default_last=14.97337109436415
+kas5_default_last=14.779693205787936
 kas5_phase0_last=14.647434823348288
 kas5_phase2_last=15.951179907411735
 kas5_adapt0_last=14.865478515625
+kas5_adapt1_last=14.97337109436415
 kas5_adapt2_last=15.324893722825166
 kas5_first=10.0
 
