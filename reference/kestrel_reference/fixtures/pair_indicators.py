@@ -35,8 +35,8 @@ RS_CASES = [
     (_stamped(A16), _stamped(B16), 10),
     # Pairing: the first series' bars 4 and 9 have no partner and are skipped.
     (_stamped(A16), B_GAPS, 3),
-    # A base close of 0 makes that return 0; a reference close of 0 makes the ratio 1.
-    (_stamped([0.0, 10.0, 12.0]), _stamped([5.0, 0.0, 6.0]), 1),
+    # A close of 0, now or as a base, means no output for that bar; the last bar is valid again.
+    (_stamped([0.0, 10.0, 12.0, 15.0]), _stamped([5.0, 0.0, 6.0, 9.0]), 1),
     # Shorter than len + 1 paired bars: no output at all.
     (_stamped(A16[:4]), _stamped(B16[:4]), 4),
 ]
@@ -74,8 +74,8 @@ HEADER = [
     "Windows count paired bars.",
     "",
     "relative_strength (len = n), at the paired bar i >= n with closes a, b: own = (a_i - a_(i-n))",
-    "/ a_(i-n) * 100, 0 when a_(i-n) <= 0; bench likewise from b; alpha = own - bench; ratio =",
-    "a_i / b_i, 1 when b_i <= 0.",
+    "/ a_(i-n) * 100; bench likewise from b; alpha = own - bench; ratio = a_i / b_i. No output",
+    "when one of a_i, a_(i-n), b_i, b_(i-n) is not positive.",
     "",
     "correlation (len = n): per paired bar the return pair ((a_i - a_(i-1)) / a_(i-1), same for b),",
     "left out when a base close is 0. With n pairs collected, rho = sum(da db) / sqrt(sum(da^2)",
@@ -113,9 +113,12 @@ def _relative_strength(series, reference, n):
             out.append(None)
             continue
         (a, b), (a0, b0) = seen[-1], seen[-1 - n]
-        own = (a - a0) / a0 * 100 if a0 > 0 else Fraction(0)
-        bench = (b - b0) / b0 * 100 if b0 > 0 else Fraction(0)
-        ratio = a / b if b > 0 else Fraction(1)
+        if min(a, a0, b, b0) <= 0:
+            out.append(None)
+            continue
+        own = (a - a0) / a0 * 100
+        bench = (b - b0) / b0 * 100
+        ratio = a / b
         out.append({"alpha": float(own - bench), "ratio": float(ratio),
                     "own": float(own), "bench": float(bench)})
     return out
@@ -179,8 +182,8 @@ def build():
         if i == 3:
             assert outputs[4] is None and outputs[9] is None
         if i == 4:
-            assert outputs[1] == {"alpha": 100.0, "ratio": 1.0, "own": 0.0, "bench": -100.0}
-            assert outputs[2] == {"alpha": 20.0, "ratio": 2.0, "own": 20.0, "bench": 0.0}
+            assert outputs[:3] == [None] * 3
+            assert outputs[3] == {"alpha": -25.0, "ratio": 15.0 / 9.0, "own": 25.0, "bench": 50.0}
         if i == 5:
             assert outputs == [None] * 4
         blocks.append(_block("rs", i, series, reference, n, outputs))

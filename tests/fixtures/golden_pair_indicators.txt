@@ -11,8 +11,8 @@
 # Windows count paired bars.
 #
 # relative_strength (len = n), at the paired bar i >= n with closes a, b: own = (a_i - a_(i-n))
-# / a_(i-n) * 100, 0 when a_(i-n) <= 0; bench likewise from b; alpha = own - bench; ratio =
-# a_i / b_i, 1 when b_i <= 0.
+# / a_(i-n) * 100; bench likewise from b; alpha = own - bench; ratio = a_i / b_i. No output
+# when one of a_i, a_(i-n), b_i, b_(i-n) is not positive.
 #
 # correlation (len = n): per paired bar the return pair ((a_i - a_(i-1)) / a_(i-1), same for b),
 # left out when a base close is 0. With n pairs collected, rho = sum(da db) / sqrt(sum(da^2)
@@ -438,31 +438,32 @@ rs3_bench15=2.6168224299065392
 
 # len 1
 rs4_len=1.0
-rs4_a_n=3.0
-rs4_b_n=3.0
+rs4_a_n=4.0
+rs4_b_n=4.0
 rs4_a_ts0=0.0
 rs4_a_close0=0.0
 rs4_a_ts1=1.0
 rs4_a_close1=10.0
 rs4_a_ts2=2.0
 rs4_a_close2=12.0
+rs4_a_ts3=3.0
+rs4_a_close3=15.0
 rs4_b_ts0=0.0
 rs4_b_close0=5.0
 rs4_b_ts1=1.0
 rs4_b_close1=0.0
 rs4_b_ts2=2.0
 rs4_b_close2=6.0
+rs4_b_ts3=3.0
+rs4_b_close3=9.0
 rs4_out0=0.0
-rs4_out1=1.0
-rs4_alpha1=100.0
-rs4_ratio1=1.0
-rs4_own1=0.0
-rs4_bench1=-100.0
-rs4_out2=1.0
-rs4_alpha2=20.0
-rs4_ratio2=2.0
-rs4_own2=20.0
-rs4_bench2=0.0
+rs4_out1=0.0
+rs4_out2=0.0
+rs4_out3=1.0
+rs4_alpha3=-25.0
+rs4_ratio3=1.6666666666666667
+rs4_own3=25.0
+rs4_bench3=50.0
 
 # len 4
 rs5_len=4.0

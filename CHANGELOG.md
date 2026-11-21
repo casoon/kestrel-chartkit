@@ -15,6 +15,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Fixed
 
+- **relative_strength:** a bar where one of the four closes used is not finite or not positive publishes nothing; before, such a return counted as 0 and the ratio as 1.
 - **Swing structure:** `kestrel_swing_structure` keeps its pivots strictly alternating (a pivot of the same kind continues the swing and the more extreme one stays), orders the two pivots of an outside bar by the alternation instead of always high first, and reads the trend of an undecided structure from the newest leg; a series reflected about a level now gives the same readings, which it did not on series with equal highs and lows or outside bars. Readings on such series change.
 - **Cycle length:** `cycle_length` treats a close that sits on its average up to rounding noise as exactly on it, so a reflected series counts the same crossings.
 

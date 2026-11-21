@@ -23,8 +23,8 @@ use crate::model::Bar;
 /// Conventions:
 ///
 /// - First output with the `n + 1`-th paired bar.
-/// - A return whose base close is not positive counts as `0`.
-/// - `ratio` is `1` when the reference close is not positive.
+/// - Nothing is published on a bar where one of the four closes used (both current closes and
+///   both closes `n` bars back) is not finite or not positive; no substitute value is shown.
 ///
 /// The two series come in through [`RelativeStrengthEngine::update`] or, built by name
 /// (`relative_strength`, parameter `len`), through [`PairIndicator::on_bars`]; see
@@ -62,25 +62,17 @@ impl RelativeStrengthEngine {
             return None;
         }
 
-        let curr_ratio = if benchmark_bar.close > 0.0 {
-            own_bar.close / benchmark_bar.close
-        } else {
-            1.0
-        };
-
+        let (now_own, now_bench) = (own_bar.close, benchmark_bar.close);
         let past_own = self.own_closes[0];
         let past_bench = self.bench_closes[0];
+        let valid = |x: f64| x.is_finite() && x > 0.0;
+        if !(valid(now_own) && valid(now_bench) && valid(past_own) && valid(past_bench)) {
+            return None;
+        }
 
-        let own_perf = if past_own > 0.0 {
-            (own_bar.close - past_own) / past_own
-        } else {
-            0.0
-        };
-        let bench_perf = if past_bench > 0.0 {
-            (benchmark_bar.close - past_bench) / past_bench
-        } else {
-            0.0
-        };
+        let curr_ratio = now_own / now_bench;
+        let own_perf = (now_own - past_own) / past_own;
+        let bench_perf = (now_bench - past_bench) / past_bench;
 
         let alpha = (own_perf - bench_perf) * 100.0;
 
@@ -172,4 +164,33 @@ pub const RELATIVE_STRENGTH_DEFINITION: PairIndicatorDefinition = PairIndicatorD
 
 fn build_relative_strength(p: &ResolvedParams) -> Result<Box<dyn PairIndicator>, RegistryError> {
     Ok(Box::new(RelativeStrengthEngine::new(p.count("len"))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bar(t: i64, close: f64) -> Bar {
+        Bar::new(t, close, close, close, close, 0.0)
+    }
+
+    #[test]
+    fn publishes_nothing_where_a_close_is_not_positive_or_not_finite() {
+        let mut engine = RelativeStrengthEngine::new(1);
+        assert!(engine.update(&bar(0, 100.0), &bar(0, 50.0)).is_none());
+        let out = engine.update(&bar(1, 110.0), &bar(1, 50.0)).unwrap();
+        assert!((out.value - 10.0).abs() < 1e-12);
+        // A reference close of 0 now and as the base of the next return: no output for either bar.
+        assert!(engine.update(&bar(2, 120.0), &bar(2, 0.0)).is_none());
+        assert!(engine.update(&bar(3, 120.0), &bar(3, 60.0)).is_none());
+        assert!(engine.update(&bar(4, f64::NAN), &bar(4, 60.0)).is_none());
+        assert!(engine.update(&bar(5, 120.0), &bar(5, 60.0)).is_none());
+        // All four closes valid again: publishing resumes.
+        let out = engine.update(&bar(6, 132.0), &bar(6, 60.0)).unwrap();
+        assert!((out.value - 10.0).abs() < 1e-12);
+        assert!((out.extra["ratio"] - 2.2).abs() < 1e-12);
+        assert!(PairIndicator::alerts(&engine)
+            .iter()
+            .any(|a| a.kind == "outperforming_benchmark"));
+    }
 }
