@@ -11,6 +11,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Added
 
+- **Catalog:** oscillators `schaff_trend_cycle`, `qqe`, `demarker`, `relative_momentum_index` and `squeeze_momentum` and trend lines `zlema`, `frama`, `nadaraya_watson`, `range_filter`, `most`, `ott`, `halftrend` and `ssl_channel` are catalog entries, not yet verified; 180 entries in all.
 - **Indicator `kestrel_adaptive_smoother`:** the Kestrel Adaptive Smoother as a catalog entry (alias `kas`, type `Kas`): a cascade of three exponential stages whose common gain follows a score of how directed and how unusual the recent movement is. `period` (default 20), `phase` (0..2, default 0.5: lead against overshoot, 0 cannot overshoot), `adapt` (0..2, default 0.5: 0 is a fixed filter); valid from the first bar. Marked as not yet accepted; formula, measurements and the candidates it was chosen from: [The adaptive smoother](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/). With it the catalog has 167 entries.
 - **Example `smoother_tradeoffs`:** measures lag, overshoot, residual error, roughness and direction changes of the smoothers of the catalog that have a length on deterministic test signals and on close series read from files (`cargo run --release --example smoother_tradeoffs -- synthetic out.csv`), and prints the comparison at equal smoothness (`summary`).
 

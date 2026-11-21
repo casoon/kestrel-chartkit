@@ -37,5 +37,10 @@ pub(super) const DEFINITIONS: &[&IndicatorDefinition] = &[
     &crate::indicator::ehlers::CORRELATION_TREND_DEFINITION,
     &crate::indicator::ehlers::LAGUERRE_RSI_DEFINITION,
     &crate::indicator::ehlers::CYBER_CYCLE_DEFINITION,
+    &crate::indicator::momentum_oscillators::SCHAFF_TREND_CYCLE_DEFINITION,
+    &crate::indicator::momentum_oscillators::QQE_DEFINITION,
+    &crate::indicator::momentum_oscillators::DEMARKER_DEFINITION,
+    &crate::indicator::momentum_oscillators::RELATIVE_MOMENTUM_INDEX_DEFINITION,
+    &crate::indicator::momentum_oscillators::SQUEEZE_MOMENTUM_DEFINITION,
     &crate::indicator::rolling_measures::PERCENT_RANK_DEFINITION,
 ];
