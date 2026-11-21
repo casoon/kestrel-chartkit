@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-11-21
+
 ### Breaking
 
 - **Catalog:** the 25 own constructions carry the `kestrel_` prefix (`kestrel_trend_quality`, `kestrel_swing_structure`, `kestrel_vwap_regime` and so on; the [indicator guide](https://casoon.github.io/kestrel-chartkit/docs/guides/indicators/) says which). The old names stay aliases for building and lookup; `Indicator::name()` and the catalog report the new name, so code that compares stored names against `name()` has to resolve them through `canonical_name`.
