@@ -87,15 +87,17 @@ pub fn catalog_lines() -> Vec<Line> {
 }
 
 /// `kas` at its defaults and at other settings, each a family of its own: name, phase, adapt.
-pub const KAS: [(&str, f64, f64); 8] = [
-    ("kas", 0.5, 1.0),
+/// The last one is the setting the candidate formulas are compared with.
+pub const KAS: [(&str, f64, f64); 9] = [
+    ("kas", 0.5, 0.5),
     ("kas_a0", 0.5, 0.0),
-    ("kas_a50", 0.5, 0.5),
+    ("kas_a100", 0.5, 1.0),
     ("kas_a150", 0.5, 1.5),
-    ("kas_p0", 0.0, 1.0),
-    ("kas_p100", 1.0, 1.0),
-    ("kas_p150", 1.5, 1.0),
-    ("kas_p200", 2.0, 1.0),
+    ("kas_p0", 0.0, 0.5),
+    ("kas_p100", 1.0, 0.5),
+    ("kas_p150", 1.5, 0.5),
+    ("kas_p200", 2.0, 0.5),
+    ("kas_p100_a100", 1.0, 1.0),
 ];
 
 pub fn kas_lines() -> Vec<Line> {

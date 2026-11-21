@@ -704,8 +704,8 @@ def build_blocks():
                    value_series(jma_values(SHORT[:5], 1, 0.0, 2.0))))
 
     # Kestrel Adaptive Smoother
-    add(case_block("kas_defaults", "KAS(20, phase 0.5, adapt 1), the registry defaults, from bar 1",
-                   {}, ohlc(LONG[:25]), value_series(kas_values(LONG[:25], 20, 0.5, 1.0))))
+    add(case_block("kas_defaults", "KAS(20, phase 0.5, adapt 0.5), the registry defaults, from bar 1",
+                   {}, ohlc(LONG[:25]), value_series(kas_values(LONG[:25], 20, 0.5, 0.5))))
     add(case_block("kas_phase_zero", "KAS(7, phase 0, adapt 1)",
                    params(period=7, phase=0.0, adapt=1.0), ohlc(SHORT),
                    value_series(kas_values(SHORT, 7, 0.0, 1.0))))
@@ -716,7 +716,7 @@ def build_blocks():
                    params(period=7, phase=0.5, adapt=0.0), ohlc(SHORT),
                    value_series(kas_values(SHORT, 7, 0.5, 0.0))))
     add(case_block("kas_unit", "KAS(1) is the close itself", params(period=1), ohlc(SHORT[:5]),
-                   value_series(kas_values(SHORT[:5], 1, 0.5, 1.0))))
+                   value_series(kas_values(SHORT[:5], 1, 0.5, 0.5))))
 
     # SuperSmoother
     add(case_block("super_smoother_defaults", "SuperSmoother(10), the registry default, "
