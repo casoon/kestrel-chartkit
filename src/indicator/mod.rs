@@ -128,6 +128,7 @@ pub mod volatility_regime;
 pub mod volume_flow;
 pub mod volume_flow_hires;
 pub mod volume_indicators;
+pub mod volume_oscillators;
 pub mod volume_profile;
 pub mod volume_profile_extended;
 pub mod volume_profile_persistent;

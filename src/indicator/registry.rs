@@ -395,9 +395,9 @@ mod tests {
                 entry.name
             );
         }
-        assert_eq!(bars.len(), 185);
-        // Pair (4), transform (1) and intrabar (1) entries on top of the 185 bar indicators.
-        assert_eq!(catalog().len(), 191);
+        assert_eq!(bars.len(), 189);
+        // Pair (4), transform (1) and intrabar (1) entries on top of the 189 bar indicators.
+        assert_eq!(catalog().len(), 195);
         for (input, count) in [
             (IndicatorInput::Pair, 4),
             (IndicatorInput::Transform, 1),

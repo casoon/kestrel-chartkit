@@ -741,3 +741,110 @@ fn n4_tpo_profile_mirrors_on_the_generated_series() {
         check_bars_swapped_pair("tpo_profile", params, "val", "vah");
     }
 }
+
+/// Every output of `name` on `bars` scaled by `kp` (prices) and `kv` (volumes) against the
+/// original: each value and extra must equal the original's times the factor `factor(key)` returns
+/// (`key` is `value` or the extra's name), the state and the alerts must be unchanged.
+fn check_scaled(
+    name: &str,
+    kp: f64,
+    kv: f64,
+    factor: impl Fn(&str) -> f64,
+    published_at_least: usize,
+) {
+    for (label, bars) in series() {
+        let big: Vec<Bar> = bars
+            .iter()
+            .map(|b| {
+                Bar::new(
+                    b.timestamp,
+                    kp * b.open,
+                    kp * b.high,
+                    kp * b.low,
+                    kp * b.close,
+                    kv * b.volume,
+                )
+            })
+            .collect();
+        let mut a = build_checked(name, &HashMap::new()).unwrap();
+        let mut b = build_checked(name, &HashMap::new()).unwrap();
+        let mut published = 0;
+        for (i, (x, y)) in bars.iter().zip(&big).enumerate() {
+            let at = format!("{name} {label}@{i}");
+            let close = |got: f64, want: f64, what: &str| {
+                assert!(
+                    (got - want).abs() <= 1e-9 * want.abs().max(1.0),
+                    "{at} {what}: {got} against {want}"
+                );
+            };
+            match (a.on_bar(x), b.on_bar(y)) {
+                (None, None) => {}
+                (Some(oa), Some(ob)) => {
+                    published += 1;
+                    close(ob.value, oa.value * factor("value"), "value");
+                    assert_eq!(oa.state, ob.state, "{at}");
+                    assert_eq!(oa.extra.len(), ob.extra.len(), "{at}");
+                    for (key, va) in &oa.extra {
+                        close(ob.extra[key], va * factor(key), key);
+                    }
+                }
+                _ => panic!("{at}: output on one side only"),
+            }
+            let kinds = |i: &dyn kestrel_chartkit::Indicator| {
+                i.alerts().into_iter().map(|a| a.kind).collect::<Vec<_>>()
+            };
+            assert_eq!(kinds(a.as_ref()), kinds(b.as_ref()), "{at}: alerts");
+        }
+        assert!(
+            published >= published_at_least,
+            "{name} {label} published {published}"
+        );
+    }
+}
+
+#[test]
+fn n5_volume_entries_scale_with_prices_and_volumes() {
+    // Prices times 3: the flow indicator and the zone oscillator read ratios and signs only, the
+    // confirmation indicator is a price difference, the facilitation index a price per volume.
+    check_scaled("volume_flow_indicator", 3.0, 1.0, |_| 1.0, 100);
+    check_scaled("volume_zone_oscillator", 3.0, 1.0, |_| 1.0, 100);
+    check_scaled("volume_price_confirmation", 3.0, 1.0, |_| 3.0, 100);
+    check_scaled("market_facilitation", 3.0, 1.0, |_| 3.0, 100);
+    // Volumes times 3: only the facilitation index changes (it divides by the volume).
+    check_scaled("volume_flow_indicator", 1.0, 3.0, |_| 1.0, 100);
+    check_scaled("volume_zone_oscillator", 1.0, 3.0, |_| 1.0, 100);
+    check_scaled("volume_price_confirmation", 1.0, 3.0, |_| 1.0, 100);
+    check_scaled("market_facilitation", 1.0, 3.0, |_| 1.0 / 3.0, 100);
+}
+
+#[test]
+fn n5_volume_zone_oscillator_negates_and_swaps_its_alerts() {
+    check_bars_entry("volume_zone_oscillator", &[], &[("value", Answer::Negated)]);
+    let mut seen = 0;
+    for (_, bars) in series() {
+        seen += check_alerts_mirrored(
+            "volume_zone_oscillator",
+            &[("period", 5.0)],
+            &bars,
+            &[("bull", "bear"), ("bear", "bull")],
+        );
+    }
+    assert!(seen > 0);
+}
+
+#[test]
+fn n5_market_facilitation_is_mirror_invariant() {
+    check_bars_entry("market_facilitation", &[], &[("value", Answer::Same)]);
+    let mut seen = 0;
+    for (label, bars) in series() {
+        let mirrored = mirror(&bars);
+        let mut a = build_checked("market_facilitation", &HashMap::new()).unwrap();
+        let mut b = build_checked("market_facilitation", &HashMap::new()).unwrap();
+        for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
+            let (oa, ob) = (a.on_bar(x).unwrap(), b.on_bar(y).unwrap());
+            assert_eq!(oa.state, ob.state, "{label}@{i}");
+        }
+        seen += check_alerts_mirrored("market_facilitation", &[], &bars, &[("squat", "squat")]);
+    }
+    assert!(seen > 0);
+}

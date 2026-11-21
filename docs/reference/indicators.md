@@ -1,6 +1,6 @@
 ---
 title: Indicator reference
-description: All 191 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
+description: All 195 entries of the catalog with their parameters, output unit and range and whether each is verified, generated from the indicator definitions.
 order: 2
 ---
 
@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 180 of the 191 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 180 of the 195 entries are verified, 15 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -140,6 +140,10 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `acc_dist` | bars | verified |
 | `cvd` | bars | verified |
 | `klinger` | bars | verified |
+| `volume_flow_indicator` | bars | **not yet verified:** no independent second implementation yet |
+| `volume_zone_oscillator` | bars | **not yet verified:** no independent second implementation yet |
+| `volume_price_confirmation` | bars | **not yet verified:** no independent second implementation yet |
+| `market_facilitation` | bars | **not yet verified:** no independent second implementation yet |
 | `eom` | bars | verified |
 | `nvi` | bars | verified |
 | `pvi` | bars | verified |
@@ -1881,6 +1885,65 @@ Klinger Volume Force Oscillator
 | `signal_len` | 13 | whole number 1 – 10000 | bars in the EMA of the oscillator (signal) |
 
 Requires `fast_len` to be smaller than `slow_len`.
+
+### `volume_flow_indicator` · alias `vfi`
+
+Volume flow indicator (Katsanos, 2004): the volume of bars whose typical price rose or fell by more than a cutoff, capped at a multiple of the average volume, summed over period bars and divided by the average volume before the bar, smoothed; the cutoff uses a fixed 30-bar volatility of log typical-price ratios. Extra raw is the unsmoothed ratio; nothing is published while the average volume is zero
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/volume_flow_indicator/)
+
+**Output** unit Unitless, range not declared · **warmup** 260 bars · needs real volume
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 130 | whole number 2 – 10000 | bars summed, and averaged for the volume cap |
+| `coef` | 0.2 | 0 – 10 | cutoff in volatilities of the log typical-price ratio, times the close |
+| `vcoef` | 2.5 | 0.000000001 – 100 | cap on a bar's volume, in average volumes |
+| `smoothing` | 3 | whole number 1 – 1000 | length of the average over the ratio |
+
+### `volume_zone_oscillator` · alias `vzo`
+
+Volume zone oscillator (Khalil and Steckler, 2011): 100 times the average of volume signed by the direction of the close against the average volume, both exponential averages over period bars; a close that did not change counts as zero
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/volume_zone_oscillator/)
+
+**Output** unit Ratio, range -100 – 100 · **warmup** 2 bars · needs real volume
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `period` | 14 | whole number 1 – 10000 | length of both exponential averages |
+
+### `volume_price_confirmation` · alias `vpci`
+
+Volume price confirmation indicator (Dormeier, 2007): the gap between the volume weighted and the plain average close over the long window, times the same ratio over the short window, times the short over the long average volume; the signal is the mean of the last smoothing values. The price ratio divides by the mean close
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/volume_price_confirmation/)
+
+**Output** unit Unitless, range not declared · **warmup** 39 bars · needs real volume
+
+| Parameter | Default | Accepted | Meaning |
+|---|---|---|---|
+| `short` | 5 | whole number 1 – 10000 | short window in bars |
+| `long` | 20 | whole number 2 – 10000 | long window in bars |
+| `smoothing` | 20 | whole number 1 – 10000 | values averaged for the signal line |
+
+Requires `short` to be smaller than `long`.
+
+### `market_facilitation`
+
+Market facilitation index (Williams, 1995): the bar's range per unit of volume, with the state green, fade, fake or squat from the change of the index and of the volume against the previous bar; neutral where either is unchanged
+
+**Not yet verified:** no independent second implementation yet.
+
+[See it in the showcase](../../../showcase/market_facilitation/)
+
+**Output** unit Unitless, range 0 and above · **warmup** 1 bars · needs real volume
 
 ### `eom`
 

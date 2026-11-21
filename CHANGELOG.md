@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Catalog:** `volume_flow_indicator` (after Katsanos, 2004), `volume_zone_oscillator` (Khalil and Steckler, 2011), `volume_price_confirmation` (Dormeier, 2007) and `market_facilitation` (Williams, 1995) are new catalog entries, open (not yet verified); 195 entries in all, 180 of them verified.
+
 ## [0.46.0] - 2026-11-21
 
 ### Breaking
