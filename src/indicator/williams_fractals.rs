@@ -117,9 +117,7 @@ pub const WILLIAMS_FRACTALS_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::price().range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(WilliamsFractalsEngine::new(p.count("span")))),
     };
 

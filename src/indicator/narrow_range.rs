@@ -90,9 +90,7 @@ pub const NARROW_RANGE_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::ratio()
             .bounded(0.0, 1.0)
             .range_dependent(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| Ok(Box::new(NarrowRangeEngine::new(p.count("period")))),
     };
 

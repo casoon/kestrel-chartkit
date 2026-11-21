@@ -204,13 +204,11 @@ pub const SETUP_COUNTDOWN_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "setup_countdown",
         aliases: &[],
-        description: "Setup (9) and countdown (13) exhaustion count after DeMark (1994): consecutive closes against the close four bars earlier from a price flip, then thirteen closes against the low or high two bars earlier; value is the signed setup count, extra countdown the signed countdown count, equal closes break a setup",
+        description: "Setup (9) and countdown (13) exhaustion count after DeMark (1994), the core rules only: consecutive closes against the close four bars earlier from a price flip, then thirteen closes against the low or high two bars earlier, the 13th deferred until its low or high passes the close of the 8th count; a completed setup of the other side cancels a running countdown; equal closes break a setup; the later cancellation and recycle refinements are not implemented; value is the signed setup count, extra countdown the signed countdown count",
         params: &[],
         checks: &[],
         facts: super::definition::IndicatorFacts::unitless(),
-        verification: super::definition::Verification::Open(
-            "no independent second implementation yet",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |_| Ok(Box::new(SetupCountdownEngine::new())),
     };
 
