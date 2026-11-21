@@ -40,6 +40,8 @@ import statistics
 from ..exact import bollinger
 from ..fixture import provenance, render_contract
 from ..indicators import directional, efficiency_ratio, keltner, true_ranges
+from ..range_volatility import compute as range_compute
+from ..return_statistics import compute as statistics_compute
 from ..smoothing import ema_first_sample, rma
 from .contract_pilot import case_block, crossed_over, crossed_under
 from .volatility import (_aroon, _chande_kroll, _choppiness, _dmi, _garman_klass, _mass_index,
@@ -548,6 +550,22 @@ def cusum_case(length, k, h, bars):
     return {"len": float(length), "k": k, "h": h}, bars, expected
 
 
+def floats(params):
+    return {key: float(value) for key, value in params.items()}
+
+
+def range_case(name, bars, **params):
+    """One of the range volatility estimators, from `kestrel_reference.range_volatility`."""
+    params = floats(params)
+    return params, bars, range_compute(name, params, bars)
+
+
+def statistics_case(name, bars, **params):
+    """One of the return statistics, from `kestrel_reference.return_statistics`."""
+    params = floats(params)
+    return params, bars, statistics_compute(name, params, bars)
+
+
 # --- Rendering -------------------------------------------------------------------------------
 
 def block(name, comment, case):
@@ -572,6 +590,16 @@ def block(name, comment, case):
 
 SWING = swing_bars(90)
 SWING_SHORT = swing_bars(40, phase=7.0, drift=-0.1)
+SWING_LONG = swing_bars(260, phase=3.0, drift=0.05)
+
+# A low of 0 inside the window: the estimators that take logarithms of it publish nothing while
+# the bar is in the window.
+RANGE_GAP = SWING_SHORT[:12] + [(100.0, 101.0, 0.0, 100.5, 1000.0)] + SWING_SHORT[12:30]
+CLOSE_GAP = SWING_SHORT[:12] + [(100.0, 101.0, 99.0, 0.0, 1000.0)] + SWING_SHORT[12:30]
+
+# A straight line: the AR(1) coefficient is 1 up to rounding. An alternating series: negative.
+LINE = [(100.0 + i, 100.5 + i, 99.5 + i, 100.0 + i, 1000.0) for i in range(30)]
+ALTERNATING = [(100.0, 101.5, 99.5, 100.0 + (i % 2), 1000.0) for i in range(30)]
 
 # ADX with the defaults: swings, then tight chop (the ADX sinks below 20), then a trend (it rises
 # above 20 again).
@@ -724,5 +752,67 @@ def build():
         block("cusum_flat", "CUSUM (3, 0.5, 1) after flat closes: the calibration deviation is 0, "
               "all sums stay 0, no alert",
               cusum_case(3, 0.5, 1.0, CUSUM_FLAT)),
+
+        block("parkinson_defaults", "Parkinson(20, 252) over 90 swing bars",
+              range_case("parkinson", SWING)),
+        block("parkinson_short", "Parkinson(3, 12) over 40 swing bars",
+              range_case("parkinson", SWING_SHORT, period=3, periods_per_year=12)),
+        block("parkinson_nonpositive", "Parkinson(4): a low of 0 keeps every window that holds it empty",
+              range_case("parkinson", RANGE_GAP, period=4)),
+        block("parkinson_flat", "Parkinson(3) with high = low: 0",
+              range_case("parkinson", flat_bars(8), period=3)),
+        block("rogers_satchell_defaults", "Rogers-Satchell(20, 252) over 90 swing bars",
+              range_case("rogers_satchell", SWING)),
+        block("rogers_satchell_short", "Rogers-Satchell(3, 12) over 40 swing bars",
+              range_case("rogers_satchell", SWING_SHORT, period=3, periods_per_year=12)),
+        block("rogers_satchell_nonpositive", "Rogers-Satchell(4): a close of 0 empties its windows",
+              range_case("rogers_satchell", CLOSE_GAP, period=4)),
+        block("rogers_satchell_flat", "Rogers-Satchell(3) over flat bars: 0",
+              range_case("rogers_satchell", flat_bars(8), period=3)),
+        block("yang_zhang_defaults", "Yang-Zhang(20, 252) over 90 swing bars: first value one bar "
+              "after the period", range_case("yang_zhang", SWING)),
+        block("yang_zhang_short", "Yang-Zhang(2, 12) over 40 swing bars: the smallest period",
+              range_case("yang_zhang", SWING_SHORT, period=2, periods_per_year=12)),
+        block("yang_zhang_nonpositive", "Yang-Zhang(4): a close of 0 empties its windows, also the "
+              "one that needs it as the close before the window",
+              range_case("yang_zhang", CLOSE_GAP, period=4)),
+        block("yang_zhang_flat", "Yang-Zhang(3) over flat bars: 0",
+              range_case("yang_zhang", flat_bars(8), period=3)),
+        block("variance_ratio_defaults", "Variance ratio(100, 4) over 260 swing bars",
+              statistics_case("variance_ratio", SWING_LONG)),
+        block("variance_ratio_short", "Variance ratio(8, 3) over 40 swing bars",
+              statistics_case("variance_ratio", SWING_SHORT, period=8, lag=3)),
+        block("variance_ratio_half_period", "Variance ratio(4, 2): the smallest period, lag exactly "
+              "half of it", statistics_case("variance_ratio", SWING_SHORT, period=4, lag=2)),
+        block("variance_ratio_flat", "Variance ratio(6, 2) over constant closes: no variance, nothing",
+              statistics_case("variance_ratio", flat_bars(14), period=6, lag=2)),
+        block("autocorrelation_defaults", "Autocorrelation(50, 1) over 260 swing bars",
+              statistics_case("autocorrelation", SWING_LONG)),
+        block("autocorrelation_short", "Autocorrelation(10, 3) over 40 swing bars",
+              statistics_case("autocorrelation", SWING_SHORT, period=10, lag=3)),
+        block("autocorrelation_minimal", "Autocorrelation(3, 2): the smallest period, lag below it",
+              statistics_case("autocorrelation", SWING_SHORT, period=3, lag=2)),
+        block("autocorrelation_flat", "Autocorrelation(5, 1) over constant closes: nothing",
+              statistics_case("autocorrelation", flat_bars(12), period=5, lag=1)),
+        block("hurst_rs_defaults", "Hurst exponent by rescaled range (128, 8) over 260 swing bars",
+              statistics_case("hurst_rs", SWING_LONG)),
+        block("hurst_rs_short", "Hurst(16, 4) over 40 swing bars: chunk sizes 16, 8, 4",
+              statistics_case("hurst_rs", SWING_SHORT, period=16, min_chunk=4)),
+        block("hurst_rs_two_sizes", "Hurst(9, 4): chunk sizes 9 and 4 with a remainder",
+              statistics_case("hurst_rs", SWING_SHORT, period=9, min_chunk=4)),
+        block("hurst_rs_flat", "Hurst(16, 4) over constant closes: nothing",
+              statistics_case("hurst_rs", flat_bars(30), period=16, min_chunk=4)),
+        block("ar1_half_life_defaults", "AR(1) half-life(100) over 260 swing bars",
+              statistics_case("ar1_half_life", SWING_LONG)),
+        block("ar1_half_life_short", "AR(1) half-life(12) over 40 swing bars",
+              statistics_case("ar1_half_life", SWING_SHORT, period=12)),
+        block("ar1_half_life_minimal", "AR(1) half-life(3): two pairs",
+              statistics_case("ar1_half_life", SWING_SHORT, period=3)),
+        block("ar1_half_life_line", "AR(1) half-life(10) over a straight line: phi is 1 up to "
+              "rounding, nothing", statistics_case("ar1_half_life", LINE, period=10)),
+        block("ar1_half_life_negative", "AR(1) half-life(10) over alternating closes: phi below 0, "
+              "nothing", statistics_case("ar1_half_life", ALTERNATING, period=10)),
+        block("ar1_half_life_flat", "AR(1) half-life(5) over constant closes: nothing",
+              statistics_case("ar1_half_life", flat_bars(12), period=5)),
     ]
     return header, blocks
