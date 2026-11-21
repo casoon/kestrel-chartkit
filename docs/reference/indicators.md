@@ -1227,13 +1227,13 @@ Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component wi
 
 ### `schaff_trend_cycle`
 
-Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1) (extra `macd`). A stage without range repeats its previous stochastic (50 at the start), so a flat series stays calm.
+Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1). A stage without range repeats its previous stochastic; at the start the first stage reads 50 and the second the smoothed value itself, so a flat series stays at 50, a steady fall reads 0 and a steady rise 100.
 
 **Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/schaff_trend_cycle/)
 
-**Output** unit Ratio, range not declared · **warmup** 50 bars
+**Output** unit Ratio, range 0 – 100 · **warmup** 50 bars
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
@@ -1250,13 +1250,13 @@ Requires `lower` to be smaller than `upper`.
 
 ### `qqe`
 
-Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extras `trail`, `trend`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.
+Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extra `trail`, state `up`/`down`/`undecided`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.
 
 **Not yet verified:** acceptance against a second implementation pending.
 
 [See it in the showcase](../../../showcase/qqe/)
 
-**Output** unit Ratio, range not declared · **warmup** 16 bars
+**Output** unit Ratio, range 0 – 100 · **warmup** 16 bars
 
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|

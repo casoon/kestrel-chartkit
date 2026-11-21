@@ -221,16 +221,32 @@ fn n2_oscillators_answer_with_the_negation_or_the_complement() {
         &[],
         &[("value", Answer::Complement(100.0))],
     );
-    check_bars_entry("schaff_trend_cycle", &[], &[("macd", Answer::Negated)]);
     check_bars_entry(
         "qqe",
         &[],
         &[
             ("value", Answer::Complement(100.0)),
             ("trail", Answer::Complement(100.0)),
-            ("trend", Answer::Negated),
         ],
     );
+    // The trend is a state label: the reflected series is up where the original is down.
+    for (label, bars) in series() {
+        let mirrored = mirror(&bars);
+        let mut a = build_checked("qqe", &HashMap::new()).unwrap();
+        let mut b = build_checked("qqe", &HashMap::new()).unwrap();
+        for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
+            let (sa, sb) = (
+                a.on_bar(x).and_then(|o| o.state),
+                b.on_bar(y).and_then(|o| o.state),
+            );
+            let opposite = sa.as_deref().map(|s| match s {
+                "up" => "down",
+                "down" => "up",
+                other => other,
+            });
+            assert_eq!(sb.as_deref(), opposite, "qqe state {label}@{i}");
+        }
+    }
     check_bars_entry(
         "relative_momentum_index",
         &[],

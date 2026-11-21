@@ -170,6 +170,15 @@ impl StateChange {
     }
 }
 
+/// The state label of a direction: `up`, `down`, or `undecided` before the first decision.
+pub(crate) fn trend_state(trend: i8) -> &'static str {
+    match trend {
+        1 => "up",
+        -1 => "down",
+        _ => "undecided",
+    }
+}
+
 fn alert(kind: &str, note: &str) -> IndicatorAlert {
     IndicatorAlert::new(kind, note, 1.0)
 }
@@ -312,9 +321,7 @@ impl Indicator for SchaffTrendCycleEngine {
         }
         self.above_lower.update(stc, self.lower);
         self.below_upper.update(stc, self.upper);
-        let mut extra = HashMap::new();
-        extra.insert("macd".to_string(), macd);
-        Some(IndicatorOutput::with_extra(stc, extra))
+        Some(IndicatorOutput::new(stc))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -422,7 +429,9 @@ impl Indicator for QqeEngine {
     }
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
-        self.change.update(None);
+        // No alert from an earlier bar survives into this one; the state itself is kept, so a
+        // change is measured against the previous published bar.
+        self.change.to = None;
         let rsi = self.rsi.update(bar.close)?;
         let m = self.m_ema.update(rsi);
         let prev_m = self.prev_m.replace(m)?;
@@ -461,8 +470,7 @@ impl Indicator for QqeEngine {
         self.change.update(Some(self.trend));
         let mut extra = HashMap::new();
         extra.insert("trail".to_string(), trail);
-        extra.insert("trend".to_string(), f64::from(self.trend));
-        Some(IndicatorOutput::with_extra(m, extra))
+        Some(IndicatorOutput::with_extra(m, extra).with_state(trend_state(self.trend)))
     }
 
     fn alerts(&self) -> Vec<IndicatorAlert> {
@@ -780,7 +788,7 @@ const OPEN: Verification = Verification::Open("acceptance against a second imple
 pub const SCHAFF_TREND_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "schaff_trend_cycle",
     aliases: &[],
-    description: "Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1) (extra `macd`). A stage without range repeats its previous stochastic (50 at the start), so a flat series stays calm.",
+    description: "Schaff Trend Cycle: the MACD line of the close run twice through a stochastic of `cycle` bars, each smoothed with `factor`; 0 to 100, published from bar max(slow, 2 * cycle - 1). A stage without range repeats its previous stochastic; at the start the first stage reads 50 and the second the smoothed value itself, so a flat series stays at 50, a steady fall reads 0 and a steady rise 100.",
     params: &[
         ParamSpec::count("fast", 23, 1, 10000).meaning("bars of the fast EMA in the MACD line"),
         ParamSpec::count("slow", 50, 2, 10000).meaning("bars of the slow EMA in the MACD line, above fast"),
@@ -803,7 +811,7 @@ pub const SCHAFF_TREND_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefiniti
             upper: "upper",
         },
     ],
-    facts: IndicatorFacts::ratio(),
+    facts: IndicatorFacts::ratio().bounded(0.0, 100.0),
     verification: OPEN,
     build: |p| {
         Ok(Box::new(SchaffTrendCycleEngine::new(
@@ -821,14 +829,14 @@ pub const SCHAFF_TREND_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefiniti
 pub const QQE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "qqe",
     aliases: &[],
-    description: "Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extras `trail`, `trend`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.",
+    description: "Quantitative Qualitative Estimation: the EMA-smoothed RSI with a trailing line `factor` double-smoothed mean changes away (extra `trail`, state `up`/`down`/`undecided`); the trend starts undecided instead of up and turns when the smoothed RSI moves beyond the previous bar's opposite band. Published from bar rsi_len + 2.",
     params: &[
         ParamSpec::count("rsi_len", 14, 2, 10000).meaning("bars of the RSI"),
         ParamSpec::count("smoothing", 5, 1, 10000).meaning("bars of the EMA over the RSI"),
         ParamSpec::number("factor", 4.236, 1e-9, 1000.0).meaning("band width in smoothed mean changes of the line"),
     ],
     checks: &[],
-    facts: IndicatorFacts::ratio(),
+    facts: IndicatorFacts::ratio().bounded(0.0, 100.0),
     verification: OPEN,
     build: |p| {
         Ok(Box::new(QqeEngine::new(
@@ -1032,13 +1040,53 @@ mod tests {
     }
 
     #[test]
+    fn qqe_alerts_on_every_change_of_trend() {
+        let mut q = build_checked("qqe", &HashMap::new()).unwrap();
+        let (mut prev, mut changes, mut alerts) = (None, 0, 0);
+        for i in 0..400 {
+            let c = 100.0 + 10.0 * (f64::from(i) * 0.07).sin() + 0.5 * (f64::from(i) * 0.9).sin();
+            let Some(out) = q.on_bar(&close_bar(c)) else {
+                continue;
+            };
+            let trend = match out.state.as_deref() {
+                Some("up") => 1.0,
+                Some("down") => -1.0,
+                _ => 0.0,
+            };
+            let fired = q.alerts();
+            if let Some(p) = prev {
+                if p != trend {
+                    changes += 1;
+                    let want = if trend > 0.0 { "bull" } else { "bear" };
+                    assert_eq!(
+                        fired.len(),
+                        1,
+                        "bar {i}: trend {p} -> {trend} without alert"
+                    );
+                    assert_eq!(fired[0].kind, want);
+                }
+            }
+            if prev == Some(trend) {
+                assert!(fired.is_empty(), "bar {i}: alert without a change of trend");
+            }
+            alerts += fired.len();
+            prev = Some(trend);
+        }
+        assert!(
+            changes >= 4,
+            "the series has to turn the trend a few times ({changes})"
+        );
+        assert_eq!(alerts, changes);
+    }
+
+    #[test]
     fn qqe_value_is_the_smoothed_rsi_and_starts_undecided() {
         let mut qqe = QqeEngine::new(3, 2, 4.236);
         let outs: Vec<_> = CLOSES.iter().map(|&c| qqe.on_bar(&close_bar(c))).collect();
         assert_eq!(qqe.warmup_period(), 5);
         assert!(outs[..4].iter().all(Option::is_none));
         let first = outs[4].as_ref().unwrap();
-        assert_eq!(first.extra["trend"], 0.0);
+        assert_eq!(first.state.as_deref(), Some("undecided"));
         assert_eq!(first.extra["trail"], first.value);
         for o in outs[4..].iter().flatten() {
             assert!((0.0..=100.0).contains(&o.value));

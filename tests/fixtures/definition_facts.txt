@@ -642,7 +642,7 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
-"QQE"	canonical="qqe"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+"QQE"	canonical="qqe"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
@@ -722,7 +722,7 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
-"SCHAFF_TREND_CYCLE"	canonical="schaff_trend_cycle"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+"SCHAFF_TREND_CYCLE"	canonical="schaff_trend_cycle"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
@@ -1602,7 +1602,7 @@
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
-"qqe"	canonical="qqe"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+"qqe"	canonical="qqe"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
@@ -1682,7 +1682,7 @@
 	source Close: ok same as without source
 	source Open: ok same as without source
 	source Hlc3: ok same as without source
-"schaff_trend_cycle"	canonical="schaff_trend_cycle"	range=Unbounded	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
+"schaff_trend_cycle"	canonical="schaff_trend_cycle"	range=Bounded { min: 0.0, max: 100.0 }	unit=Ratio	data=DataRequirements { needs_real_volume: false, needs_trade_direction: false, session_sensitive: false, roll_sensitive: false, adjustment_sensitive: false, needs_liquidity_depth: false, structure_method: None }	pair=PairRequirements { same_price_adjustment: false, same_session: false }
 	source Close: ok same as without source
 	source Open: ok differs from without source
 	source Hlc3: ok differs from without source
@@ -1996,8 +1996,8 @@ entry "trendflex" Bars range=Centered { center: 0.0 }
 entry "correlation_trend" Bars range=Bounded { min: -1.0, max: 1.0 }
 entry "laguerre_rsi" Bars range=Bounded { min: 0.0, max: 1.0 }
 entry "cyber_cycle" Bars range=Centered { center: 0.0 }
-entry "schaff_trend_cycle" Bars range=Unbounded
-entry "qqe" Bars range=Unbounded
+entry "schaff_trend_cycle" Bars range=Bounded { min: 0.0, max: 100.0 }
+entry "qqe" Bars range=Bounded { min: 0.0, max: 100.0 }
 entry "demarker" Bars range=Bounded { min: 0.0, max: 1.0 }
 entry "relative_momentum_index" Bars range=Bounded { min: 0.0, max: 100.0 }
 entry "squeeze_momentum" Bars range=Centered { center: 0.0 }
