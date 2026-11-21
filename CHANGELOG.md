@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-11-21
+
 ### Changed
 
 - **Catalog:** `correlation`, `relative_strength`, `intrabar_cvd`, `gap`, `point_and_figure`, `fvg_fill`, `kestrel_vwap_regime`, `kestrel_swing_structure`, `trendlines`, `chart_patterns` and `harmonic_patterns` are now verified against a second implementation; 196 entries in all, all verified.
