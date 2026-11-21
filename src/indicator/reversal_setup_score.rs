@@ -251,7 +251,7 @@ impl ReversalSetupScore {
 
 impl Indicator for ReversalSetupScore {
     fn name(&self) -> &str {
-        "reversal_setup_score"
+        "kestrel_reversal_setup_score"
     }
 
     fn warmup_period(&self) -> usize {
@@ -1047,9 +1047,9 @@ impl Indicator for ReversalSetupScore {
 
 pub const REVERSAL_SETUP_SCORE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "reversal_setup_score",
-        aliases: &[],
-        description: "Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict",
+        name: "kestrel_reversal_setup_score",
+        aliases: &["reversal_setup_score"],
+        description: "Kestrel Reversal Setup Score (default parameters, momentum mix RSI+MFI+MACD): bull/bear setup score (RSI, MFI or RSI without volume, MACD histogram, EMA-20 distance, Bollinger touch, wick, falling bar efficiency, shock bar; regime-weighted) and confirmation score (spring/upthrust and BOS/CHoCH on micro 3/3 and major 7/7 swings, fake breaks, climax-test-BOS sequence, premium/discount), latched event confirmation with decay, follow-through, failure, conflicts, quality; value = bull score (setup + 1.3 confirmation), secondary = bear score; extra: bull/bear_setup, _conf, _conf_decayed, _quality, _status, conflict_count, clx_state, clx_direction, price_zone, efficiency_ratio, rsi; alerts bull/bear_review, _action, _candidate, _major_bos, _choch, bull_spring, bear_upthrust, bear_failed_bull_reversal, bull_failed_bear_reversal, long/bull_signal_invalidated, conflict",
         params: &[
 
         ],

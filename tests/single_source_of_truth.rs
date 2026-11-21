@@ -452,7 +452,7 @@ fn the_names_the_scoring_keys_on_are_catalog_entries() {
     let mut checked = 0;
     // Only the match on the indicator's name: the alert kinds above it are not names.
     let by_name = code
-        .split_once("match name.to_lowercase().as_str() {")
+        .split_once("match crate::indicator::registry::canonical_name(name).as_str() {")
         .expect("reason_builder matches on the indicator name")
         .1;
     for line in by_name.lines() {

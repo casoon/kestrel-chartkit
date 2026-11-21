@@ -68,10 +68,10 @@ is complete. The mark must match the `verification` of the entry's definition
 | rvi | ✅ |
 | ultimate_oscillator | ✅ |
 | wavetrend | ✅ |
-| flow_exhaustion | ✅ |
-| overextension_risk | ✅ |
+| kestrel_flow_exhaustion | ✅ |
+| kestrel_overextension_risk | ✅ |
 | roc_context | ✅ |
-| rsi_cycle_stats | ✅ |
+| kestrel_rsi_cycle_stats | ✅ |
 | percent_rank | ✅ |
 | roofing_filter | ✅ |
 | reflex | ✅ |
@@ -104,8 +104,8 @@ is complete. The mark must match the `verification` of the entry's definition
 | ulcer_index | ✅ |
 | vix_fix | ✅ |
 | vortex | ✅ |
-| coil_release | ✅ |
-| reaction_speed | ✅ |
+| kestrel_coil_release | ✅ |
+| kestrel_reaction_speed | ✅ |
 
 ## Volume
 
@@ -132,7 +132,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | rvat | ✅ |
 | rvol | ✅ |
 | volume | ✅ |
-| vwap_regime | ❌ |
+| kestrel_vwap_regime | ❌ |
 
 ## Trend
 
@@ -146,7 +146,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | ichimoku | ✅ |
 | midas | ✅ |
 | trend_relationship | ✅ |
-| price_location | ✅ |
+| kestrel_price_location | ✅ |
 | zscore | ✅ |
 | smoothed_supertrend | ✅ |
 
@@ -154,11 +154,11 @@ is complete. The mark must match the `verification` of the entry's definition
 
 | Indicator | Verified |
 |---|---|
-| trend_quality | ✅ |
-| buy_sell_pressure | ✅ |
+| kestrel_trend_quality | ✅ |
+| kestrel_buy_sell_pressure | ✅ |
 | volatility_regime | ✅ |
 | cusum | ✅ |
-| multi_factor | ✅ |
+| kestrel_multi_factor | ✅ |
 
 ## Structure/Pattern Detectors
 
@@ -185,23 +185,23 @@ is complete. The mark must match the `verification` of the entry's definition
 | oscillator_pivot_divergence | ✅ |
 | wavetrend_divergence | ✅ |
 | stoch_rsi_divergence | ✅ |
-| bottom_formation | ✅ |
-| price_average_relation | ✅ |
-| leg_conviction | ✅ |
-| trend_break_risk | ✅ |
-| sweep_reversal_score | ✅ |
-| equal_level_liquidity | ✅ |
-| leg_character | ✅ |
-| accumulation_phase | ✅ |
-| reversal_setup_score | ✅ |
-| structure_zones | ✅ |
-| structural_flow | ✅ |
-| compression_zones | ✅ |
-| tradability_filter | ✅ |
-| market_state_chain | ✅ |
+| kestrel_bottom_formation | ✅ |
+| kestrel_price_average_relation | ✅ |
+| kestrel_leg_conviction | ✅ |
+| kestrel_trend_break_risk | ✅ |
+| kestrel_sweep_reversal_score | ✅ |
+| kestrel_equal_level_liquidity | ✅ |
+| kestrel_leg_character | ✅ |
+| kestrel_accumulation_phase | ✅ |
+| kestrel_reversal_setup_score | ✅ |
+| kestrel_structure_zones | ✅ |
+| kestrel_structural_flow | ✅ |
+| kestrel_compression_zones | ✅ |
+| kestrel_tradability_filter | ✅ |
+| kestrel_market_state_chain | ✅ |
 | period_midpoint | ✅ |
 | opening_range | ✅ |
-| swing_structure | ❌ |
+| kestrel_swing_structure | ❌ |
 | fvg_fill | ❌ |
 | chart_patterns | ❌ |
 | harmonic_patterns | ❌ |

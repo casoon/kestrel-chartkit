@@ -88,7 +88,7 @@ fn is_list_key(key: &str) -> bool {
 }
 
 fn check(prefix: &str, with_volume: bool) {
-    let mut ind = build_checked("equal_level_liquidity", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_equal_level_liquidity", &HashMap::new()).unwrap();
     let key = |k: &str| format!("{prefix}_{k}");
     let val = |k: &str| common::golden_value(GOLDEN, &key(k));
     let tol = common::golden_value(GOLDEN, "lqh_tolerance");
@@ -227,8 +227,8 @@ fn level_scenario() -> Vec<Bar> {
 #[test]
 fn the_list_names_every_level_its_tests_and_its_events() {
     let params = HashMap::from([("list_min_touches".to_string(), 1.0)]);
-    let mut ind = build_checked("equal_level_liquidity", &params).unwrap();
-    let mut by_default = build_checked("equal_level_liquidity", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_equal_level_liquidity", &params).unwrap();
+    let mut by_default = build_checked("kestrel_equal_level_liquidity", &HashMap::new()).unwrap();
     let outputs: Vec<_> = level_scenario()
         .iter()
         .map(|bar| (ind.on_bar(bar), by_default.on_bar(bar)))
@@ -342,8 +342,8 @@ fn the_mirror_image_gives_the_mirrored_output() {
                     ("eq_tolerance_atr".to_string(), tolerance),
                     ("list_min_touches".to_string(), min_list),
                 ]);
-                let mut plain = build_checked("equal_level_liquidity", &params).unwrap();
-                let mut twin = build_checked("equal_level_liquidity", &params).unwrap();
+                let mut plain = build_checked("kestrel_equal_level_liquidity", &params).unwrap();
+                let mut twin = build_checked("kestrel_equal_level_liquidity", &params).unwrap();
                 for (t, bar) in bars.iter().enumerate() {
                     let mirror = Bar::new(
                         bar.timestamp,

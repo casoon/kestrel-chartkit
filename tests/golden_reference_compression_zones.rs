@@ -30,7 +30,7 @@ fn has(key: &str) -> bool {
 
 #[test]
 fn compression_zones_match_the_reference_implementation() {
-    let mut ind = build_checked("compression_zones", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_compression_zones", &HashMap::new()).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut events: HashMap<String, Vec<usize>> = HashMap::new();

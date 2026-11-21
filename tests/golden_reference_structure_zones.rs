@@ -68,7 +68,7 @@ fn entries(prefix: &str) -> HashMap<String, f64> {
 }
 
 fn check(prefix: &str, with_volume: bool) {
-    let mut ind = build_checked("structure_zones", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_structure_zones", &HashMap::new()).unwrap();
     let val = |k: &str| common::golden_value(GOLDEN, &format!("{prefix}_{k}"));
     let tol = common::golden_value(GOLDEN, "vsz_tolerance");
     let mut first = None;
@@ -196,7 +196,7 @@ fn zone_scenario(mirrored: bool) -> Vec<Bar> {
 fn the_list_follows_a_zone_through_test_break_and_role_reversal() {
     for mirrored in [false, true] {
         let sign = if mirrored { -1.0 } else { 1.0 };
-        let mut ind = build_checked("structure_zones", &HashMap::new()).unwrap();
+        let mut ind = build_checked("kestrel_structure_zones", &HashMap::new()).unwrap();
         let outputs: Vec<_> = zone_scenario(mirrored)
             .iter()
             .map(|bar| ind.on_bar(bar))
@@ -266,8 +266,8 @@ fn the_zone_list_of_the_mirror_image_is_the_mirrored_list() {
     let (mut zones, mut events) = (0usize, [0usize; 5]);
     for seed in 1..=6u64 {
         let bars = common::generate_random_walk_bars(seed, 500, 100.0, 0.0, 1.5, 0.0);
-        let mut plain = build_checked("structure_zones", &HashMap::new()).unwrap();
-        let mut twin = build_checked("structure_zones", &HashMap::new()).unwrap();
+        let mut plain = build_checked("kestrel_structure_zones", &HashMap::new()).unwrap();
+        let mut twin = build_checked("kestrel_structure_zones", &HashMap::new()).unwrap();
         for (t, bar) in bars.iter().enumerate() {
             let mirror = Bar::new(
                 bar.timestamp,

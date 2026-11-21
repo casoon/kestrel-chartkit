@@ -56,7 +56,7 @@ pub const COVERAGE: &[Coverage] = &[
     Coverage::full("trendlines"),
     Coverage::full("zone_rejection"),
     Coverage::full("double_pattern"),
-    Coverage::full("bottom_formation"),
+    Coverage::full("kestrel_bottom_formation"),
     Coverage {
         indicator: "pivot_divergence",
         values: Status::Partial(DIVERGENCE_OSCILLATORS),
@@ -548,7 +548,7 @@ fn double_pattern_rejects_invalid_configuration() {
 fn bottom_formation_defaults() {
     holds(
         "bottom_formation_defaults",
-        "bottom_formation",
+        "kestrel_bottom_formation",
         IndicatorUnit::Unitless,
     );
 }
@@ -557,7 +557,7 @@ fn bottom_formation_defaults() {
 fn bottom_formation_mirrored() {
     holds(
         "bottom_formation_mirrored",
-        "bottom_formation",
+        "kestrel_bottom_formation",
         IndicatorUnit::Unitless,
     );
 }
@@ -566,17 +566,17 @@ fn bottom_formation_mirrored() {
 fn bottom_formation_expiry() {
     holds(
         "bottom_formation_expiry",
-        "bottom_formation",
+        "kestrel_bottom_formation",
         IndicatorUnit::Unitless,
     );
 }
 
 #[test]
 fn bottom_formation_rejects_invalid_configuration() {
-    assert_rejected("bottom_formation", &[("pivot_len", 0.0)]);
-    assert_rejected("bottom_formation", &[("max_stage_bars", 0.0)]);
-    assert_rejected("bottom_formation", &[("retest_atr", -0.5)]);
-    assert_rejected("bottom_formation", &[("retest", 0.5)]);
+    assert_rejected("kestrel_bottom_formation", &[("pivot_len", 0.0)]);
+    assert_rejected("kestrel_bottom_formation", &[("max_stage_bars", 0.0)]);
+    assert_rejected("kestrel_bottom_formation", &[("retest_atr", -0.5)]);
+    assert_rejected("kestrel_bottom_formation", &[("retest", 0.5)]);
 }
 
 // --- pivot_divergence, oscillator_pivot_divergence -------------------------------------------

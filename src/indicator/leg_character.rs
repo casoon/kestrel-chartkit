@@ -483,7 +483,7 @@ impl LegCharacter {
 
 impl Indicator for LegCharacter {
     fn name(&self) -> &str {
-        "leg_character"
+        "kestrel_leg_character"
     }
 
     fn warmup_period(&self) -> usize {
@@ -648,9 +648,9 @@ impl Indicator for LegCharacter {
 
 pub const LEG_CHARACTER_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "leg_character",
-        aliases: &[],
-        description: "Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
+        name: "kestrel_leg_character",
+        aliases: &["leg_character"],
+        description: "Kestrel Leg Character: character of the live leg from the last alternating pivot (min_leg_atr filter) to the current extreme, from ten features (efficiency, overlap, retracement, commitment, wick cleanliness, momentum/true-range expansion, EMA support, cleanliness, acceptance); value = impulse score 0..100 (correction = 100 - impulse, both pulled to 50 by maturity); extra: correction, confidence, maturity, bars, direction, class, leg_start, the ten features, internal_swings, avg_internal_swing_atr, progression_ratio, sub_leg_growth; state impulse/correction/neutral with hysteresis; alerts bull/bear_impulse (leg direction), correction_started, character_lost",
         params: &[
             super::definition::ParamSpec::count("pivot_left", 5, 1, 50).meaning("bars left of a pivot"),
             super::definition::ParamSpec::count("pivot_right", 5, 1, 50).meaning("bars right of a pivot, the confirmation delay"),

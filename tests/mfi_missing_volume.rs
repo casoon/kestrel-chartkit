@@ -129,7 +129,7 @@ fn smoothed_line_recovers_after_a_missing_volume() {
 fn flow_exhaustion_stays_finite_after_a_missing_volume() {
     let entry = kestrel_chartkit::indicator::registry::catalog()
         .into_iter()
-        .find(|e| e.name == "flow_exhaustion")
+        .find(|e| e.name == "kestrel_flow_exhaustion")
         .unwrap();
     let mut bars = generate_random_walk_bars(7, 400, 100.0, 0.05, 2.0, 1000.0);
     bars[100].volume = f64::NAN;

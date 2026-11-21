@@ -27,7 +27,7 @@ counterparts towards `-1`. When an indicator raised no alert, some are scored fr
 | `macd`                                                | histogram sign: `±0.3`                                     |
 | `bollinger`                                           | `%b` above 1: `-0.5`, below 0: `+0.5`                       |
 | `vortex`                                              | `(VI+ − VI−) × 2`, if the gap exceeds `0.05`               |
-| `trend_quality`                                       | `value / 100`                                              |
+| `kestrel_trend_quality`                               | `value / 100`                                              |
 
 The oscillators read as mean reversion: overbought is bearish. In a strong uptrend they therefore
 argue against the trend, and the regime vetoes the result. Combine indicators whose reading

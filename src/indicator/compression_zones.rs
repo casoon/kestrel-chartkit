@@ -232,7 +232,7 @@ impl CompressionZones {
 
 impl Indicator for CompressionZones {
     fn name(&self) -> &str {
-        "compression_zones"
+        "kestrel_compression_zones"
     }
 
     fn warmup_period(&self) -> usize {
@@ -487,9 +487,9 @@ impl Indicator for CompressionZones {
 
 pub const COMPRESSION_ZONES_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "compression_zones",
-        aliases: &[],
-        description: "Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
+        name: "kestrel_compression_zones",
+        aliases: &["compression_zones"],
+        description: "Kestrel Compression Zones: compression zones from a 0..80 score (ATR compression, ADX chop, volume dry-up where real volume exists, impulse-in, historical S/R reuse) plus range compression and boundary-touch structure; value = score; extra: range_atr, in_zone, zone_high/zone_low, upper_touches, lower_touches, read (bull/bear pressure or continuation), armed, hist_reuse; alerts bull/bear_breakout (close beyond the zone edge within watch_bars after a zone of at least min_zone_bars, with body, close position and volume checks; prefix = expected move)",
         params: &[
             super::definition::ParamSpec::count("lookback", 16, 8, 100).meaning("bars the range compression is measured over"),
             super::definition::ParamSpec::count("min_zone_bars", 5, 3, 50).meaning("bars a zone must last before its breakout alerts"),

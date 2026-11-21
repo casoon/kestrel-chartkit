@@ -136,7 +136,7 @@ impl SweepReversalScore {
 
 impl Indicator for SweepReversalScore {
     fn name(&self) -> &str {
-        "sweep_reversal_score"
+        "kestrel_sweep_reversal_score"
     }
 
     /// First output once the ATR baseline (an average of the ATR), the RSI (from the second bar
@@ -257,9 +257,9 @@ impl Indicator for SweepReversalScore {
 
 pub const SWEEP_REVERSAL_SCORE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "sweep_reversal_score",
-        aliases: &[],
-        description: "Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
+        name: "kestrel_sweep_reversal_score",
+        aliases: &["sweep_reversal_score"],
+        description: "Kestrel Sweep Reversal Score (chart-timeframe configuration, higher-timeframe gates off): liquidity sweep of the last swing_len bars' extreme with a close back inside, ATR above atr_low_factor x its SMA, quality 0..2 (long: RSI > 50, no lower low; short mirrored: RSI < 50, no higher high) against min_quality_long/short (both 2), cooldown; value 1 long / -1 short / 0; extra: long_quality, short_quality, rsi, atr, atr_base, swing_low, swing_high, entry/stop/take on signal bars; alerts bull/bear_sweep_reversal",
         params: &[
             super::definition::ParamSpec::count("swing_len", 10, 2, 500).meaning("bars whose extreme a sweep must take out"),
             super::definition::ParamSpec::count("atr_len", 14, 1, 500).meaning("bars in the Wilder ATR"),

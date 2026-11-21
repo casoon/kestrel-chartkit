@@ -174,7 +174,7 @@ fn positions_answer_with_the_negation_or_the_complement() {
     // No two closes of these series are equal, so the rank has no ties to break.
     check_bars_entry("percent_rank", &[], &[("value", Answer::Complement(100.0))]);
     check_bars_entry(
-        "price_location",
+        "kestrel_price_location",
         &[],
         &[
             ("value", Answer::Negated),

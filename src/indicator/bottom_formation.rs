@@ -454,7 +454,7 @@ fn wick_of(machine: &Machine, step: &Step) -> Option<f64> {
 
 impl Indicator for BottomFormation {
     fn name(&self) -> &str {
-        "bottom_formation"
+        "kestrel_bottom_formation"
     }
 
     /// Every bar outputs the stages so far (0 before the first pivot).
@@ -524,9 +524,9 @@ impl Indicator for BottomFormation {
 }
 
 pub const BOTTOM_FORMATION_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
-    name: "bottom_formation",
-    aliases: &[],
-    description: "Bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage",
+    name: "kestrel_bottom_formation",
+    aliases: &["bottom_formation"],
+    description: "Kestrel bottom/top formation as a sequence of stages: attempt (new low below the last swing low of a falling sequence, reclaimed on the bar), stabilized (higher low), structure shift (close above the intermediate high), confirmed (retest holds, new high); top mirrored; extra: wick (attempt extreme, natural stop), bottom_stage, top_stage",
     params: &[
         super::definition::ParamSpec::count("pivot_len", 5, 1, 10000).meaning("bars on each side of a swing point"),
         super::definition::ParamSpec::count("max_stage_bars", 30, 1, 100000).meaning("bars after which an open stage expires"),

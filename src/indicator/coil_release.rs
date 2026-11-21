@@ -250,7 +250,7 @@ impl CoilRelease {
 
 impl Indicator for CoilRelease {
     fn name(&self) -> &str {
-        "coil_release"
+        "kestrel_coil_release"
     }
 
     fn warmup_period(&self) -> usize {
@@ -480,9 +480,9 @@ impl Indicator for CoilRelease {
 
 pub const COIL_RELEASE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "coil_release",
-        aliases: &[],
-        description: "Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
+        name: "kestrel_coil_release",
+        aliases: &["coil_release"],
+        description: "Kestrel Coil Release: coil strength from symbolic complexity, box-counting fractal dimension and efficiency over len bars; value = setup score 0..1 (coil score times release dynamics); trend context = EMA(ema_len) slope over slope_len bars in ATR units on the chart timeframe (originally a higher timeframe); extra: complexity, fractal_dim, efficiency, chop, coil, coil_score, release_dyn, trend, corr_high, corr_low, was_base; alerts bull/bear_release (first break of the break_len band with the trend) and bull/bear_base_break (break against the trend out of a base; prefix = expected move)",
         params: &[
             super::definition::ParamSpec::count("len", 34, 10, 150).meaning("bars the coil strength is measured over"),
             super::definition::ParamSpec::count("break_len", 12, 3, 50).meaning("bars of the band whose break is the release"),

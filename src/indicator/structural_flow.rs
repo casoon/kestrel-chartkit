@@ -401,7 +401,7 @@ impl StructuralFlow {
 
 impl Indicator for StructuralFlow {
     fn name(&self) -> &str {
-        "structural_flow"
+        "kestrel_structural_flow"
     }
 
     /// The slow horizon's persistence needs `len` change terms, each against the close `len` bars
@@ -1451,9 +1451,9 @@ impl Indicator for StructuralFlow {
 
 pub const STRUCTURAL_FLOW_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "structural_flow",
-        aliases: &[],
-        description: "Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves",
+        name: "kestrel_structural_flow",
+        aliases: &["structural_flow"],
+        description: "Kestrel Structural Flow (Balanced preset, relative-volume participation): multi-horizon structural flow (24/48/96) with entry/hold/flip hysteresis, internal wave (momentum, velocity, acceleration) aligned to it, wave segmentation and archives, counter pressure, integrity, maturity, compression, completed-counter-owned Re-Sync, exhaustion, five/three-segment sequence context and a nine-phase read; value = structural drive, secondary = aligned wave; extra: direction, strength, confidence, internal_wave, wave_quality, counter_pressure, integrity, retracement, maturity, compression, resync_quality, resync_stage, exhaustion, deterioration, wave_decay, impulse_context, correction_context, wave_context, phase, phase_confidence; alerts bull/bear_flow_initiated, flow_transition, bull/bear_flow_flip, bull/bear_expansion, correction_start, compression, bull/bear_early_resync, bull/bear_resync, late_expansion, exhaustion, failed_expansion, bull/bear_dominant_expansion, weakening_waves",
         params: &[
 
         ],

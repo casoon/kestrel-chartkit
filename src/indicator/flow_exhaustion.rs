@@ -342,7 +342,7 @@ impl FlowExhaustion {
 
 impl Indicator for FlowExhaustion {
     fn name(&self) -> &str {
-        "flow_exhaustion"
+        "kestrel_flow_exhaustion"
     }
 
     fn warmup_period(&self) -> usize {
@@ -518,9 +518,9 @@ impl Indicator for FlowExhaustion {
 
 pub const FLOW_EXHAUSTION_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
-        name: "flow_exhaustion",
-        aliases: &[],
-        description: "Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
+        name: "kestrel_flow_exhaustion",
+        aliases: &["flow_exhaustion"],
+        description: "Kestrel Flow Exhaustion (MFI + StochRSI): value = JMA-smoothed MFI of hlc3 (needs real volume, otherwise no output), secondary = JMA-smoothed StochRSI K; extra: stoch_k, upper/lower (adaptive zones over zone_lookback MFI values), divergence_score (signed, on emitting bars); alerts bull/bear_exhaustion (MFI in/leaving its zone + K crossing stoch_os/stoch_ob; prefix = expected move), bull/bear_divergence (price-pivot divergence of the MFI, emitted with its final score after react_bars)",
         params: &[
             super::definition::ParamSpec::count("pivot_len", 7, 1, 50).meaning("bars left and right of a price pivot for the divergence"),
             super::definition::ParamSpec::count("mfi_len", 14, 2, 500).meaning("bars in the money flow index"),

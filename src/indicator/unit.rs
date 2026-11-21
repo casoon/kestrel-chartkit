@@ -60,8 +60,7 @@ pub enum IndicatorUnit {
 /// `trend_relationship` are not.
 pub fn output_unit(name: &str) -> IndicatorUnit {
     let lowered = name.to_lowercase();
-    super::definition::definitions()
-        .find(|d| d.name == lowered)
+    super::definition::definition(&lowered)
         .map(|d| d.facts.unit)
         .or_else(|| super::other_input::declared_unit_range(&lowered).map(|(unit, _)| unit))
         .unwrap_or(IndicatorUnit::Unitless)

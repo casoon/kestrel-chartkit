@@ -98,7 +98,7 @@ pub fn score_indicator(
 
     // Secondary level checks if no explicit alerts fired
     if alerts.is_empty() {
-        match name.to_lowercase().as_str() {
+        match crate::indicator::registry::canonical_name(name).as_str() {
             "rsi" | "stoch_rsi" | "mfi" | "williams_r" | "connors_rsi" => {
                 if val > 70.0 {
                     score -= 0.4;
@@ -179,7 +179,7 @@ pub fn score_indicator(
                     reasons.push(format!("VORTEX: -VI über +VI ({vi_minus:.2} vs {val:.2})"));
                 }
             }
-            "trend_quality" => {
+            "kestrel_trend_quality" => {
                 // Already a signed, -100..100-scaled composite (direction × efficiency ×
                 // ADX-strength × RVOL-participation, see indicator/trend_quality.rs) — rescale
                 // into the -1..1 SubScore range directly instead of re-deriving a direction.

@@ -292,7 +292,7 @@ impl SwingStructureIndicator {
 
 impl Indicator for SwingStructureIndicator {
     fn name(&self) -> &str {
-        "swing_structure"
+        "kestrel_swing_structure"
     }
 
     fn warmup_period(&self) -> usize {
@@ -339,11 +339,11 @@ impl Indicator for SwingStructureIndicator {
     }
 }
 
-/// Registry definition of `swing_structure`.
+/// Registry definition of `kestrel_swing_structure`; `swing_structure` is its alias.
 pub const SWING_STRUCTURE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
-    name: "swing_structure",
-    aliases: &[],
-    description: "Statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras",
+    name: "kestrel_swing_structure",
+    aliases: &["swing_structure"],
+    description: "Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras",
     params: &[
         ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a swing pivot"),
         ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a swing pivot (the confirmation delay)"),

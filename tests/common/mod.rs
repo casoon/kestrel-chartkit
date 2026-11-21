@@ -22,20 +22,20 @@ pub mod contract;
 /// - `laguerre_rsi`: waits for the first bar on which a stage has moved, so a series that starts
 ///   flat publishes later than the second bar.
 pub const PATH_DEPENDENT_FIRST_OUTPUT: &[&str] = &[
-    "leg_character",
-    "structure_zones",
+    "kestrel_leg_character",
+    "kestrel_structure_zones",
     "cycle_length",
     "period_midpoint",
     "opening_range",
-    "vwap_regime",
-    "swing_structure",
+    "kestrel_vwap_regime",
+    "kestrel_swing_structure",
     "laguerre_rsi",
 ];
 
 /// Indicators that publish only while the data holds a confirmed structure, so how many bars have
 /// an output depends on the series: `swing_structure` needs strict pivots, and the tied peaks of
 /// the sine series (two bars of equal high) leave most of them out.
-pub const SPARSE_OUTPUT: &[&str] = &["swing_structure"];
+pub const SPARSE_OUTPUT: &[&str] = &["kestrel_swing_structure"];
 
 /// Generiert eine Flachpreis-Serie mit konstantem Preis und Volumen.
 pub fn generate_flat_bars(count: usize, price: f64, volume: f64) -> Vec<Bar> {

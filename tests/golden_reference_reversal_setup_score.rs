@@ -84,7 +84,7 @@ fn series(with_volume: bool) -> Vec<Bar> {
 }
 
 fn check(prefix: &str, with_volume: bool) {
-    let mut ind = build_checked("reversal_setup_score", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_reversal_setup_score", &HashMap::new()).unwrap();
     let val = |k: &str| common::golden_value(GOLDEN, &format!("{prefix}_{k}"));
     let tol = common::golden_value(GOLDEN, "vrs_tolerance");
     let mut first = None;

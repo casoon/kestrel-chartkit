@@ -45,7 +45,7 @@ fn series() -> Vec<Bar> {
 
 #[test]
 fn reversal_engine_matches_the_reference_implementation() {
-    let mut ind = build_checked("sweep_reversal_score", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_sweep_reversal_score", &HashMap::new()).unwrap();
     let tol = expected("res_tolerance");
     let mut first = None;
     let mut signals: HashMap<&str, Vec<usize>> = HashMap::new();

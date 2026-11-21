@@ -20,7 +20,7 @@ fn has(key: &str) -> bool {
 
 #[test]
 fn reaction_speed_matches_the_reference_implementation() {
-    let mut ind = build_checked("reaction_speed", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_reaction_speed", &HashMap::new()).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut finals = Vec::new();

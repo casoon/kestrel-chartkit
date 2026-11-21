@@ -29,7 +29,7 @@ fn has(key: &str) -> bool {
 }
 
 fn run(params: &HashMap<String, f64>, prefix: &str, check_values: bool) {
-    let mut ind = build_checked("market_state_chain", params).unwrap();
+    let mut ind = build_checked("kestrel_market_state_chain", params).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut events: HashMap<String, Vec<usize>> = HashMap::new();

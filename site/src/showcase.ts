@@ -58,7 +58,7 @@ const features: ShowcaseExample[] = [
     tags: ['score_indicator', 'aggregate_subscores', 'classify_regime'],
     input: {
       lang: 'rust',
-      code: `let subscores = vec![\n    score_indicator("macd", &macd_out, &macd.alerts()),\n    score_indicator("vortex", &vortex_out, &vortex.alerts()),\n    score_indicator("trend_quality", &tq_out, &tq.alerts()),\n];\nlet regime = classify_regime(&bars[..=i], adx_out.value, atr_out.value / 100.0);\nlet signal = aggregate_subscores(subscores, None, regime, Vec::new(), Some(bar), atr_out.extra["raw"]);\n// signal.trigger, signal.score, signal.permission`,
+      code: `let subscores = vec![\n    score_indicator("macd", &macd_out, &macd.alerts()),\n    score_indicator("vortex", &vortex_out, &vortex.alerts()),\n    score_indicator("kestrel_trend_quality", &tq_out, &tq.alerts()),\n];\nlet regime = classify_regime(&bars[..=i], adx_out.value, atr_out.value / 100.0);\nlet signal = aggregate_subscores(subscores, None, regime, Vec::new(), Some(bar), atr_out.extra["raw"]);\n// signal.trigger, signal.score, signal.permission`,
     },
     output: { html: inlineChart(spec('composite'), 'composite'), kind: 'panel' },
   },

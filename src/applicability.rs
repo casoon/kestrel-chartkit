@@ -971,7 +971,7 @@ mod tests {
             "zigzag_advanced",
             "pivots_structure",
             "pivot_sets",
-            "swing_structure",
+            "kestrel_swing_structure",
             "chart_patterns",
             "harmonic_patterns",
         ] {

@@ -26,7 +26,7 @@ fn has(key: &str) -> bool {
 
 #[test]
 fn flow_exhaustion_matches_the_reference_implementation() {
-    let mut ind = build_checked("flow_exhaustion", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_flow_exhaustion", &HashMap::new()).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut events: HashMap<String, Vec<usize>> = HashMap::new();

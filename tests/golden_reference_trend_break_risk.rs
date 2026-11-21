@@ -67,7 +67,7 @@ fn series() -> Vec<Bar> {
 
 #[test]
 fn trend_break_risk_matches_the_reference_implementation() {
-    let mut ind = build_checked("trend_break_risk", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_trend_break_risk", &HashMap::new()).unwrap();
     let tol = expected("sbr_tolerance");
     let mut first = None;
     let mut events: HashMap<&str, Vec<usize>> = HashMap::new();

@@ -88,7 +88,7 @@ fn series(prefix: &str) -> Vec<Bar> {
 }
 
 fn check(prefix: &str) {
-    let mut ind = build_checked("structural_flow", &HashMap::new()).unwrap();
+    let mut ind = build_checked("kestrel_structural_flow", &HashMap::new()).unwrap();
     let val = |k: &str| common::golden_value(GOLDEN, &format!("{prefix}_{k}"));
     let tol = common::golden_value(GOLDEN, "swf_tolerance");
     let mut first = None;

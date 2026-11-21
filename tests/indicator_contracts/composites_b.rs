@@ -17,33 +17,33 @@ pub const PENDING: &[&str] = &[];
 /// Undocumented alert strengths are pinned at the implemented convention, stated per indicator
 /// in `contract_composites_b.py`; those rows say so in their alert status.
 pub const COVERAGE: &[Coverage] = &[
-    Coverage::full("buy_sell_pressure"),
+    Coverage::full("kestrel_buy_sell_pressure"),
     Coverage {
-        indicator: "trend_quality",
+        indicator: "kestrel_trend_quality",
         values: Status::Specified,
         alerts: Status::Specified,
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "multi_factor",
+        indicator: "kestrel_multi_factor",
         values: Status::Specified,
         alerts: Status::Specified,
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "leg_conviction",
+        indicator: "kestrel_leg_conviction",
         values: Status::Specified,
         alerts: Status::Partial("strength (conviction drop / 100, 0.05..1) not documented"),
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "sweep_reversal_score",
+        indicator: "kestrel_sweep_reversal_score",
         values: Status::Partial("a bar firing long and short (long_*/short_* fields) not cased"),
         alerts: Status::Partial("strength (quality / 2) not documented"),
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "trend_break_risk",
+        indicator: "kestrel_trend_break_risk",
         values: Status::Specified,
         alerts: Status::Partial(
             "break_critical and bull_break_pressure never reached; strengths not documented",
@@ -51,7 +51,7 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "equal_level_liquidity",
+        indicator: "kestrel_equal_level_liquidity",
         values: Status::Specified,
         alerts: Status::Partial(
             "strengths (0.6 events, score / 100 reclaims, 0.4 near) not documented",
@@ -59,13 +59,13 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "leg_character",
+        indicator: "kestrel_leg_character",
         values: Status::Specified,
         alerts: Status::Partial("strengths (score / 100, 0.3 character_lost) not documented"),
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "accumulation_phase",
+        indicator: "kestrel_accumulation_phase",
         values: Status::Specified,
         alerts: Status::Partial(
             "breakout/breakdown ready never reached; strengths (0.4/0.6/0.8) not documented",
@@ -73,13 +73,13 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "reversal_setup_score",
+        indicator: "kestrel_reversal_setup_score",
         values: Status::Specified,
         alerts: Status::Partial("bull/bear_action never reached; strengths not documented"),
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "structure_zones",
+        indicator: "kestrel_structure_zones",
         values: Status::Partial(
             "real volume from the first bar moves the first output to bar 20 (warmup_period 15); \
              cased with volume starting after the warm-up",
@@ -88,7 +88,7 @@ pub const COVERAGE: &[Coverage] = &[
         configuration: Status::Specified,
     },
     Coverage {
-        indicator: "structural_flow",
+        indicator: "kestrel_structural_flow",
         values: Status::Specified,
         alerts: Status::Partial(
             "bull/bear_flow_flip never reached; strength (flow strength, 0.05..1) not documented",
@@ -103,7 +103,7 @@ pub const COVERAGE: &[Coverage] = &[
 fn buy_sell_pressure_defaults() {
     assert_holds(&case(
         "buy_sell_pressure_defaults",
-        "buy_sell_pressure",
+        "kestrel_buy_sell_pressure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -112,7 +112,7 @@ fn buy_sell_pressure_defaults() {
 fn buy_sell_pressure_period3() {
     assert_holds(&case(
         "buy_sell_pressure_period3",
-        "buy_sell_pressure",
+        "kestrel_buy_sell_pressure",
         IndicatorUnit::Unitless,
     ));
 }
@@ -121,16 +121,16 @@ fn buy_sell_pressure_period3() {
 fn buy_sell_pressure_edges() {
     assert_holds(&case(
         "buy_sell_pressure_edges",
-        "buy_sell_pressure",
+        "kestrel_buy_sell_pressure",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn buy_sell_pressure_rejects_invalid_configuration() {
-    assert_rejected("buy_sell_pressure", &[("period", 0.0)]);
-    assert_rejected("buy_sell_pressure", &[("period", 1.5)]);
-    assert_rejected("buy_sell_pressure", &[("length", 14.0)]);
+    assert_rejected("kestrel_buy_sell_pressure", &[("period", 0.0)]);
+    assert_rejected("kestrel_buy_sell_pressure", &[("period", 1.5)]);
+    assert_rejected("kestrel_buy_sell_pressure", &[("length", 14.0)]);
 }
 
 // --- Trend quality ---------------------------------------------------------------------------
@@ -139,7 +139,7 @@ fn buy_sell_pressure_rejects_invalid_configuration() {
 fn trend_quality_defaults() {
     assert_holds(&case(
         "trend_quality_defaults",
-        "trend_quality",
+        "kestrel_trend_quality",
         IndicatorUnit::Unitless,
     ));
 }
@@ -148,7 +148,7 @@ fn trend_quality_defaults() {
 fn trend_quality_period5() {
     assert_holds(&case(
         "trend_quality_period5",
-        "trend_quality",
+        "kestrel_trend_quality",
         IndicatorUnit::Unitless,
     ));
 }
@@ -157,7 +157,7 @@ fn trend_quality_period5() {
 fn trend_quality_novolume() {
     assert_holds(&case(
         "trend_quality_novolume",
-        "trend_quality",
+        "kestrel_trend_quality",
         IndicatorUnit::Unitless,
     ));
 }
@@ -166,16 +166,16 @@ fn trend_quality_novolume() {
 fn trend_quality_flat() {
     assert_holds(&case(
         "trend_quality_flat",
-        "trend_quality",
+        "kestrel_trend_quality",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn trend_quality_rejects_invalid_configuration() {
-    assert_rejected("trend_quality", &[("period", 1.0)]);
-    assert_rejected("trend_quality", &[("period", 10001.0)]);
-    assert_rejected("trend_quality", &[("perod", 14.0)]);
+    assert_rejected("kestrel_trend_quality", &[("period", 1.0)]);
+    assert_rejected("kestrel_trend_quality", &[("period", 10001.0)]);
+    assert_rejected("kestrel_trend_quality", &[("perod", 14.0)]);
 }
 
 // --- Multi-factor ----------------------------------------------------------------------------
@@ -184,7 +184,7 @@ fn trend_quality_rejects_invalid_configuration() {
 fn multi_factor_defaults() {
     assert_holds(&case(
         "multi_factor_defaults",
-        "multi_factor",
+        "kestrel_multi_factor",
         IndicatorUnit::Ratio,
     ));
 }
@@ -193,16 +193,16 @@ fn multi_factor_defaults() {
 fn multi_factor_period4() {
     assert_holds(&case(
         "multi_factor_period4",
-        "multi_factor",
+        "kestrel_multi_factor",
         IndicatorUnit::Ratio,
     ));
 }
 
 #[test]
 fn multi_factor_rejects_invalid_configuration() {
-    assert_rejected("multi_factor", &[("period", 1.0)]);
-    assert_rejected("multi_factor", &[("period", 2.5)]);
-    assert_rejected("multi_factor", &[("rsi_len", 14.0)]);
+    assert_rejected("kestrel_multi_factor", &[("period", 1.0)]);
+    assert_rejected("kestrel_multi_factor", &[("period", 2.5)]);
+    assert_rejected("kestrel_multi_factor", &[("rsi_len", 14.0)]);
 }
 
 // --- Leg conviction --------------------------------------------------------------------------
@@ -211,7 +211,7 @@ fn multi_factor_rejects_invalid_configuration() {
 fn leg_conviction_defaults() {
     assert_holds(&case(
         "leg_conviction_defaults",
-        "leg_conviction",
+        "kestrel_leg_conviction",
         IndicatorUnit::Ratio,
     ));
 }
@@ -220,7 +220,7 @@ fn leg_conviction_defaults() {
 fn leg_conviction_short_pivots() {
     assert_holds(&case(
         "leg_conviction_short_pivots",
-        "leg_conviction",
+        "kestrel_leg_conviction",
         IndicatorUnit::Ratio,
     ));
 }
@@ -229,18 +229,18 @@ fn leg_conviction_short_pivots() {
 fn leg_conviction_novolume() {
     assert_holds(&case(
         "leg_conviction_novolume",
-        "leg_conviction",
+        "kestrel_leg_conviction",
         IndicatorUnit::Ratio,
     ));
 }
 
 #[test]
 fn leg_conviction_rejects_invalid_configuration() {
-    assert_rejected("leg_conviction", &[("pivot_left", 0.0)]);
-    assert_rejected("leg_conviction", &[("max_leg", 1001.0)]);
-    assert_rejected("leg_conviction", &[("speed_ref", 0.0)]);
-    assert_rejected("leg_conviction", &[("w_volume", 1.5)]);
-    assert_rejected("leg_conviction", &[("pivot_len", 5.0)]);
+    assert_rejected("kestrel_leg_conviction", &[("pivot_left", 0.0)]);
+    assert_rejected("kestrel_leg_conviction", &[("max_leg", 1001.0)]);
+    assert_rejected("kestrel_leg_conviction", &[("speed_ref", 0.0)]);
+    assert_rejected("kestrel_leg_conviction", &[("w_volume", 1.5)]);
+    assert_rejected("kestrel_leg_conviction", &[("pivot_len", 5.0)]);
 }
 
 // --- Sweep reversal score --------------------------------------------------------------------
@@ -249,7 +249,7 @@ fn leg_conviction_rejects_invalid_configuration() {
 fn sweep_reversal_score_defaults() {
     assert_holds(&case(
         "sweep_reversal_score_defaults",
-        "sweep_reversal_score",
+        "kestrel_sweep_reversal_score",
         IndicatorUnit::Unitless,
     ));
 }
@@ -258,18 +258,18 @@ fn sweep_reversal_score_defaults() {
 fn sweep_reversal_score_short_windows() {
     assert_holds(&case(
         "sweep_reversal_score_short_windows",
-        "sweep_reversal_score",
+        "kestrel_sweep_reversal_score",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn sweep_reversal_score_rejects_invalid_configuration() {
-    assert_rejected("sweep_reversal_score", &[("swing_len", 1.0)]);
-    assert_rejected("sweep_reversal_score", &[("min_quality_long", 3.0)]);
-    assert_rejected("sweep_reversal_score", &[("atr_low_factor", -0.1)]);
-    assert_rejected("sweep_reversal_score", &[("cooldown", 0.5)]);
-    assert_rejected("sweep_reversal_score", &[("sl_atr_buffer", 0.3)]);
+    assert_rejected("kestrel_sweep_reversal_score", &[("swing_len", 1.0)]);
+    assert_rejected("kestrel_sweep_reversal_score", &[("min_quality_long", 3.0)]);
+    assert_rejected("kestrel_sweep_reversal_score", &[("atr_low_factor", -0.1)]);
+    assert_rejected("kestrel_sweep_reversal_score", &[("cooldown", 0.5)]);
+    assert_rejected("kestrel_sweep_reversal_score", &[("sl_atr_buffer", 0.3)]);
 }
 
 // --- Trend break risk ------------------------------------------------------------------------
@@ -278,7 +278,7 @@ fn sweep_reversal_score_rejects_invalid_configuration() {
 fn trend_break_risk_defaults() {
     assert_holds(&case(
         "trend_break_risk_defaults",
-        "trend_break_risk",
+        "kestrel_trend_break_risk",
         IndicatorUnit::Ratio,
     ));
 }
@@ -287,7 +287,7 @@ fn trend_break_risk_defaults() {
 fn trend_break_risk_fast() {
     assert_holds(&case(
         "trend_break_risk_fast",
-        "trend_break_risk",
+        "kestrel_trend_break_risk",
         IndicatorUnit::Ratio,
     ));
 }
@@ -296,17 +296,17 @@ fn trend_break_risk_fast() {
 fn trend_break_risk_crash() {
     assert_holds(&case(
         "trend_break_risk_crash",
-        "trend_break_risk",
+        "kestrel_trend_break_risk",
         IndicatorUnit::Ratio,
     ));
 }
 
 #[test]
 fn trend_break_risk_rejects_invalid_configuration() {
-    assert_rejected("trend_break_risk", &[("bias_len", 1.0)]);
-    assert_rejected("trend_break_risk", &[("near_atr", 0.0)]);
-    assert_rejected("trend_break_risk", &[("smooth_len", 101.0)]);
-    assert_rejected("trend_break_risk", &[("w_near", 25.0)]);
+    assert_rejected("kestrel_trend_break_risk", &[("bias_len", 1.0)]);
+    assert_rejected("kestrel_trend_break_risk", &[("near_atr", 0.0)]);
+    assert_rejected("kestrel_trend_break_risk", &[("smooth_len", 101.0)]);
+    assert_rejected("kestrel_trend_break_risk", &[("w_near", 25.0)]);
 }
 
 // --- Equal-level liquidity -------------------------------------------------------------------
@@ -315,7 +315,7 @@ fn trend_break_risk_rejects_invalid_configuration() {
 fn equal_level_liquidity_defaults() {
     assert_holds(&case(
         "equal_level_liquidity_defaults",
-        "equal_level_liquidity",
+        "kestrel_equal_level_liquidity",
         IndicatorUnit::Unitless,
     ));
 }
@@ -324,7 +324,7 @@ fn equal_level_liquidity_defaults() {
 fn equal_level_liquidity_novolume() {
     assert_holds(&case(
         "equal_level_liquidity_novolume",
-        "equal_level_liquidity",
+        "kestrel_equal_level_liquidity",
         IndicatorUnit::Unitless,
     ));
 }
@@ -333,7 +333,7 @@ fn equal_level_liquidity_novolume() {
 fn equal_level_liquidity_tuned() {
     assert_holds(&case(
         "equal_level_liquidity_tuned",
-        "equal_level_liquidity",
+        "kestrel_equal_level_liquidity",
         IndicatorUnit::Unitless,
     ));
 }
@@ -342,19 +342,28 @@ fn equal_level_liquidity_tuned() {
 fn equal_level_liquidity_listed() {
     assert_holds(&case(
         "equal_level_liquidity_listed",
-        "equal_level_liquidity",
+        "kestrel_equal_level_liquidity",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn equal_level_liquidity_rejects_invalid_configuration() {
-    assert_rejected("equal_level_liquidity", &[("list_min_touches", 0.0)]);
-    assert_rejected("equal_level_liquidity", &[("pivot_len", 0.0)]);
-    assert_rejected("equal_level_liquidity", &[("min_touches", 21.0)]);
-    assert_rejected("equal_level_liquidity", &[("max_distance_atr", 0.05)]);
-    assert_rejected("equal_level_liquidity", &[("eq_tolerance_atr", -0.1)]);
-    assert_rejected("equal_level_liquidity", &[("premium_score", 65.0)]);
+    assert_rejected(
+        "kestrel_equal_level_liquidity",
+        &[("list_min_touches", 0.0)],
+    );
+    assert_rejected("kestrel_equal_level_liquidity", &[("pivot_len", 0.0)]);
+    assert_rejected("kestrel_equal_level_liquidity", &[("min_touches", 21.0)]);
+    assert_rejected(
+        "kestrel_equal_level_liquidity",
+        &[("max_distance_atr", 0.05)],
+    );
+    assert_rejected(
+        "kestrel_equal_level_liquidity",
+        &[("eq_tolerance_atr", -0.1)],
+    );
+    assert_rejected("kestrel_equal_level_liquidity", &[("premium_score", 65.0)]);
 }
 
 // --- Accumulation phase ----------------------------------------------------------------------
@@ -363,7 +372,7 @@ fn equal_level_liquidity_rejects_invalid_configuration() {
 fn accumulation_phase_base() {
     assert_holds(&case(
         "accumulation_phase_base",
-        "accumulation_phase",
+        "kestrel_accumulation_phase",
         IndicatorUnit::Unitless,
     ));
 }
@@ -372,7 +381,7 @@ fn accumulation_phase_base() {
 fn accumulation_phase_top() {
     assert_holds(&case(
         "accumulation_phase_top",
-        "accumulation_phase",
+        "kestrel_accumulation_phase",
         IndicatorUnit::Unitless,
     ));
 }
@@ -381,18 +390,18 @@ fn accumulation_phase_top() {
 fn accumulation_phase_fast() {
     assert_holds(&case(
         "accumulation_phase_fast",
-        "accumulation_phase",
+        "kestrel_accumulation_phase",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn accumulation_phase_rejects_invalid_configuration() {
-    assert_rejected("accumulation_phase", &[("lookback", 9.0)]);
-    assert_rejected("accumulation_phase", &[("min_phase_bars", 2.0)]);
-    assert_rejected("accumulation_phase", &[("er_range", 0.01)]);
-    assert_rejected("accumulation_phase", &[("bbw_compress", 6.0)]);
-    assert_rejected("accumulation_phase", &[("pivot_len", 3.0)]);
+    assert_rejected("kestrel_accumulation_phase", &[("lookback", 9.0)]);
+    assert_rejected("kestrel_accumulation_phase", &[("min_phase_bars", 2.0)]);
+    assert_rejected("kestrel_accumulation_phase", &[("er_range", 0.01)]);
+    assert_rejected("kestrel_accumulation_phase", &[("bbw_compress", 6.0)]);
+    assert_rejected("kestrel_accumulation_phase", &[("pivot_len", 3.0)]);
 }
 
 // --- Leg character ---------------------------------------------------------------------------
@@ -401,7 +410,7 @@ fn accumulation_phase_rejects_invalid_configuration() {
 fn leg_character_defaults() {
     assert_holds(&case(
         "leg_character_defaults",
-        "leg_character",
+        "kestrel_leg_character",
         IndicatorUnit::Ratio,
     ));
 }
@@ -410,18 +419,18 @@ fn leg_character_defaults() {
 fn leg_character_short_legs() {
     assert_holds(&case(
         "leg_character_short_legs",
-        "leg_character",
+        "kestrel_leg_character",
         IndicatorUnit::Ratio,
     ));
 }
 
 #[test]
 fn leg_character_rejects_invalid_configuration() {
-    assert_rejected("leg_character", &[("max_leg_bars", 19.0)]);
-    assert_rejected("leg_character", &[("mature_bars", 1.0)]);
-    assert_rejected("leg_character", &[("impulse_threshold", 49.0)]);
-    assert_rejected("leg_character", &[("change_buffer", 26.0)]);
-    assert_rejected("leg_character", &[("min_separation", 18.0)]);
+    assert_rejected("kestrel_leg_character", &[("max_leg_bars", 19.0)]);
+    assert_rejected("kestrel_leg_character", &[("mature_bars", 1.0)]);
+    assert_rejected("kestrel_leg_character", &[("impulse_threshold", 49.0)]);
+    assert_rejected("kestrel_leg_character", &[("change_buffer", 26.0)]);
+    assert_rejected("kestrel_leg_character", &[("min_separation", 18.0)]);
 }
 
 // --- Reversal setup score --------------------------------------------------------------------
@@ -430,7 +439,7 @@ fn leg_character_rejects_invalid_configuration() {
 fn reversal_setup_score_volume() {
     assert_holds(&case(
         "reversal_setup_score_volume",
-        "reversal_setup_score",
+        "kestrel_reversal_setup_score",
         IndicatorUnit::Unitless,
     ));
 }
@@ -439,7 +448,7 @@ fn reversal_setup_score_volume() {
 fn reversal_setup_score_novolume() {
     assert_holds(&case(
         "reversal_setup_score_novolume",
-        "reversal_setup_score",
+        "kestrel_reversal_setup_score",
         IndicatorUnit::Unitless,
     ));
 }
@@ -448,7 +457,7 @@ fn reversal_setup_score_novolume() {
 fn reversal_setup_score_candidates() {
     assert_holds(&case(
         "reversal_setup_score_candidates",
-        "reversal_setup_score",
+        "kestrel_reversal_setup_score",
         IndicatorUnit::Unitless,
     ));
 }
@@ -457,15 +466,15 @@ fn reversal_setup_score_candidates() {
 fn reversal_setup_score_long_invalidated() {
     assert_holds(&case(
         "reversal_setup_score_long_invalidated",
-        "reversal_setup_score",
+        "kestrel_reversal_setup_score",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn reversal_setup_score_rejects_invalid_configuration() {
-    assert_rejected("reversal_setup_score", &[("rsi_len", 14.0)]);
-    assert_rejected("reversal_setup_score", &[("momentum_mix", 0.0)]);
+    assert_rejected("kestrel_reversal_setup_score", &[("rsi_len", 14.0)]);
+    assert_rejected("kestrel_reversal_setup_score", &[("momentum_mix", 0.0)]);
 }
 
 // --- Structure zones -------------------------------------------------------------------------
@@ -474,7 +483,7 @@ fn reversal_setup_score_rejects_invalid_configuration() {
 fn structure_zones_volume() {
     assert_holds(&case(
         "structure_zones_volume",
-        "structure_zones",
+        "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
 }
@@ -483,7 +492,7 @@ fn structure_zones_volume() {
 fn structure_zones_holds() {
     assert_holds(&case(
         "structure_zones_holds",
-        "structure_zones",
+        "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
 }
@@ -492,7 +501,7 @@ fn structure_zones_holds() {
 fn structure_zones_novolume() {
     assert_holds(&case(
         "structure_zones_novolume",
-        "structure_zones",
+        "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
 }
@@ -501,7 +510,7 @@ fn structure_zones_novolume() {
 fn structure_zones_lifecycle() {
     assert_holds(&case(
         "structure_zones_lifecycle",
-        "structure_zones",
+        "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
 }
@@ -510,15 +519,15 @@ fn structure_zones_lifecycle() {
 fn structure_zones_mirrored_lifecycle() {
     assert_holds(&case(
         "structure_zones_mirrored_lifecycle",
-        "structure_zones",
+        "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn structure_zones_rejects_invalid_configuration() {
-    assert_rejected("structure_zones", &[("atr_len", 14.0)]);
-    assert_rejected("structure_zones", &[("zone_atr", 3.0)]);
+    assert_rejected("kestrel_structure_zones", &[("atr_len", 14.0)]);
+    assert_rejected("kestrel_structure_zones", &[("zone_atr", 3.0)]);
 }
 
 // --- Structural flow -------------------------------------------------------------------------
@@ -527,7 +536,7 @@ fn structure_zones_rejects_invalid_configuration() {
 fn structural_flow_volume() {
     assert_holds(&case(
         "structural_flow_volume",
-        "structural_flow",
+        "kestrel_structural_flow",
         IndicatorUnit::Unitless,
     ));
 }
@@ -536,7 +545,7 @@ fn structural_flow_volume() {
 fn structural_flow_novolume() {
     assert_holds(&case(
         "structural_flow_novolume",
-        "structural_flow",
+        "kestrel_structural_flow",
         IndicatorUnit::Unitless,
     ));
 }
@@ -545,13 +554,13 @@ fn structural_flow_novolume() {
 fn structural_flow_transitions() {
     assert_holds(&case(
         "structural_flow_transitions",
-        "structural_flow",
+        "kestrel_structural_flow",
         IndicatorUnit::Unitless,
     ));
 }
 
 #[test]
 fn structural_flow_rejects_invalid_configuration() {
-    assert_rejected("structural_flow", &[("preset", 1.0)]);
-    assert_rejected("structural_flow", &[("len_slow", 96.0)]);
+    assert_rejected("kestrel_structural_flow", &[("preset", 1.0)]);
+    assert_rejected("kestrel_structural_flow", &[("len_slow", 96.0)]);
 }

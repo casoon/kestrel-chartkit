@@ -37,7 +37,7 @@ fn has(key: &str) -> bool {
 }
 
 fn run(params: &HashMap<String, f64>, prefix: &str, check_values: bool) {
-    let mut ind = build_checked("rsi_cycle_stats", params).unwrap();
+    let mut ind = build_checked("kestrel_rsi_cycle_stats", params).unwrap();
     let tol = expected("tolerance");
     let mut first = None;
     let mut events: HashMap<String, Vec<usize>> = HashMap::new();
