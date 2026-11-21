@@ -154,7 +154,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | rvat | ✅ |
 | rvol | ✅ |
 | volume | ✅ |
-| kestrel_vwap_regime | ❌ |
+| kestrel_vwap_regime | ✅ |
 
 ## Trend
 
@@ -204,7 +204,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
-| trendlines | ❌ |
+| trendlines | ✅ |
 | zone_rejection | ✅ |
 | double_pattern | ✅ |
 | pivot_divergence | ✅ |
@@ -227,7 +227,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | kestrel_market_state_chain | ✅ |
 | period_midpoint | ✅ |
 | opening_range | ✅ |
-| kestrel_swing_structure | ❌ |
+| kestrel_swing_structure | ✅ |
 | fvg_fill | ✅ |
 | chart_patterns | ❌ |
 | harmonic_patterns | ❌ |
@@ -252,4 +252,4 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 191/196 verified** — the same 196 names `catalog()` returns.
+**Total: 194/196 verified** — the same 196 names `catalog()` returns.

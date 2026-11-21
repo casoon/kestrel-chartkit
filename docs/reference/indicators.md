@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 191 of the 196 entries are verified, 5 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 194 of the 196 entries are verified, 2 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -149,7 +149,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `nvi` | bars | verified |
 | `pvi` | bars | verified |
 | `chaikin_oscillator` | bars | verified |
-| `kestrel_vwap_regime` | bars | **not yet verified:** no independent second implementation yet |
+| `kestrel_vwap_regime` | bars | verified |
 | `order_block` | bars | verified |
 | `liquidity_fvg` | bars | verified |
 | `gap` | bars | verified |
@@ -171,11 +171,11 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `liquidity_pools` | bars | verified |
 | `wyckoff` | bars | verified |
 | `zigzag_advanced` | bars | verified |
-| `trendlines` | bars | **not yet verified:** verification not completed |
+| `trendlines` | bars | verified |
 | `kestrel_price_location` | bars | verified |
 | `opening_range` | bars | verified |
 | `period_midpoint` | bars | verified |
-| `kestrel_swing_structure` | bars | **not yet verified:** no independent second implementation yet |
+| `kestrel_swing_structure` | bars | verified |
 | `fvg_fill` | bars | verified |
 | `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
 | `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
@@ -1999,8 +1999,6 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), cross_frequency and price_persistence as extras, plus z_score while the VWAP sigma is positive; needs real volume
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/kestrel_vwap_regime/)
 
 **Output** unit Unitless, range not declared · **warmup** 21 bars · needs real volume
@@ -2348,8 +2346,6 @@ ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (d
 
 Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width); alerts bear_support_line_break, bull_resistance_line_break
 
-**Not yet verified:** verification not completed.
-
 [See it in the showcase](../../../showcase/trendlines/)
 
 **Output** unit Unitless, range not declared · **warmup** 14 bars
@@ -2415,8 +2411,6 @@ Midpoint (high + low) / 2 of the last completed period of count units, held unti
 ### `kestrel_swing_structure` · alias `swing_structure`
 
 Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras. Purpose: trend strength as the sizes of impulse and correction legs in ATRs instead of a binary trend flag; highs and lows are treated alike, so a reflected series reads the same. Use: how deep corrections usually run, how far the current one has come and how much of a typical impulse would remain. Caveat: every pivot is known `right` bars late, and the entry zone and reward-to-risk describe the swing measured so far; they are no orders
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/kestrel_swing_structure/)
 

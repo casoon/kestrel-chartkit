@@ -484,7 +484,7 @@ pub const TRENDLINES_DEFINITION: super::definition::IndicatorDefinition = super:
         .roll_sensitive()
         .adjustment_sensitive()
         .range_dependent(),
-    verification: super::definition::Verification::Open("verification not completed"),
+    verification: super::definition::Verification::Verified,
     build: |p| {
         let value = p.number("deviation_pct");
         let deviation = match p.choice("deviation_mode") {

@@ -305,9 +305,7 @@ pub const VWAP_REGIME_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         .needs_real_volume()
         .session_sensitive()
         .range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(VwapRegimeEngine::new(
             p.count("window"),

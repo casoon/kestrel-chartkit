@@ -423,9 +423,7 @@ pub const SWING_STRUCTURE_DEFINITION: IndicatorDefinition = IndicatorDefinition 
         .roll_sensitive()
         .adjustment_sensitive()
         .range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| {
         Ok(Box::new(SwingStructureIndicator::new(
             p.count("left"),
