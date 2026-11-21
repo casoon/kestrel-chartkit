@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 185 of the 196 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 191 of the 196 entries are verified, 5 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -152,8 +152,8 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `kestrel_vwap_regime` | bars | **not yet verified:** no independent second implementation yet |
 | `order_block` | bars | verified |
 | `liquidity_fvg` | bars | verified |
-| `gap` | bars | **not yet verified:** verification not completed |
-| `point_and_figure` | bars | **not yet verified:** verification not completed |
+| `gap` | bars | verified |
+| `point_and_figure` | bars | verified |
 | `market_structure_breaks` | bars | verified |
 | `pivots_structure` | bars | verified |
 | `candle_classification` | bars | verified |
@@ -176,7 +176,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `opening_range` | bars | verified |
 | `period_midpoint` | bars | verified |
 | `kestrel_swing_structure` | bars | **not yet verified:** no independent second implementation yet |
-| `fvg_fill` | bars | **not yet verified:** no independent second implementation yet |
+| `fvg_fill` | bars | verified |
 | `chart_patterns` | bars | **not yet verified:** no independent second implementation yet |
 | `harmonic_patterns` | bars | **not yet verified:** no independent second implementation yet |
 | `setup_countdown` | bars | verified |
@@ -205,12 +205,12 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `kestrel_trend_quality` | bars | verified |
 | `kestrel_buy_sell_pressure` | bars | verified |
 | `kestrel_multi_factor` | bars | verified |
-| `correlation` | two series | **not yet verified:** no independent second implementation yet |
-| `relative_strength` | two series | **not yet verified:** no independent second implementation yet |
+| `correlation` | two series | verified |
+| `relative_strength` | two series | verified |
 | `rolling_beta` | two series | verified |
 | `pair_spread` | two series | verified |
 | `heikin_ashi` | candle transform | verified |
-| `intrabar_cvd` | intrabar | **not yet verified:** no independent second implementation yet |
+| `intrabar_cvd` | intrabar | verified |
 
 ## Moving averages, bands and trend lines
 
@@ -2047,8 +2047,6 @@ Fair value gap (imbalance) detection
 
 Price gap between consecutive bars: the open beyond the previous bar's range or close, size in ATR of the previous bar, every open gap with its filled fraction, closing as an event
 
-**Not yet verified:** verification not completed.
-
 [See it in the showcase](../../../showcase/gap/)
 
 **Output** unit Unitless, range not declared · **warmup** 15 bars
@@ -2063,8 +2061,6 @@ Price gap between consecutive bars: the open beyond the previous bar's range or 
 ### `point_and_figure` · alias `pnf`
 
 Point-and-figure chart: columns of X and O from a box size and a reversal in boxes; the current column with its number, direction and boxes on every bar
-
-**Not yet verified:** verification not completed.
 
 [See it in the showcase](../../../showcase/point_and_figure/)
 
@@ -2436,8 +2432,6 @@ Kestrel statistical swing structure: the median correction over the median impul
 ### `fvg_fill`
 
 Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras. Purpose: gaps as objects with a lifetime, from creation to the first return, instead of a one-shot event. Use: where open gaps lie and when price comes back to them. Caveat: a fill is a touch, not a reaction; a resting order inside a zone is filled on every return, also on those that run straight through it, so read the close of the returning bars before treating a fill as a turn
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/fvg_fill/)
 
@@ -2917,8 +2911,6 @@ These are entries of `catalog()` whose `input` is not `Bars`; `build_checked` an
 
 Rolling Pearson correlation of the simple returns of two close series
 
-**Not yet verified:** no independent second implementation yet.
-
 **Output** unit Ratio, range -1 – 1 · **warmup** 21 paired bars
 
 | Parameter | Default | Accepted | Meaning |
@@ -2928,8 +2920,6 @@ Rolling Pearson correlation of the simple returns of two close series
 #### `relative_strength`
 
 Return difference and price ratio of a series against a reference series
-
-**Not yet verified:** no independent second implementation yet.
 
 **Output** unit Ratio, range open, centred on 0 · **warmup** 21 paired bars
 
@@ -2974,8 +2964,6 @@ Heikin-Ashi candles: averaged open, high, low and close derived from observed ba
 #### `intrabar_cvd`
 
 Cumulative volume delta booked from lower-timeframe bars inside each parent bar
-
-**Not yet verified:** no independent second implementation yet.
 
 **Output** unit Volume, range not declared
 

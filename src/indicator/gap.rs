@@ -383,7 +383,7 @@ pub const GAP_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::unitless()
             .structure_method(crate::applicability::StructureMethod::PriceGaps)
             .range_dependent(),
-        verification: super::definition::Verification::Open("verification not completed"),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(GapEngine::new(GapParams {
                 reference: match p.choice("reference") {

@@ -144,7 +144,7 @@ pub const POINT_AND_FIGURE_DEFINITION: super::definition::IndicatorDefinition =
         facts: super::definition::IndicatorFacts::unitless()
             .structure_method(crate::applicability::StructureMethod::PointAndFigure)
             .range_dependent(),
-        verification: super::definition::Verification::Open("verification not completed"),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(PointAndFigureEngine::new(
                 p.number("box_size"),

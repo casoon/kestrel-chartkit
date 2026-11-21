@@ -307,7 +307,7 @@ pub const INTRABAR_CVD_DEFINITION: IntrabarDefinition = IntrabarDefinition {
     ],
     checks: &[],
     facts: IndicatorFacts::volume().needs_real_volume(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_intrabar_cvd,
 };
 

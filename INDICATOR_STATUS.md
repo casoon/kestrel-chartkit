@@ -192,7 +192,7 @@ is complete. The mark must match the `verification` of the entry's definition
 |---|---|
 | bos_choch | ✅ |
 | candle_classification | ✅ |
-| gap | ❌ |
+| gap | ✅ |
 | liquidity_fvg | ✅ |
 | liquidity_pools | ✅ |
 | liquidity_sweeps | ✅ |
@@ -200,7 +200,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | order_block | ✅ |
 | pivot_sets | ✅ |
 | pivots_structure | ✅ |
-| point_and_figure | ❌ |
+| point_and_figure | ✅ |
 | wyckoff | ✅ |
 | zigzag | ✅ |
 | zigzag_advanced | ✅ |
@@ -228,7 +228,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | period_midpoint | ✅ |
 | opening_range | ✅ |
 | kestrel_swing_structure | ❌ |
-| fvg_fill | ❌ |
+| fvg_fill | ✅ |
 | chart_patterns | ❌ |
 | harmonic_patterns | ❌ |
 | setup_countdown | ✅ |
@@ -243,13 +243,13 @@ intrabar (`build_intrabar_checked`).
 
 | Indicator | Verified |
 |---|---|
-| correlation | ❌ |
-| relative_strength | ❌ |
+| correlation | ✅ |
+| relative_strength | ✅ |
 | rolling_beta | ✅ |
 | pair_spread | ✅ |
 | heikin_ashi | ✅ |
-| intrabar_cvd | ❌ |
+| intrabar_cvd | ✅ |
 
 ---
 
-**Total: 185/196 verified** — the same 196 names `catalog()` returns.
+**Total: 191/196 verified** — the same 196 names `catalog()` returns.

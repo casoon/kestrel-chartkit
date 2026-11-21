@@ -87,7 +87,7 @@ pub const CORRELATION_DEFINITION: PairIndicatorDefinition = PairIndicatorDefinit
     facts: IndicatorFacts::ratio()
         .bounded(-1.0, 1.0)
         .same_adjustment_and_session(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_correlation,
 };
 

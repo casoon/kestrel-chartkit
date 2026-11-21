@@ -409,9 +409,7 @@ pub const FVG_FILL_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         .meaning("newest open zones that are kept")],
     checks: &[],
     facts: crate::indicator::definition::IndicatorFacts::unitless().range_dependent(),
-    verification: crate::indicator::definition::Verification::Open(
-        "no independent second implementation yet",
-    ),
+    verification: crate::indicator::definition::Verification::Verified,
     build: |p| Ok(Box::new(FvgFillEngine::new(p.count("max_zones")))),
 };
 

@@ -158,7 +158,7 @@ pub const RELATIVE_STRENGTH_DEFINITION: PairIndicatorDefinition = PairIndicatorD
     facts: IndicatorFacts::ratio()
         .centered(0.0)
         .same_adjustment_and_session(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: build_relative_strength,
 };
 
