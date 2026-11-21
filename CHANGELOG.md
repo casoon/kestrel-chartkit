@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Catalog:** `parkinson`, `rogers_satchell`, `yang_zhang`, `variance_ratio`, `autocorrelation`, `hurst_rs` and `ar1_half_life` are new catalog entries, open (not yet verified); 187 entries in all, 168 of them verified. A parameter relation can now also be written as "`times` times `value` at most `limit`" (`Check::AtMost`).
+
 ### Changed
 
 - **Catalog:** `kestrel_adaptive_smoother` is accepted and counts as verified; its formula and measurements are in the [guide](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/).

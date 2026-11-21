@@ -201,6 +201,12 @@ pub enum Check {
         lower: &'static str,
         upper: &'static str,
     },
+    /// `times` times `value` must not exceed `limit`.
+    AtMost {
+        value: &'static str,
+        times: usize,
+        limit: &'static str,
+    },
 }
 
 /// How `build_typed` treats a requested price `source` for an indicator.
@@ -800,6 +806,20 @@ fn resolve(
                         parameter: lower.to_string(),
                         value: low,
                         reason: format!("{lower} must be smaller than {upper}"),
+                    });
+                }
+            }
+            Check::AtMost {
+                value,
+                times,
+                limit,
+            } => {
+                let (given, bound) = (resolved.scalar(value), resolved.scalar(limit));
+                if times as f64 * given > bound {
+                    return Err(RegistryError::InvalidParameter {
+                        parameter: value.to_string(),
+                        value: given,
+                        reason: format!("{times} times {value} must not exceed {limit}"),
                     });
                 }
             }

@@ -243,6 +243,15 @@ fn parameters(out: &mut String, params: &[ParamSpec], checks: &[Check]) {
             Check::Less { lower, upper } => {
                 writeln!(out, "Requires `{lower}` to be smaller than `{upper}`.\n").unwrap()
             }
+            Check::AtMost {
+                value,
+                times,
+                limit,
+            } => writeln!(
+                out,
+                "Requires {times} times `{value}` not to exceed `{limit}`.\n"
+            )
+            .unwrap(),
         }
     }
 }
