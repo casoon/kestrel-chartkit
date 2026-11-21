@@ -5,8 +5,8 @@
 //!
 //! Covers the triangle family (symmetrical, ascending, descending) and its diverging counterpart
 //! the broadening formation, Rising/Falling Wedge, the 1-2-3 Reversal, the Wolfe Wave, the classic
-//! reversal family (double and triple top/bottom, head and shoulders and its inverse), and
-//! auto-fitted trendlines. Each detector is a fixed, documented geometric rule over swing points —
+//! reversal family (double and triple top/bottom, head and shoulders and its inverse), the flag,
+//! cup and handle and its inverse, and auto-fitted trendlines. Each detector is a fixed, documented geometric rule over swing points —
 //! a deterministic approximation of how these patterns are described in TA literature, not a claim
 //! that every instance found is a "real" tradable pattern.
 //!
@@ -94,6 +94,15 @@ pub enum ChartPatternKind {
     TripleBottom,
     HeadAndShoulders,
     InverseHeadAndShoulders,
+    /// A pole (one swing) and a narrow channel sloping against it: four further swing points
+    /// between two roughly parallel lines. Bullish or bearish after the pole's direction.
+    Flag,
+    /// Two rims at about one level with a bottom between them (the cup), then a pullback from
+    /// the right rim that stays in the cup's upper half (the handle).
+    CupAndHandle,
+    /// Cup and handle upside down: two lows at about one level with a top between them, then a
+    /// rise from the right low that stays in the lower half.
+    InverseCupAndHandle,
 }
 
 impl ChartPatternKind {
@@ -225,6 +234,39 @@ impl ChartPatternCandidate {
             | ChartPatternKind::TripleBottom
             | ChartPatternKind::HeadAndShoulders
             | ChartPatternKind::InverseHeadAndShoulders => unreachable!("handled above"),
+            ChartPatternKind::Flag => match (&self.upper_line, &self.lower_line) {
+                (Some(upper), Some(lower)) => {
+                    let (upper, lower) =
+                        (upper.value_at(bar.timestamp), lower.value_at(bar.timestamp));
+                    // The pole's direction decides which side is the breakout.
+                    let bullish = !self.nodes[0].is_high;
+                    let (beyond, against) = if bullish {
+                        (bar.close > upper, bar.close < lower)
+                    } else {
+                        (bar.close < lower, bar.close > upper)
+                    };
+                    if beyond {
+                        PatternState::Confirmed
+                    } else if against {
+                        PatternState::Invalidated
+                    } else {
+                        PatternState::Forming
+                    }
+                }
+                _ => PatternState::Forming,
+            },
+            ChartPatternKind::CupAndHandle | ChartPatternKind::InverseCupAndHandle => {
+                let (right_rim, handle) = (self.nodes[2].price, self.nodes[3].price);
+                // Bullish when the rims are highs; the inverse flips both comparisons.
+                let sign = if self.nodes[0].is_high { 1.0 } else { -1.0 };
+                if sign * (bar.close - right_rim) > 0.0 {
+                    PatternState::Confirmed
+                } else if sign * (bar.close - handle) < 0.0 {
+                    PatternState::Invalidated
+                } else {
+                    PatternState::Forming
+                }
+            }
             ChartPatternKind::WolfeWave => {
                 let n5 = self.nodes[4];
                 let target_line = TrendLine::from_nodes(&self.nodes[0], &self.nodes[3]); // line 1-4 projects the target
@@ -300,6 +342,13 @@ impl ChartPatternCandidate {
     }
 }
 
+/// How far a flag's channel may narrow or widen across its window and still count as parallel:
+/// a share of the gap at the pole's end. Beyond it the channel converges into a pennant.
+pub const FLAG_PARALLEL: f64 = 0.25;
+
+/// How much of the pole a flag's channel may give back, as a share of the pole's height.
+pub const FLAG_MAX_RETRACE: f64 = 0.5;
+
 /// Scans a swing-node sequence for pattern candidates and evicts overlapping lower-confidence
 /// ones, so the result is a ranked, non-redundant set rather than every geometrically-possible
 /// match.
@@ -357,6 +406,8 @@ impl ChartPatternDetector {
         candidates.extend(self.scan_double_extremes(nodes));
         candidates.extend(self.scan_triple_extremes(nodes));
         candidates.extend(self.scan_head_and_shoulders(nodes));
+        candidates.extend(self.scan_flags(nodes));
+        candidates.extend(self.scan_cups_with_handle(nodes));
         candidates
     }
 
@@ -757,6 +808,142 @@ impl ChartPatternDetector {
                 lower_line: Some(if n1.is_high { line24 } else { line13 }),
                 state: PatternState::Forming,
                 confidence,
+            });
+        }
+        out
+    }
+
+    /// A flag: five alternating nodes, the first two the pole, the other four a channel.
+    ///
+    /// For a bullish flag (node 1 a low, node 2 a high; mirrored for the bearish flag):
+    ///
+    /// 1. the channel slopes against the pole: node 4 is below node 2 and node 5 below node 3
+    ///    (lower highs and lower lows);
+    /// 2. the channel lines, 2-4 through the highs and 3-5 through the lows, are about parallel:
+    ///    the gap between them changes by at most [`FLAG_PARALLEL`] of the gap at node 2 across the
+    ///    window. A channel that narrows faster is a pennant, which this rule does not report;
+    /// 3. the channel is shallow against the pole: its lowest node gives back at most
+    ///    [`FLAG_MAX_RETRACE`] of the pole's height.
+    ///
+    /// The third condition is the pole requirement: without a move much larger than the channel
+    /// before it, the same channel is a narrow range and nothing more. How fast the pole was is
+    /// not tested; on swing nodes a steep and a slow leg of the same height look alike.
+    /// `tolerance_pct` plays no part. `confidence` is the parallelism, `1 - change / allowed
+    /// change`. Confirmed on a close beyond the channel line on the pole's side, invalidated on a
+    /// close beyond the other line.
+    fn scan_flags(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut out = Vec::new();
+        for window in nodes.windows(5) {
+            let alternating = window.windows(2).all(|p| p[0].is_high != p[1].is_high);
+            if !alternating {
+                continue;
+            }
+            let (n1, n2, n3, n4, n5) = (&window[0], &window[1], &window[2], &window[3], &window[4]);
+            // Bullish when the pole rises from a low; every comparison below flips with `sign`.
+            let sign = if n1.is_high { -1.0 } else { 1.0 };
+            let pole = sign * (n2.price - n1.price);
+            if pole <= 0.0 {
+                continue;
+            }
+            if sign * (n4.price - n2.price) >= 0.0 || sign * (n5.price - n3.price) >= 0.0 {
+                continue;
+            }
+
+            // Line through the pole's end and node 4, line through nodes 3 and 5.
+            let pole_side = TrendLine::from_nodes(n2, n4);
+            let far_side = TrendLine::from_nodes(n3, n5);
+            let gap = |ts: i64| sign * (pole_side.value_at(ts) - far_side.value_at(ts));
+            let (gap_start, gap_end) = (gap(n2.timestamp), gap(n5.timestamp));
+            if gap_start <= 0.0 || gap_end <= 0.0 {
+                continue;
+            }
+            let change = (gap_end - gap_start).abs() / gap_start;
+            if change > FLAG_PARALLEL {
+                continue;
+            }
+            let deepest = if sign > 0.0 {
+                n3.price.min(n5.price)
+            } else {
+                n3.price.max(n5.price)
+            };
+            if sign * (n2.price - deepest) > FLAG_MAX_RETRACE * pole {
+                continue;
+            }
+
+            let (upper_line, lower_line) = if sign > 0.0 {
+                (pole_side, far_side)
+            } else {
+                (far_side, pole_side)
+            };
+            out.push(ChartPatternCandidate {
+                kind: ChartPatternKind::Flag,
+                nodes: window.to_vec(),
+                upper_line: Some(upper_line),
+                lower_line: Some(lower_line),
+                state: PatternState::Forming,
+                confidence: (1.0 - change / FLAG_PARALLEL).clamp(0.0, 1.0),
+            });
+        }
+        out
+    }
+
+    /// Cup and handle: four alternating nodes, a high (left rim), a low (bottom), a high (right
+    /// rim) and a low (handle). The inverse is the mirror image: lows for rims, a high between
+    /// them, a high for the handle.
+    ///
+    /// 1. The two rims are one level within `tolerance_pct` of the left rim, and the bottom is
+    ///    more than that tolerance away from the left rim, as for the double bottom's
+    ///    counter-swing.
+    /// 2. The handle stays in the half of the cup next to the rims: its extreme is at or beyond
+    ///    the midpoint between the right rim and the bottom. A deeper pullback is a different
+    ///    formation.
+    /// 3. The handle is short against the cup: from the right rim to the handle's extreme takes
+    ///    at most half the time from rim to rim.
+    ///
+    /// The rounding of the cup is not tested: on swing nodes a rounded bottom and a V have the
+    /// same three points, and which of the two the swings come from is the swing definition's
+    /// business. For the same reason the right half of an inverse head and shoulders whose right
+    /// shoulder stays in the upper half qualifies as well: head and right shoulder are a bottom
+    /// and a handle. `confidence` is how well the rims match. The breakout level is the right
+    /// rim, held horizontally (`upper_line` for the cup, `lower_line` for the inverse). Confirmed
+    /// on a close beyond the right rim, invalidated on a close beyond the handle's extreme.
+    fn scan_cups_with_handle(&self, nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        let mut out = Vec::new();
+        for window in nodes.windows(4) {
+            let alternating = window.windows(2).all(|p| p[0].is_high != p[1].is_high);
+            if !alternating {
+                continue;
+            }
+            let (left, bottom, right, handle) = (&window[0], &window[1], &window[2], &window[3]);
+            // The cup when the rims are highs; every comparison below flips with `sign`.
+            let sign = if left.is_high { 1.0 } else { -1.0 };
+            if !self.within_tolerance(left.price, right.price, left.price) {
+                continue;
+            }
+            if self.within_tolerance(left.price, bottom.price, left.price) {
+                continue;
+            }
+            if sign * (handle.price - (right.price + bottom.price) / 2.0) < 0.0 {
+                continue;
+            }
+            let cup_time = right.timestamp - left.timestamp;
+            if 2 * (handle.timestamp - right.timestamp) > cup_time {
+                continue;
+            }
+
+            let rim = TrendLine::from_nodes(right, right);
+            let (kind, upper_line, lower_line) = if sign > 0.0 {
+                (ChartPatternKind::CupAndHandle, Some(rim), None)
+            } else {
+                (ChartPatternKind::InverseCupAndHandle, None, Some(rim))
+            };
+            out.push(ChartPatternCandidate {
+                kind,
+                nodes: window.to_vec(),
+                upper_line,
+                lower_line,
+                state: PatternState::Forming,
+                confidence: self.level_match(left.price, right.price, left.price),
             });
         }
         out
@@ -1327,5 +1514,164 @@ mod tests {
             candidate.update_state(&Bar::new(3000, 106.0, 108.0, 105.5, 107.5, 1.0)),
             PatternState::Confirmed
         );
+    }
+
+    /// Bullish flag nodes, ten ticks apart: pole 100 -> 124, then highs 124 / 121 and lows
+    /// 116 / 113. Line 2-4 and line 3-5 both fall 0.15 a tick, so the gap between them is 6.5
+    /// everywhere. The deepest low gives back 11 of the pole's 24 (at most 12 allowed).
+    fn flag(sign: f64, p: [f64; 5]) -> Vec<ZigZagNode> {
+        (0..5)
+            .map(|i| node(i as i64 * 10, sign * p[i], (i % 2 == 1) == (sign > 0.0)))
+            .collect()
+    }
+
+    fn flags(nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        ChartPatternDetector::new(2.0)
+            .scan(nodes)
+            .into_iter()
+            .filter(|c| c.kind == ChartPatternKind::Flag)
+            .collect()
+    }
+
+    #[test]
+    fn test_detects_flag_in_both_directions() {
+        let bull = flag(1.0, [100.0, 124.0, 116.0, 121.0, 113.0]);
+        let found = flags(&bull);
+        assert_eq!(found.len(), 1);
+        let f = &found[0];
+        // Upper line 2-4: 124 at 10, 121 at 30. Lower line 3-5: 116 at 20, 113 at 40.
+        assert!((f.upper_line.unwrap().value_at(40) - 119.5).abs() < 1e-9);
+        assert!((f.lower_line.unwrap().value_at(10) - 117.5).abs() < 1e-9);
+        // Parallel lines: the gap does not change, the fit is 1.
+        assert!((f.confidence - 1.0).abs() < 1e-9);
+
+        let bear = flag(-1.0, [100.0, 124.0, 116.0, 121.0, 113.0]);
+        let found = flags(&bear);
+        assert_eq!(found.len(), 1);
+        let f = &found[0];
+        assert!((f.lower_line.unwrap().value_at(40) + 119.5).abs() < 1e-9);
+        assert!((f.upper_line.unwrap().value_at(10) + 117.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_flag_near_misses_each_break_one_rule() {
+        let misses: [(&str, [f64; 5]); 4] = [
+            // A higher high in the channel: it does not slope against the pole.
+            ("slope", [100.0, 124.0, 116.0, 125.0, 117.0]),
+            // Lows 116 -> 115.9 against highs 124 -> 121: the gap shrinks from 7.995 to 3.6.
+            ("parallel", [100.0, 124.0, 116.0, 121.0, 115.9]),
+            // A pole of 6, and the channel gives back 11.
+            ("pole", [118.0, 124.0, 116.0, 121.0, 113.0]),
+            // The first leg falls into the channel instead of rising to it.
+            ("direction", [130.0, 124.0, 116.0, 121.0, 113.0]),
+        ];
+        assert_eq!(
+            flags(&flag(1.0, [100.0, 124.0, 116.0, 121.0, 113.0])).len(),
+            1
+        );
+        for sign in [1.0, -1.0] {
+            for (rule, p) in misses {
+                assert!(flags(&flag(sign, p)).is_empty(), "{rule} sign {sign}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_flag_confirms_with_the_pole_and_fails_against_it() {
+        let nodes = flag(1.0, [100.0, 124.0, 116.0, 121.0, 113.0]);
+        let mut up = flags(&nodes).remove(0);
+        let mut down = up.clone();
+        // At 50 the upper line projects 118, the lower 111.5.
+        let inside = Bar::new(50, 115.0, 115.0, 115.0, 115.0, 0.0);
+        assert_eq!(up.update_state(&inside), PatternState::Forming);
+        let above = Bar::new(50, 118.5, 118.5, 118.5, 118.5, 0.0);
+        assert_eq!(up.update_state(&above), PatternState::Confirmed);
+        let below = Bar::new(50, 111.0, 111.0, 111.0, 111.0, 0.0);
+        assert_eq!(down.update_state(&below), PatternState::Invalidated);
+
+        let mirrored = flag(-1.0, [100.0, 124.0, 116.0, 121.0, 113.0]);
+        let mut bear = flags(&mirrored).remove(0);
+        let lower = Bar::new(50, -118.5, -118.5, -118.5, -118.5, 0.0);
+        assert_eq!(bear.update_state(&lower), PatternState::Confirmed);
+    }
+
+    /// Cup and handle nodes: left rim 120 at 0, bottom 100 at 20, right rim 119 at 40, handle
+    /// 112 at 48.
+    fn cup(p: [f64; 4], handle_ts: i64) -> Vec<ZigZagNode> {
+        vec![
+            node(0, p[0], true),
+            node(20, p[1], false),
+            node(40, p[2], true),
+            node(handle_ts, p[3], false),
+        ]
+    }
+
+    fn cups(nodes: &[ZigZagNode]) -> Vec<ChartPatternCandidate> {
+        ChartPatternDetector::new(2.0)
+            .scan(nodes)
+            .into_iter()
+            .filter(|c| c.kind == ChartPatternKind::CupAndHandle)
+            .collect()
+    }
+
+    #[test]
+    fn test_detects_cup_and_handle() {
+        let found = cups(&cup([120.0, 100.0, 119.0, 112.0], 48));
+        assert_eq!(found.len(), 1);
+        let c = &found[0];
+        assert_eq!(c.upper_line.unwrap().value_at(60), 119.0);
+        assert!(c.lower_line.is_none());
+        // Rims 1 apart against an allowed 2.4: 1 - 1 / 2.4.
+        assert!((c.confidence - (1.0 - 1.0 / 2.4)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_cup_and_handle_near_misses_each_break_one_rule() {
+        let misses: [(&str, [f64; 4], i64); 4] = [
+            // Rims 120 and 115: more than 2 % apart.
+            ("rims", [120.0, 100.0, 115.0, 110.0], 48),
+            // Bottom 118: within the tolerance of the rim, no cup.
+            ("depth", [120.0, 118.0, 119.5, 118.9], 48),
+            // Handle 108 below the midpoint 109.5 of the cup.
+            ("handle depth", [120.0, 100.0, 119.0, 108.0], 48),
+            // Handle low 25 ticks after the right rim, the cup took 40.
+            ("handle length", [120.0, 100.0, 119.0, 112.0], 65),
+        ];
+        for (rule, p, ts) in misses {
+            assert!(cups(&cup(p, ts)).is_empty(), "{rule}");
+        }
+    }
+
+    #[test]
+    fn test_the_mirror_image_of_a_cup_is_the_inverse() {
+        let mirrored: Vec<ZigZagNode> = cup([120.0, 100.0, 119.0, 112.0], 48)
+            .into_iter()
+            .map(|n| node(n.timestamp, -n.price, !n.is_high))
+            .collect();
+        assert!(cups(&mirrored).is_empty());
+        let mut inverse = ChartPatternDetector::new(2.0)
+            .scan(&mirrored)
+            .into_iter()
+            .find(|c| c.kind == ChartPatternKind::InverseCupAndHandle)
+            .expect("an inverse cup and handle");
+        assert_eq!(inverse.lower_line.unwrap().value_at(60), -119.0);
+        assert!(inverse.upper_line.is_none());
+        let mut failed = inverse.clone();
+        let below = Bar::new(55, -119.5, -119.5, -119.5, -119.5, 0.0);
+        assert_eq!(inverse.update_state(&below), PatternState::Confirmed);
+        let above = Bar::new(55, -111.5, -111.5, -111.5, -111.5, 0.0);
+        assert_eq!(failed.update_state(&above), PatternState::Invalidated);
+    }
+
+    #[test]
+    fn test_cup_and_handle_confirms_over_the_right_rim() {
+        let mut up = cups(&cup([120.0, 100.0, 119.0, 112.0], 48)).remove(0);
+        let mut down = up.clone();
+        let inside = Bar::new(52, 116.0, 116.0, 116.0, 116.0, 0.0);
+        assert_eq!(up.update_state(&inside), PatternState::Forming);
+        let above = Bar::new(55, 119.5, 119.5, 119.5, 119.5, 0.0);
+        assert_eq!(up.update_state(&above), PatternState::Confirmed);
+        let below = Bar::new(55, 111.5, 111.5, 111.5, 111.5, 0.0);
+        assert_eq!(down.update_state(&below), PatternState::Invalidated);
     }
 }

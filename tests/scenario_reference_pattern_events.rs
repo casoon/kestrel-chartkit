@@ -268,6 +268,34 @@ const FALLING_WEDGE: Waypoints = &[
     (50, 120.0),
     (60, 112.0),
 ];
+/// Pole 100 -> 124 (bars 10 to 20), then highs 124 / 121 and lows 116 / 113: both channel lines
+/// fall 0.15 a bar, so they are parallel, and the deepest low gives back 11 of the pole's 24 (12
+/// allowed). The last low is confirmed on bar 63; the first close above the upper line is bar 54
+/// (113 + 1.7 * 4 = 119.8 against 124 - 0.15 * 34 = 118.9), where the lower line is at 112.4.
+const FLAG: Waypoints = &[
+    (0, 110.0),
+    (10, 100.0),
+    (20, 124.0),
+    (30, 116.0),
+    (40, 121.0),
+    (50, 113.0),
+    (60, 130.0),
+    (70, 120.0),
+];
+/// Rims 120 (bar 10) and 119 (bar 50) over the bottom 100 (bar 30), handle 112 on bar 58: above
+/// the cup's midpoint 109.5, and 8 bars after the right rim against a cup of 40. The handle is
+/// confirmed on bar 73; the first close over the rim is bar 65 (112 + 13 / 12 * 7 = 119.58). The
+/// rims, bottom and handle are also a converging window (highs 120 -> 119, lows 100 -> 112), so
+/// the same close breaks a triangle out upward.
+const CUP_AND_HANDLE: Waypoints = &[
+    (0, 100.0),
+    (10, 120.0),
+    (30, 100.0),
+    (50, 119.0),
+    (58, 112.0),
+    (70, 125.0),
+    (80, 118.0),
+];
 
 #[test]
 fn double_top_confirms_on_the_bar_its_second_high_is_fixed() {
@@ -330,19 +358,36 @@ fn triple_bottom_and_the_instances_inside_it_each_confirm_once() {
 #[test]
 fn head_and_shoulders_confirms_with_the_right_shoulder() {
     let steps = run(CHART, &[], &bars(HEAD_AND_SHOULDERS));
+    // Trough 108, head 128, trough 109 and right shoulder 117.5 are also an inverse cup and
+    // handle: the shoulder stays below the midpoint 118.5 and took 10 bars against 20.
     expect(
         &steps,
-        &[(63, &["bear_triangle", "bear_head_and_shoulders"])],
+        &[(
+            63,
+            &[
+                "bear_triangle",
+                "bear_head_and_shoulders",
+                "bear_inverse_cup_and_handle",
+            ],
+        )],
     );
-    assert!(close(extra(&steps, 63, "confirmed"), 2.0));
+    assert!(close(extra(&steps, 63, "confirmed"), 3.0));
 }
 
 #[test]
 fn inverse_head_and_shoulders_confirms_with_the_right_shoulder() {
     let steps = run(CHART, &[], &bars(INVERSE_HEAD_AND_SHOULDERS));
+    // Shoulder 122, head 102, shoulder 121 and trough 112.5: a cup and handle as well.
     expect(
         &steps,
-        &[(63, &["bull_triangle", "bull_inverse_head_and_shoulders"])],
+        &[(
+            63,
+            &[
+                "bull_triangle",
+                "bull_inverse_head_and_shoulders",
+                "bull_cup_and_handle",
+            ],
+        )],
     );
 }
 
@@ -374,6 +419,31 @@ fn wolfe_wave_confirms_with_point_five_and_projects_the_one_four_line() {
     assert!(close(extra(&steps, 63, "target"), 108.2));
     let step = steps.iter().find(|s| s.bar == 63).unwrap();
     assert_eq!(step.output.value, 1.0);
+}
+
+#[test]
+fn flag_breaks_out_in_the_direction_of_its_pole() {
+    let steps = run(CHART, &[], &bars(FLAG));
+    expect(&steps, &[(63, &["bull_flag"])]);
+    assert_eq!(extra(&steps, 63, "pattern"), 15.0);
+    assert!(close(extra(&steps, 63, "level"), 118.9));
+    assert!(close(extra(&steps, 63, "invalidation"), 112.4));
+    assert!(close(extra(&steps, 63, "fit"), 1.0));
+    let down = run(CHART, &[], &mirrored(&bars(FLAG)));
+    expect(&down, &[(63, &["bear_flag"])]);
+}
+
+#[test]
+fn cup_and_handle_confirms_over_the_right_rim() {
+    let steps = run(CHART, &[], &bars(CUP_AND_HANDLE));
+    expect(&steps, &[(73, &["bull_triangle", "bull_cup_and_handle"])]);
+    let step = steps.iter().find(|s| s.bar == 73).unwrap();
+    assert_eq!(step.output.value, 1.0);
+    let inverse = run(CHART, &[], &mirrored(&bars(CUP_AND_HANDLE)));
+    expect(
+        &inverse,
+        &[(73, &["bear_triangle", "bear_inverse_cup_and_handle"])],
+    );
 }
 
 #[test]
@@ -680,6 +750,8 @@ fn mirror_base(base: &str) -> &str {
         "descending_triangle" => "ascending_triangle",
         "rising_wedge" => "falling_wedge",
         "falling_wedge" => "rising_wedge",
+        "cup_and_handle" => "inverse_cup_and_handle",
+        "inverse_cup_and_handle" => "cup_and_handle",
         other => other,
     }
 }
@@ -702,6 +774,8 @@ fn mirror_code(code: f64) -> f64 {
         12 => 11.0,
         13 => 14.0,
         14 => 13.0,
+        16 => 17.0,
+        17 => 16.0,
         _ => code,
     }
 }
@@ -725,6 +799,8 @@ fn the_mirror_image_of_every_chart_scenario_gives_the_mirrored_events() {
         BROADENING_DOWN,
         RISING_WEDGE,
         FALLING_WEDGE,
+        FLAG,
+        CUP_AND_HANDLE,
     ];
     for (n, waypoints) in scenarios.iter().enumerate() {
         let original = run(CHART, &[], &bars(waypoints));

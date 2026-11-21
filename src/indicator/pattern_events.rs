@@ -36,7 +36,7 @@
 //! |---|---|
 //! | `pattern` | Kind code (below). |
 //! | `level` | The level the close went through: the broken boundary or neckline (chart patterns; the 1-2-3's third node). |
-//! | `invalidation` | The level beyond which the rule gives the instance up: the pattern's extreme (reversal family), the second node (1-2-3), point 5 (Wolfe wave); for harmonics the far edge of the PRZ. |
+//! | `invalidation` | The level beyond which the rule gives the instance up: the pattern's extreme (reversal family), the second node (1-2-3), point 5 (Wolfe wave), the opposite channel line (flag), the handle's extreme (cup and handle and its inverse); for harmonics the far edge of the PRZ. |
 //! | `target` | Wolfe wave only: the line through points 1 and 4. |
 //! | `fit` | Chart patterns: the detector's `0..1` geometric fit. |
 //! | `prz_low`, `prz_high`, `d` | Harmonics: the PRZ and the price of point D. |
@@ -44,7 +44,8 @@
 //! Kind codes of `chart_patterns`: 1 triangle, 2 ascending triangle, 3 descending triangle,
 //! 4 broadening, 5 rising wedge, 6 falling wedge, 7 one-two-three reversal, 8 Wolfe wave,
 //! 9 double top, 10 double bottom, 11 triple top, 12 triple bottom, 13 head and shoulders,
-//! 14 inverse head and shoulders. The auto-fitted trendlines are the `trendlines` entry's.
+//! 14 inverse head and shoulders, 15 flag, 16 cup and handle, 17 inverse cup and handle. The
+//! auto-fitted trendlines are the `trendlines` entry's.
 //! Kind codes of `harmonic_patterns`: the 1-based row of [`HARMONIC_TABLE`], 1 gartley, 2 bat,
 //! 3 butterfly, 4 crab, 5 deep crab, 6 shark.
 //!
@@ -52,8 +53,8 @@
 //! (`bear_double_top`, `bull_inverse_head_and_shoulders`, `bull_gartley`). For the triangle
 //! family, the wedges and the broadening formation the direction is the side the close broke out
 //! on (above the upper boundary checked first); for the 1-2-3 and the Wolfe wave it follows the
-//! swing structure, for the reversal family the pattern (top: bearish) and for harmonics the
-//! pattern's resolution at D.
+//! swing structure, for the reversal family the pattern (top: bearish), for the flag the pole's
+//! direction, for cup and handle bullish and for its inverse bearish, and for harmonics the pattern's resolution at D.
 //!
 //! The ZigZag parameters are those of `zigzag_advanced`, with the same defaults.
 
@@ -197,6 +198,9 @@ fn chart_code(kind: ChartPatternKind) -> f64 {
         ChartPatternKind::TripleBottom => 12.0,
         ChartPatternKind::HeadAndShoulders => 13.0,
         ChartPatternKind::InverseHeadAndShoulders => 14.0,
+        ChartPatternKind::Flag => 15.0,
+        ChartPatternKind::CupAndHandle => 16.0,
+        ChartPatternKind::InverseCupAndHandle => 17.0,
         ChartPatternKind::AutoTrendline => unreachable!("the trendlines entry owns the lines"),
     }
 }
@@ -217,6 +221,9 @@ fn chart_base(kind: ChartPatternKind) -> &'static str {
         ChartPatternKind::TripleBottom => "triple_bottom",
         ChartPatternKind::HeadAndShoulders => "head_and_shoulders",
         ChartPatternKind::InverseHeadAndShoulders => "inverse_head_and_shoulders",
+        ChartPatternKind::Flag => "flag",
+        ChartPatternKind::CupAndHandle => "cup_and_handle",
+        ChartPatternKind::InverseCupAndHandle => "inverse_cup_and_handle",
         ChartPatternKind::AutoTrendline => unreachable!("the trendlines entry owns the lines"),
     }
 }
@@ -260,6 +267,24 @@ fn chart_event(c: &ChartPatternCandidate, bar: &Bar) -> Event {
             ));
             !n5.is_high
         }
+        ChartPatternKind::Flag => {
+            let upper = c.upper_line.expect("a flag has both channel lines");
+            let lower = c.lower_line.expect("a flag has both channel lines");
+            let bullish = !c.nodes[0].is_high;
+            let (broken, opposite) = if bullish {
+                (upper, lower)
+            } else {
+                (lower, upper)
+            };
+            extra.push(("level", broken.value_at(ts)));
+            extra.push(("invalidation", opposite.value_at(ts)));
+            bullish
+        }
+        ChartPatternKind::CupAndHandle | ChartPatternKind::InverseCupAndHandle => {
+            extra.push(("level", c.nodes[2].price));
+            extra.push(("invalidation", c.nodes[3].price));
+            c.kind == ChartPatternKind::CupAndHandle
+        }
         _ => {
             let top = c.kind.is_top();
             let neckline = if top { c.lower_line } else { c.upper_line }
@@ -290,7 +315,7 @@ struct LiveChart {
 
 /// The catalog entry `chart_patterns`: triangles (symmetrical, ascending, descending), broadening
 /// formation, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and
-/// bottom, and head and shoulders with its inverse, from [`ChartPatternDetector`] over the
+/// bottom, head and shoulders with its inverse, flag, and cup and handle with its inverse, from [`ChartPatternDetector`] over the
 /// ZigZag nodes as they confirm. See the module documentation for what one event is.
 pub struct ChartPatternsEngine {
     feed: SwingFeed,
@@ -585,7 +610,7 @@ fn deviation(p: &ResolvedParams) -> ZigZagDeviationMode {
 pub const CHART_PATTERNS_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "chart_patterns",
     aliases: &[],
-    description: "Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-14), level, invalidation, target, fit, active, confirmed",
+    description: "Chart patterns from ZigZag swings as they confirm, one event per pattern instance on the bar its neckline or boundary is broken: triangles (symmetrical, ascending, descending), broadening, rising and falling wedge, 1-2-3 reversal, Wolfe wave, double and triple top and bottom, head and shoulders and its inverse, flag, cup and handle and its inverse. value is the direction of the latest confirmed pattern (1, -1, 0); alerts bull_<kind> and bear_<kind>; extras pattern (kind code 1-17), level, invalidation, target, fit, active, confirmed",
     params: zigzag_params![
         ParamSpec::number("tolerance_pct", 2.0, 0.001, 50.0)
             .meaning("percent within which two swing prices count as one level"),
