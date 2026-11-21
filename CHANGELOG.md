@@ -9,6 +9,19 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.41.1] - 2026-11-21
+
+A backport from master (0.46 line) on the branch `release/0.41`, for consumers that stay on the
+0.41 catalog. Nothing else from 0.42 onward is included.
+
+### Breaking
+
+- **Chart patterns:** `ChartPatternKind` has three more variants (`Flag`, `CupAndHandle`, `InverseCupAndHandle`), so an exhaustive `match` on it needs arms for them.
+
+### Added
+
+- **Chart patterns:** `ChartPatternDetector::scan` finds the flag (a pole and a channel of four nodes against it, about parallel within `FLAG_PARALLEL`, giving back at most `FLAG_MAX_RETRACE` of the pole) and cup and handle with its inverse (two rims on one level, a bottom, a handle in the cup's upper half lasting at most half the cup); `update_state` confirms them on the close beyond the channel line or the right rim. Rules and limits are in the documentation of `scan_flags` and `scan_cups_with_handle` in `indicator::chart_patterns`.
+
 ## [0.41.0] - 2026-11-10
 
 ### Breaking

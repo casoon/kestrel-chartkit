@@ -86,10 +86,10 @@ coupon dates, business-day adjustment and sensitivities.
 
 ```toml
 [dependencies]
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.0" }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.1" }
 ```
 
-or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.41.0`.
+or `cargo add kestrel-chartkit --git https://github.com/casoon/kestrel-chartkit --tag v0.41.1`.
 Requires Rust 1.87 or newer.
 
 > **Note on the registry.** crates.io and docs.rs still carry 0.11.3, thirteen minor versions
@@ -140,7 +140,7 @@ The default `serde` feature derives `Serialize` and `Deserialize` for public DTO
 smaller dependency graph:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.0", default-features = false }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.1", default-features = false }
 ```
 
 The optional `calendar` feature adds `src/calendar.rs` (`ExchangeCalendar`): IANA-timezone/DST-aware
@@ -149,7 +149,7 @@ crate carries no timezone-database dependency. It is about *trading hours*; the 
 a bond schedule needs are supplied as a `BusinessCalendar` instead:
 
 ```toml
-kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.0", features = ["calendar"] }
+kestrel-chartkit = { git = "https://github.com/casoon/kestrel-chartkit.git", tag = "v0.41.1", features = ["calendar"] }
 ```
 
 ## Testing & Quality
