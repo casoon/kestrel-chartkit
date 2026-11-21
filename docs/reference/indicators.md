@@ -1692,7 +1692,7 @@ Requires 2 times `min_chunk` not to exceed `period`.
 
 ### `ar1_half_life`
 
-Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or at least 1
+Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or within 1e-9 of 1
 
 **Not yet verified:** no independent second implementation yet.
 

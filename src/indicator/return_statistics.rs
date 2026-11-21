@@ -81,12 +81,13 @@ impl Indicator for VarianceRatioEngine {
         let q = self.lag;
         let nf = n as f64;
         let qf = q as f64;
-        let y: Vec<f64> = self.closes.iter().map(|c| c.ln()).collect();
-
-        let mu = (y[n] - y[0]) / nf;
+        // Every log return is the log of a price ratio: a difference of two logarithms loses
+        // digits on a high price level.
+        let c = &self.closes;
+        let mu = (c[n] / c[0]).ln() / nf;
         let mut sum_a = 0.0;
         for t in 1..=n {
-            let r = y[t] - y[t - 1];
+            let r = (c[t] / c[t - 1]).ln();
             sum_a += (r - mu) * (r - mu);
         }
         let sigma_a = sum_a / (nf - 1.0);
@@ -97,7 +98,7 @@ impl Indicator for VarianceRatioEngine {
         let m = qf * (nf - qf + 1.0) * (1.0 - qf / nf);
         let mut sum_q = 0.0;
         for t in q..=n {
-            let big_r = y[t] - y[t - q];
+            let big_r = (c[t] / c[t - q]).ln();
             let d = big_r - qf * mu;
             sum_q += d * d;
         }
@@ -300,12 +301,15 @@ impl Indicator for HurstRsEngine {
     }
 }
 
+/// Margin below 1 within which `phi` counts as no mean reversion (largest half-life about 6.9e8 bars).
+const PHI_MARGIN: f64 = 1e-9;
+
 /// Half-life of mean reversion from a least-squares AR(1) fit with intercept to the last `period`
 /// raw closes: `phi` is the slope of each close on the one before, the half-life is
 /// `-ln 2 / ln(phi)` bars (the Ornstein-Uhlenbeck half-life with `theta = -ln(phi)`).
 ///
 /// `value`: the half-life in bars; `extra["phi"]`: the coefficient. Nothing is published when the
-/// closes before the last are all equal, or when `phi` is not in `(0, 1)` (an oscillation has no
+/// closes before the last are all equal, or when `phi` is not in `(0, 1 - 1e-9)` (an oscillation has no
 /// half-life, a series without mean reversion has none either). First output: with the
 /// `period`-th bar. [`Indicator::reset`] clears the window.
 pub struct Ar1HalfLifeEngine {
@@ -359,7 +363,9 @@ impl Indicator for Ar1HalfLifeEngine {
             return None;
         }
         let phi = sxz / sxx;
-        if phi <= 0.0 || phi >= 1.0 {
+        // Within PHI_MARGIN of 1 the coefficient is rounding noise of a straight line, not mean
+        // reversion; publishing it would give half-lives of 10^14 bars.
+        if phi <= 0.0 || phi >= 1.0 - PHI_MARGIN {
             return None;
         }
         let mut extra = HashMap::new();
@@ -462,7 +468,7 @@ pub const AR1_HALF_LIFE_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "ar1_half_life",
         aliases: &[],
-        description: "Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or at least 1",
+        description: "Half-life of mean reversion in bars from a least-squares AR(1) fit with intercept to the raw closes: -ln 2 / ln(phi); extra phi is the coefficient; nothing is published when phi is at most 0 or within 1e-9 of 1",
         params: &[super::definition::ParamSpec::count("period", 100, 3, 10000)
             .meaning("closes in the window of the fit")],
         checks: &[],
@@ -585,5 +591,16 @@ mod tests {
             .collect();
         let out = run(&mut Ar1HalfLifeEngine::new(6), &zigzag);
         assert!(out.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn ar1_half_life_ignores_rounding_noise_on_a_line() {
+        // 100 + 0.1 i is not exactly representable: phi lands within 1e-15 of 1 and would give
+        // half-lives of 10^14 bars without the margin.
+        let line: Vec<f64> = (0..300).map(|i| 100.0 + 0.1 * i as f64).collect();
+        for period in [20, 100] {
+            let out = run(&mut Ar1HalfLifeEngine::new(period), &line);
+            assert!(out.iter().all(Option::is_none), "period {period}");
+        }
     }
 }
