@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+- **Catalog:** `kestrel_adaptive_smoother` is accepted and counts as verified; its formula and measurements are in the [guide](https://casoon.github.io/kestrel-chartkit/docs/guides/adaptive-smoother/).
+
 ## [0.45.0] - 2026-11-21
 
 ### Added

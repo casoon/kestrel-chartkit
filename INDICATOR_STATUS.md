@@ -24,7 +24,7 @@ is complete. The mark must match the `verification` of the entry's definition
 | rma | ✅ |
 | alma | ✅ |
 | jma | ✅ |
-| kestrel_adaptive_smoother | ❌ |
+| kestrel_adaptive_smoother | ✅ |
 | super_smoother | ✅ |
 | ultimate_smoother | ✅ |
 | mama | ✅ |
@@ -236,6 +236,6 @@ intrabar (`build_intrabar_checked`).
 
 ---
 
-**Total: 133/158 verified** — the same 158 names `catalog()` returns: 107 indicators (the first
-five groups), 4 composite scores, 41 structure/pattern detectors and 6 entries of other input
+**Total: 169/180 verified** — the same 180 names `catalog()` returns: 128 indicators (the first
+five groups), 5 composite scores, 41 structure/pattern detectors and 6 entries of other input
 kinds.

@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 168 of the 180 entries are verified, 12 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 169 of the 180 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -42,7 +42,7 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
 | `vidya` | bars | verified |
-| `kestrel_adaptive_smoother` | bars | **not yet verified:** acceptance against the measured criteria is pending |
+| `kestrel_adaptive_smoother` | bars | verified |
 | `alligator` | bars | verified |
 | `envelope` | bars | verified |
 | `vwap` | bars | verified |
@@ -551,8 +551,6 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 ### `kestrel_adaptive_smoother` · alias `kas`
 
 Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move
-
-**Not yet verified:** acceptance against the measured criteria is pending.
 
 [See it in the showcase](../../../showcase/kestrel_adaptive_smoother/)
 
