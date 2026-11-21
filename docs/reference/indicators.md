@@ -11,7 +11,7 @@ order: 2
 
 Every indicator is built by name with `build_checked` (an `f64` parameter map) or `build_typed` (typed values, including choices by name and a `source`). Both validate against the same definition: unknown keys, values outside the accepted range and broken relations are errors, missing parameters take their default. **Warmup** is the bar of the first output with the default parameters. **Needs real volume** marks indicators whose result is only meaningful with traded volume. The [showcase](../../../showcase/) draws every indicator with its defaults on synthetic bars of a fictitious CASOON share.
 
-**Verification.** 147 of the 166 entries are verified, 19 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
+**Verification.** 155 of the 166 entries are verified, 11 are not yet. A verified entry has passed its acceptance: its expected values come from a derivation independent of the Rust code (a second implementation or a hand-derived scenario). An entry that is not yet verified computes and is covered by the contract tests, but has not passed that acceptance; its entry below says why.
 
 | Entry | Input | Status |
 |---|---|---|
@@ -28,8 +28,8 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `alma` | bars | verified |
 | `jma` | bars | verified |
 | `super_smoother` | bars | verified |
-| `ultimate_smoother` | bars | **not yet verified:** no independent second implementation yet |
-| `mama` | bars | **not yet verified:** no independent second implementation yet |
+| `ultimate_smoother` | bars | verified |
+| `mama` | bars | verified |
 | `lsma` | bars | verified |
 | `mcginley` | bars | verified |
 | `t3` | bars | verified |
@@ -74,12 +74,12 @@ Every indicator is built by name with `build_checked` (an `f64` parameter map) o
 | `williams_r` | bars | verified |
 | `fisher_transform` | bars | verified |
 | `wavetrend` | bars | verified |
-| `roofing_filter` | bars | **not yet verified:** no independent second implementation yet |
-| `reflex` | bars | **not yet verified:** no independent second implementation yet |
-| `trendflex` | bars | **not yet verified:** no independent second implementation yet |
-| `correlation_trend` | bars | **not yet verified:** no independent second implementation yet |
-| `laguerre_rsi` | bars | **not yet verified:** no independent second implementation yet |
-| `cyber_cycle` | bars | **not yet verified:** no independent second implementation yet |
+| `roofing_filter` | bars | verified |
+| `reflex` | bars | verified |
+| `trendflex` | bars | verified |
+| `correlation_trend` | bars | verified |
+| `laguerre_rsi` | bars | verified |
+| `cyber_cycle` | bars | verified |
 | `percent_rank` | bars | verified |
 | `atr` | bars | verified |
 | `adx` | bars | verified |
@@ -355,9 +355,7 @@ Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficient
 
 ### `ultimate_smoother`
 
-Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
 
 [See it in the showcase](../../../showcase/ultimate_smoother/)
 
@@ -369,9 +367,7 @@ Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency 
 
 ### `mama`
 
-Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar. The price smoothing starts from the first closes and the Hilbert transform from the 7th bar, MAMA and FAMA from the price (Ehlers' listing starts every series from 0)
 
 [See it in the showcase](../../../showcase/mama/)
 
@@ -1002,9 +998,7 @@ WaveTrend Oscillator (wt1, wt2)
 
 ### `roofing_filter`
 
-Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar. The high-pass is 0 on the first two bars and the SuperSmoother starts from it. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
 
 [See it in the showcase](../../../showcase/roofing_filter/)
 
@@ -1019,9 +1013,7 @@ Requires `lp_period` to be smaller than `hp_period`.
 
 ### `reflex`
 
-Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
 
 [See it in the showcase](../../../showcase/reflex/)
 
@@ -1033,9 +1025,7 @@ Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the li
 
 ### `trendflex`
 
-Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.
 
 [See it in the showcase](../../../showcase/trendflex/)
 
@@ -1049,8 +1039,6 @@ Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to
 
 Ehlers' Correlation Trend Indicator: the Pearson correlation of the last `length` closes with a rising straight line; a window of equal closes reads 0
 
-**Not yet verified:** no independent second implementation yet.
-
 [See it in the showcase](../../../showcase/correlation_trend/)
 
 **Output** unit Unitless, range -1 – 1 · **warmup** 20 bars
@@ -1062,8 +1050,6 @@ Ehlers' Correlation Trend Indicator: the Pearson correlation of the last `length
 ### `laguerre_rsi`
 
 Ehlers' Laguerre RSI: the share of upward steps among the steps between four Laguerre stages seeded with the first close; no value until a stage has moved, and the previous value is kept while all stages are level
-
-**Not yet verified:** no independent second implementation yet.
 
 [See it in the showcase](../../../showcase/laguerre_rsi/)
 
@@ -1079,9 +1065,7 @@ Requires `lower` to be smaller than `upper`.
 
 ### `cyber_cycle`
 
-Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`)
-
-**Not yet verified:** no independent second implementation yet.
+Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`); the first six bars carry the plain second difference of the price / 4, as in Ehlers' listing
 
 [See it in the showcase](../../../showcase/cyber_cycle/)
 

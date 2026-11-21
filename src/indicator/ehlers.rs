@@ -841,11 +841,11 @@ impl Indicator for MamaEngine {
 pub const ULTIMATE_SMOOTHER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "ultimate_smoother",
     aliases: &[],
-    description: "Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar",
+    description: "Ehlers' UltimateSmoother, a two-pole smoother with unity gain at zero frequency and no lag on a straight line; the first three values are the closes, published from the `period`-th bar. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.",
     params: &[ParamSpec::count("period", 20, 2, 10000).meaning("critical period of the filter in bars")],
     checks: &[],
     facts: IndicatorFacts::price(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(UltimateSmootherEngine::new(p.count("period")))),
 };
 
@@ -853,7 +853,7 @@ pub const ULTIMATE_SMOOTHER_DEFINITION: IndicatorDefinition = IndicatorDefinitio
 pub const ROOFING_FILTER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "roofing_filter",
     aliases: &[],
-    description: "Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar",
+    description: "Ehlers' Roofing Filter: a two-pole high-pass filter (cutoff hp_period) followed by a SuperSmoother (lp_period); an oscillator around 0 on the price scale, published from the hp_period-th bar. The high-pass is 0 on the first two bars and the SuperSmoother starts from it. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.",
     params: &[
         ParamSpec::count("hp_period", 48, 3, 10000).meaning("cutoff period of the high-pass filter in bars"),
         ParamSpec::count("lp_period", 10, 2, 10000).meaning("cutoff period of the SuperSmoother in bars, shorter than hp_period"),
@@ -863,7 +863,7 @@ pub const ROOFING_FILTER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         upper: "hp_period",
     }],
     facts: IndicatorFacts::unitless().centered(0.0),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(RoofingFilterEngine::new(
             p.count("hp_period"),
@@ -876,11 +876,11 @@ pub const ROOFING_FILTER_DEFINITION: IndicatorDefinition = IndicatorDefinition {
 pub const REFLEX_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "reflex",
     aliases: &[],
-    description: "Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1",
+    description: "Ehlers' Reflex: the deviation of a SuperSmoother (period length / 2) from the line through its value `length` bars ago, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.",
     params: &[ParamSpec::count("length", 20, 2, 10000).meaning("bars the slope line spans")],
     checks: &[],
     facts: IndicatorFacts::unitless().centered(0.0),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(ReflexEngine::new(p.count("length")))),
 };
 
@@ -888,11 +888,11 @@ pub const REFLEX_DEFINITION: IndicatorDefinition = IndicatorDefinition {
 pub const TRENDFLEX_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "trendflex",
     aliases: &[],
-    description: "Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1",
+    description: "Ehlers' Trendflex: the mean difference of a SuperSmoother (period length / 2) to its values over the last `length` bars, normalised by its root mean square; published from bar length + 1. The SuperSmoother starts from the first two closes (Ehlers' listing from 0), and a sum within rounding of zero counts as 0. The coefficients use pi in full, where Ehlers' listings truncate it to 3.14159 in the exponent.",
     params: &[ParamSpec::count("length", 20, 2, 10000).meaning("bars the difference spans")],
     checks: &[],
     facts: IndicatorFacts::unitless().centered(0.0),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(TrendflexEngine::new(p.count("length")))),
 };
 
@@ -904,7 +904,7 @@ pub const CORRELATION_TREND_DEFINITION: IndicatorDefinition = IndicatorDefinitio
     params: &[ParamSpec::count("length", 20, 2, 10000).meaning("closes correlated with the line")],
     checks: &[],
     facts: IndicatorFacts::unitless().bounded(-1.0, 1.0),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(CorrelationTrendEngine::new(p.count("length")))),
 };
 
@@ -927,7 +927,7 @@ pub const LAGUERRE_RSI_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         upper: "upper",
     }],
     facts: IndicatorFacts::ratio().bounded(0.0, 1.0),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(LaguerreRsiEngine::new(
             p.number("gamma"),
@@ -941,11 +941,11 @@ pub const LAGUERRE_RSI_DEFINITION: IndicatorDefinition = IndicatorDefinition {
 pub const CYBER_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "cyber_cycle",
     aliases: &[],
-    description: "Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`)",
+    description: "Ehlers' Cyber Cycle of the median price: a high-pass filtered cycle component with the previous bar's cycle as trigger (extra `trigger`); the first six bars carry the plain second difference of the price / 4, as in Ehlers' listing",
     params: &[ParamSpec::number("alpha", 0.07, 0.01, 1.0).meaning("smoothing constant of the cycle filter")],
     checks: &[],
     facts: IndicatorFacts::unitless().centered(0.0).native_hl2(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| Ok(Box::new(CyberCycleEngine::new(p.number("alpha")))),
 };
 
@@ -953,7 +953,7 @@ pub const CYBER_CYCLE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
 pub const MAMA_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "mama",
     aliases: &[],
-    description: "Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar",
+    description: "Ehlers' MESA Adaptive Moving Average of the median price with its follower FAMA (extras `fama`, `period`); published from the 50th bar. The price smoothing starts from the first closes and the Hilbert transform from the 7th bar, MAMA and FAMA from the price (Ehlers' listing starts every series from 0)",
     params: &[
         ParamSpec::number("fast_limit", 0.5, 0.01, 1.0).meaning("largest smoothing constant"),
         ParamSpec::number("slow_limit", 0.05, 0.01, 1.0).meaning("smallest smoothing constant, below fast_limit"),
@@ -963,7 +963,7 @@ pub const MAMA_DEFINITION: IndicatorDefinition = IndicatorDefinition {
         upper: "fast_limit",
     }],
     facts: IndicatorFacts::price().native_hl2(),
-    verification: Verification::Open("no independent second implementation yet"),
+    verification: Verification::Verified,
     build: |p| {
         Ok(Box::new(MamaEngine::new(
             p.number("fast_limit"),
