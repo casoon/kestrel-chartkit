@@ -316,6 +316,44 @@ def pnf_range_bars():
                     117.0, 120.0])
 
 
+def pnf_closes_bars(closes):
+    """Bars whose closes are `closes`; the other prices follow `candles`."""
+    return candles(closes)
+
+
+def pnf_wide_bars(spans):
+    """Bars from (high, low) pairs, the close at the middle of each."""
+    return [((h + l) / 2.0, h, l, (h + l) / 2.0, 1000.0) for h, l in spans]
+
+
+def price_walk(n, seed, start=100.0, scale=1.2):
+    """A random walk on two decimals: the open at the previous close, wicks beyond the body."""
+    state = seed
+
+    def uniform():
+        nonlocal state
+        state = (state * 6364136223846793005 + 1442695040888963407) % 2 ** 64
+        return (state >> 11) / 2 ** 53
+
+    bars, close = [], start
+    for _ in range(n):
+        open_ = close
+        close = round(open_ + (uniform() + uniform() - 1.0) * scale, 2)
+        high = round(max(open_, close) + uniform() * 0.4, 2)
+        low = round(min(open_, close) - uniform() * 0.4, 2)
+        bars.append((open_, high, low, close, 1000.0))
+    return bars
+
+
+PNF_ONE_CLOSES = [10.4, 11.2, 12.6, 11.3, 10.1, 11.9, 13.2, 12.0, 12.0, 11.7, 9.8, 10.9, 12.4,
+                  12.9, 11.2]
+PNF_OFF_GRID_UP = [101.3, 101.9, 102.4, 105.1, 104.2, 99.2, 97.5, 98.1, 104.3]
+PNF_OFF_GRID_DOWN = [101.3, 100.8, 99.6, 97.4, 98.9, 104.4, 103.3, 107.2, 101.6]
+PNF_WIDE = [(102.4, 100.6), (103.5, 99.8), (103.9, 99.2), (101.5, 97.6), (100.9, 97.8),
+            (100.2, 98.3), (101.8, 97.4)]
+PNF_WALK = price_walk(300, 20261121)
+
+
 # --- market_structure_breaks -----------------------------------------------------------------
 
 def market_structure_breaks(lookback, bars):
@@ -1720,6 +1758,8 @@ def build():
              "lps_atr": 0.2, "abandon_atr": 1.5}
     tuned_cycle, tuned_walk = wyckoff(wyckoff_cycle_bars(), **tuned), wyckoff(walk, **tuned)
     gap_walk = gap(gap_walk_bars(150, 20261110), min_atr=0.25, max_bars=20)
+    gap_close_walk = gap(gap_walk_bars(200, 20261121), reference="close", atr_len=7, max_bars=5)
+    gap_walk_range = gap(gap_walk_bars(200, 20261122), atr_len=5, min_atr=0.5, max_bars=10)
     blocks = [
         case_block("liquidity_fvg_defaults", "liquidity_fvg, lookback 20: gaps both ways, sweeps both ways",
                    *liquidity_fvg(20, fvg_bars())),
@@ -1748,6 +1788,40 @@ def build():
         case_block("point_and_figure_fine_grid", "point_and_figure, box 0.25, reversal 4, closes "
                    "between the grid lines: quiet bars change nothing",
                    *point_and_figure(fvg_bars(), box="0.25", reversal=4)),
+        case_block("point_and_figure_reversal_one_close", "point_and_figure, box 1, reversal 1, closes: "
+                   "every turn of a full box opens a column, a close inside the box changes nothing",
+                   *point_and_figure(pnf_closes_bars(PNF_ONE_CLOSES), reversal=1)),
+        case_block("point_and_figure_reversal_one_high_low", "point_and_figure, box 1, reversal 1, "
+                   "highs and lows over the same closes",
+                   *point_and_figure(pnf_closes_bars(PNF_ONE_CLOSES), reversal=1,
+                                     method="high_low")),
+        case_block("point_and_figure_off_grid_up", "point_and_figure, box 2, reversal 3, closes: "
+                   "the first close 101.3 lies between the lines 100 and 102, the first column is "
+                   "an X from the anchor line 100, extended, then reversed after a move of three "
+                   "boxes and reversed again",
+                   *point_and_figure(pnf_closes_bars(PNF_OFF_GRID_UP), box="2")),
+        case_block("point_and_figure_off_grid_down", "point_and_figure, box 2, reversal 3, closes: "
+                   "the first close 101.3 and a fall: the first column is an O from the anchor "
+                   "line 102, then a reversal up and an extension",
+                   *point_and_figure(pnf_closes_bars(PNF_OFF_GRID_DOWN), box="2")),
+        case_block("point_and_figure_anchor_widens", "point_and_figure, box 1, reversal 2, highs "
+                   "and lows: bar 2 lies beyond the anchor on both sides and only widens it, bar 3 stays "
+                   "inside, bar 4 beyond it on one side opens the first column (an O from the "
+                   "anchor line 100); bar 7 reaches both the extension and the reversal and "
+                   "extends",
+                   *point_and_figure(pnf_wide_bars(PNF_WIDE), reversal=2, method="high_low")),
+        case_block("point_and_figure_walk_close", "point_and_figure, box 0.5, reversal 3, closes "
+                   "over 300 bars of a random walk on two decimals",
+                   *point_and_figure(PNF_WALK, box="0.5")),
+        case_block("point_and_figure_walk_high_low", "point_and_figure, box 0.5, reversal 2, highs "
+                   "and lows over the same walk",
+                   *point_and_figure(PNF_WALK, box="0.5", reversal=2, method="high_low")),
+        case_block("gap_close_walk", "gap against the previous close on a random walk with jumping "
+                   f"opens, atr_len 7, no minimum, max_bars 5: {gap_summary(gap_close_walk[2])}",
+                   *gap_close_walk),
+        case_block("gap_range_tuned_walk", "gap against the previous range on a random walk, "
+                   f"atr_len 5, minimum 0.5 ATR, max_bars 10: {gap_summary(gap_walk_range[2])}",
+                   *gap_walk_range),
         case_block("gap_walk", "gap on a random walk with jumping opens, minimum 0.25 ATR, "
                    f"max_bars 20: {gap_summary(gap_walk[2])}", *gap_walk),
         case_block("market_structure_breaks_equal_highs",

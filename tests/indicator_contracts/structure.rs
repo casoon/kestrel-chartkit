@@ -174,12 +174,29 @@ fn gap_walk() {
 }
 
 #[test]
+fn gap_close_walk() {
+    holds("gap_close_walk", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
+fn gap_range_tuned_walk() {
+    holds("gap_range_tuned_walk", "gap", IndicatorUnit::Unitless);
+}
+
+#[test]
 fn gap_rejects_invalid_configuration() {
     assert_rejected("gap", &[("reference", 2.0)]);
     assert_rejected("gap", &[("reference", 0.5)]);
+    assert_rejected("gap", &[("reference", -1.0)]);
+    assert_rejected("gap", &[("reference", f64::NAN)]);
     assert_rejected("gap", &[("atr_len", 0.0)]);
+    assert_rejected("gap", &[("atr_len", 10001.0)]);
+    assert_rejected("gap", &[("atr_len", 2.5)]);
     assert_rejected("gap", &[("min_atr", -0.1)]);
+    assert_rejected("gap", &[("min_atr", 1000.5)]);
+    assert_rejected("gap", &[("min_atr", f64::NAN)]);
     assert_rejected("gap", &[("max_bars", 0.0)]);
+    assert_rejected("gap", &[("max_bars", 10001.0)]);
     assert_rejected("gap", &[("lookback", 20.0)]);
 }
 
@@ -213,13 +230,81 @@ fn point_and_figure_fine_grid() {
 }
 
 #[test]
+fn point_and_figure_reversal_one_close() {
+    holds(
+        "point_and_figure_reversal_one_close",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_reversal_one_high_low() {
+    holds(
+        "point_and_figure_reversal_one_high_low",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_off_grid_up() {
+    holds(
+        "point_and_figure_off_grid_up",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_off_grid_down() {
+    holds(
+        "point_and_figure_off_grid_down",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_anchor_widens() {
+    holds(
+        "point_and_figure_anchor_widens",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_walk_close() {
+    holds(
+        "point_and_figure_walk_close",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
+fn point_and_figure_walk_high_low() {
+    holds(
+        "point_and_figure_walk_high_low",
+        "point_and_figure",
+        IndicatorUnit::Unitless,
+    );
+}
+
+#[test]
 fn point_and_figure_rejects_invalid_configuration() {
     assert_rejected("point_and_figure", &[("box_size", 0.0)]);
     assert_rejected("point_and_figure", &[("box_size", -1.0)]);
     assert_rejected("point_and_figure", &[("box_size", f64::NAN)]);
     assert_rejected("point_and_figure", &[("reversal", 0.0)]);
     assert_rejected("point_and_figure", &[("reversal", 2.5)]);
+    assert_rejected("point_and_figure", &[("reversal", 1001.0)]);
+    assert_rejected("point_and_figure", &[("box_size", f64::INFINITY)]);
+    assert_rejected("point_and_figure", &[("box_size", 1e10)]);
     assert_rejected("point_and_figure", &[("method", 2.0)]);
+    assert_rejected("point_and_figure", &[("method", 0.5)]);
+    assert_rejected("point_and_figure", &[("method", -1.0)]);
     assert_rejected("point_and_figure", &[("box", 1.0)]);
 }
 

@@ -605,9 +605,47 @@ fn fvg_fill_touch() {
 }
 
 #[test]
+fn fvg_fill_hand_defaults() {
+    assert_holds(&case(
+        "fvg_fill_hand_defaults",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn fvg_fill_hand_one() {
+    assert_holds(&case(
+        "fvg_fill_hand_one",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn fvg_fill_walk_defaults() {
+    assert_holds(&case(
+        "fvg_fill_walk_defaults",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
+fn fvg_fill_walk_capped() {
+    assert_holds(&case(
+        "fvg_fill_walk_capped",
+        "fvg_fill",
+        IndicatorUnit::Unitless,
+    ));
+}
+
+#[test]
 fn fvg_fill_rejects_invalid_configuration() {
     assert_rejected("fvg_fill", &[("max_zones", 0.0)]);
     assert_rejected("fvg_fill", &[("max_zones", 1001.0)]);
     assert_rejected("fvg_fill", &[("max_zones", 2.5)]);
+    assert_rejected("fvg_fill", &[("max_zones", f64::NAN)]);
+    assert_rejected("fvg_fill", &[("max_zones", -1.0)]);
     assert_rejected("fvg_fill", &[("lookback", 20.0)]);
 }

@@ -40,6 +40,7 @@ Python 3.10 or newer; nothing else.
 | `golden_point_and_figure` | `kestrel_reference/fixtures/point_and_figure.py` |
 | `golden_cross_asset_alignment` | `kestrel_reference/fixtures/cross_asset_alignment.py` |
 | `golden_pair_indicators` | `kestrel_reference/fixtures/pair_indicators.py` |
+| `golden_intrabar_cvd` | `kestrel_reference/fixtures/intrabar_cvd.py` |
 | `golden_pair_regression` | `kestrel_reference/fixtures/pair_regression.py` |
 | `golden_applicability_pairs` | `kestrel_reference/fixtures/applicability_pairs.py` |
 | `golden_forward` | `kestrel_reference/fixtures/forward.py` |

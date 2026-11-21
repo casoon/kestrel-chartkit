@@ -163,10 +163,55 @@ def fvg_case(max_zones, bars):
     return {"max_zones": float(max_zones)}, bars, expected
 
 
+FVG_HAND = [(10.0, 9.0), (11.0, 10.0), (13.0, 12.0), (14.0, 12.0), (16.0, 13.0), (18.0, 15.0),
+            (20.0, 17.0), (19.0, 14.5), (14.0, 12.0), (12.0, 10.0), (11.0, 9.0), (12.0, 10.5),
+            (15.0, 13.0), (14.0, 13.5), (13.0, 12.8)]
+
+
+def fvg_hand_bars():
+    """Fifteen bars given as (high, low), the open and close at the middle:
+    3   a bullish zone 10-12
+    4   its low 12 touches the top of that zone on the first bar after it: filled; the bar itself
+        opens the bullish zone 11-12, which its own low does not fill
+    6, 7  bullish zones 14-15 and 16-17
+    8   its low reaches both: two zones filled on one bar
+    9   a bearish zone 14-17; its low 12 touches the top of the zone 11-12: filled
+    10, 11  bearish zones 12-14.5 and 11-12
+    12  its high 12 touches the bottom of the zone 12-14.5 and reaches the zone 11-12: two filled,
+        no new zone
+    13  fills the zone 14-17 and opens a bullish zone 11-13
+    14  opens a bullish zone 12-13.5
+    15  its low 12.8 fills both."""
+    return [((h + l) / 2.0, h, l, (h + l) / 2.0, 1000.0) for h, l in FVG_HAND]
+
+
+def regime_walk(n, seed):
+    """A walk on a quarter grid whose drift changes every 30 bars, so rallies and drops leave
+    gaps of both kinds, some of them touched by the very next bar."""
+    state = seed
+
+    def draw(count):
+        nonlocal state
+        state = (state * 6364136223846793005 + 1442695040888963407) % 2 ** 64
+        return (state >> 33) % count
+
+    bars, price, drift = [], 100.0, 0.0
+    for i in range(n):
+        if i % 30 == 0:
+            drift = (draw(7) - 3) * 0.75 + (100.0 - price) * 0.05
+        open_ = price
+        close = open_ + drift + (draw(5) - 2) * 0.5
+        bars.append((open_, max(open_, close) + draw(4) * 0.25, min(open_, close) - draw(4) * 0.25,
+                     close, 1000.0))
+        price = close
+    return bars
+
+
 def zigzag(segments, start=100.0):
     return candles(path(start, segments))
 
 
+FVG_WALK = regime_walk(300, 20261121)
 UNITS = ["second", "minute", "hour", "day", "week", "month"]
 DAYS = swing_bars(250)
 WEEK = swing_bars(420, phase=3.0)
@@ -318,6 +363,17 @@ def build():
                    "bars", *fvg_case(2, fvg_bars())),
         case_block("fvg_fill_touch", "fvg_fill over bars whose lows and highs only touch the "
                    "bars two before them: no gap, no zone", *fvg_case(20, fvg_touch_bars())),
+        case_block("fvg_fill_hand_defaults", "fvg_fill, defaults over 15 hand-built bars: a zone "
+                   "filled on the first bar after it by touching its edge, a bar that opens a zone "
+                   "while filling another, two zones filled on one bar, bearish zones touched on "
+                   "their edge", *defaults(fvg_case(20, fvg_hand_bars()))),
+        case_block("fvg_fill_hand_one", "fvg_fill, only the newest zone kept, over the same "
+                   "bars: an older open zone is dropped when a newer one forms and never fills",
+                   *fvg_case(1, fvg_hand_bars())),
+        case_block("fvg_fill_walk_defaults", "fvg_fill, defaults over 300 bars of a walk with a changing "
+                   "drift: gaps of both kinds", *defaults(fvg_case(20, FVG_WALK))),
+        case_block("fvg_fill_walk_capped", "fvg_fill, newest 3 zones kept, over the same walk",
+                   *fvg_case(3, FVG_WALK)),
         case_block("vwap_regime_defaults", "vwap_regime, defaults (390, 20, 14, 20, 0.1, 0.3) over "
                    "130 wave bars: from bar 21 (the slope), mostly a flat VWAP slope",
                    *defaults(vwap_case(390, 20, 14, 20, 0.1, 0.3, WAVE_VOLUME))),

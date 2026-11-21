@@ -47,9 +47,11 @@
 //! Decisions of this crate where the method is practised in more than one way:
 //!
 //! - **A box is filled once the price has reached its line** (`floor` for rising, `ceil` for
-//!   falling prices). This reading makes a reversal cover the full reversal distance and makes
-//!   rising and falling charts mirror images; it is this crate's convention and has not been
-//!   checked against a source.
+//!   falling prices). This is the classic high-low method: an X fills the box values the price
+//!   reached, rounding down, and an O rounds up; a column reverses once the price reaches the
+//!   last box value plus or minus the reversal distance, and the new column starts one box
+//!   beyond the old extreme. It makes a reversal cover the full reversal distance and makes
+//!   rising and falling charts mirror images.
 //! - **Box size and reversal** are free parameters; the literature gives scales by price level
 //!   and by purpose, not one value. The count below is proportional to both.
 //! - **One price or high and low.** Both are in use. A sequence of single prices (closes) needs
