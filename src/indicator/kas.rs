@@ -204,9 +204,7 @@ pub const KAS_DEFINITION: super::definition::IndicatorDefinition =
         ],
         checks: &[],
         facts: super::definition::IndicatorFacts::price(),
-        verification: super::definition::Verification::Open(
-            "acceptance against the measured criteria is pending",
-        ),
+        verification: super::definition::Verification::Verified,
         build: |p| {
             Ok(Box::new(Kas::new(
                 p.count("period"),
