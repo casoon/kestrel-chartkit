@@ -17,6 +17,9 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 - **Pages:** the project site uses the current shared theme (0.16.2).
 
+### Fixed
+
+- **Pages:** the home page and the showcase no longer say that some entries are not yet verified; all 196 are.
 
 ## [0.49.0] - 2026-11-21
 

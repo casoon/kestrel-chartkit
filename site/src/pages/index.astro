@@ -208,7 +208,7 @@ for bar in &bars {
       items={[
         {
           title: 'Independent reference',
-          body: `${verified} of ${tracked} entries are verified: their expected values come from a derivation independent of the Rust code — a second implementation in Python with the standard library only, or a hand-derived scenario. Where a formula leaves a convention open, the fixture states the choice; the remaining entries are marked as not yet verified.`,
+          body: `${verified} of ${tracked} entries are verified: their expected values come from a derivation independent of the Rust code — a second implementation in Python with the standard library only, or a hand-derived scenario. Where a formula leaves a convention open, the fixture states the choice.${verified < tracked ? ' The remaining entries are marked as not yet verified.' : ''}`,
         },
         {
           title: 'Contracts, bar by bar',

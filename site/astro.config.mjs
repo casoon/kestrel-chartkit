@@ -26,7 +26,7 @@ export default defineConfig({
       },
       mdxComponents: './src/mdx-components.ts',
       showcaseLead:
-        'Every indicator of the catalog, drawn from what kestrel-chartkit computes: default parameters on synthetic 4-hour bars of a fictitious CASOON share with invented prices, the latest alerts as markers. chartlet does the drawing. Entries that have not passed their acceptance yet are marked "not yet verified"; the six that read two series, derive candles or use intrabar bars are listed without a chart. Pick an indicator for its chart and the Rust call that builds it.',
+        'Every indicator of the catalog, drawn from what kestrel-chartkit computes: default parameters on synthetic 4-hour bars of a fictitious CASOON share with invented prices, the latest alerts as markers. chartlet does the drawing. An entry is marked "not yet verified" until it passes its acceptance. The six that read two series, derive candles or use intrabar bars are listed without a chart. Pick an indicator for its chart and the Rust call that builds it.',
     }),
   ],
 });
