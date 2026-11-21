@@ -9,6 +9,12 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-11-21
+
+### Breaking
+
+- **Chart patterns:** `ChartPatternKind` has three more variants (`Flag`, `CupAndHandle`, `InverseCupAndHandle`), so an exhaustive `match` needs arms for them.
+
 ### Added
 
 - **Catalog:** the volatility estimators `parkinson`, `rogers_satchell` and `yang_zhang` and the return statistics `variance_ratio`, `autocorrelation`, `hurst_rs` and `ar1_half_life` are verified catalog entries. Where they follow a convention (annualised percent, log returns as logarithms of price ratios, no small-sample correction, nothing published for a coefficient at most 0 or within 1e-9 of 1), the description says so.
@@ -18,7 +24,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Changed
 
-- **Chart patterns (BREAKING):** `ChartPatternKind` has three more variants, so an exhaustive `match` needs arms for them. Series with these shapes report the new kinds in addition; an inverse head and shoulders whose right shoulder stays in the cup's upper half also raises `bull_cup_and_handle`.
+- **Chart patterns:** series with the flag or cup and handle shapes report the new kinds in addition; an inverse head and shoulders whose right shoulder stays in the cup's upper half also raises `bull_cup_and_handle`.
 
 ## [0.45.1] - 2026-11-21
 
