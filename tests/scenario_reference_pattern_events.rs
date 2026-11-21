@@ -917,3 +917,66 @@ fn reset_starts_over() {
         .collect();
     assert_eq!(first, second);
 }
+
+// --- a bar that is both a swing high and a swing low ------------------------------------------
+
+/// Twenty bars, (open, high, low, close). Bars 2, 5 and 14 have a range that covers both
+/// neighbours, so each is a pivot high and a pivot low at once and the ZigZag gives two adjacent
+/// nodes with one timestamp. With `depth` 1 the window of the rising wedge ends at the earlier of
+/// the two nodes of bar 14 when the first is confirmed (bar 15); the second node of that bar,
+/// confirmed on bar 17, must not accept the same window again.
+const SHARED_TIMESTAMP: [(f64, f64, f64, f64); 20] = [
+    (100.0, 100.5, 100.0, 100.5),
+    (100.5, 100.5, 99.75, 99.75),
+    (99.75, 101.75, 98.75, 100.0),
+    (100.0, 100.0, 99.75, 99.75),
+    (99.75, 100.25, 98.75, 99.25),
+    (99.25, 100.5, 97.5, 100.0),
+    (100.0, 100.75, 100.0, 100.75),
+    (100.75, 100.75, 100.0, 100.0),
+    (100.0, 100.0, 99.75, 99.75),
+    (99.75, 99.75, 99.0, 99.0),
+    (99.0, 99.75, 99.0, 99.75),
+    (99.75, 100.25, 99.75, 100.25),
+    (100.25, 101.0, 100.25, 101.0),
+    (101.0, 101.0, 100.0, 100.0),
+    (100.0, 101.75, 99.5, 100.5),
+    (100.5, 100.5, 100.5, 100.5),
+    (100.5, 101.25, 100.5, 101.25),
+    (101.25, 101.25, 100.75, 100.75),
+    (100.75, 100.75, 99.75, 99.75),
+    (99.75, 99.75, 99.25, 99.25),
+];
+
+#[test]
+fn a_window_ending_at_a_shared_timestamp_is_found_once() {
+    let series: Vec<Bar> = SHARED_TIMESTAMP
+        .iter()
+        .enumerate()
+        .map(|(i, &(o, h, l, c))| Bar::new(i as i64 * 60, o, h, l, c, 100.0))
+        .collect();
+    let params = [
+        ("depth", 1.0),
+        ("backstep", 0.0),
+        ("deviation_pct", 0.05),
+        ("pending_swings", 1.0),
+    ];
+
+    let steps = run(CHART, &params, &series);
+    expect(
+        &steps,
+        &[(13, &["bull_double_bottom"]), (15, &["bear_rising_wedge"])],
+    );
+    // One instance confirms on bar 15 and none on bar 17; it is still followed after bar 17.
+    assert!(close(extra(&steps, 15, "confirmed"), 1.0));
+    assert!(close(extra(&steps, 17, "confirmed"), 0.0));
+    assert!(close(extra(&steps, 19, "active"), 1.0));
+
+    let mirror = run(CHART, &params, &mirrored(&series));
+    expect(
+        &mirror,
+        &[(13, &["bear_double_top"]), (15, &["bull_falling_wedge"])],
+    );
+    assert!(close(extra(&mirror, 17, "confirmed"), 0.0));
+    assert!(close(extra(&mirror, 19, "active"), 1.0));
+}
