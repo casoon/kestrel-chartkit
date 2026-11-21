@@ -228,11 +228,11 @@ def opening_range(bars, start_hour, start_minute, end_hour, end_minute, orb_minu
 def _classify_slope(slope_atr, flat, strong):
     if slope_atr >= strong:
         return 2.0
-    if slope_atr >= flat:
+    if slope_atr > 0.0 and slope_atr >= flat:
         return 1.0
     if slope_atr <= -strong:
         return -2.0
-    if slope_atr <= -flat:
+    if slope_atr < 0.0 and slope_atr <= -flat:
         return -1.0
     return 0.0
 
@@ -241,31 +241,38 @@ def vwap_regime(rows, closes, atr, regime_window, flat, strong):
     """VWAP regime reading per bar.
 
     `rows[i]` is None (no VWAP: no volume in the window) or (vwap, sigma, slope), the slope None
-    until it exists; `atr[i]` the Wilder ATR or None. A bar needs a VWAP, its slope and an ATR to
-    be read; other bars do not enter the window. diff = close - vwap; the window holds the last
-    `regime_window` diffs. Reading: distance_atr = diff / atr and slope_atr = slope / atr (0 for
-    an ATR of 0), z_score = diff / sigma (0 for sigma <= 0), slope_state the code -2..2 of
-    slope_atr against `flat` and `strong`, cross_frequency = (number of neighbouring diffs of
-    which exactly one is >= 0) / window length, price_persistence = (diffs on the larger side of
-    0, a diff of 0 counting as above) / window length. Returns None or the tuple
+    until it exists; `atr[i]` the Wilder ATR or None. A bar needs a VWAP, its slope and a positive
+    ATR to be read; other bars do not enter the window. diff = close - vwap; the window holds the
+    last `regime_window` diffs. The side of a diff is +1, -1 or 0 (exactly on the VWAP). Reading:
+    distance_atr = diff / atr and slope_atr = slope / atr, z_score = diff / sigma (None for
+    sigma <= 0, the key is absent), slope_state the code -2..2 of slope_atr against `flat` and
+    `strong` (a slope of 0 is always flat), cross_frequency = (non-zero sides differing from the
+    last non-zero side before them) / window length, price_persistence = (diffs on the larger
+    side) / window length, diffs on the VWAP on neither side. Returns None or the tuple
     (distance_atr, vwap, slope_atr, slope_state, z_score, cross_frequency, price_persistence).
     """
     out, diffs = [], []
     for i, row in enumerate(rows):
-        if row is None or row[2] is None or atr[i] is None:
+        if row is None or row[2] is None or atr[i] is None or atr[i] <= 0.0:
             out.append(None)
             continue
         vwap, sigma, slope = row
         diff = closes[i] - vwap
         diffs = (diffs + [diff])[-regime_window:]
         n = len(diffs)
-        crosses = sum(1 for a, b in zip(diffs, diffs[1:]) if (a >= 0.0) != (b >= 0.0))
-        above = sum(1 for d in diffs if d >= 0.0)
-        slope_atr = slope / atr[i] if atr[i] > 0.0 else 0.0
-        out.append((diff / atr[i] if atr[i] > 0.0 else 0.0, vwap, slope_atr,
+        sides = [(d > 0.0) - (d < 0.0) for d in diffs]
+        crosses, last = 0, 0
+        for side in sides:
+            if side != 0:
+                if last != 0 and side != last:
+                    crosses += 1
+                last = side
+        above, below = sides.count(1), sides.count(-1)
+        slope_atr = slope / atr[i]
+        out.append((diff / atr[i], vwap, slope_atr,
                     _classify_slope(slope_atr, flat, strong),
-                    diff / sigma if sigma > 0.0 else 0.0, crosses / n,
-                    max(above, n - above) / n))
+                    diff / sigma if sigma > 0.0 else None, crosses / n,
+                    max(above, below) / n))
     return out
 
 

@@ -127,9 +127,11 @@ def vwap_case(window, lookback, atr_len, regime_window, flat, strong, bars):
         if r is None:
             expected.append((None, {}))
             continue
-        expected.append(((r[0], {"vwap": r[1], "slope_atr": r[2], "slope_state": r[3],
-                                 "z_score": r[4], "cross_frequency": r[5],
-                                 "price_persistence": r[6]}), {}))
+        extras = {"vwap": r[1], "slope_atr": r[2], "slope_state": r[3],
+                  "cross_frequency": r[5], "price_persistence": r[6]}
+        if r[4] is not None:
+            extras["z_score"] = r[4]
+        expected.append(((r[0], extras), {}))
     _margin(readings, flat, strong)
     params = {"window": float(window), "slope_lookback": float(lookback),
               "atr_len": float(atr_len), "regime_window": float(regime_window),
@@ -384,7 +386,7 @@ def build():
                    "no volume: no VWAP before bar 7", *vwap_case(20, 3, 4, 6, *VWAP_THRESHOLDS,
                                                                  NO_VOLUME_START)),
         case_block("vwap_regime_flat", "vwap_regime over bars without range and a constant "
-                   "close: the ATR is 0, distance and slope read 0", *vwap_case(
+                   "close: the ATR is 0, so there is no output", *vwap_case(
                        5, 2, 3, 4, 0.02, 0.10, flat_bars(14, 100.0, 0.0))),
         case_block("swing_structure_defaults", "swing_structure, defaults (5, 5, 50, 14) over the "
                    "staircase of five rising, six falling and three rising swings: every turn "

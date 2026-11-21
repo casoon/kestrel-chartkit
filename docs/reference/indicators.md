@@ -1997,7 +1997,7 @@ Requires `fast_len` to be smaller than `slow_len`.
 
 ### `kestrel_vwap_regime` · alias `vwap_regime`
 
-Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume
+Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), cross_frequency and price_persistence as extras, plus z_score while the VWAP sigma is positive; needs real volume
 
 **Not yet verified:** no independent second implementation yet.
 
@@ -2008,9 +2008,9 @@ Kestrel VWAP as a regime reading: the distance of the close from the rolling VWA
 | Parameter | Default | Accepted | Meaning |
 |---|---|---|---|
 | `window` | 390 | whole number 1 – 10000 | bars of the rolling VWAP |
-| `slope_lookback` | 20 | whole number 1 – 10000 | bars back for the VWAP slope |
+| `slope_lookback` | 20 | whole number 1 – 10000 | published VWAPs back for the VWAP slope (the slope is per published VWAP) |
 | `atr_len` | 14 | whole number 1 – 10000 | Wilder ATR length the distances are measured in |
-| `regime_window` | 20 | whole number 1 – 10000 | bars over which crossings of the VWAP and the share on one side are counted |
+| `regime_window` | 20 | whole number 1 – 10000 | bars (those that produced output) over which crossings of the VWAP and the share on the dominant side are counted |
 | `flat_threshold` | 0.1 | 0 – 1000 | slope in ATRs per bar from which the VWAP counts as moderately rising or falling |
 | `strong_threshold` | 0.3 | 0 – 1000 | slope in ATRs per bar from which the VWAP counts as strongly rising or falling |
 

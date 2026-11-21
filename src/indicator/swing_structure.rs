@@ -32,6 +32,9 @@ pub struct SwingStructureOutput {
     pub correction_impulse_ratio: f64,
     /// Most recent corrections first (newest → oldest), in ATR.
     pub recent_corrections_atr: Vec<f64>,
+    /// Compares the newest correction with the oldest of the newest three (not a general trend of
+    /// the correction/impulse ratio): a smaller newest one is `Strengthening`, a larger one
+    /// `Weakening`. With fewer than two corrections it is `Stable`.
     pub trend_quality: TrendQuality,
     pub current_retracement_atr: f64,
     pub entry_zone_reached: bool,
@@ -325,6 +328,10 @@ impl SwingStructureEngine {
 /// `entry_zone_reached` (0 or 1), `remaining_potential_atr`, `required_stop_atr`, `potential_crv`,
 /// `last_impulse_velocity_atr`, `recent_correction_atr_1` .. `_3` (newest first, as many as
 /// exist) and `trend_quality` (1 strengthening, 0 stable, -1 weakening; also the `state` label).
+///
+/// `bullish`/`bearish` (the trend direction) use all retained pivots, while the legs, medians
+/// and corrections use only the newest `max_swings` legs. No pivot is detected while the ATR is
+/// not ready or is zero; that is a warmup.
 ///
 /// Pivots are only detected from the first bar that has an ATR, so the first output needs the ATR
 /// plus four confirmed pivots with two impulse and two correction legs: it depends on the data,

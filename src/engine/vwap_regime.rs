@@ -34,20 +34,24 @@ pub struct VwapRegimeOutput {
     pub slope_state: SlopeState,
     pub distance_atr: f64,
     pub z_score: f64,
-    /// Crosses per bar over the tracked window, 0.0..1.0 — high = Balance, low = Trend.
+    /// Crosses per bar over the tracked window, at most (n-1)/n for n bars — high = Balance,
+    /// low = Trend. A cross is a change between the last non-zero side and a new non-zero side.
     pub cross_frequency: f64,
-    /// Share of bars on the current side of VWAP, 0.0..1.0.
+    /// Share of bars on the dominant side of the VWAP, 0.0..1.0; bars on the VWAP count on neither
+    /// side (they count in the divisor only).
     pub price_persistence: f64,
 }
 
+/// Slope state from the slope in ATRs. A slope of exactly 0 (also `-0.0`) is always `Flat`,
+/// whatever the thresholds.
 pub fn classify_slope(slope_atr: f64, flat_threshold: f64, strong_threshold: f64) -> SlopeState {
     if slope_atr >= strong_threshold {
         SlopeState::StronglyRising
-    } else if slope_atr >= flat_threshold {
+    } else if slope_atr > 0.0 && slope_atr >= flat_threshold {
         SlopeState::ModeratelyRising
     } else if slope_atr <= -strong_threshold {
         SlopeState::StronglyFalling
-    } else if slope_atr <= -flat_threshold {
+    } else if slope_atr < 0.0 && slope_atr <= -flat_threshold {
         SlopeState::ModeratelyFalling
     } else {
         SlopeState::Flat
@@ -56,6 +60,11 @@ pub fn classify_slope(slope_atr: f64, flat_threshold: f64, strong_threshold: f64
 
 /// Tracks cross-frequency and price-persistence relative to VWAP over a rolling window — feed
 /// it `price - vwap` each bar (e.g. from `indicator::vwap::Vwap`'s output).
+///
+/// A diff of exactly 0 is on neither side. Crosses compare each non-zero side with the last
+/// non-zero side in the window, so a 0 neither counts nor resets. The tracker returns `0.0` for
+/// `distance_atr` with an ATR of zero and for `z_score` with a sigma of zero: that is the raw-API
+/// behaviour; the catalog entry [`VwapRegimeEngine`] does not publish those readings.
 pub struct VwapRegimeTracker {
     window: usize,
     diffs: VecDeque<f64>,
@@ -112,16 +121,29 @@ impl VwapRegimeTracker {
         }
 
         let mut crosses = 0usize;
-        for pair in self.diffs.iter().collect::<Vec<_>>().windows(2) {
-            if (*pair[0] >= 0.0) != (*pair[1] >= 0.0) {
-                crosses += 1;
+        let mut above = 0usize;
+        let mut below = 0usize;
+        let mut last_side = 0i8;
+        for &d in &self.diffs {
+            let side = if d > 0.0 {
+                above += 1;
+                1
+            } else if d < 0.0 {
+                below += 1;
+                -1
+            } else {
+                0
+            };
+            if side != 0 {
+                if last_side != 0 && side != last_side {
+                    crosses += 1;
+                }
+                last_side = side;
             }
         }
-        let above = self.diffs.iter().filter(|d| **d >= 0.0).count();
         let n = self.diffs.len().max(1);
         let cross_frequency = crosses as f64 / n as f64;
-        let side_count = above.max(n - above);
-        let price_persistence = side_count as f64 / n as f64;
+        let price_persistence = above.max(below) as f64 / n as f64;
 
         VwapRegimeOutput {
             slope_atr,
@@ -148,10 +170,10 @@ impl VwapRegimeTracker {
 /// `value` is the distance of the close from the VWAP in ATRs; `extra` has `vwap`, `slope_atr`
 /// (the VWAP slope per bar in ATRs), `slope_state` (-2 strongly falling, -1 moderately falling,
 /// 0 flat, 1 moderately rising, 2 strongly rising, by `flat_threshold` and `strong_threshold` on
-/// `slope_atr`; also the `state` label), `z_score` (the distance in VWAP sigmas), `cross_frequency`
-/// and `price_persistence` over the last `regime_window` bars. A bar without a VWAP, a VWAP slope
-/// or an ATR yields no output and does not enter the window; an ATR of zero reads as zero
-/// distance and slope. The VWAP needs real volume. [`Indicator::reset`] starts over.
+/// `slope_atr`; also the `state` label), `z_score` (the distance in VWAP sigmas, absent while the
+/// VWAP sigma is zero), `cross_frequency` and `price_persistence` over the last `regime_window`
+/// bars. The slope is per published VWAP. A bar without a VWAP, a VWAP slope or an ATR, or with
+/// an ATR of zero, yields no output and does not enter the window. The VWAP needs real volume. [`Indicator::reset`] starts over.
 ///
 /// The first output comes with the first bar after `slope_lookback` published VWAPs and `atr_len`
 /// bars; bars without volume delay it, so `warmup_period` is the earliest bar.
@@ -215,10 +237,14 @@ impl Indicator for VwapRegimeEngine {
         let vwap = self.vwap.on_bar(bar)?;
         let slope = vwap.extra.get("slope").copied()?;
         let atr = atr?;
+        if atr <= 0.0 {
+            return None;
+        }
+        let sigma = vwap.extra.get("sigma").copied().unwrap_or(0.0);
         let reading = self.tracker.update_with_slope(
             bar.close - vwap.value,
             atr,
-            vwap.extra.get("sigma").copied().unwrap_or(0.0),
+            sigma,
             slope,
             self.flat_threshold,
             self.strong_threshold,
@@ -242,11 +268,13 @@ impl Indicator for VwapRegimeEngine {
             ("vwap", vwap.value),
             ("slope_atr", reading.slope_atr),
             ("slope_state", code),
-            ("z_score", reading.z_score),
             ("cross_frequency", reading.cross_frequency),
             ("price_persistence", reading.price_persistence),
         ] {
             output.extra.insert(key.to_string(), value);
+        }
+        if sigma > 0.0 {
+            output.extra.insert("z_score".to_string(), reading.z_score);
         }
         Some(output)
     }
@@ -256,14 +284,14 @@ impl Indicator for VwapRegimeEngine {
 pub const VWAP_REGIME_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "kestrel_vwap_regime",
     aliases: &["vwap_regime"],
-    description: "Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), z_score, cross_frequency and price_persistence as extras; needs real volume",
+    description: "Kestrel VWAP as a regime reading: the distance of the close from the rolling VWAP in ATRs as value, with vwap, slope_atr, slope_state (-2..2), cross_frequency and price_persistence as extras, plus z_score while the VWAP sigma is positive; needs real volume",
     params: &[
         ParamSpec::count("window", 390, 1, 10000).meaning("bars of the rolling VWAP"),
         ParamSpec::count("slope_lookback", 20, 1, 10000)
-            .meaning("bars back for the VWAP slope"),
+            .meaning("published VWAPs back for the VWAP slope (the slope is per published VWAP)"),
         ParamSpec::count("atr_len", 14, 1, 10000).meaning("Wilder ATR length the distances are measured in"),
         ParamSpec::count("regime_window", 20, 1, 10000)
-            .meaning("bars over which crossings of the VWAP and the share on one side are counted"),
+            .meaning("bars (those that produced output) over which crossings of the VWAP and the share on the dominant side are counted"),
         ParamSpec::number("flat_threshold", 0.1, 0.0, 1000.0)
             .meaning("slope in ATRs per bar from which the VWAP counts as moderately rising or falling"),
         ParamSpec::number("strong_threshold", 0.3, 0.0, 1000.0)
@@ -306,6 +334,77 @@ mod tests {
             SlopeState::ModeratelyFalling
         );
         assert_eq!(classify_slope(-0.5, 0.1, 0.3), SlopeState::StronglyFalling);
+    }
+
+    #[test]
+    fn zero_slope_is_flat_at_every_threshold() {
+        assert_eq!(classify_slope(0.0, 0.0, 0.3), SlopeState::Flat);
+        assert_eq!(classify_slope(-0.0, 0.0, 0.3), SlopeState::Flat);
+        assert_eq!(classify_slope(0.01, 0.0, 0.3), SlopeState::ModeratelyRising);
+        assert_eq!(
+            classify_slope(-0.01, 0.0, 0.3),
+            SlopeState::ModeratelyFalling
+        );
+    }
+
+    #[test]
+    fn tie_at_the_vwap_mirrors() {
+        let run = |sign: f64| {
+            let mut tracker = VwapRegimeTracker::new(20);
+            let mut out = None;
+            for d in [1.0, 0.0, -1.0, 0.0, 1.0, 1.0, 0.0] {
+                out = Some(tracker.update(sign * d, 2.0, 0.5, sign * 0.2, 0.1, 0.3));
+            }
+            out.unwrap()
+        };
+        let (a, b) = (run(1.0), run(-1.0));
+        assert_eq!(a.cross_frequency, b.cross_frequency);
+        assert_eq!(a.price_persistence, b.price_persistence);
+        assert_eq!(a.cross_frequency, 2.0 / 7.0);
+        assert_eq!(a.price_persistence, 3.0 / 7.0);
+        assert_eq!(a.slope_state, SlopeState::ModeratelyRising);
+        assert_eq!(b.slope_state, SlopeState::ModeratelyFalling);
+        assert_eq!(a.distance_atr, -b.distance_atr);
+    }
+
+    fn bar(i: i64, high: f64, low: f64, close: f64) -> Bar {
+        Bar {
+            timestamp: i,
+            open: close,
+            high,
+            low,
+            close,
+            volume: 5.0,
+        }
+    }
+
+    #[test]
+    fn zero_atr_gives_no_output() {
+        let mut engine = VwapRegimeEngine::new(10, 3, 3, 5, 0.1, 0.3);
+        for i in 0..20 {
+            assert!(engine.on_bar(&bar(i, 10.0, 10.0, 10.0)).is_none());
+        }
+    }
+
+    #[test]
+    fn zero_sigma_has_no_z_score() {
+        // A constant typical price (sigma 0) with a range that gives a positive ATR.
+        let mut engine = VwapRegimeEngine::new(10, 3, 3, 5, 0.1, 0.3);
+        let mut last = None;
+        for i in 0..20 {
+            last = engine.on_bar(&bar(i, 11.0, 9.0, 10.0));
+        }
+        let out = last.expect("output");
+        assert!(!out.extra.contains_key("z_score"));
+        assert!(out.extra.contains_key("cross_frequency"));
+        // A varying price gives a positive sigma and a z_score.
+        let mut engine = VwapRegimeEngine::new(10, 3, 3, 5, 0.1, 0.3);
+        let mut last = None;
+        for i in 0..30 {
+            let c = 100.0 + (i as f64 * 0.7).sin() * 3.0;
+            last = engine.on_bar(&bar(i, c + 1.0, c - 1.0, c));
+        }
+        assert!(last.expect("output").extra.contains_key("z_score"));
     }
 
     #[test]
