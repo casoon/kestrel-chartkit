@@ -404,7 +404,7 @@ impl Indicator for FvgFillEngine {
 pub const FVG_FILL_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "fvg_fill",
     aliases: &[],
-    description: "Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras",
+    description: "Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras. Purpose: gaps as objects with a lifetime, from creation to the first return, instead of a one-shot event. Use: where open gaps lie and when price comes back to them. Caveat: a fill is a touch, not a reaction; a resting order inside a zone is filled on every return, also on those that run straight through it, so read the close of the returning bars before treating a fill as a turn",
     params: &[ParamSpec::count("max_zones", 20, 1, 1000)
         .meaning("newest open zones that are kept")],
     checks: &[],

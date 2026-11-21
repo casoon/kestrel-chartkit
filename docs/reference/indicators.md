@@ -345,7 +345,7 @@ Wilder's smoothed moving average (alpha = 1/period, seeded with the mean of the 
 
 ### `alma`
 
-Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar
+Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar. Purpose: a Gaussian window whose peak can be moved towards the newest bars, trading smoothness against lag with one parameter. Use: a smooth reference line whose lag is set by `offset`. Caveat: the closer the peak sits to the newest bar, the closer the line stays to the price and the more often the price crosses it; compare smoothers at equal smoothness, not at equal period
 
 [See it in the showcase](../../../showcase/alma/)
 
@@ -373,7 +373,7 @@ An approximation of the Jurik moving average, following an openly published form
 
 ### `super_smoother`
 
-Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar
+Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar. Purpose: a smooth curve with little lag for its smoothness. Use: the smoothest line at a given lag, as a reference or as the input of other measures. Caveat: at the same nominal period it lies closer to the price than an `sma`, so the price crosses it more often; compare smoothers at equal smoothness, not at equal period
 
 [See it in the showcase](../../../showcase/super_smoother/)
 
@@ -566,7 +566,7 @@ Variable Index Dynamic Average (CMO-scaled exponential smoothing)
 
 ### `kestrel_adaptive_smoother` · alias `kas`
 
-Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move
+Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move. Purpose: a fixed average sits at one point between lag and noise; this one moves that point bar by bar, without the negative weights that make a fixed filter overshoot. Use: a reference or trailing line, context for the side of a swing, or the centre of a band that turns price against the line into a state with memory (enter beyond the band, release at the line). Caveat: it stays closer to the price at turns than a fixed average with as many direction changes, on random walks just as on prices, so this is a property of the construction and no forecast of direction; like every line near the price it is crossed often in sideways movement, and a crossing alone is no signal (see the adaptive smoother guide)
 
 [See it in the showcase](../../../showcase/kestrel_adaptive_smoother/)
 
@@ -1604,7 +1604,7 @@ Volatility Regime & Squeeze Detector
 
 ### `fractal_dimension`
 
-Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped)
+Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped). Purpose: how rough the recent path was, between a straight line and noise. Use: describing the character of a window, next to a direction measure. Caveat: it describes the window that is over and has no sign; by itself it says nothing about the next bars
 
 [See it in the showcase](../../../showcase/fractal_dimension/)
 
@@ -1617,7 +1617,7 @@ Fractal dimension of the price path over a trailing window, 1 for a straight lin
 
 ### `r_squared`
 
-R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1
+R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1. Purpose: how straight the recent path was, independent of its slope and scale. Use: describing whether a window looked like a trend or like noise, next to a slope or direction measure that says which way. Caveat: it describes the window that is over and has no sign; by itself it says nothing about the next bars
 
 [See it in the showcase](../../../showcase/r_squared/)
 
@@ -2418,7 +2418,7 @@ Midpoint (high + low) / 2 of the last completed period of count units, held unti
 
 ### `kestrel_swing_structure` · alias `swing_structure`
 
-Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras
+Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras. Purpose: trend strength as the sizes of impulse and correction legs in ATRs instead of a binary trend flag; highs and lows are treated alike, so a reflected series reads the same. Use: how deep corrections usually run, how far the current one has come and how much of a typical impulse would remain. Caveat: every pivot is known `right` bars late, and the entry zone and reward-to-risk describe the swing measured so far; they are no orders
 
 **Not yet verified:** no independent second implementation yet.
 
@@ -2435,7 +2435,7 @@ Kestrel statistical swing structure: the median correction over the median impul
 
 ### `fvg_fill`
 
-Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras
+Fair value gaps followed as zones until a later bar trades back into them: the number of open zones as value, with created (1 bullish, -1 bearish gap on this bar), filled, open_bullish and open_bearish as extras. Purpose: gaps as objects with a lifetime, from creation to the first return, instead of a one-shot event. Use: where open gaps lie and when price comes back to them. Caveat: a fill is a touch, not a reaction; a resting order inside a zone is filled on every return, also on those that run straight through it, so read the close of the returning bars before treating a fill as a turn
 
 **Not yet verified:** no independent second implementation yet.
 

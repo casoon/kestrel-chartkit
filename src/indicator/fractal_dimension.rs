@@ -80,7 +80,7 @@ pub const FRACTAL_DIMENSION_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "fractal_dimension",
         aliases: &[],
-        description: "Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped)",
+        description: "Fractal dimension of the price path over a trailing window, 1 for a straight line and towards 2 for noise: Ehlers' halving estimate (`halves`, clamped to 1..2) or path over range (`path`, unclamped). Purpose: how rough the recent path was, between a straight line and noise. Use: describing the character of a window, next to a direction measure. Caveat: it describes the window that is over and has no sign; by itself it says nothing about the next bars",
         params: &[
             super::definition::ParamSpec::count("period", 30, 4, 10000)
                 .meaning("bars of the window (`halves`: the window; `path`: the number of close-to-close steps, one more bar)"),

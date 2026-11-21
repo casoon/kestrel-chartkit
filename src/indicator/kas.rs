@@ -190,7 +190,7 @@ pub const KAS_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "kestrel_adaptive_smoother",
         aliases: &["kas"],
-        description: "Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move",
+        description: "Kestrel Adaptive Smoother: a cascade of exponential stages whose gain follows how directed and how unusual the recent movement is, so the line rests in back-and-forth movement and follows a real move. Purpose: a fixed average sits at one point between lag and noise; this one moves that point bar by bar, without the negative weights that make a fixed filter overshoot. Use: a reference or trailing line, context for the side of a swing, or the centre of a band that turns price against the line into a state with memory (enter beyond the band, release at the line). Caveat: it stays closer to the price at turns than a fixed average with as many direction changes, on random walks just as on prices, so this is a property of the construction and no forecast of direction; like every line near the price it is crossed often in sideways movement, and a crossing alone is no signal (see the adaptive smoother guide)",
         params: &[
             super::definition::ParamSpec::count("period", 20, 1, 10000).meaning(
                 "length: at phase 0 without adaptation the line lags a straight trend as much as an exponential average of this period",

@@ -52,7 +52,7 @@ pub const R_SQUARED_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "r_squared",
         aliases: &[],
-        description: "R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1",
+        description: "R-squared of a least-squares line through the last period closes, 1 for a clean straight trend and near 0 for noise; a window of equal closes reads 1. Purpose: how straight the recent path was, independent of its slope and scale. Use: describing whether a window looked like a trend or like noise, next to a slope or direction measure that says which way. Caveat: it describes the window that is over and has no sign; by itself it says nothing about the next bars",
         params: &[super::definition::ParamSpec::count("period", 20, 2, 10000)
             .meaning("closes the line is fitted to")],
         checks: &[],

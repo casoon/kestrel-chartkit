@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+- **Catalog:** the descriptions of `kestrel_adaptive_smoother`, `kestrel_swing_structure`, `fvg_fill`, `super_smoother`, `alma`, `r_squared` and `fractal_dimension` also state the purpose of the entry, what it is used for and a caveat; they show in the indicator reference and the showcase.
+
 ### Fixed
 
 - **Swing structure:** `kestrel_swing_structure` keeps its pivots strictly alternating (a pivot of the same kind continues the swing and the more extreme one stays), orders the two pivots of an outside bar by the alternation instead of always high first, and reads the trend of an undecided structure from the newest leg; a series reflected about a level now gives the same readings, which it did not on series with equal highs and lows or outside bars. Readings on such series change.

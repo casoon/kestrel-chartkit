@@ -402,7 +402,7 @@ impl Indicator for SwingStructureIndicator {
 pub const SWING_STRUCTURE_DEFINITION: IndicatorDefinition = IndicatorDefinition {
     name: "kestrel_swing_structure",
     aliases: &["swing_structure"],
-    description: "Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras",
+    description: "Kestrel statistical swing structure: the median correction over the median impulse leg (both in ATRs) as value, with the retracement, remaining potential, required stop, reward-to-risk and impulse velocity in ATRs, the newest three corrections and the trend quality (-1 weakening .. 1 strengthening) as extras. Purpose: trend strength as the sizes of impulse and correction legs in ATRs instead of a binary trend flag; highs and lows are treated alike, so a reflected series reads the same. Use: how deep corrections usually run, how far the current one has come and how much of a typical impulse would remain. Caveat: every pivot is known `right` bars late, and the entry zone and reward-to-risk describe the swing measured so far; they are no orders",
     params: &[
         ParamSpec::count("left", 5, 1, 1000).meaning("bars left of a swing pivot"),
         ParamSpec::count("right", 5, 1, 1000).meaning("bars right of a swing pivot (the confirmation delay)"),

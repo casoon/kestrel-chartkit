@@ -797,7 +797,7 @@ pub const ALMA_DEFINITION: super::definition::IndicatorDefinition =
         name: "alma",
         aliases: &[],
         description:
-            "Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar",
+            "Arnaud Legoux Moving Average (Gaussian-weighted average of the last period closes); the weight peak sits at offset · (period - 1) as is, not rounded down to a whole bar. Purpose: a Gaussian window whose peak can be moved towards the newest bars, trading smoothness against lag with one parameter. Use: a smooth reference line whose lag is set by `offset`. Caveat: the closer the peak sits to the newest bar, the closer the line stays to the price and the more often the price crosses it; compare smoothers at equal smoothness, not at equal period",
         params: &[
             super::definition::ParamSpec::count("period", 9, 1, 10000)
                 .meaning("bars in the weighting window"),
@@ -849,7 +849,7 @@ pub const SUPER_SMOOTHER_DEFINITION: super::definition::IndicatorDefinition =
     super::definition::IndicatorDefinition {
         name: "super_smoother",
         aliases: &[],
-        description: "Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar",
+        description: "Ehlers' SuperSmoother, a 2-pole Butterworth low-pass filter with the coefficients from 1.414 · pi / period; the first two values are the closes, the filter runs from the third bar. Purpose: a smooth curve with little lag for its smoothness. Use: the smoothest line at a given lag, as a reference or as the input of other measures. Caveat: at the same nominal period it lies closer to the price than an `sma`, so the price crosses it more often; compare smoothers at equal smoothness, not at equal period",
         params: &[super::definition::ParamSpec::count("period", 10, 1, 10000)
             .meaning("cutoff period of the filter in bars")],
         checks: &[],
