@@ -157,7 +157,14 @@ impl Indicator for CycleLengthEngine {
 
     fn on_bar(&mut self, bar: &Bar) -> Option<IndicatorOutput> {
         let average = self.average.update(bar.close)?;
-        let reading = self.tracker.update(bar.close - average);
+        // A close that sits on its average up to rounding noise is "exactly on it": the average of
+        // a reflected series carries different noise, and a sign decided by it would count a
+        // crossing on one side only.
+        let mut deviation = bar.close - average;
+        if deviation.abs() <= 1e-11 * average.abs().max(1.0) {
+            deviation = 0.0;
+        }
+        let reading = self.tracker.update(deviation);
         let length = reading.average_swing_length?;
         let mut output = IndicatorOutput::new(length);
         output.extra.insert(

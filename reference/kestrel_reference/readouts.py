@@ -302,8 +302,13 @@ def swing_structure(bars, left, right, max_swings, atr_len):
 
     A bar is a pivot high (low) when its high (low) is strictly above (below) the highs (lows)
     of the `left` bars before and `right` bars after it; it is known `right` bars later, and only
-    bars that have a Wilder ATR of `atr_len` > 0 look for one. A bar that is both pivots counts
-    the high first. Only the newest `2 * max_swings + 4` pivots are kept. The legs between
+    bars that have a Wilder ATR of `atr_len` > 0 look for one. The pivots alternate (high, low,
+    high, ...): a pivot of the same kind as the newest one continues that swing, the more extreme
+    of the two stays (the higher high, the lower low; on equal prices the earlier one). A bar that
+    is both pivots (an outside bar) goes in so that the alternation continues, i.e. the high
+    first after a pivot low and the low first after a pivot high; with no pivot before it, the
+    high first when the bar closed below its open, the low first when it closed above, and
+    neither when it closed at its open. Only the newest `2 * max_swings + 4` pivots are kept. The legs between
     neighbouring pivots are |price change| / ATR (the ATR of the current bar) with direction and
     span in bars (at least 1); only the newest `max_swings` legs count. With at least 4 pivots:
     trend up when the last two pivot highs and the last two pivot lows both rose, down when both
@@ -330,17 +335,37 @@ def swing_structure(bars, left, right, max_swings, atr_len):
         if c - left >= 0:
             window = bars[c - left:c + right + 1]
             others = [b for k, b in enumerate(window) if k != left]
-            if all(bars[c][1] > b[1] for b in others):
-                pivots.append((c, bars[c][1], True))
-            if all(bars[c][2] < b[2] for b in others):
-                pivots.append((c, bars[c][2], False))
-            pivots = pivots[-(max_swings * 2 + 4):]
+            is_high = all(bars[c][1] > b[1] for b in others)
+            is_low = all(bars[c][2] < b[2] for b in others)
+            found = []
+            if is_high and is_low:
+                if pivots:
+                    high_first = not pivots[-1][2]
+                elif bars[c][0] == bars[c][3]:
+                    high_first = None
+                else:
+                    high_first = bars[c][3] < bars[c][0]
+                if high_first is not None:
+                    found = [(c, bars[c][1], True), (c, bars[c][2], False)]
+                    if not high_first:
+                        found.reverse()
+            elif is_high:
+                found = [(c, bars[c][1], True)]
+            elif is_low:
+                found = [(c, bars[c][2], False)]
+            for pivot in found:
+                if pivots and pivots[-1][2] == pivot[2]:
+                    if (pivot[1] > pivots[-1][1]) if pivot[2] else (pivot[1] < pivots[-1][1]):
+                        pivots[-1] = pivot
+                else:
+                    pivots.append(pivot)
+                pivots = pivots[-(max_swings * 2 + 4):]
         if len(pivots) < 4:
             out.append(None)
             continue
         legs = []
-        for (ia, pa, _), (ib, pb, _) in zip(pivots, pivots[1:]):
-            legs.append((abs(pb - pa) / atr, pb > pa, max(ib - ia, 1)))
+        for (ia, pa, _), (ib, pb, hb) in zip(pivots, pivots[1:]):
+            legs.append((abs(pb - pa) / atr, hb, max(ib - ia, 1)))
         legs = legs[-max_swings:]
         highs = [p for _, p, h in pivots if h]
         lows = [p for _, p, h in pivots if not h]

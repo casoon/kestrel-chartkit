@@ -62,9 +62,17 @@ struct Pivot {
     is_high: bool,
 }
 
+/// An up leg ends in a pivot high. The pivots alternate (see [`SwingStructureEngine::push_pivot`]),
+/// so the leg's direction is the type of the pivot it ends in, never a comparison of two prices
+/// that may be equal.
+fn leg_is_up(end: &Pivot) -> bool {
+    end.is_high
+}
+
 /// Detects swing pivots and derives `SwingStructureOutput`. Reuses the same left/right pivot
 /// window as `pivots_structure::PivotStructureEngine`, but exposes the underlying leg sizes
-/// instead of a single bounded score.
+/// instead of a single bounded score. The pivots alternate (high, low, high, ...) and highs and lows
+/// are treated alike, so a series reflected about a level gives the same readings.
 ///
 /// This is a composite/consumer of another indicator's output, not a pure `Indicator`: it
 /// needs the *raw* ATR in price units on every bar, not the `%`-of-price value that
@@ -126,7 +134,7 @@ impl SwingStructureEngine {
         for w in self.pivots.windows(2) {
             let [a, b] = w else { continue };
             let size = (b.price - a.price).abs() / atr;
-            let is_up = b.price > a.price;
+            let is_up = leg_is_up(b);
             let span = b.index.saturating_sub(a.index).max(1);
             legs.push((size, is_up, span));
         }
@@ -158,7 +166,10 @@ impl SwingStructureEngine {
         let bearish = highs.len() >= 2
             && lows.len() >= 2
             && matches!((h_last, h_prev, l_last, l_prev), (Some(hl), Some(hp), Some(ll), Some(lp)) if hl < hp && ll < lp);
-        let trend_up = bullish || (!bearish && legs.last().map(|l| l.1).unwrap_or(true));
+        // Neither a higher-highs-and-higher-lows nor a lower-highs-and-lower-lows structure: the
+        // trend is the direction of the newest leg, so a reflected series reads the other way.
+        let newest_leg_up = self.pivots.last().is_some_and(leg_is_up);
+        let trend_up = bullish || (!bearish && newest_leg_up);
 
         let mut impulses: Vec<f64> = Vec::new();
         let mut corrections: Vec<f64> = Vec::new();
@@ -188,9 +199,11 @@ impl SwingStructureEngine {
         let trend_quality = if recent_corrections_atr.len() >= 2 {
             let newest = recent_corrections_atr.first().copied().unwrap_or(0.0);
             let oldest = recent_corrections_atr.last().copied().unwrap_or(0.0);
-            if newest < oldest {
+            // Equal legs of a tick-grid series differ by rounding noise on a reflected series.
+            let noise = 1e-11 * newest.max(oldest);
+            if newest < oldest - noise {
                 TrendQuality::Strengthening
-            } else if newest > oldest {
+            } else if newest > oldest + noise {
                 TrendQuality::Weakening
             } else {
                 TrendQuality::Stable
@@ -201,7 +214,11 @@ impl SwingStructureEngine {
 
         let last_swing_price = self.pivots.last().map(|p| p.price).unwrap_or(bar.close);
         let current_retracement_atr = (bar.close - last_swing_price).abs() / atr;
-        let entry_zone_reached = current_retracement_atr >= median_correction_atr * 0.8;
+        // Prices on a tick grid make the retracement land exactly on the threshold; the reflected
+        // series reaches it with rounding noise on either side, so a hair of tolerance keeps the
+        // flag the same on both.
+        let entry_zone_reached =
+            current_retracement_atr >= median_correction_atr * 0.8 * (1.0 - 1e-11);
         let remaining_potential_atr = (median_impulse_atr - current_retracement_atr).max(0.0);
         let required_stop_atr = median_correction_atr.max(0.1);
         let potential_crv = if required_stop_atr > 0.0 {
@@ -240,15 +257,57 @@ impl SwingStructureEngine {
         let is_high = rule.holds(false, window.iter().map(|(_, b)| b.high));
         let is_low = rule.holds(true, window.iter().map(|(_, b)| b.low));
         let abs_index = self.bars[candidate_idx].0;
-        if is_high {
+        if is_high && is_low {
+            // An outside bar is a pivot high and a pivot low at once. The one that completes the
+            // alternation goes first, so the order is not a fixed high-then-low that a reflected
+            // series would have to read the other way round. With no pivot before it the bar's
+            // own direction decides (an up bar travelled from its low to its high); a bar that
+            // closed where it opened has no direction and gives no pivot.
+            let high_first = match self.pivots.last() {
+                Some(last) => !last.is_high,
+                None => match self.bars[candidate_idx]
+                    .1
+                    .close
+                    .total_cmp(&self.bars[candidate_idx].1.open)
+                {
+                    std::cmp::Ordering::Less => true,
+                    std::cmp::Ordering::Greater => false,
+                    std::cmp::Ordering::Equal => return,
+                },
+            };
+            if high_first {
+                self.push_pivot(abs_index, cand_high, true);
+                self.push_pivot(abs_index, cand_low, false);
+            } else {
+                self.push_pivot(abs_index, cand_low, false);
+                self.push_pivot(abs_index, cand_high, true);
+            }
+        } else if is_high {
             self.push_pivot(abs_index, cand_high, true);
-        }
-        if is_low {
+        } else if is_low {
             self.push_pivot(abs_index, cand_low, false);
         }
     }
 
+    /// Adds a pivot, keeping the pivots strictly alternating (high, low, high, ...). A pivot of
+    /// the same kind as the newest one continues that swing: the more extreme of the two stays
+    /// (the higher high, the lower low; on equal prices the existing one), which treats highs and
+    /// lows alike.
     fn push_pivot(&mut self, index: usize, price: f64, is_high: bool) {
+        if let Some(last) = self.pivots.last_mut() {
+            if last.is_high == is_high {
+                let more_extreme = if is_high {
+                    price > last.price
+                } else {
+                    price < last.price
+                };
+                if more_extreme {
+                    last.index = index;
+                    last.price = price;
+                }
+                return;
+            }
+        }
         self.pivots.push(Pivot {
             index,
             price,

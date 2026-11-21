@@ -78,9 +78,18 @@ fn assert_mirrored(
 }
 
 fn check_bars_entry(name: &str, params: &[(&str, f64)], fields: &[(&str, Answer)]) {
+    check_bars_entry_on(&series(), name, params, fields);
+}
+
+fn check_bars_entry_on(
+    inputs: &[(&str, Vec<Bar>)],
+    name: &str,
+    params: &[(&str, f64)],
+    fields: &[(&str, Answer)],
+) {
     let params: HashMap<String, f64> = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
-    for (label, bars) in series() {
-        let mirrored = mirror(&bars);
+    for (label, bars) in inputs {
+        let mirrored = mirror(bars);
         let mut a = build_checked(name, &params).unwrap();
         let mut b = build_checked(name, &params).unwrap();
         for (i, (x, y)) in bars.iter().zip(&mirrored).enumerate() {
@@ -322,6 +331,116 @@ fn shape_measures_read_the_same_on_both_sides() {
         ],
     );
     check_bars_entry("opening_range", &[], &[("value", Answer::Same)]);
+}
+
+/// Series that stress the tie rules of the structure entries: prices on a coarse tick grid (equal
+/// highs, lows and closes, outside bars that are a pivot high and a pivot low at once), a plateau
+/// with closes exactly on their average, and the seeded random walks of the synthetic generators.
+/// All of them are generated; real price series are mirrored by the lab, not by this public repo.
+fn structure_series() -> Vec<(&'static str, Vec<Bar>)> {
+    let on_grid = |bars: Vec<Bar>, tick: f64| -> Vec<Bar> {
+        bars.into_iter()
+            .map(|b| {
+                let q = |x: f64| (x / tick).round() * tick;
+                let (open, close) = (q(b.open), q(b.close));
+                let high = q(b.high).max(open).max(close);
+                let low = q(b.low).min(open).min(close);
+                Bar::new(b.timestamp, open, high, low, close, b.volume)
+            })
+            .collect()
+    };
+    let plateau: Vec<Bar> = (0..400)
+        .map(|i| {
+            let level = if (i / 40) % 2 == 0 { 100.0 } else { 100.5 };
+            let wick = if i % 7 == 0 { 2.0 } else { 0.5 };
+            Bar::new(
+                i as i64 * 3600,
+                level,
+                level + wick,
+                level - wick,
+                level,
+                100.0,
+            )
+        })
+        .collect();
+    // Closes that revisit a few levels and so sit exactly on their average now and then.
+    let random_levels = |count: usize, seed: u64| -> Vec<Bar> {
+        let mut x = seed;
+        (0..count)
+            .map(|i| {
+                x = (1664525 * x + 1013904223) % 4294967296;
+                let level = 100.0 + 0.1 * (x >> 20 & 3) as f64;
+                Bar::new(
+                    i as i64 * 3600,
+                    level,
+                    level + 0.1,
+                    level - 0.1,
+                    level,
+                    100.0,
+                )
+            })
+            .collect()
+    };
+    vec![
+        ("wave", wave_series(600)),
+        ("lcg", lcg_series(600, 7)),
+        ("lcg-grid-1.0", on_grid(lcg_series(900, 11), 1.0)),
+        ("lcg-grid-0.25", on_grid(lcg_series(900, 23), 0.25)),
+        ("wave-grid-2.0", on_grid(wave_series(700), 2.0)),
+        ("lcg-grid-0.1", on_grid(lcg_series(1500, 31), 0.1)),
+        ("lcg-grid-0.01", on_grid(lcg_series(1500, 37), 0.01)),
+        ("flat-grid-0.1", on_grid(random_levels(1500, 41), 0.1)),
+        ("plateau", plateau),
+        (
+            "random-walk",
+            generate_random_walk_bars(5, 800, 100.0, 0.0, 0.8, 1000.0),
+        ),
+        (
+            "random-walk-grid",
+            on_grid(
+                generate_random_walk_bars(9, 800, 100.0, 0.0, 0.8, 1000.0),
+                0.5,
+            ),
+        ),
+    ]
+}
+
+#[test]
+fn swing_structure_and_cycle_length_mirror_on_structure_series() {
+    let inputs = structure_series();
+    for (left, right) in [(5.0, 5.0), (2.0, 2.0), (3.0, 1.0)] {
+        check_bars_entry_on(
+            &inputs,
+            "kestrel_swing_structure",
+            &[("left", left), ("right", right)],
+            &[
+                ("value", Answer::Same),
+                ("median_impulse_atr", Answer::Same),
+                ("median_correction_atr", Answer::Same),
+                ("current_retracement_atr", Answer::Same),
+                ("entry_zone_reached", Answer::Same),
+                ("remaining_potential_atr", Answer::Same),
+                ("required_stop_atr", Answer::Same),
+                ("potential_crv", Answer::Same),
+                ("last_impulse_velocity_atr", Answer::Same),
+                ("recent_correction_atr_1", Answer::Same),
+                ("recent_correction_atr_2", Answer::Same),
+                ("recent_correction_atr_3", Answer::Same),
+                ("trend_quality", Answer::Same),
+            ],
+        );
+    }
+    for (period, history) in [(20.0, 8.0), (5.0, 4.0), (50.0, 12.0)] {
+        check_bars_entry_on(
+            &inputs,
+            "cycle_length",
+            &[("period", period), ("history", history)],
+            &[
+                ("value", Answer::Same),
+                ("bars_since_crossing", Answer::Same),
+            ],
+        );
+    }
 }
 
 #[test]
