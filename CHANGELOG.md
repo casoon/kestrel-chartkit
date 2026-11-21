@@ -13,6 +13,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 - **Pages:** the guide [How entries are verified](https://casoon.github.io/kestrel-chartkit/docs/guides/verification/) says what the mark means, which acceptance every entry passes and which tests keep it true.
 
+### Changed
+
+- **Pages:** the project site uses the current shared theme (0.16.2).
+
+
 ## [0.49.0] - 2026-11-21
 
 ### Changed
