@@ -11,7 +11,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ### Changed
 
-- **Pages:** the project site uses the current shared theme (0.16.2).
+- **Pages:** the project site uses the current shared theme (0.16.3).
 
 
 ## [0.52.0] - 2026-11-22
