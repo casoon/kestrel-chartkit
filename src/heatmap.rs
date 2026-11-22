@@ -17,7 +17,7 @@
 //! | volatility | `vol_squeeze` | Bollinger width / Keltner width (20, 2, 1.5) | expanded | compressed |
 //! | flow | `flow_cmf` | `CMF(20)` | accumulation | distribution |
 //! | flow | `flow_rvat` | volume / mean volume of the 20 bars before | busy | quiet |
-//! | momentum | `mom_tsi` | `TSI(25, 13)` | upward thrust | downward thrust |
+//! | momentum | `mom_schub` | `(close - 2 close[5 ago] + close[10 ago]) / ATR(14)` | accelerating up | accelerating down |
 //! | momentum | `mom_dehnung` | `abs((close - SMA50) / stdev50)` | near the mean | stretched |
 //!
 //! # Normalisation
@@ -35,7 +35,6 @@ use crate::indicator::adx::Adx;
 use crate::indicator::fractal_dimension::FractalDimensionEngine;
 use crate::indicator::kas::Kas;
 use crate::indicator::moving_averages::HmaEngine;
-use crate::indicator::tsi::Tsi;
 use crate::indicator::volume_indicators::CmfEngine;
 use crate::indicator::Indicator;
 use crate::model::Bar;
@@ -58,6 +57,7 @@ const KC_MULT: f64 = 1.5;
 const CMF_PERIOD: usize = 20;
 const RVAT_PERIOD: usize = 20;
 const STRETCH_PERIOD: usize = 50;
+const THRUST_PERIOD: usize = 10;
 
 /// The ten state values of one bar, each in `[-1, +1]` or `NaN` (not evaluated).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -72,7 +72,7 @@ pub struct InstrumentHeatmapRow {
     pub vol_squeeze: f32,
     pub flow_cmf: f32,
     pub flow_rvat: f32,
-    pub mom_tsi: f32,
+    pub mom_schub: f32,
     pub mom_dehnung: f32,
 }
 
@@ -88,7 +88,7 @@ impl InstrumentHeatmapRow {
             self.vol_squeeze,
             self.flow_cmf,
             self.flow_rvat,
-            self.mom_tsi,
+            self.mom_schub,
             self.mom_dehnung,
         ]
     }
@@ -104,7 +104,7 @@ pub const HEATMAP_TRACKS: [&str; 10] = [
     "vol_squeeze",
     "flow_cmf",
     "flow_rvat",
-    "mom_tsi",
+    "mom_schub",
     "mom_dehnung",
 ];
 
@@ -227,7 +227,6 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
     let mut adx = Adx::new(14, 14, 3, 20.0);
     let mut fdi = FractalDimensionEngine::new(30, false);
     let mut cmf = CmfEngine::new(CMF_PERIOD);
-    let mut tsi = Tsi::with_defaults();
 
     let mut t_hma = Signed::new();
     let mut t_kas = Signed::new();
@@ -237,7 +236,7 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
     let mut t_squeeze = Unipolar::new(false);
     let mut t_cmf = Signed::new();
     let mut t_rvat = Unipolar::new(false);
-    let mut t_tsi = Signed::new();
+    let mut t_schub = Signed::new();
     let mut t_dehnung = Unipolar::new(true);
 
     let mut prev_close: Option<f64> = None;
@@ -247,6 +246,7 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
     let mut closes_sq: VecDeque<f64> = VecDeque::new();
     let mut ranges_sq: VecDeque<f64> = VecDeque::new();
     let mut closes_st: VecDeque<f64> = VecDeque::new();
+    let mut closes_sh: VecDeque<f64> = VecDeque::new();
     let mut volumes: VecDeque<f64> = VecDeque::new();
 
     let mut rows = Vec::with_capacity(bars.len());
@@ -341,8 +341,14 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
         let flow_rvat = t_rvat.push(rvat_v);
 
         // momentum
-        let tsi_v = tsi.on_bar(bar).map_or(f64::NAN, |o| o.value);
-        let mom_tsi = t_tsi.push(tsi_v);
+        push_capped(&mut closes_sh, bar.close, THRUST_PERIOD + 1);
+        let schub_v = match atr {
+            Some(a) if a > 0.0 && closes_sh.len() == THRUST_PERIOD + 1 => {
+                (bar.close - 2.0 * closes_sh[THRUST_PERIOD / 2] + closes_sh[0]) / a
+            }
+            _ => f64::NAN,
+        };
+        let mom_schub = t_schub.push(schub_v);
         push_capped(&mut closes_st, bar.close, STRETCH_PERIOD);
         let stretch_v = if closes_st.len() == STRETCH_PERIOD {
             let sd = std_dev(&closes_st);
@@ -366,7 +372,7 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
             vol_squeeze,
             flow_cmf,
             flow_rvat,
-            mom_tsi,
+            mom_schub,
             mom_dehnung,
         });
     }

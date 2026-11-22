@@ -64,7 +64,7 @@ fn flow_tracks_are_nan_without_real_volume() {
     assert!(rows
         .iter()
         .all(|r| r.flow_cmf.is_nan() && r.flow_rvat.is_nan()));
-    assert!(rows.last().unwrap().mom_tsi.is_finite());
+    assert!(rows.last().unwrap().mom_schub.is_finite());
 }
 
 #[test]
