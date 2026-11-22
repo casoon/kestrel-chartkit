@@ -7,11 +7,17 @@ gaps, order blocks and zones are followed bar by bar as in the script.
 The list of zones in the output is this crate's addition and follows the crate's documentation:
 every tracked zone, oldest first, with its edges, type, role, status, tests, age, the events of
 the bar, and the bar and close of its latest break and the bar of its latest role reversal.
+
+Every comparison of a price with an edge or the midpoint of a zone (visit, bounce and its
+0.5 ATR, deep penetration, break, role reversal) and the EQH/EQL distance of 0.1 ATR follow the
+crate's convention that a price within 1e-9 ATR of a mark is on it (`structure.Marks`); everything
+else is compared as computed.
 """
 
 import math
 
 from ..fixture import provenance
+from ..structure import Marks
 
 NAME = "golden_structure_zones"
 
@@ -191,11 +197,13 @@ def compute(bars):
             msl = mpl
         eqh = eql = None
         if ph is not None:
-            if prev_sh is not None and a is not None and a > 0 and abs(ph - prev_sh) < 0.1 * a:
+            if prev_sh is not None and a is not None and a > 0 \
+                    and Marks(a).below(abs(ph - prev_sh), 0.1 * a):
                 eqh = (ph + prev_sh) / 2.0
             prev_sh = ph
         if pl is not None:
-            if prev_sl is not None and a is not None and a > 0 and abs(pl - prev_sl) < 0.1 * a:
+            if prev_sl is not None and a is not None and a > 0 \
+                    and Marks(a).below(abs(pl - prev_sl), 0.1 * a):
                 eql = (pl + prev_sl) / 2.0
             prev_sl = pl
         # A first major pivot counts as new (IEEE: na != x).
@@ -428,11 +436,14 @@ def compute(bars):
                 if age > 200:
                     zones.pop(i)
                     continue
-                in_z = h[t] >= z["lower"] and lo[t] <= z["upper"]
-                above = c[t] > z["upper"]
-                below = c[t] < z["lower"]
+                marks = Marks(a)
+                in_z = marks.at_or_above(h[t], z["lower"]) and marks.at_or_below(lo[t], z["upper"])
+                above = marks.above(c[t], z["upper"])
+                below = marks.below(c[t], z["lower"])
+                above_mid, below_mid = marks.above(c[t], z["mid"]), marks.below(c[t], z["mid"])
                 if age > 0:
-                    prev_in = h[t - 1] >= z["lower"] and lo[t - 1] <= z["upper"]
+                    prev_in = marks.at_or_above(h[t - 1], z["lower"]) \
+                        and marks.at_or_below(lo[t - 1], z["upper"])
                     if in_z and not prev_in:
                         z["touch"] += 1
                         z["event"] |= EVENT_TEST
@@ -440,48 +451,48 @@ def compute(bars):
                         if z["status"] == 0:
                             z["status"] = 1
                     can = z["status"] in (1, 2) and in_z and not z["vb"]
-                    if can and z["dir"] == 1 and c[t] > z["mid"] and c[t] > o[t]:
+                    if can and z["dir"] == 1 and above_mid and c[t] > o[t]:
                         z["status"] = 2
                         z["event"] |= EVENT_BOUNCE
                         z["vb"] = True
                         b = (c[t] - z["lower"]) / a if a > 0 else 0.0
                         z["lastb"] = b
                         z["maxb"] = max(z["maxb"], b)
-                        if b >= 0.5:
+                        if a > 0 and marks.at_or_above(c[t] - z["lower"], 0.5 * a):
                             z["good"] += 1
                         else:
                             z["weak"] += 1
-                    if can and z["dir"] == -1 and c[t] < z["mid"] and c[t] < o[t]:
+                    if can and z["dir"] == -1 and below_mid and c[t] < o[t]:
                         z["status"] = 2
                         z["event"] |= EVENT_BOUNCE
                         z["vb"] = True
                         b = (z["upper"] - c[t]) / a if a > 0 else 0.0
                         z["lastb"] = b
                         z["maxb"] = max(z["maxb"], b)
-                        if b >= 0.5:
+                        if a > 0 and marks.at_or_above(z["upper"] - c[t], 0.5 * a):
                             z["good"] += 1
                         else:
                             z["weak"] += 1
-                    if z["dir"] == 1 and in_z and c[t] < z["mid"]:
+                    if z["dir"] == 1 and in_z and below_mid:
                         z["deep"] += 1
-                    if z["dir"] == -1 and in_z and c[t] > z["mid"]:
+                    if z["dir"] == -1 and in_z and above_mid:
                         z["deep"] += 1
                     broke = False
-                    if z["dir"] == 1 and below and c[t - 1] >= z["lower"]:
+                    if z["dir"] == 1 and below and marks.at_or_above(c[t - 1], z["lower"]):
                         z["status"] = 3
                         broke = True
-                    if z["dir"] == -1 and above and c[t - 1] <= z["upper"]:
+                    if z["dir"] == -1 and above and marks.at_or_below(c[t - 1], z["upper"]):
                         z["status"] = 3
                         broke = True
                     if broke:
                         z["event"] |= EVENT_BREAK
                         z["break_bar"], z["break_close"] = t, c[t]
-                    if z["status"] == 3 and not broke and z["dir"] == 1 and in_z and c[t] < z["mid"]:
+                    if z["status"] == 3 and not broke and z["dir"] == 1 and in_z and below_mid:
                         z["status"] = 4
                         z["dir"] = -1
                         z["event"] |= EVENT_FLIP
                         z["flip_bar"] = t
-                    elif z["status"] == 3 and not broke and z["dir"] == -1 and in_z and c[t] > z["mid"]:
+                    elif z["status"] == 3 and not broke and z["dir"] == -1 and in_z and above_mid:
                         z["status"] = 4
                         z["dir"] = 1
                         z["event"] |= EVENT_FLIP
@@ -653,7 +664,9 @@ HEADER = [
     "cumulative volume so far positive, a first major pivot counts as new for the volume profile.",
     "Swings, BOS, swing trends, volume profile and effort-vs-result run from the first bar; zones,",
     "gaps, order blocks and the climax sequence from the first bar with an ATR; output once RSI",
-    "(with real volume also MFI and the volume average) exists. Alerts fire on entry.",
+    "(with real volume also MFI and the volume average) exists. Alerts fire on entry. A price",
+    "within 1e-9 ATR of an edge or the midpoint of a zone is on it, and swing highs or lows exactly",
+    "0.1 ATR apart are not EQH/EQL.",
     "",
     "Series: 900 bars, prev = previous close (100 before the first bar); close = prev +",
     "0.3 sin(i/70) + 0.8 sin(i/5.3) + 0.4 cos(i/1.9); open = prev + 0.3 sin(i/2.4); high =",

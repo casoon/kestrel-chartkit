@@ -13,7 +13,9 @@
 # (first bar high - low) seeded with an SMA, no merge/prune/sweep while it is missing, the
 # 2 x mintick tolerance floor dropped and the bar range floored at 1e-12, volume ratio 1 while
 # the 20-bar average is missing or 0, real volume = cumulative volume so far positive, pivots
-# strict on both sides; output from the first bar with an ATR.
+# strict on both sides; output from the first bar with an ATR. A price within 1e-9 ATR of a mark
+# of a level (the level, its band, the sweep and close-back marks, the distance bounds, the
+# close) is on the mark: an inclusive bound is met, a strict one is not.
 #
 # Series: 800 bars on plateaus k = floor(i/96), level = 100 + the sum of the first k steps of
 # the cycle 2.5, -1.2, 3.5, -4.0; close = level + 2.5 sin(2 pi i/32) + 0.04 sin(i/2.9); open =

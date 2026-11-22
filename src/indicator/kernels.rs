@@ -488,6 +488,126 @@ pub(crate) fn pivot_flags(bars: &[Bar], rule: PivotRule) -> (Vec<bool>, Vec<bool
     (lows, highs)
 }
 
+/// How close to a mark, in ATR, a price counts as on the mark.
+///
+/// Levels, zones and trendlines compare a price with a mark that is itself computed: the mean of
+/// a level's pivots, a level plus or minus a multiple of the ATR, the value of a line between two
+/// nodes. In binary floating point such a mark differs from its decimal value by a few units in
+/// the last place, and so does a difference of two prices: with pivots at 100.00 and 100.20 it
+/// is 0.20000000000000284, not 0.2. Left alone, that noise decides every comparison that falls
+/// exactly on its bound, and it decides it one way for a series and the other way for a series
+/// shifted by a cent.
+///
+/// The convention: a price within `MARK_TOLERANCE · ATR` of a mark is on it, and a distance
+/// within `MARK_TOLERANCE · ATR` of a tolerance is on the tolerance. An inclusive bound (at or
+/// beyond the mark, within the tolerance) is then met and a strict one (beyond the mark, less
+/// than the tolerance) is not. With an ATR of 2 the margin is `2e-9`, far below any tick and far
+/// above the rounding of a price near 100 (`1.4e-14`); it holds as long as the ATR is more than
+/// about a millionth of the price. The margin is in ATR because every bound it guards is: it
+/// scales with the series and is the same for a series and its mirror image (every price
+/// negated), so both give mirrored results.
+///
+/// `kestrel_equal_level_liquidity`, `trendlines` and `kestrel_structure_zones` apply it to the
+/// comparisons named in their documentation. It is the counterpart of
+/// [`crate::point_and_figure::GRID_TOLERANCE`], which does the same for grid lines in boxes.
+/// Comparisons of two prices of the series with each other (a pivot against its neighbours, a
+/// close against the previous low) need no margin: equal decimals are equal numbers.
+pub const MARK_TOLERANCE: f64 = 1e-9;
+
+/// Comparisons of a price with a computed mark under [`MARK_TOLERANCE`], for one bar's ATR.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Marks {
+    margin: f64,
+}
+
+impl Marks {
+    /// The comparisons for a bar whose ATR is `atr`. An ATR of 0 leaves them exact.
+    pub(crate) fn new(atr: f64) -> Self {
+        Self {
+            margin: MARK_TOLERANCE * atr,
+        }
+    }
+
+    /// `price` is at or above `mark`: on it or beyond it.
+    pub(crate) fn at_or_above(self, price: f64, mark: f64) -> bool {
+        price >= mark - self.margin
+    }
+
+    /// `price` is at or below `mark`: on it or beyond it.
+    pub(crate) fn at_or_below(self, price: f64, mark: f64) -> bool {
+        price <= mark + self.margin
+    }
+
+    /// `price` is above `mark` and not on it.
+    pub(crate) fn above(self, price: f64, mark: f64) -> bool {
+        price > mark + self.margin
+    }
+
+    /// `price` is below `mark` and not on it.
+    pub(crate) fn below(self, price: f64, mark: f64) -> bool {
+        price < mark - self.margin
+    }
+
+    /// `distance` is at most `tolerance`: a distance on the tolerance is within it.
+    pub(crate) fn within(self, distance: f64, tolerance: f64) -> bool {
+        self.at_or_below(distance, tolerance)
+    }
+}
+
+#[cfg(test)]
+mod mark_tests {
+    use super::*;
+
+    #[test]
+    fn a_distance_on_the_tolerance_in_decimal_notation_is_within_it() {
+        // 0.10 x 2.0 is 0.2; 100.2 - 100.0 is 0.20000000000000284 and 100.3 - 100.1 likewise,
+        // while 100.1 - 99.9 is 0.19999999999998863.
+        let marks = Marks::new(2.0);
+        let tolerance = 0.10 * 2.0;
+        assert!(100.2_f64 - 100.0 > tolerance && 100.1_f64 - 99.9 < tolerance);
+        for (a, b) in [(100.0_f64, 100.2), (100.1, 100.3), (99.9, 100.1)] {
+            assert!(marks.within((a - b).abs(), tolerance), "{a} {b}");
+            assert!(!marks.below((a - b).abs(), tolerance), "{a} {b}");
+            assert!(marks.within((b - a).abs(), tolerance), "{a} {b}");
+        }
+        assert!(marks.within(100.19_f64 - 100.0, tolerance));
+        assert!(marks.below(100.19_f64 - 100.0, tolerance));
+        assert!(!marks.within(100.21_f64 - 100.0, tolerance));
+        assert!(!marks.within(0.2 + 1e-8, tolerance), "five margins beyond");
+    }
+
+    #[test]
+    fn a_price_on_the_mark_is_at_it_and_not_beyond_it() {
+        let marks = Marks::new(2.0);
+        // 100.1 + 0.1 is 100.19999999999999, below the price 100.2.
+        let mark = 100.1_f64 + 0.1;
+        assert!(mark < 100.2);
+        assert!(marks.at_or_above(100.2, mark) && marks.at_or_below(100.2, mark));
+        assert!(!marks.above(100.2, mark) && !marks.below(100.2, mark));
+        assert!(marks.above(100.21, mark) && !marks.at_or_below(100.21, mark));
+        assert!(marks.below(100.19, mark) && !marks.at_or_above(100.19, mark));
+    }
+
+    #[test]
+    fn the_mirror_image_decides_the_same_and_an_atr_of_zero_is_exact() {
+        let marks = Marks::new(0.5);
+        for (price, mark) in [
+            (100.2, 100.1 + 0.1),
+            (99.9, 100.1 - 0.2),
+            (100.0, 100.0 + 1e-9),
+        ] {
+            assert_eq!(
+                marks.at_or_above(price, mark),
+                marks.at_or_below(-price, -mark)
+            );
+            assert_eq!(marks.above(price, mark), marks.below(-price, -mark));
+        }
+        let exact = Marks::new(0.0);
+        assert!(!exact.at_or_above(100.2, 100.2 + 1e-13));
+        assert!(exact.above(100.2 + 1e-13, 100.2));
+    }
+}
+
 #[cfg(test)]
 mod pivot_tests {
     use super::*;

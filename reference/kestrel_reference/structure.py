@@ -3,6 +3,36 @@
 Bars are (open, high, low, close) tuples, oldest first.
 """
 
+# A price within this many ATR of a mark is on the mark (`indicator::MARK_TOLERANCE` in the crate):
+# levels, zones and trendlines compare a price with a mark that is computed, and in binary
+# floating point such a mark, or a difference of two prices, is off its decimal value by a few
+# units in the last place (100.2 - 100.0 is 0.20000000000000284). An inclusive bound is met by a
+# price on the mark, a strict one is not.
+MARK_TOLERANCE = 1e-9
+
+
+class Marks:
+    """Comparisons of a price with a computed mark for a bar whose ATR is `atr`."""
+
+    def __init__(self, atr):
+        self.margin = MARK_TOLERANCE * atr
+
+    def at_or_above(self, price, mark):
+        return price >= mark - self.margin
+
+    def at_or_below(self, price, mark):
+        return price <= mark + self.margin
+
+    def above(self, price, mark):
+        return price > mark + self.margin
+
+    def below(self, price, mark):
+        return price < mark - self.margin
+
+    def within(self, distance, tolerance):
+        """A distance on the tolerance is within it."""
+        return distance <= tolerance + self.margin
+
 
 def pivot_structure_scores(bars, left, right, window):
     """Structure score per output: strict pivots `right` bars back, +2/-1 for a higher/other
@@ -202,7 +232,9 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
     tolerance, and itself; older nodes leave the segment. The channel is the parallel through the
     node of the other kind furthest beyond the line. From the bar that fixed the line: a touch is
     the bar's low (high) within the tolerance, a break a close below (above) the line, which ends
-    it and empties the segment."""
+    it and empties the segment. A price within 1e-9 ATR of a mark is on it (`Marks`): a node or a
+    low on the tolerance touches and does not pierce, a close on the line is no break, and a node
+    of the other kind on the line gives no channel."""
     _, _, nodes = advanced_zigzag(bars, depth, backstep, deviation_pct, atr_mult, atr_len)
     confirmed_on = {}
     for price, is_high, _, bar, at in nodes:
@@ -225,6 +257,7 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
             outputs.append(None)
             continue
         tolerance = tolerance_atr * atr
+        marks = Marks(atr)
         extra, alerts, count = {"atr": atr, "tolerance": tolerance}, {}, 0
         for name, side in state.items():
             sign = 1.0 if name == "support" else -1.0       # far side of the line: above / below
@@ -243,14 +276,16 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                 for a in kind[:-1]:
                     line = {"a": a, "c": node}
                     inner = [k for k in kind if a["bar"] < k["bar"] < node["bar"]]
-                    if all(sign * (k["price"] - at_time(line, clock[k["bar"]])) >= -tolerance
-                           for k in inner):
+                    if all(marks.at_or_above(sign * (k["price"] - at_time(line, clock[k["bar"]])),
+                                             -tolerance) for k in inner):
                         break
                 del segment[:segment.index(a)]
                 kind = [k for k in segment if k["is_high"] == wants_high]
                 line.update(nodes=len(kind), touches=0,
-                            node_touches=sum(1 for k in kind
-                                             if abs(k["price"] - at_time(line, clock[k["bar"]])) <= tolerance))
+                            node_touches=sum(
+                                1 for k in kind
+                                if marks.within(abs(k["price"] - at_time(line, clock[k["bar"]])),
+                                                tolerance)))
                 side["line"] = line
                 formed = True
             line = side["line"]
@@ -258,11 +293,11 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                 continue
             others = [sign * (k["price"] - at_time(line, clock[k["bar"]]))
                       for k in side["segment"] if k["is_high"] != wants_high]
-            width = max(others) if others and max(others) > 0.0 else None
+            width = max(others) if others and marks.above(max(others), 0.0) else None
             value = at_time(line, clock[t])
             extreme = high if wants_high else low
-            touch = abs(extreme - value) <= tolerance
-            broke = close > value if wants_high else close < value
+            touch = marks.within(abs(extreme - value), tolerance)
+            broke = marks.above(close, value) if wants_high else marks.below(close, value)
             if touch:
                 line["touches"] += 1
             extra.update({

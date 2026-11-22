@@ -47,6 +47,11 @@
 //! The line is straight in time: like [`super::chart_patterns::TrendLine`] it is computed from
 //! timestamps. On a series with gaps in time it is therefore not straight over the bar count.
 //!
+//! The value of the line at a bar is interpolated and so rounded in floating point. Every
+//! comparison above therefore treats a price within [`crate::indicator::MARK_TOLERANCE`] ATR of
+//! a mark as on it: a node or a low exactly `tolerance` from the line touches it and does not
+//! pierce it, a close on the line is no break, and a high on a support line gives no channel.
+//!
 //! `tolerance_atr` has no source in the literature, which describes a touch by eye; the default
 //! of 0.25 is this crate's convention, the same as the default of `zone_rejection`.
 //!
@@ -85,7 +90,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::model::Bar;
 
 use super::chart_patterns::TrendLine;
-use super::kernels::true_range;
+use super::kernels::{true_range, Marks};
 use super::smoothing::Rma;
 use super::zigzag_advanced::{AdvancedZigZagEngine, ZigZagDeviationMode, ZigZagNode};
 use super::{Indicator, IndicatorAlert, IndicatorOutput};
@@ -172,12 +177,12 @@ impl Side {
     }
 
     /// Takes a newly confirmed node. Returns whether it fixed the line anew.
-    fn add(&mut self, node: TrendlineNode, tolerance: f64) -> bool {
+    fn add(&mut self, node: TrendlineNode, tolerance: f64, marks: Marks) -> bool {
         let own_kind = node.is_high != self.is_support;
         if !own_kind {
             if !self.segment.is_empty() {
                 self.segment.push(node);
-                self.update_channel();
+                self.update_channel(marks);
             }
             return false;
         }
@@ -200,7 +205,7 @@ impl Side {
                 let line = through(&self.segment[between[i]]);
                 between[i + 1..].iter().all(|&k| {
                     let k = &self.segment[k];
-                    self.beyond(k.price, line.value_at(k.timestamp)) >= -tolerance
+                    marks.at_or_above(self.beyond(k.price, line.value_at(k.timestamp)), -tolerance)
                 })
             })
             .expect("the newest two nodes of the kind have none between them");
@@ -214,7 +219,7 @@ impl Side {
             .collect();
         let node_touches = kind
             .iter()
-            .filter(|k| (k.price - line.value_at(k.timestamp)).abs() <= tolerance)
+            .filter(|k| marks.within((k.price - line.value_at(k.timestamp)).abs(), tolerance))
             .count();
         self.line = Some(Trendline {
             is_support: self.is_support,
@@ -225,12 +230,12 @@ impl Side {
             touches: 0,
             channel_width: None,
         });
-        self.update_channel();
+        self.update_channel(marks);
         true
     }
 
     /// The parallel through the node of the other kind that lies furthest beyond the line.
-    fn update_channel(&mut self) {
+    fn update_channel(&mut self, marks: Marks) {
         let Some(current) = &self.line else {
             return;
         };
@@ -243,7 +248,7 @@ impl Side {
             .map(|k| self.beyond(k.price, line.value_at(k.timestamp)))
             .fold(f64::NEG_INFINITY, f64::max);
         if let Some(current) = &mut self.line {
-            current.channel_width = (width > 0.0).then_some(width);
+            current.channel_width = marks.above(width, 0.0).then_some(width);
         }
     }
 }
@@ -374,6 +379,7 @@ impl Indicator for TrendlineEngine {
 
         let atr = atr?;
         let tolerance = self.tolerance_atr * atr;
+        let marks = Marks::new(atr);
 
         let mut extra = HashMap::new();
         extra.insert("atr".to_string(), atr);
@@ -382,18 +388,18 @@ impl Indicator for TrendlineEngine {
         for side in [&mut self.support, &mut self.resistance] {
             let mut formed = false;
             for node in &newly {
-                formed |= side.add(*node, tolerance);
+                formed |= side.add(*node, tolerance, marks);
             }
             let Some(current) = side.line.as_mut() else {
                 continue;
             };
             let value = current.line().value_at(bar.timestamp);
             let (extreme, broke) = if side.is_support {
-                (bar.low, bar.close < value)
+                (bar.low, marks.below(bar.close, value))
             } else {
-                (bar.high, bar.close > value)
+                (bar.high, marks.above(bar.close, value))
             };
-            let touch = (extreme - value).abs() <= tolerance;
+            let touch = marks.within((extreme - value).abs(), tolerance);
             if touch {
                 current.touches += 1;
             }

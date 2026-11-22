@@ -2688,13 +2688,15 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                         };
                         present += 1.0;
                         lines += 1;
+                        // A price within MARK_TOLERANCE ATR of a mark is on it.
+                        let margin = kestrel_chartkit::indicator::MARK_TOLERANCE * out.extra["atr"];
                         let broke = get("break") == Some(1.0);
                         assert_eq!(
                             broke,
                             if side == "support" {
-                                bar.close < line
+                                bar.close < line - margin
                             } else {
-                                bar.close > line
+                                bar.close > line + margin
                             },
                             "{context}, bar {i}: {side} break"
                         );
@@ -2706,7 +2708,7 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                         let extreme = if side == "support" { bar.low } else { bar.high };
                         assert_eq!(
                             get("touch") == Some(1.0),
-                            (extreme - line).abs() <= out.extra["tolerance"],
+                            (extreme - line).abs() <= out.extra["tolerance"] + margin,
                             "{context}, bar {i}: {side} touch"
                         );
                         let (nodes, on_line) =
@@ -2714,7 +2716,7 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                         assert!(2.0 <= on_line && on_line <= nodes, "{context}, bar {i}");
                         assert!(get("start_bars_back") > get("end_bars_back"));
                         if let Some(width) = get("channel_width") {
-                            assert!(width > 0.0);
+                            assert!(width > margin);
                             let far = if side == "support" {
                                 line + width
                             } else {
@@ -2745,10 +2747,14 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
         }
     }
     // Recorded, so that the walks are known to exercise the rules: bars with a line, breaks,
-    // touching bars and bars with a channel, summed over both sides and all runs.
+    // touching bars and bars with a channel, summed over both sides and all runs. The prices lie
+    // on a grid of 0.1, so some lie on a line in decimal notation: three closes (seed 14 bar 388,
+    // seed 18 bar 100 in two runs) that are no break, with the break one bar later, and three
+    // extremes on a line of tolerance 0 (seed 10 bar 266, seed 21 bar 46, seed 23 bar 334) that
+    // are touches. Compared as computed, each of them was decided by the last bit.
     assert_eq!(
         (lines, breaks, touches, channels),
-        (32679, 1843, 2082, 32679)
+        (32682, 1843, 2086, 32682)
     );
 }
 

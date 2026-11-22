@@ -748,6 +748,33 @@ def tolerance_bars(mirrored=False):
     return bars
 
 
+# Centres of the decimal edge scenario, before the shift: bars [centre - 1, centre + 1] with the
+# open and the close at the centre and steps of at most 1, so the ATR(4) is exactly 2 and a
+# tolerance of 0.25 ATR exactly 0.5, as in `TOLERANCE_CENTRES`. Unlike there the line is sloped
+# and its prices are not binary fractions, so its values are rounded in floating point. Lows
+# (0-based bars) at 100.10 (bar 4), 99.90 (bar 10) and 100.70 (bar 16): the line from the first to
+# the third rises 0.05 a bar and is at 100.40 on bar 10, exactly 0.5 above the middle low. Highs
+# at 104.80 (bar 7) and 104.60 (bar 13). Bar 24 has its low (101.60) exactly 0.5 above the line
+# (101.10), bar 26 closes exactly on it (101.20), bar 27 below it.
+DECIMAL_CENTRES = [
+    105.1, 104.1, 103.1, 102.1, 101.1, 102.0, 102.9, 103.8, 102.84, 101.88, 100.9, 101.88, 102.84,
+    103.6, 103.0, 102.3, 101.7, 102.7, 103.7, 104.65, 103.9, 103.5, 103.2, 102.9, 102.6, 101.9,
+    101.2, 100.7, 100.2, 100.0,
+]
+
+
+def decimal_bars(shift=0.0, middle=0.0, mirrored=False):
+    """Bars of `DECIMAL_CENTRES`, every centre raised by `shift` and the one of bar 10 by
+    `middle` as well, both in hundredths; mirrored: every price negated."""
+    centres = [round(c + shift + (middle if i == 10 else 0.0), 2)
+               for i, c in enumerate(DECIMAL_CENTRES)]
+    assert all(abs(b - a) <= 1.0 for a, b in zip(centres, centres[1:]))
+    bars = [(c, c + 1.0, c - 1.0, c, 1000.0) for c in centres]
+    if mirrored:
+        bars = [(-o, -l, -h, -c, v) for o, h, l, c, v in bars]
+    return bars
+
+
 REPAINT_SEGMENTS = [(-1.0, 6), (1.0, 14), (-1.0, 10), (0.7, 4), (-1.0, 6), (1.0, 14), (-1.0, 10),
                     (1.0, 8), (-0.7, 4), (1.0, 10), (-1.0, 10), (1.0, 4), (-1.0, 4), (1.0, 12)]
 
@@ -1965,6 +1992,42 @@ def build():
         case_block("trendlines_negated_tolerance_edge",
                    "trendlines 2/1/2 %/4/0.25 on the negated series: a flat resistance line at -100",
                    *trendlines(2, 1, 2.0, 4, 0.25, tolerance_bars(mirrored=True))),
+        # By hand (ATR exactly 2, tolerance 0.5; bars 0-based, 900 seconds apart). Lows 100.16
+        # (bar 4), 99.96 (bar 10) and 100.76 (bar 16). Bar 21 confirms the third: the line from
+        # the first to the third is at 100.46 on bar 10, and the middle low lies 0.50 below it:
+        # on the tolerance, so it does not pierce the line and it touches it: 3 nodes, 3 node
+        # touches, start 100.16. (As computed the distance is a rounding step above 0.5 and the
+        # anchor would move to the middle low.) Bar 24: low 101.66, line 101.16, a touch. Bar 25:
+        # low 100.96, line 101.21, a touch. Bar 26 closes at 101.26 on the line 101.26: no break.
+        # Bar 27 closes at 100.76 below 101.31: the break.
+        case_block("trendlines_decimal_node",
+                   "trendlines 2/1/2 %/4/0.25, ATR exactly 2, a sloped line with decimal prices: "
+                   "the middle low lies on the tolerance below the line and is a node touch",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars(0.06))),
+        case_block("trendlines_negated_decimal_node",
+                   "trendlines 2/1/2 %/4/0.25 on the negated series: the middle high lies on the "
+                   "tolerance above the resistance line",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars(0.06, mirrored=True))),
+        # By hand: the middle low 99.97 lies 0.49 below the line and touches it (3 nodes); the
+        # middle low 99.95 lies 0.51 below it and pierces it, so the line starts there (2 nodes,
+        # start 99.95).
+        case_block("trendlines_decimal_inside_node",
+                   "trendlines 2/1/2 %/4/0.25: the middle low 0.49 below the line",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars(0.06, middle=0.01))),
+        case_block("trendlines_decimal_outside_node",
+                   "trendlines 2/1/2 %/4/0.25: the middle low 0.51 below the line, the anchor moves",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars(0.06, middle=-0.01))),
+        # By hand: the series 0.04 lower. Bar 24: low 101.62, line 101.12: exactly 0.5 above the
+        # line, a touch (as computed the distance is a rounding step above 0.5).
+        case_block("trendlines_decimal_touch",
+                   "trendlines 2/1/2 %/4/0.25: a low on the tolerance above the line is a touch",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars(0.02))),
+        # By hand: the series unshifted. Bar 26 closes at 101.20 on the line 101.20: no break (as
+        # computed the line is a rounding step above the close). Bar 27 closes at 100.70 below
+        # 101.25: the break.
+        case_block("trendlines_decimal_close",
+                   "trendlines 2/1/2 %/4/0.25: a close on the line is no break",
+                   *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars())),
         case_block("trendlines_repaint",
                    "trendlines 3/2/4 %/5/0.25 over a fall and a rise whose lows and highs are "
                    "replaced by more extreme ones before they are confirmed: the anchors lie on "

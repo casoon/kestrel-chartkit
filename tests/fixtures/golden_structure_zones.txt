@@ -13,7 +13,9 @@
 # cumulative volume so far positive, a first major pivot counts as new for the volume profile.
 # Swings, BOS, swing trends, volume profile and effort-vs-result run from the first bar; zones,
 # gaps, order blocks and the climax sequence from the first bar with an ATR; output once RSI
-# (with real volume also MFI and the volume average) exists. Alerts fire on entry.
+# (with real volume also MFI and the volume average) exists. Alerts fire on entry. A price
+# within 1e-9 ATR of an edge or the midpoint of a zone is on it, and swing highs or lows exactly
+# 0.1 ATR apart are not EQH/EQL.
 #
 # Series: 900 bars, prev = previous close (100 before the first bar); close = prev +
 # 0.3 sin(i/70) + 0.8 sin(i/5.3) + 0.4 cos(i/1.9); open = prev + 0.3 sin(i/2.4); high =

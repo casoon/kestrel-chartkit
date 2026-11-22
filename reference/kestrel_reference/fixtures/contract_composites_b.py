@@ -475,6 +475,66 @@ def zone_bars(mirrored=False):
     return bars
 
 
+# --- Prices on a mark ------------------------------------------------------------------------
+#
+# Series whose ATR is exactly 2 in floating point, so that a tolerance is a round number and a
+# price can lie on a mark in decimal notation: every bar has a range of exactly 2 that contains
+# the previous close (bars 0-based, as in the comments of the cases).
+
+def centred(centres):
+    """Bars with the open and the close at the centre, the high 1 above and the low 1 below it;
+    the centres move by at most 1 a bar. No volume."""
+    assert all(abs(b - a) <= 1.0 for a, b in zip(centres, centres[1:]))
+    return [(c, c + 1.0, c - 1.0, c, 0.0) for c in centres]
+
+
+def mirrored_bars(bars):
+    """Every price negated, highs and lows exchanged."""
+    return [(-o, -lo, -h, -c, v) for o, h, lo, c, v in bars]
+
+
+# Pivot highs (3 bars each side) of 100.00 at bar 10 and of `second` at bar 19; a pivot low of
+# 96.40 at bar 14.
+EDGE_RISE = [97.0, 97.2, 97.4, 97.6, 97.8, 98.0, 98.2, 98.4, 98.6, 98.8, 99.0,
+             98.6, 98.2, 97.8, 97.4, 97.8, 98.2, 98.5, 98.8]
+# Bars 20-28 of the edge scenario, given in full (open, high, low, close).
+EDGE_TAIL = [
+    (97.9, 98.9, 96.9, 97.9), (97.5, 98.5, 96.5, 97.5), (97.5, 99.0, 97.0, 98.1),
+    (98.1, 99.9, 97.9, 98.9), (98.9, 100.2, 98.2, 100.0), (100.0, 100.1, 98.1, 99.9),
+    (99.9, 100.4, 98.4, 99.0),
+]
+
+
+def edge_pivot_bars(second):
+    """Two pivot highs, 100.00 and `second`, and five bars after the second."""
+    return centred(EDGE_RISE + [second - 1.0, 98.7, 98.3, 97.9, 97.5, 97.1])
+
+
+def edge_level_bars():
+    """Pivot highs 100.00 and 100.20, then bars whose high and close lie on the marks of their
+    level."""
+    bars = centred(EDGE_RISE + [99.2, 98.7, 98.3]) + [bar + (0.0,) for bar in EDGE_TAIL]
+    for previous, (_, high, low, _, _) in zip(bars, bars[1:]):
+        assert high - low == 2.0 and low <= previous[3] <= high
+    return bars
+
+
+# The zone edge scenario. Swing highs (3 bars each side) of `first` at bar 10 and of 100.10 at
+# bar 15; the second is a major swing high too (7 bars each side) and founds the zone
+# 99.80..100.40 on bar 22. Bars 15 and 26-27 are given in full (open, high, low, close) with a
+# short upper wick, so that none of them is an upthrust.
+def edge_zone_bars(first=99.9):
+    head = centred([95.9, 96.2, 96.5, 96.8, 97.1, 97.4, 97.7, 98.0, 98.3, 98.6, first - 1.0,
+                    98.3, 97.9, 98.3, 98.7])
+    fall = centred([98.6, 98.2, 98.0, 98.2, 98.5, 98.4, 98.6, 98.5, 98.79, 98.8])
+    tail = centred([100.9, 101.3, 101.6])
+    bars = (head + [(98.7, 100.1, 98.1, 99.5, 0.0)] + fall
+            + [(98.8, 100.0, 98.0, 99.6, 0.0), (99.6, 101.4, 99.4, 100.4, 0.0)] + tail)
+    for previous, (_, high, low, _, _) in zip(bars, bars[1:]):
+        assert high - low == 2.0 and low <= previous[3] <= high
+    return bars
+
+
 # --- Accumulation phase ----------------------------------------------------------------------
 
 ACCUMULATION_FIELDS = (
@@ -812,6 +872,39 @@ def build():
               "Equal-level liquidity, list_min_touches 1, no volume: four pivot highs on a series "
               "with ATR 2, the level of the first two tested, swept and reclaimed",
               *equal_level_liquidity_case(level_bars(), list_min_touches=1)),
+        # By hand (ATR exactly 2, tolerance 0.10 x 2 = 0.2, pivots 3 bars each side, no volume,
+        # levels from 1 pivot listed; bars 0-based). The pivot high 100.00 of bar 10 founds buy-side
+        # level 1 on bar 13. Bar 18 (high 99.8) reaches its band 99.8..100.2: test 1. The pivot
+        # high 100.20 of bar 19 is confirmed on bar 22: 0.20 from the level, on the tolerance, so
+        # it joins: 2 pivots, price 100.10. (100.2 - 100.0 is 0.20000000000000284 in floating
+        # point; compared as computed it would found a second level.) Bar 24 closes at 98.10, 2.00
+        # = 1 ATR below the level: primary_bsl_near. Bar 25 (high 99.90) reaches the band
+        # 99.90..100.30 after bar 24 (high 99.0) did not: test 2. Bar 26 (high 100.20, close
+        # 100.0) reaches the sweep mark 100.10 + 0.05 x 2 = 100.20 and closes below it: a sweep,
+        # status 1. Bar 27 (high 100.10, close 99.90): the close is on the close-back mark 100.10
+        # - 0.10 x 2 and the high on the level: a reclaim, status 3. Sell side: the pivot lows
+        # 96.40 (bar 14) and 96.50 (bar 23) give one level at 96.45 on bar 26.
+        block("equal_level_liquidity_tolerance_edge",
+              "Equal-level liquidity, pivots 3, tolerance 0.10, list_min_touches 1, ATR exactly 2: "
+              "pivot highs 100.00 and 100.20 lie on the tolerance and form one level; a test, a "
+              "sweep and a reclaim with the price on the mark",
+              *equal_level_liquidity_case(edge_level_bars(), pivot_len=3, eq_tolerance_atr=0.10,
+                                          list_min_touches=1)),
+        block("equal_level_liquidity_negated_tolerance_edge",
+              "Equal-level liquidity: the same series negated, pivot lows -100.00 and -100.20 form "
+              "one sell-side level",
+              *equal_level_liquidity_case(mirrored_bars(edge_level_bars()), pivot_len=3,
+                                          eq_tolerance_atr=0.10, list_min_touches=1)),
+        # By hand: the second pivot high is 0.19 from the level and joins it (price 100.095), or
+        # 0.21 from it and founds level 2.
+        block("equal_level_liquidity_tolerance_inside",
+              "Equal-level liquidity, tolerance 0.2: pivot highs 100.00 and 100.19, one level",
+              *equal_level_liquidity_case(edge_pivot_bars(100.19), pivot_len=3,
+                                          eq_tolerance_atr=0.10, list_min_touches=1)),
+        block("equal_level_liquidity_tolerance_outside",
+              "Equal-level liquidity, tolerance 0.2: pivot highs 100.00 and 100.21, two levels",
+              *equal_level_liquidity_case(edge_pivot_bars(100.21), pivot_len=3,
+                                          eq_tolerance_atr=0.10, list_min_touches=1)),
         # By hand (ATR 2 until bar 23): the major pivot high 100 of bar 13 is confirmed on bar 20
         # and founds zone 1 as resistance, 99.7..100.3. Bar 25 (high 99.9) reaches it after bar
         # 24 (high 98.6) did not: test 1. Bar 26 stays inside it: the same visit. Bar 27 closes at
@@ -824,6 +917,31 @@ def build():
         block("structure_zones_mirrored_lifecycle",
               "Structure zones: the same series negated, a support zone tested, broken and flipped",
               *structure_zones_case(zone_bars(mirrored=True))),
+        # By hand (ATR exactly 2, no volume; bars 0-based). Bar 18 confirms the swing high 100.10
+        # of bar 15; the swing high before it is 99.90 (bar 10), 0.20 = 0.1 ATR away: on the
+        # bound, so not less than it and no EQH (event_code 1, the swing high alone; 100.1 - 99.9
+        # is 0.19999999999998863 in floating point and would count as computed). Bar 21 confirms
+        # the swing low 97.00, 0.10 from the one before (96.90): EQL, event_code 2 + 32768. Bar 22
+        # confirms 100.10 as a major swing high: zone 1, resistance, 99.80..100.40. Bar 24 (high
+        # 99.79) stays below it; bar 25 (high 99.80) is on its lower edge: test 1, status 1. Bar 27
+        # closes at 100.40, on the upper edge and so not beyond it: no break (as computed the edge
+        # is 100.39999999999999 and the close would break it); the close above the major swing
+        # high 100.10 is a major BOS (event_code 4 + 16) and founds zone 2, support, with the same
+        # edges. Bar 28 closes at 100.90 after a close on the edge: zone 1 breaks, status 3. Bar 29
+        # (low 100.30, close 101.30) is in the broken zone and closes above its midpoint: role
+        # reversal, status 4, role 1.
+        block("structure_zones_edge",
+              "Structure zones, ATR exactly 2: swing highs 0.1 ATR apart are not equal highs; a "
+              "high on the lower edge tests the zone, a close on the upper edge does not break it",
+              *structure_zones_case(edge_zone_bars())),
+        block("structure_zones_negated_edge",
+              "Structure zones: the same series negated, a support zone",
+              *structure_zones_case(mirrored_bars(edge_zone_bars()))),
+        # By hand: the swing highs 99.91 and 100.10 are 0.19 apart, less than 0.1 ATR: EQH on bar
+        # 18 (event_code 1 + 16384).
+        block("structure_zones_equal_highs",
+              "Structure zones, ATR exactly 2: swing highs 0.19 apart are equal highs",
+              *structure_zones_case(edge_zone_bars(first=99.91))),
         block("structure_zones_volume",
               "Structure zones (no parameters): golden series bars 0-199, volume from bar 21: "
               "relevance, resistance hold, support and resistance breaks, profile",

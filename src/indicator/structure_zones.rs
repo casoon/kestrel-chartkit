@@ -63,6 +63,14 @@
 //! the edges identifies a zone across bars. Events of bars before the first output are not
 //! reported; `tests`, `status` and `break_*` carry what they left.
 //!
+//! **Prices on a mark** (this crate's convention; it changes a result only where a price lies
+//! on a mark). A price within [`crate::indicator::MARK_TOLERANCE`] ATR of an edge or of the
+//! midpoint of a zone is on it: a high on the lower edge is a visit, a close on the far edge is
+//! no break, a close on the midpoint is on neither side of it, and a bounce of exactly 0.5 ATR is
+//! good. Two swing highs (lows) are EQH (EQL) when they are less than 0.1 ATR apart, and exactly
+//! 0.1 ATR is not less. Every other threshold (candle, volume, gaps, order blocks, the climax
+//! sequence, the distances of the assessment) is compared as computed.
+//!
 //! Alerts on entry (prefix = expected move, warnings without one): `support_relevant` /
 //! `resistance_relevant` (zone within 1 ATR, reach ≥ 60), `bull_support_hold` /
 //! `bear_resistance_hold` (hold ≥ 60, break < 45), `bear_support_break` / `bull_resistance_break`
@@ -80,7 +88,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/structure_zones.py`.
 
-use super::kernels::PivotRule;
+use super::kernels::{Marks, PivotRule};
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -505,7 +513,7 @@ impl Indicator for StructureZones {
         let mut eql = None;
         if let Some(p) = ph {
             if let (Some(prev), Some(a)) = (self.prev_swing_high, atr) {
-                if a > 0.0 && (p - prev).abs() < 0.1 * a {
+                if a > 0.0 && Marks::new(a).below((p - prev).abs(), 0.1 * a) {
                     eqh = Some((p + prev) / 2.0);
                 }
             }
@@ -513,7 +521,7 @@ impl Indicator for StructureZones {
         }
         if let Some(p) = pl {
             if let (Some(prev), Some(a)) = (self.prev_swing_low, atr) {
-                if a > 0.0 && (p - prev).abs() < 0.1 * a {
+                if a > 0.0 && Marks::new(a).below((p - prev).abs(), 0.1 * a) {
                     eql = Some((p + prev) / 2.0);
                 }
             }
@@ -811,7 +819,9 @@ impl Indicator for StructureZones {
                 self.add_zone(t, if dir == 1 { 7 } else { 8 }, h, l, dir, q);
             }
 
-            // Zone lifecycle.
+            // Zone lifecycle. Every comparison of a price with an edge or the midpoint of a zone
+            // goes through `Marks`.
+            let marks = Marks::new(a);
             let (ph1, pl1) = (prev.map(|p| p.high), prev.map(|p| p.low));
             let mut i = self.zones.len();
             while i > 0 {
@@ -825,10 +835,11 @@ impl Indicator for StructureZones {
                     continue;
                 }
                 let z = &mut self.zones[i];
-                let in_zone = h >= z.lower && l <= z.upper;
-                let above = c > z.upper;
-                let below = c < z.lower;
-                let prev_in = h_in(ph1, pl1, z.lower, z.upper);
+                let in_zone = marks.at_or_above(h, z.lower) && marks.at_or_below(l, z.upper);
+                let above = marks.above(c, z.upper);
+                let below = marks.below(c, z.lower);
+                let (above_mid, below_mid) = (marks.above(c, z.mid), marks.below(c, z.mid));
+                let prev_in = h_in(ph1, pl1, z.lower, z.upper, marks);
                 if in_zone && !prev_in {
                     z.touches += 1;
                     z.event |= EVENT_TEST;
@@ -838,42 +849,44 @@ impl Indicator for StructureZones {
                     }
                 }
                 let can_bounce = (z.status == 1 || z.status == 2) && in_zone && !z.visit_bounced;
-                if can_bounce && z.dir == 1 && c > z.mid && c > o {
+                if can_bounce && z.dir == 1 && above_mid && c > o {
                     z.status = 2;
                     z.event |= EVENT_BOUNCE;
                     z.visit_bounced = true;
                     let bounce = if a > 0.0 { (c - z.lower) / a } else { 0.0 };
+                    let good = a > 0.0 && marks.at_or_above(c - z.lower, 0.5 * a);
                     z.last_bounce = bounce;
                     z.max_bounce = z.max_bounce.max(bounce);
-                    if bounce >= 0.5 {
+                    if good {
                         z.good += 1;
                     } else {
                         z.weak += 1;
                     }
                 }
-                if can_bounce && z.dir == -1 && c < z.mid && c < o {
+                if can_bounce && z.dir == -1 && below_mid && c < o {
                     z.status = 2;
                     z.event |= EVENT_BOUNCE;
                     z.visit_bounced = true;
                     let bounce = if a > 0.0 { (z.upper - c) / a } else { 0.0 };
+                    let good = a > 0.0 && marks.at_or_above(z.upper - c, 0.5 * a);
                     z.last_bounce = bounce;
                     z.max_bounce = z.max_bounce.max(bounce);
-                    if bounce >= 0.5 {
+                    if good {
                         z.good += 1;
                     } else {
                         z.weak += 1;
                     }
                 }
-                if (z.dir == 1 && in_zone && c < z.mid) || (z.dir == -1 && in_zone && c > z.mid) {
+                if (z.dir == 1 && in_zone && below_mid) || (z.dir == -1 && in_zone && above_mid) {
                     z.deep += 1;
                 }
                 let pc = prev_close.unwrap();
                 let mut broke = false;
-                if z.dir == 1 && below && pc >= z.lower {
+                if z.dir == 1 && below && marks.at_or_above(pc, z.lower) {
                     z.status = 3;
                     broke = true;
                 }
-                if z.dir == -1 && above && pc <= z.upper {
+                if z.dir == -1 && above && marks.at_or_below(pc, z.upper) {
                     z.status = 3;
                     broke = true;
                 }
@@ -881,12 +894,12 @@ impl Indicator for StructureZones {
                     z.event |= EVENT_BREAK;
                     z.broke_at = Some((t, c));
                 }
-                if z.status == 3 && !broke && z.dir == 1 && in_zone && c < z.mid {
+                if z.status == 3 && !broke && z.dir == 1 && in_zone && below_mid {
                     z.status = 4;
                     z.dir = -1;
                     z.event |= EVENT_FLIP;
                     z.flipped_at = Some(t);
-                } else if z.status == 3 && !broke && z.dir == -1 && in_zone && c > z.mid {
+                } else if z.status == 3 && !broke && z.dir == -1 && in_zone && above_mid {
                     z.status = 4;
                     z.dir = 1;
                     z.event |= EVENT_FLIP;
@@ -1230,8 +1243,8 @@ impl Indicator for StructureZones {
 }
 
 /// Whether the previous bar's range overlapped `lower..=upper`.
-fn h_in(high: Option<f64>, low: Option<f64>, lower: f64, upper: f64) -> bool {
-    matches!((high, low), (Some(h), Some(l)) if h >= lower && l <= upper)
+fn h_in(high: Option<f64>, low: Option<f64>, lower: f64, upper: f64, marks: Marks) -> bool {
+    matches!((high, low), (Some(h), Some(l)) if marks.at_or_above(h, lower) && marks.at_or_below(l, upper))
 }
 
 pub const STRUCTURE_ZONES_DEFINITION: super::definition::IndicatorDefinition =

@@ -13,6 +13,9 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 - **Pages:** the project site uses the current shared theme (0.16.4).
 
+### Fixed
+
+- **Levels, lines and zones:** `kestrel_equal_level_liquidity`, `trendlines` and `kestrel_structure_zones` count a price within `indicator::MARK_TOLERANCE` (1e-9 ATR) of a mark as on it, so pivot highs at 100.00 and 100.20 with a tolerance of 0.20 form one level, where rounding gave two. Results change only where a price lies on a mark; that still asks for a minor version. Details: [A price on a mark](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#a-price-on-a-mark).
 
 ## [0.52.0] - 2026-11-22
 

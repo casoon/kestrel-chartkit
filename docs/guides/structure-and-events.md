@@ -65,6 +65,9 @@ on every bar from the one that fixed the line:
     break:  close < line        -> the line ends, the segment is emptied
 ```
 
+A node or a low exactly `tolerance` from the line touches it and does not pierce it, and a close
+on the line is no break; see [A price on a mark](#a-price-on-a-mark).
+
 A node only counts once it is confirmed, so a line is known later than its newest anchor lies:
 nothing repaints. Every newly confirmed low is the newest anchor and fixes the line anew. The line
 is straight in time, like `TrendLine`.
@@ -156,6 +159,31 @@ role reversal:  a broken zone, a later visit with close > midpoint       -> stat
 
 The assessment keys (`support_*`, `resistance_*`) keep describing the nearest unbroken zone on
 either side of the close.
+
+### A price on a mark
+
+Levels, zones and trendlines compare a price with a mark that is computed: the mean of a level's
+pivots, a level plus a multiple of the ATR, the value of a line between two nodes. In binary
+floating point such a mark, and a difference of two prices, is off its decimal value by a few
+units in the last place: `100.2 - 100.0` is `0.20000000000000284`. Compared as computed, a
+distance of exactly the tolerance would be inside for one pair of prices and outside for another.
+
+The convention (`indicator::MARK_TOLERANCE = 1e-9`): a price within `1e-9 · ATR` of a mark is on
+the mark, and a distance within `1e-9 · ATR` of a tolerance is on the tolerance. "At most", "at
+least" and "within" are met by a price on the mark; "above", "below" and "less than" are not.
+
+| | on the mark means |
+|---|---|
+| `kestrel_equal_level_liquidity` | a pivot exactly `tolerance` from a level joins it; a high on the lower edge of the band is a test; a high on the sweep mark sweeps and a close on it breaks out; a close on the close-back mark with the high on the level reclaims; a level exactly `max_distance_atr` away is kept and one exactly `alert_distance_atr` away is near; a level on the close is on neither side of it |
+| `trendlines` | a node exactly `tolerance` beyond the line does not pierce it and touches it; a low exactly `tolerance` from it is a touch; a close on the line is no break; a node of the other kind on the line gives no channel |
+| `kestrel_structure_zones` | a high on the lower edge visits the zone; a close on the far edge is no break; a close on the midpoint is on neither side; swing highs exactly 0.1 ATR apart are not equal highs, which need less |
+
+With pivot highs at 100.00 and 100.20, an ATR of 2 and `eq_tolerance_atr = 0.10`, the tolerance is
+0.20 and the two pivots form one level at 100.10. The margin is in ATR like every bound it
+guards, so a series and its mirror image decide alike; it holds while the ATR is more than about a
+millionth of the price. Comparisons of two prices of the series with each other, and in
+`kestrel_equal_level_liquidity` and `kestrel_structure_zones` the ratios of the candle and of
+volume and the distance classes of the assessment, are taken as computed.
 
 ## Artifacts
 

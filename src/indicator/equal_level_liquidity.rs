@@ -37,6 +37,17 @@
 //! not is a *test*, counted from the bar after the level was created; several bars in a row
 //! inside the band are one test. Tests are counted for every level, whatever its touches.
 //!
+//! **Prices on a mark** (this crate's convention). Every comparison of a price with a mark of a
+//! level treats a price within [`crate::indicator::MARK_TOLERANCE`] ATR of the mark as on it:
+//! the tolerance of a merge, the band of a test, the sweep mark, the close-back mark and the
+//! level itself in a reclaim, `max_distance_atr`, `alert_distance_atr`, and the side of the close
+//! a level lies on in the ranking. "Within", "at least" and "at most" are then met by a price on
+//! the mark, "above" and "below" are not. Pivot highs at 100.00 and 100.20 with a tolerance of
+//! 0.20 form one level, although `100.2 - 100.0` is `0.20000000000000284` in floating point.
+//! Comparisons of two bar prices with each other (pivots, the close against the previous low or
+//! high) and the ratios of the candle and of volume (`hunt_*`, `min_volume_ratio`) are taken as
+//! computed.
+//!
 //! `value`: the bias (the reference definition's dashboard summary): ±2 for a reclaim this bar, else ±1 when a recent
 //! reclaim (within `event_memory` bars, among the last `max_events`) scored ≥ `premium_score`; ±1
 //! when the stronger primary level is within `alert_distance_atr` (SSL +, BSL −). `extra`:
@@ -86,7 +97,7 @@
 //!
 //! Golden reference: `reference/kestrel_reference/fixtures/equal_level_liquidity.py`.
 
-use super::kernels::PivotRule;
+use super::kernels::{Marks, PivotRule};
 use std::collections::{HashMap, VecDeque};
 
 use crate::model::Bar;
@@ -236,14 +247,24 @@ impl EqualLevelLiquidity {
         Some(v)
     }
 
-    fn add_pivot(&mut self, buy_side: bool, price: f64, pivot_bar: usize, tol: Option<f64>) {
+    fn add_pivot(
+        &mut self,
+        buy_side: bool,
+        price: f64,
+        pivot_bar: usize,
+        tol: Option<(f64, Marks)>,
+    ) {
         let max = self.cfg.max_tracked;
         let levels = if buy_side {
             &mut self.bsl
         } else {
             &mut self.ssl
         };
-        let hit = tol.and_then(|tol| levels.iter_mut().find(|l| (l.price - price).abs() <= tol));
+        let hit = tol.and_then(|(tol, marks)| {
+            levels
+                .iter_mut()
+                .find(|l| marks.within((l.price - price).abs(), tol))
+        });
         match hit {
             Some(l) => {
                 l.touches += 1;
@@ -281,14 +302,15 @@ impl EqualLevelLiquidity {
 
     fn rank(&self, buy_side: bool, close: f64, atr: f64, t: usize) -> Ranked {
         let levels = if buy_side { &self.bsl } else { &self.ssl };
+        let marks = Marks::new(atr);
         let mut primary: Option<(f64, f64, u32)> = None;
         let mut secondary: Option<(f64, f64, u32)> = None;
         let mut count = 0;
         for l in levels {
             let right_side = if buy_side {
-                l.price > close
+                marks.above(l.price, close)
             } else {
-                l.price < close
+                marks.below(l.price, close)
             };
             if l.touches < self.cfg.min_touches
                 || l.swept
@@ -349,7 +371,8 @@ impl Indicator for EqualLevelLiquidity {
         for l in self.bsl.iter_mut().chain(self.ssl.iter_mut()) {
             l.event = 0;
         }
-        let tol = atr.map(|a| a * c.eq_tolerance_atr);
+        // Every comparison of a price with a level's marks goes through `Marks`.
+        let tol = atr.map(|a| (a * c.eq_tolerance_atr, Marks::new(a)));
         let p = c.pivot_len;
         if let Some(ph) = self.pivot(false) {
             self.add_pivot(true, ph, t - p, tol);
@@ -358,17 +381,20 @@ impl Indicator for EqualLevelLiquidity {
             self.add_pivot(false, pl, t - p, tol);
         }
         if let Some(a) = atr.filter(|a| *a > 0.0) {
+            let marks = Marks::new(a);
             let keep = |l: &Level| {
                 t - l.last_touch <= c.max_age
-                    && (bar.close - l.price).abs() / a <= c.max_distance_atr
+                    && marks.within((bar.close - l.price).abs(), c.max_distance_atr * a)
             };
             self.bsl.retain(keep);
             self.ssl.retain(keep);
         }
         // Tests: the range reaches the band of a level, the previous bar's did not.
         for l in self.bsl.iter_mut().chain(self.ssl.iter_mut()) {
-            let visit =
-                tol.is_some_and(|tol| bar.high >= l.price - tol && bar.low <= l.price + tol);
+            let visit = tol.is_some_and(|(tol, marks)| {
+                marks.at_or_above(bar.high, l.price - tol)
+                    && marks.at_or_below(bar.low, l.price + tol)
+            });
             if visit && !l.visited && l.created < t {
                 l.tests += 1;
                 l.event |= EVENT_TEST;
@@ -396,6 +422,7 @@ impl Indicator for EqualLevelLiquidity {
         let mut flags = [false; 6]; // sweep, breakout, hunt for BSL then SSL
         let mut reclaim_score: [Option<f64>; 2] = [None, None]; // bear, bull
         if let Some(a) = atr {
+            let marks = Marks::new(a);
             let sweep_abs = a * c.min_sweep_atr;
             let back_abs = a * c.min_close_back_atr;
             let prev_low = prev.as_ref().map(|b| b.low);
@@ -422,17 +449,17 @@ impl Indicator for EqualLevelLiquidity {
                         (0.0, 0.0)
                     };
                     let touched = if buy {
-                        bar.high >= l.price + sweep_abs
+                        marks.at_or_above(bar.high, l.price + sweep_abs)
                     } else {
-                        bar.low <= l.price - sweep_abs
+                        marks.at_or_below(bar.low, l.price - sweep_abs)
                     };
                     if !l.swept && touched {
                         l.swept = true;
                         l.sweep_bar = t;
                         let breakout = if buy {
-                            bar.close >= l.price + sweep_abs
+                            marks.at_or_above(bar.close, l.price + sweep_abs)
                         } else {
-                            bar.close <= l.price - sweep_abs
+                            marks.at_or_below(bar.close, l.price - sweep_abs)
                         };
                         if breakout {
                             flags[side * 3 + 1] = true;
@@ -457,9 +484,11 @@ impl Indicator for EqualLevelLiquidity {
                     }
                     let can_reclaim = l.swept && !l.reclaimed && t <= l.sweep_bar + c.reclaim_bars;
                     let reclaimed = if buy {
-                        bar.close <= l.price - back_abs && bar.high >= l.price
+                        marks.at_or_below(bar.close, l.price - back_abs)
+                            && marks.at_or_above(bar.high, l.price)
                     } else {
-                        bar.close >= l.price + back_abs && bar.low <= l.price
+                        marks.at_or_above(bar.close, l.price + back_abs)
+                            && marks.at_or_below(bar.low, l.price)
                     };
                     if can_reclaim && reclaimed && volume_ok(c.min_volume_ratio) {
                         l.reclaimed = true;
@@ -490,10 +519,10 @@ impl Indicator for EqualLevelLiquidity {
         let a = atr?;
         let (p_bsl, s_bsl, n_bsl) = self.rank(true, bar.close, a, t);
         let (p_ssl, s_ssl, n_ssl) = self.rank(false, bar.close, a, t);
-        let near_bsl =
-            a > 0.0 && matches!(p_bsl, Some(p) if (p.0 - bar.close) / a <= c.alert_distance_atr);
-        let near_ssl =
-            a > 0.0 && matches!(p_ssl, Some(p) if (bar.close - p.0) / a <= c.alert_distance_atr);
+        let marks = Marks::new(a);
+        let near = c.alert_distance_atr * a;
+        let near_bsl = a > 0.0 && matches!(p_bsl, Some(p) if marks.within(p.0 - bar.close, near));
+        let near_ssl = a > 0.0 && matches!(p_ssl, Some(p) if marks.within(bar.close - p.0, near));
         let recent = |dir: i8| {
             self.events
                 .iter()

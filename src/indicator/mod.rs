@@ -143,6 +143,8 @@ pub mod zigzag_advanced;
 pub mod zone_rejection;
 pub mod zscore;
 
+pub use kernels::MARK_TOLERANCE;
+
 use std::collections::HashMap;
 use std::fmt;
 

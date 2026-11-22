@@ -6,7 +6,7 @@
 //! are stated there.
 
 use super::{assert_holds, assert_rejected, Coverage, Status};
-use crate::common::contract::load;
+use crate::common::contract::{load, ContractCase};
 use kestrel_chartkit::IndicatorUnit;
 
 const FIXTURE: &str = include_str!("../fixtures/contract_structure.txt");
@@ -566,6 +566,118 @@ fn trendlines_negated_tolerance_edge() {
         "trendlines",
         IndicatorUnit::Unitless,
     );
+}
+
+fn trendline_case(name: &str) -> ContractCase {
+    load(FIXTURE, name, "trendlines", IndicatorUnit::Unitless)
+}
+
+/// `field` of bar `bar` (0-based) as the fixture expects it.
+fn expected(case: &ContractCase, bar: usize, field: &str) -> Option<f64> {
+    let output = case.expected[bar].output.as_ref().expect("an output");
+    output.extra.get(field).copied()
+}
+
+fn close_to(got: Option<f64>, want: f64) -> bool {
+    (got.expect("field") - want).abs() < 1e-9
+}
+
+/// Von Hand hergeleitet (ATR genau 2, Toleranz 0,5): Tiefs 100,16 (Bar 4), 99,96 (Bar 10) und
+/// 100,76 (Bar 16). Die Linie vom ersten zum dritten steht an Bar 10 bei 100,46; das mittlere Tief
+/// liegt genau 0,50 darunter, durchstößt sie also nicht und berührt sie.
+#[test]
+fn trendlines_decimal_node() {
+    let case = trendline_case("trendlines_decimal_node");
+    let line = |bar: usize, field: &str| expected(&case, bar, &format!("support_{field}"));
+    assert_eq!(
+        (case.bars[4].low, case.bars[10].low, case.bars[16].low),
+        (100.16, 99.96, 100.76)
+    );
+    assert_eq!(expected(&case, 21, "atr"), Some(2.0));
+    assert_eq!(expected(&case, 21, "tolerance"), Some(0.5));
+    // Bar 21 bestätigt das dritte Tief.
+    assert_eq!(line(21, "formed"), Some(1.0));
+    assert_eq!(line(21, "start_price"), Some(100.16));
+    assert_eq!(line(21, "start_bars_back"), Some(17.0));
+    assert_eq!(line(21, "end_price"), Some(100.76));
+    assert_eq!(line(21, "nodes"), Some(3.0));
+    assert_eq!(line(21, "node_touches"), Some(3.0));
+    // 100,16 + 0,05 je Bar.
+    assert!(close_to(line(21, "value"), 101.01));
+    // Bar 24: Tief 101,66 gegen 101,16; Bar 25: Tief 100,96 gegen 101,21.
+    assert_eq!(line(23, "touch"), Some(0.0));
+    assert_eq!(line(24, "touch"), Some(1.0));
+    assert_eq!(line(25, "touches"), Some(2.0));
+    // Bar 26 schließt bei 101,26 auf der Linie: kein Bruch. Bar 27 schließt darunter.
+    assert_eq!(case.bars[26].close, 101.26);
+    assert!(close_to(line(26, "value"), 101.26));
+    assert_eq!(line(26, "break"), Some(0.0));
+    assert_eq!(line(27, "break"), Some(1.0));
+    assert!(case.expected[27]
+        .alerts
+        .contains_key("bear_support_line_break"));
+    assert_holds(&case);
+}
+
+/// Das Spiegelbild: dieselbe Linie als Widerstand durch die Hochs.
+#[test]
+fn trendlines_negated_decimal_node() {
+    let case = trendline_case("trendlines_negated_decimal_node");
+    let line = |bar: usize, field: &str| expected(&case, bar, &format!("resistance_{field}"));
+    assert_eq!(line(21, "start_price"), Some(-100.16));
+    assert_eq!(line(21, "nodes"), Some(3.0));
+    assert_eq!(line(21, "node_touches"), Some(3.0));
+    assert_eq!(line(24, "touch"), Some(1.0));
+    assert_eq!(line(26, "break"), Some(0.0));
+    assert_eq!(line(27, "break"), Some(1.0));
+    assert_holds(&case);
+}
+
+/// Knapp darunter und knapp darüber: 0,49 unter der Linie berührt das mittlere Tief sie, 0,51
+/// darunter durchstößt es sie, und der Anker rückt auf dieses Tief vor.
+#[test]
+fn trendlines_decimal_node_inside_and_outside() {
+    let inside = trendline_case("trendlines_decimal_inside_node");
+    assert_eq!(inside.bars[10].low, 99.97);
+    assert_eq!(expected(&inside, 21, "support_start_price"), Some(100.16));
+    assert_eq!(expected(&inside, 21, "support_nodes"), Some(3.0));
+    assert_eq!(expected(&inside, 21, "support_node_touches"), Some(3.0));
+    assert_holds(&inside);
+
+    let outside = trendline_case("trendlines_decimal_outside_node");
+    assert_eq!(outside.bars[10].low, 99.95);
+    assert_eq!(expected(&outside, 21, "atr"), Some(2.0));
+    assert_eq!(expected(&outside, 21, "support_start_price"), Some(99.95));
+    assert_eq!(
+        expected(&outside, 21, "support_start_bars_back"),
+        Some(11.0)
+    );
+    assert_eq!(expected(&outside, 21, "support_nodes"), Some(2.0));
+    assert_eq!(expected(&outside, 21, "support_node_touches"), Some(2.0));
+    assert_holds(&outside);
+}
+
+/// Ein Tief genau 0,5 über der Linie (101,62 gegen 101,12) ist eine Berührung.
+#[test]
+fn trendlines_decimal_touch() {
+    let case = trendline_case("trendlines_decimal_touch");
+    assert_eq!(case.bars[24].low, 101.62);
+    assert!(close_to(expected(&case, 24, "support_value"), 101.12));
+    assert_eq!(expected(&case, 23, "support_touch"), Some(0.0));
+    assert_eq!(expected(&case, 24, "support_touch"), Some(1.0));
+    assert_eq!(expected(&case, 24, "support_touches"), Some(1.0));
+    assert_holds(&case);
+}
+
+/// Ein Schluss genau auf der Linie (101,20) ist kein Bruch, der nächste darunter ist einer.
+#[test]
+fn trendlines_decimal_close() {
+    let case = trendline_case("trendlines_decimal_close");
+    assert_eq!(case.bars[26].close, 101.2);
+    assert!(close_to(expected(&case, 26, "support_value"), 101.2));
+    assert_eq!(expected(&case, 26, "support_break"), Some(0.0));
+    assert_eq!(expected(&case, 27, "support_break"), Some(1.0));
+    assert_holds(&case);
 }
 
 #[test]

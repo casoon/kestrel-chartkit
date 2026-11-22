@@ -10,11 +10,18 @@ every level with at least `LIST_MIN_TOUCHES` pivots, oldest first, with its pric
 status, the bars back of its first and latest pivot and of its sweep, and the events of the bar.
 A test is a bar whose range reaches price +/- tolerance when the previous bar's range did not,
 counted from the bar after the level was created.
+
+Every comparison of a price with a mark of a level (the level, its band, the sweep and the
+close-back mark, the largest distance from the close, the alert distance, the side of the close a
+level lies on) follows the crate's convention that a price within 1e-9 ATR of a mark is on it
+(`structure.Marks`); comparisons of two bar prices with each other and the ratios of the candle
+and of volume are taken as computed.
 """
 
 import math
 
 from ..fixture import provenance
+from ..structure import Marks
 
 NAME = "golden_equal_level_liquidity"
 
@@ -137,6 +144,7 @@ def compute(bars):
         vol_ratio = v[t] / avg_vol if avg_vol is not None and avg_vol > 0 else 1.0
         a = atr[t]
         tol = a * EQ_TOL_ATR if a is not None else None
+        marks = Marks(a) if a is not None else None
         for lvl in bsl + ssl:
             lvl["event"] = 0
 
@@ -147,7 +155,7 @@ def compute(bars):
             piv_bar = t - PIVOT_LEN
             found = False
             for lvl in levels:
-                if tol is not None and abs(lvl["price"] - piv) <= tol:
+                if tol is not None and marks.within(abs(lvl["price"] - piv), tol):
                     lvl["touches"] += 1
                     lvl["last"] = piv_bar
                     lvl["price"] = (lvl["price"] * (lvl["touches"] - 1) + piv) / lvl["touches"]
@@ -165,11 +173,13 @@ def compute(bars):
         if a is not None and a > 0:
             for levels in (bsl, ssl):
                 levels[:] = [l for l in levels
-                             if not (t - l["last"] > MAX_AGE or abs(c[t] - l["price"]) / a > MAX_DIST_ATR)]
+                             if t - l["last"] <= MAX_AGE
+                             and marks.within(abs(c[t] - l["price"]), MAX_DIST_ATR * a)]
 
         # Tests: the bar's range reaches the band around the level, the previous bar's did not.
         for lvl in bsl + ssl:
-            visit = tol is not None and h[t] >= lvl["price"] - tol and lo[t] <= lvl["price"] + tol
+            visit = tol is not None and marks.at_or_above(h[t], lvl["price"] - tol) \
+                and marks.at_or_below(lo[t], lvl["price"] + tol)
             if visit and not lvl["visited"] and lvl["created"] < t:
                 lvl["tests"] += 1
                 lvl["event"] |= EVENT_TEST
@@ -197,9 +207,9 @@ def compute(bars):
                 if lvl["touches"] >= MIN_TOUCHES and lvl["pivot"] < t:
                     wick_atr = max(0.0, h[t] - lvl["price"]) / a if a > 0 else 0.0
                     back_atr = max(0.0, lvl["price"] - c[t]) / a if a > 0 else 0.0
-                    if not lvl["swept"] and h[t] >= lvl["price"] + sweep_abs:
+                    if not lvl["swept"] and marks.at_or_above(h[t], lvl["price"] + sweep_abs):
                         lvl["swept"], lvl["sweep_bar"] = True, t
-                        if c[t] >= lvl["price"] + sweep_abs:
+                        if marks.at_or_above(c[t], lvl["price"] + sweep_abs):
                             fired.add("bull_bsl_breakout")
                             lvl["broken"] = True
                             lvl["event"] |= EVENT_BREAKOUT
@@ -211,8 +221,9 @@ def compute(bars):
                                 fired.add("bear_bsl_stop_hunt")
                                 lvl["event"] |= EVENT_HUNT
                     can = lvl["swept"] and not lvl["reclaimed"] and t <= lvl["sweep_bar"] + RECLAIM_BARS
-                    if can and c[t] <= lvl["price"] - back_abs and \
-                            (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and h[t] >= lvl["price"]:
+                    if can and marks.at_or_below(c[t], lvl["price"] - back_abs) and \
+                            (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and \
+                            marks.at_or_above(h[t], lvl["price"]):
                         lvl["reclaimed"] = True
                         lvl["event"] |= EVENT_RECLAIM
                         bonus = 10.0 if t >= 1 and c[t] < lo[t - 1] else 0.0
@@ -225,9 +236,9 @@ def compute(bars):
                 if lvl["touches"] >= MIN_TOUCHES and lvl["pivot"] < t:
                     wick_atr = max(0.0, lvl["price"] - lo[t]) / a if a > 0 else 0.0
                     back_atr = max(0.0, c[t] - lvl["price"]) / a if a > 0 else 0.0
-                    if not lvl["swept"] and lo[t] <= lvl["price"] - sweep_abs:
+                    if not lvl["swept"] and marks.at_or_below(lo[t], lvl["price"] - sweep_abs):
                         lvl["swept"], lvl["sweep_bar"] = True, t
-                        if c[t] <= lvl["price"] - sweep_abs:
+                        if marks.at_or_below(c[t], lvl["price"] - sweep_abs):
                             fired.add("bear_ssl_breakout")
                             lvl["broken"] = True
                             lvl["event"] |= EVENT_BREAKOUT
@@ -239,8 +250,9 @@ def compute(bars):
                                 fired.add("bull_ssl_stop_hunt")
                                 lvl["event"] |= EVENT_HUNT
                     can = lvl["swept"] and not lvl["reclaimed"] and t <= lvl["sweep_bar"] + RECLAIM_BARS
-                    if can and c[t] >= lvl["price"] + back_abs and \
-                            (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and lo[t] <= lvl["price"]:
+                    if can and marks.at_or_above(c[t], lvl["price"] + back_abs) and \
+                            (not volume_real or vol_ratio >= MIN_VOLUME_RATIO) and \
+                            marks.at_or_below(lo[t], lvl["price"]):
                         lvl["reclaimed"] = True
                         lvl["event"] |= EVENT_RECLAIM
                         bonus = 10.0 if t >= 1 and c[t] > h[t - 1] else 0.0
@@ -258,7 +270,7 @@ def compute(bars):
             best = second = None
             count = 0
             for lvl in levels:
-                side_ok = lvl["price"] > c[t] if above else lvl["price"] < c[t]
+                side_ok = marks.above(lvl["price"], c[t]) if above else marks.below(lvl["price"], c[t])
                 if lvl["touches"] >= MIN_TOUCHES and not lvl["swept"] and not lvl["reclaimed"] \
                         and side_ok and a > 0:
                     score = _level_score(lvl["touches"], t - lvl["last"], abs(lvl["price"] - c[t]) / a)
@@ -271,8 +283,8 @@ def compute(bars):
 
         p_bsl, s_bsl, n_bsl = rank(bsl, True)
         p_ssl, s_ssl, n_ssl = rank(ssl, False)
-        near_bsl = p_bsl is not None and a > 0 and (p_bsl[0] - c[t]) / a <= ALERT_DIST_ATR
-        near_ssl = p_ssl is not None and a > 0 and (c[t] - p_ssl[0]) / a <= ALERT_DIST_ATR
+        near_bsl = p_bsl is not None and a > 0 and marks.within(p_bsl[0] - c[t], ALERT_DIST_ATR * a)
+        near_ssl = p_ssl is not None and a > 0 and marks.within(c[t] - p_ssl[0], ALERT_DIST_ATR * a)
         r_bull = max([e[2] for e in recent if e[1] == 1], default=0.0)
         r_bear = max([e[2] for e in recent if e[1] == -1], default=0.0)
         pb = p_bsl[1] if p_bsl else 0.0
@@ -339,7 +351,9 @@ HEADER = [
     "(first bar high - low) seeded with an SMA, no merge/prune/sweep while it is missing, the",
     "2 x mintick tolerance floor dropped and the bar range floored at 1e-12, volume ratio 1 while",
     "the 20-bar average is missing or 0, real volume = cumulative volume so far positive, pivots",
-    "strict on both sides; output from the first bar with an ATR.",
+    "strict on both sides; output from the first bar with an ATR. A price within 1e-9 ATR of a mark",
+    "of a level (the level, its band, the sweep and close-back marks, the distance bounds, the",
+    "close) is on the mark: an inclusive bound is met, a strict one is not.",
     "",
     "Series: 800 bars on plateaus k = floor(i/96), level = 100 + the sum of the first k steps of",
     "the cycle 2.5, -1.2, 3.5, -4.0; close = level + 2.5 sin(2 pi i/32) + 0.04 sin(i/2.9); open =",

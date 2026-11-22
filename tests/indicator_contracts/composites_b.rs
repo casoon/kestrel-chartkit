@@ -347,6 +347,119 @@ fn equal_level_liquidity_listed() {
     ));
 }
 
+/// `field` of bar `bar` (0-based) as the fixture expects it.
+fn expected(case: &ContractCase, bar: usize, field: &str) -> Option<f64> {
+    let output = case.expected[bar].output.as_ref().expect("an output");
+    output.extra.get(field).copied()
+}
+
+fn expected_alerts(case: &ContractCase, bar: usize) -> Vec<&str> {
+    case.expected[bar]
+        .alerts
+        .keys()
+        .map(String::as_str)
+        .collect()
+}
+
+/// Von Hand hergeleitet (ATR genau 2, Toleranz 0,10 · 2 = 0,2): Die Pivot-Hochs 100,00 und 100,20
+/// liegen genau auf der Toleranz und bilden ein Niveau aus zwei Pivots bei 100,10. Danach liegen
+/// ein Hoch auf dem Bandrand (Test), ein Hoch auf der Sweep-Marke (Sweep), ein Schluss auf der
+/// Rückkehr-Marke und ein Hoch auf dem Niveau (Reclaim) je genau auf ihrer Marke.
+#[test]
+fn equal_level_liquidity_tolerance_edge() {
+    let case = case(
+        "equal_level_liquidity_tolerance_edge",
+        "kestrel_equal_level_liquidity",
+        IndicatorUnit::Unitless,
+    );
+    let level = |bar: usize, field: &str| expected(&case, bar, &format!("bsl_1_{field}"));
+    let near = |got: Option<f64>, want: f64| (got.expect("field") - want).abs() < 1e-9;
+    assert_eq!(expected(&case, 13, "atr"), Some(2.0));
+    assert!(near(expected(&case, 13, "tolerance"), 0.2));
+    assert_eq!(level(21, "price"), Some(100.0));
+    assert_eq!(level(21, "touches"), Some(1.0));
+    // Bar 22 bestätigt das Pivot-Hoch 100,20 (Bar 19): Abstand 0,20, es gehört zum Niveau.
+    assert_eq!(case.bars[19].high, 100.2);
+    assert_eq!(expected(&case, 22, "bsl_levels"), Some(1.0));
+    assert!(near(level(22, "price"), 100.1));
+    assert_eq!(level(22, "touches"), Some(2.0));
+    assert_eq!(level(22, "event"), Some(1.0));
+    assert_eq!(level(22, "first_bars_back"), Some(12.0));
+    assert_eq!(level(22, "last_bars_back"), Some(3.0));
+    // Bar 24: Schluss 98,10, genau 1 ATR unter dem Niveau.
+    assert_eq!(case.bars[24].close, 98.1);
+    assert_eq!(expected_alerts(&case, 24), ["primary_bsl_near"]);
+    // Bar 25: Hoch 99,90 auf dem unteren Bandrand 100,10 - 0,20, nach einer Bar darunter.
+    assert_eq!((case.bars[24].high, case.bars[25].high), (99.0, 99.9));
+    assert_eq!(level(24, "tests"), Some(1.0));
+    assert_eq!(level(25, "tests"), Some(2.0));
+    assert_eq!(level(25, "event"), Some(2.0));
+    // Bar 26: Hoch 100,20 auf der Sweep-Marke 100,10 + 0,10, Schluss 100,00 darunter.
+    assert_eq!((case.bars[26].high, case.bars[26].close), (100.2, 100.0));
+    assert_eq!(level(26, "status"), Some(1.0));
+    assert_eq!(level(26, "event"), Some(4.0));
+    assert_eq!(expected_alerts(&case, 26), ["bear_bsl_sweep"]);
+    // Bar 27: Schluss 99,90 auf der Rückkehr-Marke 100,10 - 0,20, Hoch 100,10 auf dem Niveau.
+    assert_eq!((case.bars[27].high, case.bars[27].close), (100.1, 99.9));
+    assert_eq!(level(27, "status"), Some(3.0));
+    assert_eq!(level(27, "event"), Some(32.0));
+    assert_eq!(expected_alerts(&case, 27), ["bear_reclaim"]);
+    // Verkaufsseite: Pivot-Tiefs 96,40 und 96,50 ergeben ein Niveau bei 96,45.
+    assert!(near(expected(&case, 26, "ssl_1_price"), 96.45));
+    assert_eq!(expected(&case, 26, "ssl_1_touches"), Some(2.0));
+    assert_holds(&case);
+}
+
+/// Das Spiegelbild (jeder Preis negiert): dieselben Ereignisse auf der Verkaufsseite.
+#[test]
+fn equal_level_liquidity_negated_tolerance_edge() {
+    let case = case(
+        "equal_level_liquidity_negated_tolerance_edge",
+        "kestrel_equal_level_liquidity",
+        IndicatorUnit::Unitless,
+    );
+    let level = |bar: usize, field: &str| expected(&case, bar, &format!("ssl_1_{field}"));
+    assert_eq!(case.bars[19].low, -100.2);
+    assert_eq!(expected(&case, 22, "ssl_levels"), Some(1.0));
+    assert!((level(22, "price").unwrap() + 100.1).abs() < 1e-9);
+    assert_eq!(level(22, "touches"), Some(2.0));
+    assert_eq!(expected_alerts(&case, 24), ["primary_ssl_near"]);
+    assert_eq!(level(25, "tests"), Some(2.0));
+    assert_eq!(level(26, "status"), Some(1.0));
+    assert_eq!(expected_alerts(&case, 26), ["bull_ssl_sweep"]);
+    assert_eq!(level(27, "status"), Some(3.0));
+    assert_eq!(expected_alerts(&case, 27), ["bull_reclaim"]);
+    assert_holds(&case);
+}
+
+/// Knapp darunter und knapp darüber: 0,19 Abstand ergibt ein Niveau (Preis 100,095), 0,21 zwei.
+#[test]
+fn equal_level_liquidity_tolerance_inside_and_outside() {
+    let inside = case(
+        "equal_level_liquidity_tolerance_inside",
+        "kestrel_equal_level_liquidity",
+        IndicatorUnit::Unitless,
+    );
+    assert_eq!(inside.bars[19].high, 100.19);
+    assert_eq!(expected(&inside, 22, "bsl_levels"), Some(1.0));
+    assert_eq!(expected(&inside, 22, "bsl_1_touches"), Some(2.0));
+    assert!((expected(&inside, 22, "bsl_1_price").unwrap() - 100.095).abs() < 1e-9);
+    assert_holds(&inside);
+
+    let outside = case(
+        "equal_level_liquidity_tolerance_outside",
+        "kestrel_equal_level_liquidity",
+        IndicatorUnit::Unitless,
+    );
+    assert_eq!(outside.bars[19].high, 100.21);
+    assert_eq!(expected(&outside, 22, "bsl_levels"), Some(2.0));
+    assert_eq!(expected(&outside, 22, "bsl_1_price"), Some(100.0));
+    assert_eq!(expected(&outside, 22, "bsl_1_touches"), Some(1.0));
+    assert_eq!(expected(&outside, 22, "bsl_2_price"), Some(100.21));
+    assert_eq!(expected(&outside, 22, "bsl_2_touches"), Some(1.0));
+    assert_holds(&outside);
+}
+
 #[test]
 fn equal_level_liquidity_rejects_invalid_configuration() {
     assert_rejected(
@@ -522,6 +635,85 @@ fn structure_zones_mirrored_lifecycle() {
         "kestrel_structure_zones",
         IndicatorUnit::Unitless,
     ));
+}
+
+/// Von Hand hergeleitet (ATR genau 2): Swing-Hochs im Abstand von genau 0,1 ATR sind keine
+/// gleichen Hochs (die Regel verlangt weniger); ein Hoch auf dem unteren Zonenrand ist ein Test,
+/// ein Schluss auf dem oberen Rand kein Bruch.
+#[test]
+fn structure_zones_edge() {
+    let case = case(
+        "structure_zones_edge",
+        "kestrel_structure_zones",
+        IndicatorUnit::Unitless,
+    );
+    let zone = |bar: usize, field: &str| expected(&case, bar, &format!("zone_1_{field}"));
+    let near = |got: Option<f64>, want: f64| (got.expect("field") - want).abs() < 1e-9;
+    assert_eq!(expected(&case, 18, "atr"), Some(2.0));
+    // Bar 18 bestätigt das Swing-Hoch 100,10; das davor liegt bei 99,90: kein EQH (Bit 16384).
+    assert_eq!((case.bars[10].high, case.bars[15].high), (99.9, 100.1));
+    assert_eq!(expected(&case, 18, "event_code"), Some(1.0));
+    // Bar 21: Swing-Tief 97,00 nach 96,90, Abstand 0,10: EQL (Bit 32768).
+    assert_eq!(expected(&case, 21, "event_code"), Some(32770.0));
+    // Bar 22: Zone 1 um das Major-Hoch 100,10, 0,3 ATR breit.
+    assert!(near(zone(22, "lower"), 99.8) && near(zone(22, "upper"), 100.4));
+    assert_eq!(zone(22, "role"), Some(-1.0));
+    assert_eq!(zone(22, "event"), Some(1.0));
+    // Bar 24 (Hoch 99,79) bleibt darunter, Bar 25 (Hoch 99,80) liegt auf dem unteren Rand.
+    assert_eq!((case.bars[24].high, case.bars[25].high), (99.79, 99.8));
+    assert_eq!(zone(24, "tests"), Some(0.0));
+    assert_eq!(zone(25, "tests"), Some(1.0));
+    assert_eq!(zone(25, "status"), Some(1.0));
+    assert_eq!(zone(25, "event"), Some(2.0));
+    // Bar 27 schließt bei 100,40 auf dem oberen Rand: kein Bruch; Major-BOS (4 + 16), Zone 2.
+    assert_eq!(case.bars[27].close, 100.4);
+    assert_eq!(zone(27, "status"), Some(1.0));
+    assert_eq!(zone(27, "break_bars_back"), None);
+    assert_eq!(expected(&case, 27, "event_code"), Some(20.0));
+    assert_eq!(expected(&case, 27, "zone_2_type"), Some(5.0));
+    // Bar 28 schließt bei 100,90 darüber: Bruch. Bar 29: Rollentausch.
+    assert_eq!(zone(28, "status"), Some(3.0));
+    assert_eq!(zone(28, "event"), Some(8.0));
+    assert_eq!(zone(28, "break_close"), Some(100.9));
+    assert_eq!(zone(29, "status"), Some(4.0));
+    assert_eq!(zone(29, "role"), Some(1.0));
+    assert_eq!(zone(29, "event"), Some(16.0));
+    assert_holds(&case);
+}
+
+/// Das Spiegelbild: Swing-Tiefs im Abstand 0,1 ATR sind keine gleichen Tiefs, die Zone ist eine
+/// Unterstützung, getestet auf dem oberen Rand, nicht gebrochen auf dem unteren.
+#[test]
+fn structure_zones_negated_edge() {
+    let case = case(
+        "structure_zones_negated_edge",
+        "kestrel_structure_zones",
+        IndicatorUnit::Unitless,
+    );
+    let zone = |bar: usize, field: &str| expected(&case, bar, &format!("zone_1_{field}"));
+    assert_eq!(expected(&case, 18, "event_code"), Some(2.0));
+    assert_eq!(expected(&case, 21, "event_code"), Some(16385.0));
+    assert_eq!(zone(22, "role"), Some(1.0));
+    assert_eq!(zone(24, "tests"), Some(0.0));
+    assert_eq!(zone(25, "tests"), Some(1.0));
+    assert_eq!(zone(27, "status"), Some(1.0));
+    assert_eq!(zone(28, "status"), Some(3.0));
+    assert_eq!(zone(29, "status"), Some(4.0));
+    assert_eq!(zone(29, "role"), Some(-1.0));
+    assert_holds(&case);
+}
+
+/// Knapp darunter: 0,19 Abstand ist weniger als 0,1 ATR, also EQH (1 + 16384).
+#[test]
+fn structure_zones_equal_highs() {
+    let case = case(
+        "structure_zones_equal_highs",
+        "kestrel_structure_zones",
+        IndicatorUnit::Unitless,
+    );
+    assert_eq!((case.bars[10].high, case.bars[15].high), (99.91, 100.1));
+    assert_eq!(expected(&case, 18, "event_code"), Some(16385.0));
+    assert_holds(&case);
 }
 
 #[test]
