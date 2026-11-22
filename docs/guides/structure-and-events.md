@@ -60,9 +60,13 @@ on the bar that confirms a low c, with a low before it in the segment:
     node_touches = the lows from a to c within the tolerance of the line
     channel      = line + the largest distance of a high after a above the line
 
+on every bar that confirms a node, while a line exists:
+    channel_node_touches = the highs after a within the tolerance of the channel parallel
+
 on every bar from the one that fixed the line:
-    touch:  |low - line| <= tolerance
-    break:  close < line        -> the line ends, the segment is emptied
+    touch:          |low - line| <= tolerance
+    channel_touch:  |high - channel| <= tolerance
+    break:          close < line        -> the line ends, the segment is emptied
 ```
 
 A node or a low exactly `tolerance` from the line touches it and does not pierce it, and a close
@@ -80,6 +84,19 @@ is straight in time, like `TrendLine`.
 beyond the line. A broken line is in the output of its break bar, with the line value the close
 crossed, and gone from the next. Alerts: `bear_support_line_break`, `bull_resistance_line_break`.
 `TrendlineEngine::support()` and `resistance()` return the same lines as `Trendline`.
+
+The nodes behind the counts are in the output too, so a chart can mark them. The touching nodes
+of a line are `node_touch_<i>_bars_back` and `node_touch_<i>_price`, numbered from 1, oldest
+first; with up to 8 touching nodes the first is the anchor `a` and the last is always the anchor
+`c`. While the line has a channel, `channel_node_touches` counts the nodes of the other kind after
+`a` that lie within the tolerance of the parallel (the node that gives the width is one of them),
+`channel_node_touch_<i>_bars_back` / `_price` name them, and `channel_touch` is 1 on a bar whose
+high (below a resistance line: whose low) comes within the tolerance of the parallel. Each list
+names at most 8 nodes (`TRENDLINE_LISTED_NODES`), the newest ones, while the counts cover all;
+`Trendline::touching_nodes` and `channel_touching_nodes` hold every node. A line with
+`node_touches >= 2` and `channel_node_touches >= 2` has two touches on each boundary. The lists
+are fixed with the tolerance of the bar that computed them: the bar that fixed the line, and for
+the parallel the bar of the latest confirmed node.
 
 `ChartPatternDetector::scan` fits the same two-point lines over a finished node list and returns
 the line through the highs and the line through the lows side by side. It gives no line where a

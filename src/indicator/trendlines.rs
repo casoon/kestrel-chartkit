@@ -23,17 +23,22 @@
 //!         the tolerance below the line through a and c:   k.price >= line(k.time) - tolerance
 //!     the nodes before a leave the segment
 //!     line(time)   = a.price + (c.price - a.price) / (c.time - a.time) · (time - a.time)
-//!     nodes        = the lows from a to c
-//!     node_touches = those of them with |k.price - line(k.time)| <= tolerance      (a and c included)
-//!     touches      = 0
+//!     nodes          = the lows from a to c
+//!     touching nodes = those of them with |k.price - line(k.time)| <= tolerance    (a and c included)
+//!     node_touches   = their number
+//!     touches        = 0
 //!
 //! on the bar that confirms a low or a high, while a line exists:
 //!     width   = the largest high.price - line(high.time) over the highs after a
 //!     channel = line + width, if width > 0
+//!     channel touching nodes = the highs after a with
+//!                              |k.price - (line(k.time) + width)| <= tolerance
+//!                              (the high that gives the width included)
 //!
 //! on every bar from the one that formed the line:
 //!     value = line(time of the bar)
 //!     touch:  |low - value| <= tolerance          -> touches + 1
+//!     channel touch:  |high - (value + width)| <= tolerance
 //!     break:  close < value                       -> the line ends with this bar, the segment is emptied
 //! ```
 //!
@@ -43,6 +48,12 @@
 //! Every newly confirmed low is the newest anchor, so the line is fixed anew with each of them and
 //! `touches` counts the bars since. A touch says that the bar's low came within the tolerance of
 //! the line, from either side; whether the bar closed beyond it is the break, tested on its own.
+//!
+//! The parallel is laid through one node by construction. The channel touching nodes say how many
+//! nodes of the other kind lie on it: a channel with two touching nodes on the line and two on
+//! the parallel has two touches on each boundary. The tolerance of both lists is that of the bar
+//! that computed them: the bar that fixed the line for the line's nodes, the bar of the latest
+//! confirmation for the parallel's.
 //!
 //! The line is straight in time: like [`super::chart_patterns::TrendLine`] it is computed from
 //! timestamps. On a series with gaps in time it is therefore not straight over the bar count.
@@ -68,15 +79,26 @@
 //! | `support_start_bars_back`, `support_end_bars_back` | as above | how many bars back the anchors lie |
 //! | `support_nodes` | as above | the lows from `a` to `c` |
 //! | `support_node_touches` | as above | those within the tolerance of the line, at least 2 |
+//! | `support_node_touch_<i>_bars_back`, `support_node_touch_<i>_price` | as above | touching node `i` (from 1, oldest first): how many bars back it lies and its price |
 //! | `support_touches` | as above | bars since the line was fixed whose low came within the tolerance |
 //! | `support_touch` | as above | 1 if this bar is such a bar, else 0 |
 //! | `support_formed` | as above | 1 on the bar that fixed the line (a new line or a new anchor), else 0 |
 //! | `support_break` | as above | 1 on the bar whose close lies below the line, else 0 |
 //! | `support_channel_value`, `support_channel_width` | while the line has a channel | the parallel at this bar and its distance from the line |
+//! | `support_channel_node_touches` | as above | the highs after `a` within the tolerance of the parallel, at least 1 |
+//! | `support_channel_node_touch_<i>_bars_back`, `support_channel_node_touch_<i>_price` | as above | channel touching node `i` (from 1, oldest first) |
+//! | `support_channel_touch` | as above | 1 if this bar's high came within the tolerance of the parallel, else 0 |
 //!
 //! The same keys with `resistance_` for the line through the highs; its channel lies below it,
-//! `resistance_channel_value = resistance_value - resistance_channel_width`. A line that breaks
-//! is in the output of its break bar and gone from the next one.
+//! `resistance_channel_value = resistance_value - resistance_channel_width`, its channel touching
+//! nodes are lows and `resistance_channel_touch` reads the bar's low. A line that breaks is in the
+//! output of its break bar and gone from the next one.
+//!
+//! Each list names at most [`TRENDLINE_LISTED_NODES`] nodes, so the output does not grow with the
+//! length of a line: where more nodes touch, the newest are listed, the oldest of those as node 1,
+//! and `node_touches` / `channel_node_touches` still count all of them. The oldest touching node
+//! of the line is its anchor `a` and stays in `support_start_*`. The lists change only on a bar
+//! that confirms a node; between those bars only the `bars_back` values grow.
 //!
 //! Alerts: `bear_support_line_break` on a close below the support line,
 //! `bull_resistance_line_break` on a close above the resistance line (strength 0.6).
@@ -105,6 +127,10 @@ pub struct TrendlineNode {
     pub bar: usize,
 }
 
+/// How many touching nodes of a line, and of its channel parallel, the output lists at most (the
+/// newest ones). [`Trendline::touching_nodes`] and [`Trendline::channel_touching_nodes`] hold all.
+pub const TRENDLINE_LISTED_NODES: usize = 8;
+
 /// One line as the engine holds it after a bar.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Trendline {
@@ -118,12 +144,17 @@ pub struct Trendline {
     pub nodes: usize,
     /// Those of them within the tolerance of the line, the anchors included.
     pub node_touches: usize,
+    /// The nodes counted in `node_touches`, oldest first: `start` is the first, `end` the last.
+    pub touching_nodes: Vec<TrendlineNode>,
     /// Bars since the line was fixed whose low (support) or high (resistance) came within the
     /// tolerance.
     pub touches: usize,
     /// Distance of the channel parallel from the line, if a node of the other kind lies on the
     /// far side of the line.
     pub channel_width: Option<f64>,
+    /// The nodes of the other kind after `start` within the tolerance of the channel parallel,
+    /// oldest first, the node that gives the width included. Empty without a channel.
+    pub channel_touching_nodes: Vec<TrendlineNode>,
 }
 
 impl Trendline {
@@ -182,7 +213,7 @@ impl Side {
         if !own_kind {
             if !self.segment.is_empty() {
                 self.segment.push(node);
-                self.update_channel(marks);
+                self.update_channel(tolerance, marks);
             }
             return false;
         }
@@ -217,38 +248,56 @@ impl Side {
             .iter()
             .filter(|k| k.is_high == node.is_high)
             .collect();
-        let node_touches = kind
+        let touching_nodes: Vec<TrendlineNode> = kind
             .iter()
             .filter(|k| marks.within((k.price - line.value_at(k.timestamp)).abs(), tolerance))
-            .count();
+            .map(|k| **k)
+            .collect();
         self.line = Some(Trendline {
             is_support: self.is_support,
             start,
             end: node,
             nodes: kind.len(),
-            node_touches,
+            node_touches: touching_nodes.len(),
+            touching_nodes,
             touches: 0,
             channel_width: None,
+            channel_touching_nodes: Vec::new(),
         });
-        self.update_channel(marks);
+        self.update_channel(tolerance, marks);
         true
     }
 
-    /// The parallel through the node of the other kind that lies furthest beyond the line.
-    fn update_channel(&mut self, marks: Marks) {
+    /// The parallel through the node of the other kind that lies furthest beyond the line, and
+    /// the nodes of that kind within the tolerance of it.
+    fn update_channel(&mut self, tolerance: f64, marks: Marks) {
         let Some(current) = &self.line else {
             return;
         };
         let line = current.line();
         let kind_is_high = !self.is_support;
-        let width = self
+        let others: Vec<(TrendlineNode, f64)> = self
             .segment
             .iter()
             .filter(|k| k.is_high != kind_is_high)
-            .map(|k| self.beyond(k.price, line.value_at(k.timestamp)))
+            .map(|k| (*k, self.beyond(k.price, line.value_at(k.timestamp))))
+            .collect();
+        let width = others
+            .iter()
+            .map(|(_, beyond)| *beyond)
             .fold(f64::NEG_INFINITY, f64::max);
+        let channel_width = marks.above(width, 0.0).then_some(width);
+        let channel_touching_nodes = match channel_width {
+            Some(width) => others
+                .iter()
+                .filter(|(_, beyond)| marks.within((beyond - width).abs(), tolerance))
+                .map(|(k, _)| *k)
+                .collect(),
+            None => Vec::new(),
+        };
         if let Some(current) = &mut self.line {
-            current.channel_width = marks.above(width, 0.0).then_some(width);
+            current.channel_width = channel_width;
+            current.channel_touching_nodes = channel_touching_nodes;
         }
     }
 }
@@ -425,14 +474,31 @@ impl Indicator for TrendlineEngine {
             ] {
                 extra.insert(format!("{name}_{key}"), number);
             }
+            let mut list = |prefix: &str, nodes: &[TrendlineNode]| {
+                let listed = &nodes[nodes.len().saturating_sub(TRENDLINE_LISTED_NODES)..];
+                for (i, node) in listed.iter().enumerate() {
+                    let key = format!("{name}_{prefix}_{}", i + 1);
+                    extra.insert(format!("{key}_bars_back"), (t - node.bar) as f64);
+                    extra.insert(format!("{key}_price"), node.price);
+                }
+            };
+            list("node_touch", &current.touching_nodes);
             if let Some(width) = current.channel_width {
-                let parallel = if side.is_support {
-                    value + width
+                list("channel_node_touch", &current.channel_touching_nodes);
+                // The parallel lies on the far side: the bar reaches it with its other extreme.
+                let (parallel, far_extreme) = if side.is_support {
+                    (value + width, bar.high)
                 } else {
-                    value - width
+                    (value - width, bar.low)
                 };
+                let channel_touch = marks.within((far_extreme - parallel).abs(), tolerance);
                 extra.insert(format!("{name}_channel_value"), parallel);
                 extra.insert(format!("{name}_channel_width"), width);
+                extra.insert(
+                    format!("{name}_channel_node_touches"),
+                    current.channel_touching_nodes.len() as f64,
+                );
+                extra.insert(format!("{name}_channel_touch"), flag(channel_touch));
             }
             lines += 1;
 
@@ -467,7 +533,7 @@ impl Indicator for TrendlineEngine {
 pub const TRENDLINES_DEFINITION: super::definition::IndicatorDefinition = super::definition::IndicatorDefinition {
     name: "trendlines",
     aliases: &[],
-    description: "Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width); alerts bear_support_line_break, bull_resistance_line_break",
+    description: "Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width), the touching nodes as node_touch_<i>_bars_back / node_touch_<i>_price, and for the channel parallel channel_node_touches (nodes of the other kind within the tolerance of it), channel_node_touch_<i>_bars_back / _price and channel_touch (this bar's far extreme within the tolerance of it); each list names the newest 8 at most, oldest first; alerts bear_support_line_break, bull_resistance_line_break",
     params: &[
         super::definition::ParamSpec::count("depth", 3, 1, 10000).meaning("bars on each side of a pivot"),
         super::definition::ParamSpec::count("backstep", 2, 0, 10000)
@@ -630,6 +696,60 @@ mod tests {
         );
         assert_eq!((resistance.start.bar, resistance.end.bar), (10, 20));
         assert!((resistance.line().value_at(30 * 60) - 116.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_the_line_names_its_touching_nodes_and_those_of_the_parallel() {
+        // Tolerance 0.5 ATR: after bar 33 the line runs 100 -> 108 through three lows, and the
+        // confirmed highs 108 and 112 both lie 6.0 above it, on the parallel (the high 116 of
+        // bar 30 is not confirmed yet).
+        let mut engine = TrendlineEngine::new(3, 2, ZigZagDeviationMode::Percent(1.0), 14, 0.5);
+        let outputs: Vec<_> = bars()[..=33].iter().map(|bar| engine.on_bar(bar)).collect();
+        let line = engine.support().expect("the line through the lows");
+        let at = |nodes: &[TrendlineNode]| -> Vec<(usize, f64)> {
+            nodes.iter().map(|node| (node.bar, node.price)).collect()
+        };
+        assert_eq!(
+            at(&line.touching_nodes),
+            [(5, 100.0), (15, 103.5), (25, 108.0)]
+        );
+        assert_eq!(line.node_touches, line.touching_nodes.len());
+        assert_eq!(line.touching_nodes.first(), Some(&line.start));
+        assert_eq!(line.touching_nodes.last(), Some(&line.end));
+        assert!(line.touching_nodes.iter().all(|node| !node.is_high));
+        assert_eq!(at(&line.channel_touching_nodes), [(10, 108.0), (20, 112.0)]);
+        assert!(line.channel_touching_nodes.iter().all(|node| node.is_high));
+
+        let out = outputs[33].as_ref().unwrap();
+        for (i, (bars_back, price)) in [(28.0, 100.0), (18.0, 103.5), (8.0, 108.0)]
+            .into_iter()
+            .enumerate()
+        {
+            let key = format!("support_node_touch_{}", i + 1);
+            assert_eq!(out.extra[&format!("{key}_bars_back")], bars_back);
+            assert_eq!(out.extra[&format!("{key}_price")], price);
+        }
+        assert!(!out.extra.contains_key("support_node_touch_4_price"));
+        assert_eq!(out.extra["support_channel_node_touches"], 2.0);
+        assert_eq!(out.extra["support_channel_node_touch_1_bars_back"], 23.0);
+        assert_eq!(out.extra["support_channel_node_touch_1_price"], 108.0);
+        assert_eq!(out.extra["support_channel_node_touch_2_bars_back"], 13.0);
+        assert_eq!(out.extra["support_channel_node_touch_2_price"], 112.0);
+        assert!(!out.extra.contains_key("support_channel_node_touch_3_price"));
+        // The high of bar 33 (113.6) is far below the parallel at 117.2.
+        assert_eq!(out.extra["support_channel_touch"], 0.0);
+
+        // With the narrower tolerance the line starts at the middle low (bar 15): two touching
+        // nodes, and the high 108 of bar 10 lies before the anchor. The one confirmed high after
+        // it, 112 at bar 20, gives the width: 6.25 above the line 103.5 -> 108 (105.75 there).
+        let mut narrow = TrendlineEngine::new(3, 2, ZigZagDeviationMode::Percent(1.0), 14, 0.25);
+        for bar in &bars()[..=33] {
+            narrow.on_bar(bar);
+        }
+        let line = narrow.support().expect("the line through the lows");
+        assert_eq!(at(&line.touching_nodes), [(15, 103.5), (25, 108.0)]);
+        assert_eq!(at(&line.channel_touching_nodes), [(20, 112.0)]);
+        assert!((line.channel_width.unwrap() - 6.25).abs() < 1e-9);
     }
 
     #[test]

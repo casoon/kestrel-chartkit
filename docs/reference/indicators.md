@@ -2344,7 +2344,7 @@ ZigZag with backstep, running-leg/confirmation status, and ATR-mode deviation (d
 
 ### `trendlines`
 
-Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width); alerts bear_support_line_break, bull_resistance_line_break
+Trendlines through confirmed zigzag_advanced nodes: a support line through the lows and a resistance line through the highs (oldest anchor no node in between pierces by more than tolerance_atr ATR, newest node), each with its channel parallel, node and bar touches and its break on a close beyond it; value = lines in the output; extra: atr, tolerance, support_*/resistance_* (value, start_price, start_bars_back, end_price, end_bars_back, nodes, node_touches, touches, touch, formed, break, channel_value, channel_width), the touching nodes as node_touch_<i>_bars_back / node_touch_<i>_price, and for the channel parallel channel_node_touches (nodes of the other kind within the tolerance of it), channel_node_touch_<i>_bars_back / _price and channel_touch (this bar's far extreme within the tolerance of it); each list names the newest 8 at most, oldest first; alerts bear_support_line_break, bull_resistance_line_break
 
 [See it in the showcase](../../../showcase/trendlines/)
 

@@ -219,6 +219,10 @@ def wilder_atr(bars, length):
     return values
 
 
+# How many touching nodes a list of the trendlines output names at most (the newest ones).
+TRENDLINE_LISTED_NODES = 8
+
+
 def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr_mult=None,
                times=None):
     """Support and resistance line through confirmed ZigZag nodes, as documented on
@@ -234,7 +238,18 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
     the bar's low (high) within the tolerance, a break a close below (above) the line, which ends
     it and empties the segment. A price within 1e-9 ATR of a mark is on it (`Marks`): a node or a
     low on the tolerance touches and does not pierce, a close on the line is no break, and a node
-    of the other kind on the line gives no channel."""
+    of the other kind on the line gives no channel.
+
+    The touching nodes of a line are the nodes of its kind from the oldest anchor to the newest
+    within the tolerance of the line, kept from the bar that fixed it. The channel touching nodes
+    are the nodes of the other kind in the segment within the tolerance of the parallel, the one
+    that gives the width included, taken anew on every bar that confirms a node of either kind
+    while the line exists, with the tolerance of that bar. The output names each list oldest
+    first as `<side>_node_touch_<i>_*` and `<side>_channel_node_touch_<i>_*` (bars back and
+    price), the newest `TRENDLINE_LISTED_NODES` if there are more, and
+    `<side>_channel_node_touches` counts the second; `<side>_channel_touch` says whether the
+    bar's far extreme (the high above a support line) came within the tolerance of the
+    parallel."""
     _, _, nodes = advanced_zigzag(bars, depth, backstep, deviation_pct, atr_mult, atr_len)
     confirmed_on = {}
     for price, is_high, _, bar, at in nodes:
@@ -250,6 +265,19 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
         a, c = line["a"], line["c"]
         return a["price"] + (c["price"] - a["price"]) / (clock[c["bar"]] - clock[a["bar"]]) \
             * (time - clock[a["bar"]])
+
+    def channel(side, sign, wants_high, tolerance, marks):
+        """Width of the channel and the nodes of the other kind on its parallel."""
+        line = side["line"]
+        others = [(k, sign * (k["price"] - at_time(line, clock[k["bar"]])))
+                  for k in side["segment"] if k["is_high"] != wants_high]
+        widest = max((beyond for _, beyond in others), default=None)
+        if widest is None or not marks.above(widest, 0.0):
+            line["width"], line["channel_touching"] = None, []
+            return
+        line["width"] = widest
+        line["channel_touching"] = [k for k, beyond in others
+                                    if marks.within(abs(beyond - widest), tolerance)]
 
     for t, (_, high, low, close) in enumerate(bars):
         atr = atrs[t]
@@ -268,6 +296,8 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                 if node["is_high"] != wants_high:
                     if segment:
                         segment.append(node)
+                        if side["line"] is not None:
+                            channel(side, sign, wants_high, tolerance, marks)
                     continue
                 segment.append(node)
                 kind = [k for k in segment if k["is_high"] == wants_high]
@@ -281,19 +311,17 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                         break
                 del segment[:segment.index(a)]
                 kind = [k for k in segment if k["is_high"] == wants_high]
-                line.update(nodes=len(kind), touches=0,
-                            node_touches=sum(
-                                1 for k in kind
-                                if marks.within(abs(k["price"] - at_time(line, clock[k["bar"]])),
-                                                tolerance)))
+                touching = [k for k in kind
+                            if marks.within(abs(k["price"] - at_time(line, clock[k["bar"]])),
+                                            tolerance)]
+                line.update(nodes=len(kind), touches=0, touching=touching)
                 side["line"] = line
+                channel(side, sign, wants_high, tolerance, marks)
                 formed = True
             line = side["line"]
             if line is None:
                 continue
-            others = [sign * (k["price"] - at_time(line, clock[k["bar"]]))
-                      for k in side["segment"] if k["is_high"] != wants_high]
-            width = max(others) if others and marks.above(max(others), 0.0) else None
+            width = line["width"]
             value = at_time(line, clock[t])
             extreme = high if wants_high else low
             touch = marks.within(abs(extreme - value), tolerance)
@@ -307,15 +335,26 @@ def trendlines(bars, depth, backstep, deviation_pct, atr_len, tolerance_atr, atr
                 f"{name}_end_price": line["c"]["price"],
                 f"{name}_end_bars_back": float(t - line["c"]["bar"]),
                 f"{name}_nodes": float(line["nodes"]),
-                f"{name}_node_touches": float(line["node_touches"]),
+                f"{name}_node_touches": float(len(line["touching"])),
                 f"{name}_touches": float(line["touches"]),
                 f"{name}_touch": 1.0 if touch else 0.0,
                 f"{name}_formed": 1.0 if formed else 0.0,
                 f"{name}_break": 1.0 if broke else 0.0,
             })
+            lists = [("node_touch", line["touching"])]
             if width is not None:
-                extra[f"{name}_channel_value"] = value + sign * width
+                parallel = value + sign * width
+                far_extreme = low if wants_high else high
+                extra[f"{name}_channel_value"] = parallel
                 extra[f"{name}_channel_width"] = width
+                extra[f"{name}_channel_node_touches"] = float(len(line["channel_touching"]))
+                extra[f"{name}_channel_touch"] = \
+                    1.0 if marks.within(abs(far_extreme - parallel), tolerance) else 0.0
+                lists.append(("channel_node_touch", line["channel_touching"]))
+            for prefix, nodes in lists:
+                for i, node in enumerate(nodes[-TRENDLINE_LISTED_NODES:], start=1):
+                    extra[f"{name}_{prefix}_{i}_bars_back"] = float(t - node["bar"])
+                    extra[f"{name}_{prefix}_{i}_price"] = node["price"]
             count += 1
             if broke:
                 alerts["bull_resistance_line_break" if wants_high

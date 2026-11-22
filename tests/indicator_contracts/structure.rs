@@ -616,6 +616,104 @@ fn trendlines_decimal_node() {
     assert!(case.expected[27]
         .alerts
         .contains_key("bear_support_line_break"));
+
+    // Die berührenden Knoten: die drei Tiefs, ältestes zuerst.
+    let listed = |bar: usize, list: &str| -> Vec<(f64, f64)> {
+        (1..)
+            .map_while(|i| {
+                let back = line(bar, &format!("{list}_{i}_bars_back"))?;
+                Some((
+                    back,
+                    line(bar, &format!("{list}_{i}_price")).expect("price"),
+                ))
+            })
+            .collect()
+    };
+    assert_eq!(
+        listed(21, "node_touch"),
+        [(17.0, 100.16), (11.0, 99.96), (5.0, 100.76)]
+    );
+    assert_eq!(
+        listed(24, "node_touch"),
+        [(20.0, 100.16), (14.0, 99.96), (8.0, 100.76)]
+    );
+    // Die Parallele läuft durch das Hoch 104,86 (Bar 7), 4,55 über der Linie; das Hoch 104,66
+    // (Bar 13) liegt 0,50 unter ihr, genau auf der Toleranz.
+    assert_eq!((case.bars[7].high, case.bars[13].high), (104.86, 104.66));
+    assert!(close_to(line(21, "channel_width"), 4.55));
+    assert_eq!(line(21, "channel_node_touches"), Some(2.0));
+    assert_eq!(
+        listed(21, "channel_node_touch"),
+        [(14.0, 104.86), (8.0, 104.66)]
+    );
+    assert_eq!(line(21, "channel_touch"), Some(0.0));
+    // Davor verläuft die Linie durch die ersten beiden Tiefs. Bar 15: ein Hoch nach dem Anker,
+    // es bestimmt die Breite 4,80. Bar 18 bestätigt das zweite Hoch, das ebenfalls 4,80 über der
+    // Linie liegt, und reicht mit 104,76 bis auf 0,27 an die Parallele 104,493.
+    assert_eq!(line(15, "channel_node_touches"), Some(1.0));
+    assert_eq!(listed(15, "channel_node_touch"), [(8.0, 104.86)]);
+    assert_eq!(line(17, "channel_node_touches"), Some(1.0));
+    assert_eq!(line(18, "channel_node_touches"), Some(2.0));
+    assert!(close_to(line(18, "channel_width"), 4.8));
+    assert_eq!(line(17, "channel_touch"), Some(0.0));
+    assert_eq!(line(18, "channel_touch"), Some(1.0));
+    assert_holds(&case);
+}
+
+/// Von Hand hergeleitet: ein regelmäßiges Zickzack mit Tiefs bei 100 (Bars 2, 6, 10, ...) und
+/// Hochs bei 104 (Bars 4, 8, 12, ...). Jedes Tief liegt auf der waagerechten Linie, jedes Hoch auf
+/// der Parallele. Ab dem neunten berührenden Knoten nennt die Liste die neuesten acht, die Zahl
+/// zählt weiter.
+#[test]
+fn trendlines_many_nodes() {
+    let case = trendline_case("trendlines_many_nodes");
+    let field = |bar: usize, name: &str| expected(&case, bar, name);
+    let backs = |bar: usize, list: &str| -> Vec<f64> {
+        (1..)
+            .map_while(|i| field(bar, &format!("support_{list}_{i}_bars_back")))
+            .collect()
+    };
+    let steps = |from: f64, count: usize| -> Vec<f64> {
+        (0..count).map(|k| from - 4.0 * k as f64).collect()
+    };
+    assert!((2..40).step_by(4).all(|bar| case.bars[bar].low == 100.0));
+    assert!((4..40).step_by(4).all(|bar| case.bars[bar].high == 104.0));
+    // Bar 10 bestätigt das zweite Tief (Bar 6): die Linie durch die Tiefs von Bar 2 und Bar 6.
+    assert_eq!(field(9, "support_value"), None);
+    assert_eq!(field(10, "support_formed"), Some(1.0));
+    assert_eq!(field(10, "support_node_touches"), Some(2.0));
+    assert_eq!(backs(10, "node_touch"), [8.0, 4.0]);
+    assert_eq!(field(10, "support_channel_width"), Some(4.0));
+    assert_eq!(field(10, "support_channel_node_touches"), Some(1.0));
+    assert_eq!(backs(10, "channel_node_touch"), [6.0]);
+    // Bar 34: acht berührende Knoten, alle genannt.
+    assert_eq!(field(34, "support_node_touches"), Some(8.0));
+    assert_eq!(backs(34, "node_touch"), steps(32.0, 8));
+    assert_eq!(field(34, "support_start_bars_back"), Some(32.0));
+    // Bar 38: neun; genannt sind die neuesten acht, der Anker bleibt in start_bars_back.
+    assert_eq!(field(38, "support_nodes"), Some(9.0));
+    assert_eq!(field(38, "support_node_touches"), Some(9.0));
+    assert_eq!(backs(38, "node_touch"), steps(32.0, 8));
+    assert_eq!(field(38, "support_start_bars_back"), Some(36.0));
+    assert_eq!(field(38, "support_node_touch_9_price"), None);
+    assert_eq!(field(38, "support_node_touch_8_price"), Some(100.0));
+    // Die Parallele: acht Hochs an Bar 36, neun an Bar 40.
+    assert_eq!(field(36, "support_channel_node_touches"), Some(8.0));
+    assert_eq!(backs(36, "channel_node_touch"), steps(32.0, 8));
+    assert_eq!(field(40, "support_channel_node_touches"), Some(9.0));
+    assert_eq!(backs(40, "channel_node_touch"), steps(32.0, 8));
+    assert_eq!(field(40, "support_channel_node_touch_1_price"), Some(104.0));
+    // Ein Tief von 100 berührt die Linie, ein Hoch von 104 die Parallele.
+    assert_eq!(field(38, "support_touch"), Some(1.0));
+    assert_eq!(field(38, "support_channel_touch"), Some(0.0));
+    assert_eq!(field(40, "support_touch"), Some(0.0));
+    assert_eq!(field(40, "support_channel_touch"), Some(1.0));
+    // Die Widerstandslinie spiegelt das: Hochs auf der Linie (Bars 4 bis 36), Tiefs auf der
+    // Parallele. Das Tief von Bar 2 liegt vor dem Anker und zählt nicht: Bars 6 bis 34, acht.
+    assert_eq!(field(40, "resistance_node_touches"), Some(9.0));
+    assert_eq!(field(40, "resistance_channel_node_touches"), Some(8.0));
+    assert_eq!(field(40, "resistance_touch"), Some(1.0));
+    assert_eq!(field(38, "resistance_channel_touch"), Some(1.0));
     assert_holds(&case);
 }
 
@@ -627,6 +725,11 @@ fn trendlines_negated_decimal_node() {
     assert_eq!(line(21, "start_price"), Some(-100.16));
     assert_eq!(line(21, "nodes"), Some(3.0));
     assert_eq!(line(21, "node_touches"), Some(3.0));
+    assert_eq!(line(21, "node_touch_2_price"), Some(-99.96));
+    assert_eq!(line(21, "node_touch_2_bars_back"), Some(11.0));
+    assert_eq!(line(21, "channel_node_touches"), Some(2.0));
+    assert_eq!(line(21, "channel_node_touch_2_price"), Some(-104.66));
+    assert_eq!(line(18, "channel_touch"), Some(1.0));
     assert_eq!(line(24, "touch"), Some(1.0));
     assert_eq!(line(26, "break"), Some(0.0));
     assert_eq!(line(27, "break"), Some(1.0));

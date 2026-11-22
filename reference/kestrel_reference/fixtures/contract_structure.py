@@ -775,6 +775,14 @@ def decimal_bars(shift=0.0, middle=0.0, mirrored=False):
     return bars
 
 
+def sawtooth_bars(cycles=12):
+    """A regular zigzag: centres 103, 102, 101, 102 repeated, bars [centre - 1, centre + 1] with
+    the open and the close at the centre. Lows of 100 at bars 2, 6, 10, ... and highs of 104 at
+    bars 4, 8, 12, ... (0-based); every true range is 2."""
+    centres = [103.0, 102.0, 101.0, 102.0] * cycles + [103.0, 102.0, 101.0]
+    return [(c, c + 1.0, c - 1.0, c, 1000.0) for c in centres]
+
+
 REPAINT_SEGMENTS = [(-1.0, 6), (1.0, 14), (-1.0, 10), (0.7, 4), (-1.0, 6), (1.0, 14), (-1.0, 10),
                     (1.0, 8), (-0.7, 4), (1.0, 10), (-1.0, 10), (1.0, 4), (-1.0, 4), (1.0, 12)]
 
@@ -2000,6 +2008,13 @@ def build():
         # anchor would move to the middle low.) Bar 24: low 101.66, line 101.16, a touch. Bar 25:
         # low 100.96, line 101.21, a touch. Bar 26 closes at 101.26 on the line 101.26: no break.
         # Bar 27 closes at 100.76 below 101.31: the break.
+        # The touching nodes are the three lows, 17, 11 and 5 bars back on bar 21. The parallel
+        # runs through the high 104.86 of bar 7, 4.55 above the line (100.31); the high 104.66 of
+        # bar 13 lies 0.50 below the parallel (100.61 + 4.55 = 105.16), on the tolerance: 2
+        # channel touching nodes, 14 and 8 bars back. Before that, from bar 15, the line runs
+        # through the first two lows and falls 0.2 in 6 bars like the two highs: bar 18 confirms
+        # the second high, both lie on the parallel 4.80 above the line, and the high 104.76 of
+        # bar 18 is within 0.5 of the parallel (104.493): channel_touch.
         case_block("trendlines_decimal_node",
                    "trendlines 2/1/2 %/4/0.25, ATR exactly 2, a sloped line with decimal prices: "
                    "the middle low lies on the tolerance below the line and is a node touch",
@@ -2028,6 +2043,19 @@ def build():
         case_block("trendlines_decimal_close",
                    "trendlines 2/1/2 %/4/0.25: a close on the line is no break",
                    *trendlines(2, 1, 2.0, 4, 0.25, decimal_bars())),
+        # By hand (bars 0-based): lows of 100 at bars 2, 6, 10, ... and highs of 104 at bars 4, 8,
+        # 12, ...; a low is confirmed 4 bars after it lies. The support line is flat at 100 from
+        # bar 10 (lows of bars 2 and 6) and every later low lies on it; the parallel is 4 above
+        # it, and every high after the first low lies on that. Bar 34 confirms the low of bar 30:
+        # 8 touching nodes, all listed, the oldest 32 bars back. Bar 38 confirms the ninth: the
+        # list holds the newest 8 (bars 6 to 34, 32 to 4 bars back), node_touches is 9 and the
+        # anchor of bar 2 stays in start_bars_back = 36. The parallel has its ninth touching node
+        # on bar 40 (the high of bar 36). A bar with a low of 100 touches the line, a bar with a
+        # high of 104 the parallel.
+        case_block("trendlines_many_nodes",
+                   "trendlines 2/1/2 %/4/0.25 over a regular zigzag: more touching nodes than the "
+                   "lists name, on the line and on the parallel",
+                   *trendlines(2, 1, 2.0, 4, 0.25, sawtooth_bars())),
         case_block("trendlines_repaint",
                    "trendlines 3/2/4 %/5/0.25 over a fall and a rise whose lows and highs are "
                    "replaced by more extreme ones before they are confirmed: the anchors lie on "

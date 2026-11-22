@@ -2637,7 +2637,8 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                 Some(("resistance", field)) => ("support_", field),
                 _ => ("", key.as_str()),
             };
-            let sign = if !side.is_empty() && negated.contains(&field) {
+            let listed_price = field.contains("node_touch_") && field.ends_with("_price");
+            let sign = if !side.is_empty() && (negated.contains(&field) || listed_price) {
                 -1.0
             } else {
                 1.0
@@ -2653,6 +2654,8 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
     };
 
     let (mut lines, mut breaks, mut touches, mut channels) = (0usize, 0usize, 0usize, 0usize);
+    let (mut listed_nodes, mut channel_nodes) = (0usize, 0usize);
+    let (mut channel_touches, mut two_each_side) = (0usize, 0usize);
     for seed in 1..=40u64 {
         let bars = gap_walk(seed, 400);
         let mirror = mirrored(&bars);
@@ -2715,6 +2718,30 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                             (get("nodes").unwrap(), get("node_touches").unwrap());
                         assert!(2.0 <= on_line && on_line <= nodes, "{context}, bar {i}");
                         assert!(get("start_bars_back") > get("end_bars_back"));
+                        // The lists: as many nodes as counted, the newest 8 at most, oldest
+                        // first; the last touching node of the line is its newest anchor.
+                        let listed = |list: &str| -> Vec<(f64, f64)> {
+                            (1..)
+                                .map_while(|n| {
+                                    let back = get(&format!("{list}_{n}_bars_back"))?;
+                                    Some((back, get(&format!("{list}_{n}_price")).unwrap()))
+                                })
+                                .collect()
+                        };
+                        let on_line_nodes = listed("node_touch");
+                        assert_eq!(on_line_nodes.len() as f64, on_line.min(8.0), "{context}");
+                        assert!(on_line_nodes.windows(2).all(|pair| pair[0].0 > pair[1].0));
+                        assert_eq!(
+                            on_line_nodes.last().copied(),
+                            Some((get("end_bars_back").unwrap(), get("end_price").unwrap()))
+                        );
+                        if on_line <= 8.0 {
+                            assert_eq!(
+                                on_line_nodes[0],
+                                (get("start_bars_back").unwrap(), get("start_price").unwrap())
+                            );
+                        }
+                        listed_nodes += on_line_nodes.len();
                         if let Some(width) = get("channel_width") {
                             assert!(width > margin);
                             let far = if side == "support" {
@@ -2723,7 +2750,26 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
                                 line - width
                             };
                             assert_eq!(get("channel_value"), Some(far));
+                            let on_parallel = get("channel_node_touches").unwrap();
+                            let parallel_nodes = listed("channel_node_touch");
+                            assert!(on_parallel >= 1.0, "{context}, bar {i}");
+                            assert_eq!(parallel_nodes.len() as f64, on_parallel.min(8.0));
+                            assert!(parallel_nodes.windows(2).all(|pair| pair[0].0 > pair[1].0));
+                            let far_extreme = if side == "support" { bar.high } else { bar.low };
+                            assert_eq!(
+                                get("channel_touch") == Some(1.0),
+                                (far_extreme - far).abs() <= out.extra["tolerance"] + margin,
+                                "{context}, bar {i}: {side} channel touch"
+                            );
                             channels += 1;
+                            channel_nodes += parallel_nodes.len();
+                            channel_touches += usize::from(get("channel_touch") == Some(1.0));
+                            two_each_side += usize::from(on_line >= 2.0 && on_parallel >= 2.0);
+                        } else {
+                            assert!(out
+                                .extra
+                                .keys()
+                                .all(|k| !k.starts_with(&format!("{side}_channel"))));
                         }
                         breaks += usize::from(broke);
                         touches += usize::from(get("touch") == Some(1.0));
@@ -2755,6 +2801,12 @@ fn test_scenario_trendlines_mirror_symmetry_and_causality() {
     assert_eq!(
         (lines, breaks, touches, channels),
         (32682, 1843, 2086, 32682)
+    );
+    // Listed touching nodes of the lines and of the parallels, bars touching a parallel, and bars
+    // of a line with two touching nodes on each boundary.
+    assert_eq!(
+        (listed_nodes, channel_nodes, channel_touches, two_each_side),
+        (69130, 34468, 2821, 1712)
     );
 }
 
