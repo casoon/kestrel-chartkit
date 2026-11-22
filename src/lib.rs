@@ -46,6 +46,8 @@ pub mod finance;
 /// Generic composition graph: typed indicator dependencies, shared intermediate outputs, and
 /// centralized warmup/execution ordering.
 pub mod graph;
+/// Ten-track instrument state heatmap with rolling-percentile normalisation to `[-1, 1]`.
+pub mod heatmap;
 /// Streaming indicators and the validated indicator registry.
 pub mod indicator;
 /// Lower-timeframe (intrabar) child-bar grouping under a higher-timeframe parent bucket.

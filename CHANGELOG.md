@@ -9,6 +9,10 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Added
+
+- **Heatmap:** `heatmap::evaluate_instrument_heatmap` returns ten state values per bar in five groups (direction, order, volatility, flow, momentum), each normalised to `[-1, 1]` by a rolling 200-bar percentile. Measures that need volume stay `NaN` without it.
+
 ## [0.50.0] - 2026-11-22
 
 ### Added
