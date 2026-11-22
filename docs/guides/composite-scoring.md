@@ -1,7 +1,7 @@
 ---
 title: Composite scoring
 description: Indicator readings become subscores between -1 and 1. aggregate_subscores weighs them into a direction, grades the result against the market regime and derives an ATR-based risk plan.
-order: 3
+order: 4
 ---
 
 ## From reading to subscore

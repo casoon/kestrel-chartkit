@@ -9,8 +9,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-22
+
 ### Added
 
+- **Telemetry:** `compute_market_telemetry` reads six dimensions off a bar series — order, tension, stress, stretch, open levels and spread load — from existing catalog entries, with every threshold in `TelemetryConfig`. Details: [Market telemetry](https://casoon.github.io/kestrel-chartkit/docs/guides/market-telemetry/).
 - **Pages:** the guide [How entries are verified](https://casoon.github.io/kestrel-chartkit/docs/guides/verification/) says what the mark means, which acceptance every entry passes and which tests keep it true.
 
 ### Changed

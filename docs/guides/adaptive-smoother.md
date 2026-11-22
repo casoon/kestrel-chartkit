@@ -1,7 +1,7 @@
 ---
 title: The adaptive smoother
 description: What the Kestrel Adaptive Smoother does, how it was chosen by measurement, and where it is ahead of and behind the other smoothers of the catalog.
-order: 7
+order: 8
 ---
 
 `kestrel_adaptive_smoother`, short `kas`, is a moving average that changes its own speed. While the

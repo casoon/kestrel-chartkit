@@ -93,6 +93,8 @@ pub mod stress;
 pub mod structure;
 /// Deterministic synthetic price series and market pattern generators.
 pub mod synthetic;
+/// Six-dimension market telemetry snapshot built from existing catalog entries.
+pub mod telemetry;
 /// Custom timeframe types and OHLCV bar resampling.
 pub mod timeframe;
 /// Bar-series transformations that derive alternative candles from observed ones.

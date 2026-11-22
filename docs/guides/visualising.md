@@ -1,7 +1,7 @@
 ---
 title: Visualising results
 description: kestrel-chartkit computes and draws nothing itself. chartlet renders static charts from its numbers, kestrel-loom an interactive chart in the browser.
-order: 4
+order: 5
 ---
 
 kestrel-chartkit is a calculation library. What it returns — indicator values, extras, alerts,

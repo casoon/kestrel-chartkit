@@ -1,7 +1,7 @@
 ---
 title: Structure and events
 description: Structure detectors report what they find in two ways, as typed artifacts and zones with a known time, and as alerts on the bar the event becomes known. Four event detectors build on confirmed pivots.
-order: 5
+order: 6
 ---
 
 ## Pivots: event time and knowledge time

@@ -1,7 +1,7 @@
 ---
 title: Analytics and evaluation
 description: On-demand read-outs describe the current market from a slice of bars. The evaluation module measures what happened after a signal, from forward excursions to calibration, the deflated Sharpe ratio and a logistic model.
-order: 6
+order: 7
 ---
 
 ## On demand, not streaming

@@ -1,7 +1,7 @@
 ---
 title: How entries are verified
 description: What "verified" means for a catalog entry, the acceptance every entry passes, and the tests that keep it true from version to version.
-order: 8
+order: 9
 ---
 
 Every entry of the catalog carries a `verification`: `Verified`, or `Open` with the reason. The
