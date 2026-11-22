@@ -9,6 +9,11 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pages:** the project site uses the current shared theme (0.16.2).
+
+
 ## [0.52.0] - 2026-11-22
 
 ### Added
