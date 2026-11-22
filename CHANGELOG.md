@@ -9,6 +9,12 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-11-22
+
+### Added
+
+- **Heatmap:** `heatmap::compute_state_index` collapses one heatmap row into `InstrumentStateIndex`: score `100 * direction * order gate` in `[-100, +100]`, five regimes, and stretch and wick warning flags kept out of the score. Without volume the direction weights move to the price tracks; a `NaN` input is not substituted.
+
 ## [0.51.0] - 2026-11-22
 
 ### Added

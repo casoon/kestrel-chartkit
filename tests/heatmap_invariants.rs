@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use kestrel_chartkit::heatmap::evaluate_instrument_heatmap;
+use kestrel_chartkit::heatmap::{compute_state_index, evaluate_instrument_heatmap, InstrumentHeatmapRow};
 use kestrel_chartkit::model::Bar;
 
 fn walk(n: usize) -> Vec<Bar> {
@@ -131,5 +131,63 @@ fn percentile_normalisation_is_scale_invariant() {
                 "{p} vs {q}"
             );
         }
+    }
+}
+
+fn row(dir: f32, adx: f32, fdi: f32, docht: f32, dehnung: f32, cmf: f32, schub: f32) -> InstrumentHeatmapRow {
+    InstrumentHeatmapRow {
+        ts: 0,
+        dir_hma: dir,
+        dir_kas: dir,
+        ord_adx: adx,
+        ord_fdi: fdi,
+        vol_docht: docht,
+        vol_squeeze: 0.0,
+        flow_cmf: cmf,
+        flow_rvat: 0.0,
+        mom_schub: schub,
+        mom_dehnung: dehnung,
+    }
+}
+
+#[test]
+fn state_index_strong_sell_off_with_high_adx_is_expansion_bear() {
+    let k = compute_state_index(&row(-1.0, 1.0, 1.0, 0.0, 0.0, -1.0, -1.0));
+    assert_eq!(k.regime, "EXP_BEAR");
+    assert!(k.ksi <= -60.0 && k.ksi >= -100.0);
+}
+
+#[test]
+fn state_index_stretched_uptrend_stays_expansion_and_warns() {
+    let k = compute_state_index(&row(1.0, 0.8, 0.8, 0.0, -0.9, 1.0, 1.0));
+    assert_eq!(k.regime, "EXP_BULL");
+    assert!(k.warn_overextended);
+    assert!(!k.warn_rejection);
+}
+
+#[test]
+fn state_index_without_volume_uses_price_weights() {
+    let k = compute_state_index(&row(1.0, 1.0, 1.0, 0.0, 0.0, f32::NAN, 1.0));
+    assert!((k.dir - 1.0).abs() < 1e-6, "weights must sum to 1");
+    assert!((k.ksi - 100.0).abs() < 1e-4);
+    // NaN in a price track is not substituted
+    let n = compute_state_index(&row(f32::NAN, 1.0, 1.0, 0.0, 0.0, f32::NAN, 1.0));
+    assert!(n.ksi.is_nan());
+    assert_eq!(n.regime, "NA");
+}
+
+#[test]
+fn state_index_chaos_dampens_gate_to_floor() {
+    let k = compute_state_index(&row(1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0));
+    assert!((k.order_gate - 0.15).abs() < 1e-6);
+    assert_eq!(k.regime, "CHOP");
+}
+
+#[test]
+fn state_index_stays_in_range_on_real_rows() {
+    for r in evaluate_instrument_heatmap(&walk(1200)) {
+        let k = compute_state_index(&r);
+        assert!(k.ksi.is_nan() || (-100.0..=100.0).contains(&k.ksi));
+        assert!(k.order_gate.is_nan() || (0.15 - 1e-6..=1.0 + 1e-6).contains(&k.order_gate));
     }
 }

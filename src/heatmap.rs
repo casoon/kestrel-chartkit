@@ -379,6 +379,74 @@ pub fn evaluate_instrument_heatmap(bars: &[Bar]) -> Vec<InstrumentHeatmapRow> {
     rows
 }
 
+/// Aggregated state of one bar: direction times order quality, with friction as diagnosis only.
+///
+/// A description of the closed window, not a signal. `ksi`, `dir`, `order_gate` and
+/// `friction_score` are `NaN` when an input is not evaluated; `regime` is then `"NA"`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct InstrumentStateIndex {
+    pub ts: i64,
+    /// `100 * dir * order_gate`, in `[-100, +100]`.
+    pub ksi: f32,
+    /// Direction vector in `[-1, +1]`.
+    pub dir: f32,
+    /// Order-quality gate in `[0.15, 1.0]`.
+    pub order_gate: f32,
+    /// Friction and stretch in `[0, 1]`; not part of `ksi`.
+    pub friction_score: f32,
+    /// `"EXP_BULL"`, `"DRIFT_BULL"`, `"CHOP"`, `"DRIFT_BEAR"`, `"EXP_BEAR"`, or `"NA"`.
+    pub regime: &'static str,
+    /// Stretch track in its lowest fifth.
+    pub warn_overextended: bool,
+    /// Wick track in its lowest fifth.
+    pub warn_rejection: bool,
+}
+
+/// Collapses one heatmap row into the state index.
+///
+/// `dir` = `0.35 hma + 0.35 kas + 0.15 schub + 0.15 cmf`; without volume (`flow_cmf` is `NaN`)
+/// `0.40 hma + 0.40 kas + 0.20 schub`. `order_gate` = `0.15 + 0.85 * (a + f) / 2` with `a`, `f`
+/// the ADX and FDI tracks mapped to `[0, 1]`. Stretch and wick tracks only raise warning flags,
+/// so a strong, stretched trend keeps its score.
+pub fn compute_state_index(row: &InstrumentHeatmapRow) -> InstrumentStateIndex {
+    let dir = if row.flow_cmf.is_nan() {
+        0.40 * row.dir_hma + 0.40 * row.dir_kas + 0.20 * row.mom_schub
+    } else {
+        0.35 * row.dir_hma + 0.35 * row.dir_kas + 0.15 * row.mom_schub + 0.15 * row.flow_cmf
+    };
+    let a = (row.ord_adx + 1.0) / 2.0;
+    let f = (row.ord_fdi + 1.0) / 2.0;
+    let order_gate = 0.15 + 0.85 * (0.5 * a + 0.5 * f);
+    let w = (row.vol_docht + 1.0) / 2.0;
+    let s = (row.mom_dehnung + 1.0) / 2.0;
+    let friction_score = 0.5 * w + 0.5 * s;
+    let ksi = (100.0 * dir * order_gate).clamp(-100.0, 100.0);
+    let regime = if ksi.is_nan() {
+        "NA"
+    } else if ksi >= 60.0 {
+        "EXP_BULL"
+    } else if ksi >= 20.0 {
+        "DRIFT_BULL"
+    } else if ksi <= -60.0 {
+        "EXP_BEAR"
+    } else if ksi <= -20.0 {
+        "DRIFT_BEAR"
+    } else {
+        "CHOP"
+    };
+    InstrumentStateIndex {
+        ts: row.ts,
+        ksi,
+        dir: dir.clamp(-1.0, 1.0),
+        order_gate,
+        friction_score,
+        regime,
+        warn_overextended: s < 0.20,
+        warn_rejection: w < 0.20,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
