@@ -9,6 +9,8 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-11-23
+
 ### Added
 
 - **Trendlines:** `trendlines` names the nodes that touch a line (`support_node_touch_<i>_bars_back` / `_price`, likewise `resistance_`) and reads the channel parallel: `channel_node_touches` counts the nodes of the other kind on it, `channel_node_touch_<i>_*` names them and `channel_touch` marks a bar that reaches it. `Trendline` carries them as `touching_nodes` and `channel_touching_nodes`, two new public fields; no existing value changes. Details: [Trendlines](https://casoon.github.io/kestrel-chartkit/docs/guides/structure-and-events/#trendlines).
@@ -16,6 +18,7 @@ This file starts after 0.34.0; earlier releases are recorded by their git tags.
 ### Changed
 
 - **Pages:** the project site uses the current shared theme (0.16.4).
+- **Docs:** README and the installation guide name the current release tag.
 
 ### Fixed
 
