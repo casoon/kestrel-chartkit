@@ -23,11 +23,11 @@
 //! # Normalisation
 //!
 //! No fixed thresholds. Each raw measure is ranked against its own last
-//! [`HEATMAP_WINDOW`] values (the current one included; ties count half), so the scale follows
+//! [`HEATMAP_WINDOW`](crate::heatmap::HEATMAP_WINDOW) values (the current one included; ties count half), so the scale follows
 //! the instrument's own volatility. Unipolar measures map the percentile `p` to `2p - 1`
 //! (inverted where the high raw value is the adverse pole). Signed measures keep their sign and
 //! use the percentile of the absolute value: `sign(x) * p(|x|)`, so a raw zero stays neutral.
-//! A track needs at least [`HEATMAP_MIN_RANKED`] ranked values before it reports.
+//! A track needs at least [`HEATMAP_MIN_RANKED`](crate::heatmap::HEATMAP_MIN_RANKED) ranked values before it reports.
 //!
 //! Only bars up to and including the row's bar are used.
 

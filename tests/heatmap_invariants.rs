@@ -1,7 +1,9 @@
 mod common;
 
 use common::*;
-use kestrel_chartkit::heatmap::{compute_state_index, evaluate_instrument_heatmap, InstrumentHeatmapRow};
+use kestrel_chartkit::heatmap::{
+    compute_state_index, evaluate_instrument_heatmap, InstrumentHeatmapRow,
+};
 use kestrel_chartkit::model::Bar;
 
 fn walk(n: usize) -> Vec<Bar> {
@@ -134,7 +136,15 @@ fn percentile_normalisation_is_scale_invariant() {
     }
 }
 
-fn row(dir: f32, adx: f32, fdi: f32, docht: f32, dehnung: f32, cmf: f32, schub: f32) -> InstrumentHeatmapRow {
+fn row(
+    dir: f32,
+    adx: f32,
+    fdi: f32,
+    docht: f32,
+    dehnung: f32,
+    cmf: f32,
+    schub: f32,
+) -> InstrumentHeatmapRow {
     InstrumentHeatmapRow {
         ts: 0,
         dir_hma: dir,
